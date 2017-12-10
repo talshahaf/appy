@@ -299,6 +299,8 @@ public class Widget extends RemoteViewsService {
                 Log.d("HAPY", "onclick2!!");
                 String ran = "" + (char)('A' + new Random().nextInt(26));
                 view.attrs.put("setText", new SetVariable((CharSequence)ran));
+
+                MainActivity.pythonRun("/sdcard/main.py");
             }
         };
 
