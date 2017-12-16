@@ -112,8 +112,13 @@ public class MainActivity extends AppCompatActivity
         makePython();
         pythonInit(getFilesDir().getAbsolutePath());
 
-        Log.d("HAPY", System.getenv("PYTHONHOME"));
-        Log.d("HAPY", System.getenv("LD_LIBRARY_PATH"));
+        //Log.d("HAPY", System.getenv("PYTHONHOME"));
+        //Log.d("HAPY", System.getenv("LD_LIBRARY_PATH"));
+    }
+
+    public static void test(long i)
+    {
+        Log.d("HAPY", "test: "+i);
     }
 
     protected static native int pythonInit(String pythonpath);
