@@ -85,6 +85,8 @@ public class Reflection
         } catch (NoSuchMethodException e) {
 
         }
+        printFunc(clazz, "<init>", parameterTypes);
+
         if (result == null) {
             Constructor<?>[] methods = clazz.getConstructors();
             for (Constructor<?> m : methods) {
@@ -119,6 +121,7 @@ public class Reflection
         }
         if(result != null)
         {
+            printFunc(clazz, "<init>", result.getParameterTypes());
             Class<?>[] argTypes = result.getParameterTypes();
             int[] args = new int[argTypes.length + 1];
             for(int i = 0; i < argTypes.length; i++)
@@ -130,6 +133,7 @@ public class Reflection
             args[args.length - 1] = t == null ? -1 : t;
             return new Object[]{result, args};
         }
+        Log.d("HAPY", "no such func");
         return null;
     }
 

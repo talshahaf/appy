@@ -26,6 +26,11 @@ add_library( # Specifies the name of the library.
 
              # Provides a relative path to your source file(s).
              src/main/cpp/src/native.cpp)
+
+add_library(pythonlib SHARED IMPORTED)
+set_target_properties(pythonlib PROPERTIES IMPORTED_LOCATION
+    ${CMAKE_SOURCE_DIR}/src/main/cpp/lib/libpython3.6m.so.1.0)
+
 include_directories(src/main/cpp/inc/)
 include_directories(src/main/cpp/inc/python3.6m)
 
@@ -33,4 +38,5 @@ target_link_libraries( # Specifies the target library.
                        native
 
                        # Links the log library to the target library.
-                       ${log-lib} )
+                       ${log-lib}
+                       pythonlib)
