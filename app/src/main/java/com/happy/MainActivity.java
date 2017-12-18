@@ -100,9 +100,7 @@ public class MainActivity extends AppCompatActivity
             Log.d("HAPY", "not unpacking python");
         }
     }
-    static {
-        System.loadLibrary("native");
-    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState)
     {
@@ -110,16 +108,33 @@ public class MainActivity extends AppCompatActivity
         setContentView(R.layout.activity_main);
 
         makePython();
+
+        System.load(new File(getFilesDir(), "/lib/libpython3.6m.so.1.0").getAbsolutePath());
+        System.loadLibrary("native");
+
         pythonInit(getFilesDir().getAbsolutePath());
 
         //Log.d("HAPY", System.getenv("PYTHONHOME"));
         //Log.d("HAPY", System.getenv("LD_LIBRARY_PATH"));
     }
 
-    public static void test(long i)
+    public static class Test
     {
-        Log.d("HAPY", "test: "+i);
+        long value = 13;
+
+        public static long test(long i)
+        {
+            Log.d("HAPY", "test: "+i);
+            return i * 2;
+        }
+        public long ins_test(long i)
+        {
+            Log.d("HAPY", "ins_test: "+i);
+            return i * 7;
+        }
     }
+
+
 
     protected static native int pythonInit(String pythonpath);
     protected static native int pythonRun(String script);
