@@ -34,6 +34,7 @@ enum ReturnType
     FLOAT = 6,
     DOUBLE = 7,
     VOID = 8,
+    CONST = 9,
 };
 
 class jni_exception : public std::exception
@@ -151,61 +152,151 @@ void check_java_exc(JNIEnv * env)
     }
 }
 
-jvalue call_static_raw(JNIEnv * env, jclass clazz, jmethodID method, jvalue * values, int returnType)
+jvalue call_raw(JNIEnv * env, jobject self, jmethodID method, jvalue * values, int returnType, int stat)
 {
     jvalue ret;
 
     switch(returnType)
     {
-    case OBJECT:
-    {
-        ret.l = env->CallStaticObjectMethodA(clazz, method, values);
-        break;
-    }
     case BOOLEAN:
     {
-        ret.z = env->CallStaticBooleanMethodA(clazz, method, values);
+        if(stat != 0)
+        {
+            ret.z = env->CallStaticBooleanMethodA((jclass)self, method, values);
+        }
+        else
+        {
+            ret.z = env->CallBooleanMethodA(self, method, values);
+        }
         break;
     }
     case BYTE:
     {
-        ret.b = env->CallStaticByteMethodA(clazz, method, values);
+        if(stat != 0)
+        {
+            ret.b = env->CallStaticByteMethodA((jclass)self, method, values);
+        }
+        else
+        {
+            ret.b = env->CallByteMethodA(self, method, values);
+        }
         break;
     }
     case CHARACTER:
     {
-        ret.c = env->CallStaticCharMethodA(clazz, method, values);
+        if(stat != 0)
+        {
+            ret.c = env->CallStaticCharMethodA((jclass)self, method, values);
+        }
+        else
+        {
+            ret.c = env->CallCharMethodA(self, method, values);
+        }
         break;
     }
     case SHORT:
     {
-        ret.s = env->CallStaticShortMethodA(clazz, method, values);
+        if(stat != 0)
+        {
+            ret.s = env->CallStaticShortMethodA((jclass)self, method, values);
+        }
+        else
+        {
+            ret.s = env->CallShortMethodA(self, method, values);
+        }
         break;
     }
     case INTEGER:
     {
-        ret.i = env->CallStaticIntMethodA(clazz, method, values);
+        if(stat != 0)
+        {
+            ret.i = env->CallStaticIntMethodA((jclass)self, method, values);
+        }
+        else
+        {
+            ret.i = env->CallIntMethodA(self, method, values);
+        }
         break;
     }
     case LONG:
     {
-        ret.j = env->CallStaticLongMethodA(clazz, method, values);
+        if(stat != 0)
+        {
+            ret.j = env->CallStaticLongMethodA((jclass)self, method, values);
+        }
+        else
+        {
+            ret.j = env->CallLongMethodA(self, method, values);
+        }
         break;
     }
     case FLOAT:
     {
-        ret.f = env->CallStaticFloatMethodA(clazz, method, values);
+        if(stat != 0)
+        {
+            ret.f = env->CallStaticFloatMethodA((jclass)self, method, values);
+        }
+        else
+        {
+            ret.f = env->CallFloatMethodA(self, method, values);
+        }
         break;
     }
     case DOUBLE:
     {
-        ret.d = env->CallStaticDoubleMethodA(clazz, method, values);
+        if(stat != 0)
+        {
+            ret.d = env->CallStaticDoubleMethodA((jclass)self, method, values);
+        }
+        else
+        {
+            ret.d = env->CallDoubleMethodA(self, method, values);
+        }
         break;
     }
     case VOID:
     {
-        env->CallStaticVoidMethodA(clazz, method, values);
-        ret.l = NULL;
+        if(stat != 0)
+        {
+            env->CallStaticVoidMethodA((jclass)self, method, values);
+        }
+        else
+        {
+            env->CallVoidMethodA(self, method, values);
+        }
+        ret.j = 0;
+        break;
+    }
+    case OBJECT:
+    case CONST:
+    {
+        jobject obj = NULL;
+        if(returnType == OBJECT)
+        {
+            if (stat != 0)
+            {
+                obj = env->CallStaticObjectMethodA((jclass) self, method, values);
+            }
+            else
+            {
+                obj = env->CallObjectMethodA(self, method, values);
+            }
+        }
+        else
+        {
+            obj = env->NewObjectA((jclass)self, method, values);
+            if(obj == NULL)
+            {
+                throw jni_exception("failed to create new object");
+            }
+        }
+        ret.l = env->NewGlobalRef(obj);
+        env->DeleteLocalRef(obj);
+        if(ret.l == NULL)
+        {
+            throw jni_exception("failed to create global ref");
+        }
+        break;
     }
     default:
     {
@@ -251,7 +342,7 @@ static void find_types(JNIEnv * env)
     }
 }
 
-jmethodID get_method_raw(JNIEnv * env, jclass clazz, const char * method, int n, jobjectArray type_arr, int * outTypes)
+jmethodID get_method_raw(JNIEnv * env, jclass clazz, const char * method, int n, jobjectArray type_arr, int * outTypes, int * outStatic)
 {
     scope_guards onexit;
     env->PushLocalFrame(15);
@@ -277,8 +368,9 @@ jmethodID get_method_raw(JNIEnv * env, jclass clazz, const char * method, int n,
     if(result != NULL)
     {
         methodID = env->FromReflectedMethod(env->GetObjectArrayElement(result, 0));
+        *outStatic = env->GetObjectArrayElement(result, 1) != NULL;
 
-        jintArray realTypes = (jintArray)env->GetObjectArrayElement(result, 1);
+        jintArray realTypes = (jintArray)env->GetObjectArrayElement(result, 2);
         check_java_exc(env);
         jint * intarr = env->GetIntArrayElements(realTypes, NULL);
         if(intarr == NULL)
@@ -294,7 +386,7 @@ jmethodID get_method_raw(JNIEnv * env, jclass clazz, const char * method, int n,
     return methodID;
 }
 
-static PyObject * call_static(PyObject *self, PyObject *args)
+static PyObject * call(PyObject *self, PyObject *args)
 {
     try
     {
@@ -304,8 +396,9 @@ static PyObject * call_static(PyObject *self, PyObject *args)
         unsigned long method = 0;
         PyObject * values = NULL;
         int return_type = 0;
+        int stat = 0;
 
-        if (!PyArg_ParseTuple(args, "kkOi", &clazz, &method, &values, &return_type)) {
+        if (!PyArg_ParseTuple(args, "kkOii", &clazz, &method, &values, &return_type, &stat)) {
             return NULL;
         }
 
@@ -333,7 +426,7 @@ static PyObject * call_static(PyObject *self, PyObject *args)
             memcpy(&jvalues[i], &lng, sizeof(lng));
         }
         JNIEnv * env = get_env();
-        jvalue ret = call_static_raw(env, (jclass)clazz, (jmethodID)method, jvalues, return_type);
+        jvalue ret = call_raw(env, (jclass)clazz, (jmethodID)method, jvalues, return_type, stat);
         unsigned long long lng;
         memcpy(&lng, &ret, sizeof(ret));
         return PyLong_FromUnsignedLongLong(lng);
@@ -400,7 +493,8 @@ static PyObject * get_method(PyObject *self, PyObject *args)
         int * out_types = new int[type_num + 1];
         onexit += [&out_types]{ if(out_types != NULL) { delete[] out_types; out_types = NULL; } };
 
-        jmethodID res = get_method_raw(env, (jclass)clazz, method, type_num, type_arr, out_types);
+        int out_static = 0;
+        jmethodID res = get_method_raw(env, (jclass)clazz, method, type_num, type_arr, out_types, &out_static);
         if(res == NULL)
         {
             PyErr_SetString(PyExc_ValueError, "Method not found");
@@ -415,7 +509,7 @@ static PyObject * get_method(PyObject *self, PyObject *args)
         for (Py_ssize_t i = 0; i < type_num; ++i) {
             PyTuple_SET_ITEM(out_types_tuple, i, PyLong_FromLong(out_types[i]));
         }
-        return Py_BuildValue("kNk", (unsigned long)res, out_types_tuple, out_types[type_num]);
+        return Py_BuildValue("kNii", (unsigned long)res, out_types_tuple, out_types[type_num], out_static);
     }
     catch(java_exception & e)
     {
@@ -508,7 +602,7 @@ extern "C" JNIEXPORT jint JNICALL Java_com_happy_MainActivity_pythonRun(JNIEnv *
 }
 
 static PyMethodDef native_hapy_methods[] = {
-        {"call_static",  call_static, METH_VARARGS, "Call a static java method"},
+        {"call",  call, METH_VARARGS, "Call a static java method"},
         {"get_method",  get_method, METH_VARARGS, "Finds a java method"},
         {"find_class",  find_class, METH_VARARGS, "Finds a java class"},
         {"delete_global_ref",  delete_global_ref, METH_VARARGS, "Delete a java reference"},

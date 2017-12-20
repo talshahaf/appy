@@ -120,6 +120,8 @@ public class MainActivity extends AppCompatActivity
 
     public static class Test
     {
+        long value = 13;
+
         public static long test(long i)
         {
             Log.d("HAPY", "test: "+i);

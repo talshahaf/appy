@@ -3,8 +3,10 @@ package com.happy;
 import android.util.Log;
 
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -68,6 +70,13 @@ public class Reflection
         enumTypes.put(java.lang.Float.TYPE, 6);
         enumTypes.put(java.lang.Double.TYPE, 7);
         enumTypes.put(java.lang.Void.TYPE, 8);
+        enumTypes.put(null, 9); //constructors
+    }
+
+    public static Object[] getField(Class<?> clazz, String field) throws NoSuchFieldException {
+        Field f = clazz.getField(field);
+        Integer type = enumTypes.get(f.getType());
+        return new Object[]{f, type == null ? -1 : type, Modifier.isStatic(f.getModifiers())};
     }
 
     //private static HashMap<Class<?>, HashMap<List<Class<?>>, Constructor<?>>> memoize_cons = new HashMap<>();
@@ -129,9 +138,9 @@ public class Reflection
                 Integer t = enumTypes.get(argTypes[i]);
                 args[i] = t == null ? -1 : t;
             }
-            Integer t = enumTypes.get(Void.TYPE);
+            Integer t = enumTypes.get(null);
             args[args.length - 1] = t == null ? -1 : t;
-            return new Object[]{result, args};
+            return new Object[]{result, null, args};
         }
         Log.d("HAPY", "no such func");
         return null;
@@ -203,7 +212,7 @@ public class Reflection
             }
             Integer t = enumTypes.get(result.getReturnType());
             args[args.length - 1] = t == null ? -1 : t;
-            return new Object[]{result, args};
+            return new Object[]{result, Modifier.isStatic(result.getModifiers()) ? true : null, args};
         }
 
         Log.d("HAPY", "no such func");
