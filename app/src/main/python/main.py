@@ -9,16 +9,20 @@ class _jobject:
         if type(info) != str:
             raise ValueError('only strings in info')
         self.info = info
+        #print('created {}'.format(self))
 
     def __repr__(self):
-        return '{}'.format(self.info)
+        return 'jobject {} ({})'.format(self.info, self.handle)
 
     def __del__(self):
         #TODO make sure this doesn't get called twice for the same handle
         if self.handle:
-            print('deleting {}'.format(self))
+            #print('deleting {}'.format(self))
             native_hapy.delete_global_ref(self.handle)
             self.handle = None
+
+    def __bool__(self):
+        return bool(self.handle)
 
 class jobject(_jobject):
     def __init__(self, handle, info):
@@ -28,7 +32,7 @@ class jobject(_jobject):
     @property
     def t(self):
         if self._t is None:
-            self._t = self.__class__(native_hapy.get_object_class(self.handle))
+            self._t = self.__class__(native_hapy.get_object_class(self.handle), 'class of {}'.format(self))
         return self._t
 
     def __repr__(self):
@@ -90,6 +94,8 @@ primitives = {
     'const': 9,
 }
 
+OBJECT_CLASS = _find_class('java/lang/Object')
+
 class jprimitive:
     pass
 
@@ -141,7 +147,7 @@ class jbyte(jprimitive):
             pass
         except TypeError:
             pass
-        self.v = int(v)
+        self.v = int(self.v)
         self.t = primitives['byte']
         self.w = _find_class('java/lang/Byte')
 
@@ -153,15 +159,29 @@ class jchar(jprimitive):
             pass
         except TypeError:
             pass
-        self.v = int(v)
+        self.v = int(self.v)
         self.t = primitives['character']
         self.w = _find_class('java/lang/Character')
 
-def prepare_value(arg, needed_type):
-    if isinstance(arg, jprimitive) and needed_type == primitives['object']:
-        arg = jobject(native_hapy.box(arg.v))
+def auto_handle_wrapping(arg, needed_type, unboxed_needed_type):
+    if arg is None:
+        return jobject(0, 'null')
 
-    return native_hapy.make_value(arg.handle if isinstance(arg, jobject) else arg.v, needed_type)
+    if isinstance(arg, jprimitive):
+        if needed_type == primitives['object']:
+            return jobject(native_hapy.box(arg.v, arg.t if unboxed_needed_type == primitives['object'] else unboxed_needed_type), 'arg')
+        else:
+            return arg.v
+
+    if isinstance(arg, jobject):
+        return arg
+    raise ValueError('error converting {} to {}'.format(type(arg), needed_type))
+
+#returns arg as well so it won't be freed until we call the method
+#this is only a problem with inner functions extracting handles from objects
+def prepare_value(arg, needed_type, unboxed_needed_type):
+    arg = auto_handle_wrapping(arg, needed_type, unboxed_needed_type)
+    return native_hapy.make_value(arg.handle if isinstance(arg, jobject) else arg, needed_type), arg
 
 def call_method(clazz, obj, name, *args):
     args = list(args)
@@ -172,35 +192,73 @@ def call_method(clazz, obj, name, *args):
         elif isinstance(arg, bytes) or isinstance(arg, str):
             args[i] = jstring(arg)
             arg_types[i] = args[i].t
+        elif arg is None:
+            arg_types[i] = OBJECT_CLASS
         else:
             if isinstance(arg, bool):
                 args[i] = jboolean(arg)
             elif isinstance(arg, int):
-                args[i] = jint(arg)
+                if - 2 ** 31 <= arg < 2 ** 31:
+                    args[i] = jint(arg)
+                else:
+                    args[i] = jlong(arg)
             elif isinstance(arg, float):
                 args[i] = jdouble(arg)
             elif not isinstance(arg, jprimitive):
                 raise ValueError('cannot pass {} to java'.format(type(arg)))
             arg_types[i] = args[i].w
 
-    method_id, real_arg_types, ret_type, is_static = native_hapy.get_method(clazz.handle, name, tuple(arg.handle for arg in arg_types))
-    print(ret_type)
+    method_id, needed_types, is_static = native_hapy.get_method(clazz.handle, name, tuple(arg.handle for arg in arg_types))
 
-    args = tuple(prepare_value(arg, real_type) for arg, real_type in zip(args, real_arg_types))
+    ret_type, unboxed_ret_type = needed_types[-1]
+    needed_types = needed_types[:-1]
+
+    all_args = tuple(prepare_value(arg, needed_type, unboxed_needed_type) for arg, (needed_type, unboxed_needed_type) in zip(args, needed_types))
+    args = tuple(arg for arg,_ in all_args)
+
+    print(args)
     if is_static:
-        ret = native_hapy.act(clazz.handle, method_id, args, ret_type, OP_CALL_STATIC_METHOD)
+        ret = native_hapy.act(clazz.handle, method_id, args, ret_type, unboxed_ret_type, OP_CALL_STATIC_METHOD)
     else:
-        ret = native_hapy.act(obj.handle, method_id, args, ret_type, OP_CALL_METHOD)
+        ret = native_hapy.act(obj.handle, method_id, args, ret_type, unboxed_ret_type, OP_CALL_METHOD)
 
-    return ret if ret_type not in (primitives['object'], primitives['const']) else jobject(ret, '')
+    if unboxed_ret_type in (primitives['object'], primitives['const']) and ret is not None:
+        return jobject(ret, 'ret')
+    return ret
 
-print('begin')
+print('=================================begin')
 
 Test = _find_class("com/happy/MainActivity$Test")
-test = call_method(Test, None, '')
-print(test)
+test = call_method(Test, None, '', True, jbyte('b'),  jchar('c'),  10 ** 3, 2 * (10 ** 5), 3 * (10 ** 10), 1.1,  3.141529,
+                                   None, None,        None,        None,    None,          None,           None, None,
+                                   Test)
 
-ret = call_method(Test, test, 'ins_test', 39)
-print(ret)
+print('test1', test)
+test = call_method(Test, None, '', True, jbyte('b'),  jchar('c'),  10 ** 3, 2 * (10 ** 5), 3 * (10 ** 10), 1.1,  3.141529,
+                                      True, jbyte('b'),  jchar('c'),  10 ** 3, 2 * (10 ** 5), 3 * (10 ** 10), 1.1,  3.141529,
+                                      jshort(1000000))
+print('test2', test)
 
-print('end')
+
+# result = call_method(Test, None, 'all', None, None,        None,        None,    None,          None,           None, None,
+#                                         None, None,        None,        None,    None,          None,           None, None,
+#                                         None)
+# print('result1', result)
+
+result = call_method(Test, None, 'all', True, jbyte('b'),  jchar('c'),  10 ** 3, 2 * (10 ** 5), 3 * (10 ** 10), 1.1,  3.141529,
+                                        None, None,        None,        None,    None,          None,           None, None,
+                                        Test)
+print('result2', result)
+
+# result = call_method(Test, None, 'all', None, None,        None,        None,    None,          None,           None, None,
+#                                         True, jbyte('b'),  jchar('c'),  10 ** 3, 2 * (10 ** 5), 3 * (10 ** 10), 1.1,  3.141529,
+#                                         None)
+# print('result3', result)
+
+result = call_method(Test, None, 'all', True, jbyte('b'),  jchar('c'),  10 ** 3, 2 * (10 ** 5), 3 * (10 ** 10), 1.1,  3.141529,
+                                        True, jbyte('b'),  jchar('c'),  10 ** 3, 2 * (10 ** 5), 3 * (10 ** 10), 1.1,  3.141529,
+                                        jshort(1000000))
+print('result4', result)
+
+
+print('====================================end')

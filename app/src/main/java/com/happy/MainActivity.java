@@ -122,6 +122,13 @@ public class MainActivity extends AppCompatActivity
     {
         long value = 13;
 
+        public Test(boolean z, byte b, char c,      short s, int i,     long j, float f, double d,
+                                 Boolean Z, Byte B, Character C, Short S, Integer I, Long J, Float F, Double D,
+                                 Object O)
+        {
+            Log.d("HAPY", "const got: "+z+" "+b+" "+c+" "+s+" "+i+" "+j+" "+f+" "+d+" | "+Z+" "+B+" "+C+" "+S+" "+I+" "+J+" "+F+" "+D+" | "+O);
+        }
+
         public static long test(long i)
         {
             Log.d("HAPY", "test: "+i);
@@ -131,6 +138,14 @@ public class MainActivity extends AppCompatActivity
         {
             Log.d("HAPY", "ins_test: "+i);
             return i * 7;
+        }
+
+        public static Object all(boolean z, byte b, char c,      short s, int i,     long j, float f, double d,
+                                 Boolean Z, Byte B, Character C, Short S, Integer I, Long J, Float F, Double D,
+                                 Object O)
+        {
+            Log.d("HAPY", "all got: "+z+" "+b+" "+c+" "+s+" "+i+" "+j+" "+f+" "+d+" | "+Z+" "+B+" "+C+" "+S+" "+I+" "+J+" "+F+" "+D+" | "+O);
+            return O;
         }
     }
 
