@@ -2,6 +2,7 @@ package com.happy;
 
 import android.util.Log;
 
+import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
@@ -80,73 +81,6 @@ public class Reflection
         return new Object[]{f, type == null ? OBJECT_TYPE : type, Modifier.isStatic(f.getModifiers()) ? 1 : 0};
     }
 
-    //private static HashMap<Class<?>, HashMap<List<Class<?>>, Constructor<?>>> memoize_cons = new HashMap<>();
-    //private static HashMap<Class<?>, HashMap<String, HashMap<List<Class<?>>, Method>>> memoize = new HashMap<>();
-
-    public static Object[] getCompatibleConstructor(Class<?> clazz, Class<?>[] parameterTypes)
-    {
-//        if (memoize_cons.get(clazz) != null && memoize_cons.get(clazz).get(Arrays.asList(parameterTypes)) != null) {
-//            return memoize_cons.get(clazz).get(Arrays.asList(parameterTypes));
-//        }
-
-        Constructor<?> result = null;
-        try {
-            result = clazz.getConstructor(parameterTypes);
-        } catch (NoSuchMethodException e) {
-
-        }
-        printFunc(clazz, "<init>", parameterTypes);
-
-        if (result == null) {
-            Constructor<?>[] methods = clazz.getConstructors();
-            for (Constructor<?> m : methods) {
-                if (m.getParameterTypes().length == (parameterTypes != null ? parameterTypes.length : 0)) {
-                    // If we have the same number of parameters there is a
-                    // shot that we have a compatible
-                    // constructor
-                    Class<?>[] methodTypes = m.getParameterTypes();
-                    boolean isCompatible = true;
-                    for (int j = 0; j < (parameterTypes != null ? parameterTypes.length : 0); j++) {
-                        Class<?> unboxedMethodType = unbox(methodTypes[j]);
-                        Class<?> unboxedParameterType = unbox(parameterTypes[j]);
-                        if (!unboxedMethodType.isAssignableFrom(unboxedParameterType)) {
-                            Integer methodValue = groups.get(unboxedMethodType);
-                            Integer parameterValue = groups.get(unboxedParameterType);
-                            if (methodValue != null && parameterValue != null) {
-                                if (methodValue / 10 == parameterValue / 10 && methodValue > parameterValue) {
-                                    // allowed
-                                    continue;
-                                }
-                            }
-                            isCompatible = false;
-                            break;
-                        }
-                    }
-                    if (isCompatible) {
-                        result = m;
-                        break;
-                    }
-                }
-            }
-        }
-        if(result != null)
-        {
-            printFunc(clazz, "<init>", result.getParameterTypes());
-            Class<?>[] argTypes = result.getParameterTypes();
-            int[] args = new int[argTypes.length + 1];
-            for(int i = 0; i < argTypes.length; i++)
-            {
-                Integer t = enumTypes.get(argTypes[i]);
-                args[i] = t == null ? OBJECT_TYPE : t;
-            }
-            Integer t = enumTypes.get(null);
-            args[args.length - 1] = t == null ? OBJECT_TYPE : t;
-            return new Object[]{result, 1, args};
-        }
-        Log.d("HAPY", "no such func");
-        return null;
-    }
-
     public static void printFunc(Class<?> clazz, String method, Class<?>[] parameterTypes)
     {
         String types = "";
@@ -157,39 +91,171 @@ public class Reflection
         Log.d("HAPY", clazz.getName() +"."+ method + " " + types);
     }
 
+    public static final boolean python_types = true;
+
+    public interface Callable
+    {
+        String getName();
+        Class<?>[] getParameterTypes();
+        Class<?> getReturnType();
+        boolean isStatic();
+        Object get();
+    }
+
+    public static class CallableMethod implements Callable
+    {
+        private Method m;
+        CallableMethod(Method m)
+        {
+            this.m = m;
+        }
+
+        @Override
+        public String getName()
+        {
+            return m.getName();
+        }
+
+        @Override
+        public Class<?>[] getParameterTypes()
+        {
+            return m.getParameterTypes();
+        }
+
+        @Override
+        public Class<?> getReturnType()
+        {
+            return m.getReturnType();
+        }
+
+        @Override
+        public boolean isStatic()
+        {
+            return Modifier.isStatic(m.getModifiers());
+        }
+
+        @Override
+        public Object get()
+        {
+            return m;
+        }
+    }
+
+    public static class CallableConstructor implements Callable
+    {
+        private Constructor<?> m;
+        CallableConstructor(Constructor<?> m)
+        {
+            this.m = m;
+        }
+
+        @Override
+        public String getName()
+        {
+            return m.getName();
+        }
+
+        @Override
+        public Class<?>[] getParameterTypes()
+        {
+            return m.getParameterTypes();
+        }
+
+        @Override
+        public Class<?> getReturnType()
+        {
+            return null;
+        }
+
+        @Override
+        public boolean isStatic()
+        {
+            return true; //convention
+        }
+
+        @Override
+        public Object get()
+        {
+            return m;
+        }
+    }
+
     public static Object[] getCompatibleMethod(Class<?> clazz, String method, Class<?>[] parameterTypes)
     {
-        Method result = null;
+        Callable result = null;
         try {
-            result = clazz.getMethod(method, parameterTypes);
+            if(method == null)
+            {
+                result = new CallableConstructor(clazz.getConstructor(parameterTypes));
+            }
+            else
+            {
+                result = new CallableMethod(clazz.getMethod(method, parameterTypes));
+            }
         } catch (NoSuchMethodException e) {
 
         }
 
-        printFunc(clazz, method, parameterTypes);
+        //printFunc(clazz, method, parameterTypes);
 
         if (result == null) {
-            Method[] methods = clazz.getMethods();
-            for (Method m : methods) {
-                if (m.getName().equals(method) && m
-                        .getParameterTypes().length == (parameterTypes != null ? parameterTypes.length : 0)) {
+            Callable[] methods;
+            if(method == null)
+            {
+                Constructor<?>[] _methods = clazz.getConstructors();
+                methods = new CallableConstructor[_methods.length];
+                for(int i = 0; i < methods.length; i++)
+                {
+                    methods[i] = new CallableConstructor(_methods[i]);
+                }
+            }
+            else
+            {
+                Method[] _methods = clazz.getMethods();
+                methods = new CallableMethod[_methods.length];
+                int c = 0;
+                for(int i = 0; i < methods.length; i++)
+                {
+                    if(_methods[i].getName().equals(method))
+                    {
+                        methods[c] = new CallableMethod(_methods[i]);
+                        c++;
+                    }
+                }
+                Callable[] copy = new CallableMethod[c];
+                System.arraycopy(methods, 0, copy, 0, c);
+                methods = copy;
+            }
+
+            for (Callable m : methods) {
+                if (m.getParameterTypes().length == (parameterTypes != null ? parameterTypes.length : 0)) {
                     // If we have the same number of parameters there is a
                     // shot that we have a compatible
                     // constructor
                     Class<?>[] methodTypes = m.getParameterTypes();
                     boolean isCompatible = true;
                     for (int j = 0; j < (parameterTypes != null ? parameterTypes.length : 0); j++) {
+                        if(methodTypes[j].isAssignableFrom(parameterTypes[j]))
+                        {
+                            // easy part
+                            continue;
+                        }
+                        if(python_types && !methodTypes[j].isPrimitive() && parameterTypes[j] == Object.class)
+                        {
+                            // because Nones
+                            continue;
+                        }
                         Class<?> unboxedMethodType = unbox(methodTypes[j]);
                         Class<?> unboxedParameterType = unbox(parameterTypes[j]);
                         if (!unboxedMethodType.isAssignableFrom(unboxedParameterType)) {
                             Integer methodValue = groups.get(unboxedMethodType);
                             Integer parameterValue = groups.get(unboxedParameterType);
-                            if (methodValue != null && parameterValue != null) {
-                                if (methodValue / 10 == parameterValue / 10 && methodValue > parameterValue) {
-                                    // allowed
-                                    continue;
-                                }
+                            if (methodValue != null && parameterValue != null && methodValue / 10 == parameterValue / 10 && (python_types || methodValue > parameterValue))
+                            {
+                                // conversion allowed
+                                continue;
                             }
+                            Log.d("HAPY", "method fails because "+methodTypes[j].getName() + " != "+parameterTypes[j].getName());
                             isCompatible = false;
                             break;
                         }
@@ -203,17 +269,21 @@ public class Reflection
         }
         if(result != null)
         {
-            printFunc(clazz, method, result.getParameterTypes());
+            //printFunc(clazz, method, result.getParameterTypes());
             Class<?>[] argTypes = result.getParameterTypes();
-            int[] args = new int[argTypes.length + 1];
+            int[][] args = new int[argTypes.length + 1][];
             for(int i = 0; i < argTypes.length; i++)
             {
                 Integer t = enumTypes.get(argTypes[i]);
-                args[i] = t == null ? OBJECT_TYPE : t;
+                Integer real_t = enumTypes.get(unbox(argTypes[i]));
+                args[i] = new int[]{ t == null ? OBJECT_TYPE : t, real_t == null ? OBJECT_TYPE : real_t};
             }
+
             Integer t = enumTypes.get(result.getReturnType());
-            args[args.length - 1] = t == null ? OBJECT_TYPE : t;
-            return new Object[]{result, Modifier.isStatic(result.getModifiers()) ? 1 : 0, args};
+            Integer real_t = enumTypes.get(unbox(result.getReturnType()));
+            args[args.length - 1] = new int[]{t == null ? OBJECT_TYPE : t, real_t == null ? OBJECT_TYPE : real_t};
+
+            return new Object[]{result.get(), result.isStatic() ? 1 : 0, args};
         }
 
         Log.d("HAPY", "no such func");
@@ -229,6 +299,10 @@ public class Reflection
      */
     private static Class<?> unbox(Class<?> primitive)
     {
+        if(primitive == null)
+        {
+            return null;
+        }
         if(primitive.isPrimitive())
         {
             return primitive;
