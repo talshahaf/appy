@@ -120,13 +120,19 @@ public class MainActivity extends AppCompatActivity
 
     public static class Test
     {
-        long value = 13;
+        public static Long value = 23L;
+        public Long ins_value = 24L;
+
+        public Test()
+        {
+
+        }
 
         public Test(boolean z, byte b, char c,      short s, int i,     long j, float f, double d,
                                  Boolean Z, Byte B, Character C, Short S, Integer I, Long J, Float F, Double D,
                                  Object O)
         {
-            Log.d("HAPY", "const got: "+z+" "+b+" "+c+" "+s+" "+i+" "+j+" "+f+" "+d+" | "+Z+" "+B+" "+C+" "+S+" "+I+" "+J+" "+F+" "+D+" | "+O);
+            //Log.d("HAPY", "const got: "+z+" "+b+" "+c+" "+s+" "+i+" "+j+" "+f+" "+d+" | "+Z+" "+B+" "+C+" "+S+" "+I+" "+J+" "+F+" "+D+" | "+O);
         }
 
         public static long test(long i)
@@ -138,6 +144,22 @@ public class MainActivity extends AppCompatActivity
         {
             Log.d("HAPY", "ins_test: "+i);
             return i * 7;
+        }
+
+        public static long test_void()
+        {
+            Log.d("HAPY", "test_void");
+            return 48;
+        }
+
+        public static void void_test(long l)
+        {
+            Log.d("HAPY", "test_void: "+l);
+        }
+
+        public static void void_void()
+        {
+            Log.d("HAPY", "void_void");
         }
 
         public static Object all(boolean z, byte b, char c,      short s, int i,     long j, float f, double d,

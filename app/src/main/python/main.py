@@ -1,6 +1,11 @@
 import sys
 import logcat
+import time
 import native_hapy
+
+known_classes = {}
+known_methods = {}
+known_fields = {}
 
 class _jobject:
     _slots__ = []
@@ -43,7 +48,9 @@ class id:
         self.value = value
 
 def _find_class(path):
-    return jobject(native_hapy.find_class(path), path)
+    if path not in known_classes:
+        known_classes[path] = jobject(native_hapy.find_class(path), path)
+    return known_classes[path]
 
 # def _get_field(clazz, name):
 #     method_id, field_type, is_static = native_hapy.get_field(clazz.handle, name)
@@ -62,10 +69,6 @@ OP_GET_FIELD = 3
 OP_GET_STATIC_FIELD = 4
 OP_SET_FIELD = 5
 OP_SET_STATIC_FIELD = 6
-
-def _call_method(ins, method, is_static, return_type, *args):
-    op = OP_CALL_STATIC_METHOD if is_static else OP_CALL_METHOD
-    native_hapy.act(ins.handle, method, tuple(args), return_type, op)
 
 # type_dict = {
 #     bool: 0,
@@ -177,38 +180,58 @@ def auto_handle_wrapping(arg, needed_type, unboxed_needed_type):
         return arg
     raise ValueError('error converting {} to {}'.format(type(arg), needed_type))
 
+def handle_ret(ret, unboxed_ret_type):
+    if unboxed_ret_type in (primitives['object'], primitives['const']) and ret is not None:
+        return jobject(ret, 'ret')
+    return ret
+
 #returns arg as well so it won't be freed until we call the method
 #this is only a problem with inner functions extracting handles from objects
 def prepare_value(arg, needed_type, unboxed_needed_type):
     arg = auto_handle_wrapping(arg, needed_type, unboxed_needed_type)
     return native_hapy.make_value(arg.handle if isinstance(arg, jobject) else arg, needed_type), arg
 
+def convert_arg(arg):
+    if isinstance(arg, jobject):
+        return arg, arg.t
+    elif isinstance(arg, bytes) or isinstance(arg, str):
+        arg = jstring(arg)
+        return arg, arg.t
+    elif arg is None:
+        return arg, OBJECT_CLASS
+    else:
+        if isinstance(arg, bool):
+            arg = jboolean(arg)
+        elif isinstance(arg, int):
+            if - 2 ** 31 <= arg < 2 ** 31:
+                arg = jint(arg)
+            else:
+                arg = jlong(arg)
+        elif isinstance(arg, float):
+            arg = jdouble(arg)
+        elif not isinstance(arg, jprimitive):
+            raise ValueError('cannot pass {} to java'.format(type(arg)))
+        return arg, arg.w
+
+def _get_method(handle, name, arg_types):
+    key = handle, name, arg_types
+    if key not in known_methods:
+        known_methods[key] = native_hapy.get_method(*key)
+    return known_methods[key]
+
+def _get_field(handle, name):
+    key = handle, name
+    if key not in known_fields:
+        known_fields[key] = native_hapy.get_field(*key)
+    return known_fields[key]
+
 def call_method(clazz, obj, name, *args):
     args = list(args)
     arg_types = [None] * len(args)
     for i, arg in enumerate(args):
-        if isinstance(arg, jobject):
-            arg_types[i] = arg.t
-        elif isinstance(arg, bytes) or isinstance(arg, str):
-            args[i] = jstring(arg)
-            arg_types[i] = args[i].t
-        elif arg is None:
-            arg_types[i] = OBJECT_CLASS
-        else:
-            if isinstance(arg, bool):
-                args[i] = jboolean(arg)
-            elif isinstance(arg, int):
-                if - 2 ** 31 <= arg < 2 ** 31:
-                    args[i] = jint(arg)
-                else:
-                    args[i] = jlong(arg)
-            elif isinstance(arg, float):
-                args[i] = jdouble(arg)
-            elif not isinstance(arg, jprimitive):
-                raise ValueError('cannot pass {} to java'.format(type(arg)))
-            arg_types[i] = args[i].w
+        args[i], arg_types[i] = convert_arg(arg)
 
-    method_id, needed_types, is_static = native_hapy.get_method(clazz.handle, name, tuple(arg.handle for arg in arg_types))
+    method_id, needed_types, is_static = _get_method(clazz.handle, name, tuple(arg.handle for arg in arg_types))
 
     ret_type, unboxed_ret_type = needed_types[-1]
     needed_types = needed_types[:-1]
@@ -216,49 +239,83 @@ def call_method(clazz, obj, name, *args):
     all_args = tuple(prepare_value(arg, needed_type, unboxed_needed_type) for arg, (needed_type, unboxed_needed_type) in zip(args, needed_types))
     args = tuple(arg for arg,_ in all_args)
 
-    print(args)
     if is_static:
         ret = native_hapy.act(clazz.handle, method_id, args, ret_type, unboxed_ret_type, OP_CALL_STATIC_METHOD)
     else:
         ret = native_hapy.act(obj.handle, method_id, args, ret_type, unboxed_ret_type, OP_CALL_METHOD)
 
-    if unboxed_ret_type in (primitives['object'], primitives['const']) and ret is not None:
-        return jobject(ret, 'ret')
-    return ret
+    return handle_ret(ret, unboxed_ret_type)
+
+def get_field(clazz, obj, name):
+    field_id, (field_type, unboxed_field_type), is_static = _get_field(clazz.handle, name)
+    if is_static:
+        ret = native_hapy.act(clazz.handle, field_id, None, field_type, unboxed_field_type, OP_GET_STATIC_FIELD)
+    else:
+        ret = native_hapy.act(obj.handle, field_id, None, field_type, unboxed_field_type, OP_GET_FIELD)
+    return handle_ret(ret, unboxed_field_type)
+
+def set_field(clazz, obj, name, value):
+    field_id, (field_type, unboxed_field_type), is_static = _get_field(clazz.handle, name)
+    print(field_type, unboxed_field_type)
+    value, _ = convert_arg(value)
+    arg, ref = prepare_value(value, field_type, unboxed_field_type)
+    if is_static:
+        native_hapy.act(clazz.handle, field_id, (arg,), field_type, unboxed_field_type, OP_SET_STATIC_FIELD)
+    else:
+        native_hapy.act(obj.handle, field_id, (arg,), field_type, unboxed_field_type, OP_SET_FIELD)
 
 print('=================================begin')
 
 Test = _find_class("com/happy/MainActivity$Test")
-test = call_method(Test, None, '', True, jbyte('b'),  jchar('c'),  10 ** 3, 2 * (10 ** 5), 3 * (10 ** 10), 1.1,  3.141529,
-                                   None, None,        None,        None,    None,          None,           None, None,
-                                   Test)
 
-print('test1', test)
-test = call_method(Test, None, '', True, jbyte('b'),  jchar('c'),  10 ** 3, 2 * (10 ** 5), 3 * (10 ** 10), 1.1,  3.141529,
-                                      True, jbyte('b'),  jchar('c'),  10 ** 3, 2 * (10 ** 5), 3 * (10 ** 10), 1.1,  3.141529,
-                                      jshort(1000000))
-print('test2', test)
+def test1():
+    test = call_method(Test, None, '', True, jbyte('b'),  jchar('c'),  10 ** 3, 2 * (10 ** 5), 3 * (10 ** 10), 1.1,  3.141529,
+                                       None, None,        None,        None,    None,          None,           None, None,
+                                       Test)
 
+    print('test1', test)
+    test = call_method(Test, None, '', True, jbyte('b'),  jchar('c'),  10 ** 3, 2 * (10 ** 5), 3 * (10 ** 10), 1.1,  3.141529,
+                                       True, jbyte('b'),  jchar('c'),  10 ** 3, 2 * (10 ** 5), 3 * (10 ** 10), 1.1,  3.141529,
+                                       jshort(1000000))
+    print('test2', test)
 
-# result = call_method(Test, None, 'all', None, None,        None,        None,    None,          None,           None, None,
-#                                         None, None,        None,        None,    None,          None,           None, None,
-#                                         None)
-# print('result1', result)
+    result = call_method(Test, None, 'all', True, jbyte('b'),  jchar('c'),  10 ** 3, 2 * (10 ** 5), 3 * (10 ** 10), 1.1,  3.141529,
+                                            None, None,        None,        None,    None,          None,           None, None,
+                                            Test)
+    print('result1', result)
 
-result = call_method(Test, None, 'all', True, jbyte('b'),  jchar('c'),  10 ** 3, 2 * (10 ** 5), 3 * (10 ** 10), 1.1,  3.141529,
-                                        None, None,        None,        None,    None,          None,           None, None,
-                                        Test)
-print('result2', result)
+    result = call_method(Test, None, 'all', True, jbyte('b'),  jchar('c'),  10 ** 3, 2 * (10 ** 5), 3 * (10 ** 10), 1.1,  3.141529,
+                                            True, jbyte('b'),  jchar('c'),  10 ** 3, 2 * (10 ** 5), 3 * (10 ** 10), 1.1,  3.141529,
+                                            jshort(1000000))
+    print('result2', result)
 
-# result = call_method(Test, None, 'all', None, None,        None,        None,    None,          None,           None, None,
-#                                         True, jbyte('b'),  jchar('c'),  10 ** 3, 2 * (10 ** 5), 3 * (10 ** 10), 1.1,  3.141529,
-#                                         None)
-# print('result3', result)
+def test2():
+    print('result1', call_method(Test, None, 'test_void'))
+    print('result2', call_method(Test, None, 'void_test', 67))
+    print('result3', call_method(Test, None, 'void_void'))
 
-result = call_method(Test, None, 'all', True, jbyte('b'),  jchar('c'),  10 ** 3, 2 * (10 ** 5), 3 * (10 ** 10), 1.1,  3.141529,
-                                        True, jbyte('b'),  jchar('c'),  10 ** 3, 2 * (10 ** 5), 3 * (10 ** 10), 1.1,  3.141529,
-                                        jshort(1000000))
-print('result4', result)
+def test3():
+    test = call_method(Test, None, '')
+    print('result1', get_field(Test, None, 'value'))
+    print('result2', get_field(Test, test, 'ins_value'))
+
+    set_field(Test, None, 'value', 18)
+    set_field(Test, test, 'ins_value', 19)
+
+    print('result1', get_field(Test, None, 'value'))
+    print('result2', get_field(Test, test, 'ins_value'))
+
+def test4():
+    start_time = time.time()
+    n = 1000
+    for i in range(n):
+        test = call_method(Test, None, '', True, jbyte('b'),  jchar('c'),  10 ** 3, 2 * (10 ** 5), 3 * (10 ** 10), 1.1,  3.141529,
+                                           None, None,        None,        None,    None,          None,           None, None,
+                                           Test)
+        # ~ == [i ** 2 for i in range(1000)] (0.8 ms per call) ((0.7ms per call with find_class memoize)) (((0.3ms with get_method memoize + find_class memoize)))
+    t = time.time() - start_time
+    print('{}/{} = {}'.format(t, n, t / n))
+test4()
 
 
 print('====================================end')

@@ -77,6 +77,12 @@ enum Ops
     SET_STATIC_FIELD = 6,
 };
 
+struct Parameter
+{
+    int type;
+    int real_type;
+};
+
 class jni_exception : public std::exception
 {
 public:
@@ -496,7 +502,7 @@ static void find_types(JNIEnv * env)
     //------------------------------------------------------
 }
 
-jfieldID get_field_raw(JNIEnv * env, jclass clazz, const char * field, int * out_type, int * out_static)
+jfieldID get_field_raw(JNIEnv * env, jclass clazz, const char * field, Parameter * out_type, int * out_static)
 {
     scope_guards onexit;
     env->PushLocalFrame(15);
@@ -514,22 +520,25 @@ jfieldID get_field_raw(JNIEnv * env, jclass clazz, const char * field, int * out
     if(result != NULL)
     {
         fieldID = env->FromReflectedField(env->GetObjectArrayElement(result, 0));
-        jobject typeInteger = env->GetObjectArrayElement(result, 1);
+
+        jintArray parameter = (jintArray)env->GetObjectArrayElement(result, 1);
         CHECK_JAVA_EXC(env);
+        jint * paramarr = env->GetIntArrayElements(parameter, NULL);
+        if(paramarr == NULL)
+        {
+            throw jni_exception("failed to GetIntArrayElements after finding compatible method");
+        }
+        out_type->type = paramarr[0];
+        out_type->real_type = paramarr[1];
+        env->ReleaseIntArrayElements(parameter, paramarr, JNI_ABORT);
+
         jobject staticInteger = env->GetObjectArrayElement(result, 2);
         CHECK_JAVA_EXC(env);
 
-        *out_type = get_integer(env, typeInteger);
         *out_static = get_integer(env, staticInteger);
     }
     return fieldID;
 }
-
-struct Parameter
-{
-    int type;
-    int real_type;
-};
 
 jmethodID get_method_raw(JNIEnv * env, jclass clazz, const char * method, int n, jobjectArray type_arr, Parameter * outTypes, int * outStatic)
 {
@@ -764,30 +773,43 @@ static PyObject * act(PyObject *self, PyObject *args)
             return NULL;
         }
 
-        if(!PyTuple_Check(values))
-        {
-            PyErr_SetString(PyExc_ValueError, "values must be a tuple");
-            return NULL;
-        }
+        jvalue * jvalues = NULL;
 
-        Py_ssize_t value_num = PyTuple_Size(values);
-        jvalue * jvalues = new jvalue[value_num];
-        onexit += [&jvalues]{ if(jvalues != NULL) { delete[] jvalues; jvalues = NULL; } };
-
-        for(Py_ssize_t i = 0; i < value_num; i++)
+        if(values != Py_None)
         {
-            PyObject * item = PyTuple_GetItem(values, i);
-            if(!PyLong_Check(item))
+            if(!PyTuple_Check(values))
             {
-                PyErr_SetString(PyExc_ValueError, "value must be long");
+                PyErr_SetString(PyExc_ValueError, "values must be a tuple");
                 return NULL;
             }
 
-            unsigned long long lng = PyLong_AsUnsignedLongLong(item);
-            memcpy(&jvalues[i], &lng, sizeof(lng));
+            Py_ssize_t value_num = PyTuple_Size(values);
+            if(value_num > 0)
+            {
+                jvalues = new jvalue[value_num];
+                onexit += [&jvalues]{ if(jvalues != NULL) { delete[] jvalues; jvalues = NULL; } };
+
+                for(Py_ssize_t i = 0; i < value_num; i++)
+                {
+                    PyObject * item = PyTuple_GetItem(values, i);
+                    if(!PyLong_Check(item))
+                    {
+                        PyErr_SetString(PyExc_ValueError, "value must be long");
+                        return NULL;
+                    }
+
+                    unsigned long long lng = PyLong_AsUnsignedLongLong(item);
+                    memcpy(&jvalues[i], &lng, sizeof(lng));
+                }
+            }
         }
         JNIEnv * env = get_env();
         jvalue ret = act_raw(env, (jobject)self, (void *)method, jvalues, return_type, op);
+
+        if(op == SET_FIELD || op == SET_STATIC_FIELD)
+        {
+            return_type = VOID;
+        }
 
         if(return_type == OBJECT)
         {
@@ -912,7 +934,7 @@ static PyObject * get_field(PyObject *self, PyObject *args)
             return NULL;
         }
 
-        int out_type = 0;
+        Parameter out_type;
         int out_static = 0;
         JNIEnv * env = get_env();
         jfieldID res = get_field_raw(env, (jclass)clazz, field, &out_type, &out_static);
@@ -922,7 +944,7 @@ static PyObject * get_field(PyObject *self, PyObject *args)
             return NULL;
         }
 
-        return Py_BuildValue("kii", (unsigned long)res, out_type, out_static);
+        return Py_BuildValue("k(ii)i", (unsigned long)res, out_type.type, out_type.real_type, out_static);
     }
     catch(java_exception & e)
     {
