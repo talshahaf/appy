@@ -48,6 +48,7 @@ public class Reflection
 
     private static HashMap<Class<?>, Integer> groups;
     private static HashMap<Class<?>, Integer> enumTypes;
+    private static final int OBJECT_TYPE = -1;
     static
     {
         groups = new HashMap<>();
@@ -76,7 +77,7 @@ public class Reflection
     public static Object[] getField(Class<?> clazz, String field) throws NoSuchFieldException {
         Field f = clazz.getField(field);
         Integer type = enumTypes.get(f.getType());
-        return new Object[]{f, type == null ? -1 : type, Modifier.isStatic(f.getModifiers())};
+        return new Object[]{f, type == null ? OBJECT_TYPE : type, Modifier.isStatic(f.getModifiers()) ? 1 : 0};
     }
 
     //private static HashMap<Class<?>, HashMap<List<Class<?>>, Constructor<?>>> memoize_cons = new HashMap<>();
@@ -136,11 +137,11 @@ public class Reflection
             for(int i = 0; i < argTypes.length; i++)
             {
                 Integer t = enumTypes.get(argTypes[i]);
-                args[i] = t == null ? -1 : t;
+                args[i] = t == null ? OBJECT_TYPE : t;
             }
             Integer t = enumTypes.get(null);
-            args[args.length - 1] = t == null ? -1 : t;
-            return new Object[]{result, null, args};
+            args[args.length - 1] = t == null ? OBJECT_TYPE : t;
+            return new Object[]{result, 1, args};
         }
         Log.d("HAPY", "no such func");
         return null;
@@ -208,11 +209,11 @@ public class Reflection
             for(int i = 0; i < argTypes.length; i++)
             {
                 Integer t = enumTypes.get(argTypes[i]);
-                args[i] = t == null ? -1 : t;
+                args[i] = t == null ? OBJECT_TYPE : t;
             }
             Integer t = enumTypes.get(result.getReturnType());
-            args[args.length - 1] = t == null ? -1 : t;
-            return new Object[]{result, Modifier.isStatic(result.getModifiers()) ? true : null, args};
+            args[args.length - 1] = t == null ? OBJECT_TYPE : t;
+            return new Object[]{result, Modifier.isStatic(result.getModifiers()) ? 1 : 0, args};
         }
 
         Log.d("HAPY", "no such func");
