@@ -78,8 +78,7 @@ public class Reflection
     public static Object[] getField(Class<?> clazz, String field) throws NoSuchFieldException {
         Field f = clazz.getField(field);
         Integer type = enumTypes.get(f.getType());
-        Integer real_type = enumTypes.get(unbox(f.getType()));
-        return new Object[]{f, new int[]{type == null ? OBJECT_TYPE : type, real_type == null ? OBJECT_TYPE : real_type}, Modifier.isStatic(f.getModifiers()) ? 1 : 0};
+        return new Object[]{f, new int[]{type == null ? OBJECT_TYPE : type, unboxClassToEnum(f.getType())}, Modifier.isStatic(f.getModifiers()) ? 1 : 0};
     }
 
     public static void printFunc(Class<?> clazz, String method, Class<?>[] parameterTypes)
@@ -246,8 +245,8 @@ public class Reflection
                             // because Nones
                             continue;
                         }
-                        Class<?> unboxedMethodType = unbox(methodTypes[j]);
-                        Class<?> unboxedParameterType = unbox(parameterTypes[j]);
+                        Class<?> unboxedMethodType = unboxClass(methodTypes[j]);
+                        Class<?> unboxedParameterType = unboxClass(parameterTypes[j]);
                         if (!unboxedMethodType.isAssignableFrom(unboxedParameterType)) {
                             Integer methodValue = groups.get(unboxedMethodType);
                             Integer parameterValue = groups.get(unboxedParameterType);
@@ -276,13 +275,11 @@ public class Reflection
             for(int i = 0; i < argTypes.length; i++)
             {
                 Integer t = enumTypes.get(argTypes[i]);
-                Integer real_t = enumTypes.get(unbox(argTypes[i]));
-                args[i] = new int[]{ t == null ? OBJECT_TYPE : t, real_t == null ? OBJECT_TYPE : real_t};
+                args[i] = new int[]{ t == null ? OBJECT_TYPE : t, unboxClassToEnum(argTypes[i])};
             }
 
             Integer t = enumTypes.get(result.getReturnType());
-            Integer real_t = enumTypes.get(unbox(result.getReturnType()));
-            args[args.length - 1] = new int[]{t == null ? OBJECT_TYPE : t, real_t == null ? OBJECT_TYPE : real_t};
+            args[args.length - 1] = new int[]{t == null ? OBJECT_TYPE : t, unboxClassToEnum(result.getReturnType())};
 
             return new Object[]{result.get(), result.isStatic() ? 1 : 0, args};
         }
@@ -298,7 +295,7 @@ public class Reflection
      *
      * @return true if primitive and boxed are assignment compatible
      */
-    private static Class<?> unbox(Class<?> primitive)
+    public static Class<?> unboxClass(Class<?> primitive)
     {
         if(primitive == null)
         {
@@ -333,5 +330,12 @@ public class Reflection
             return java.lang.Short.TYPE;
         }
         return primitive;
+    }
+
+    public static int unboxClassToEnum(Class<?> primitive)
+    {
+        Class<?> unboxed = unboxClass(primitive);
+        Integer t = enumTypes.get(unboxed);
+        return t == null ? OBJECT_TYPE : t;
     }
 }
