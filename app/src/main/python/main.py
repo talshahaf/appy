@@ -10,6 +10,8 @@ known_fields = {}
 class _jobject:
     _slots__ = []
     def __init__(self, handle, info):
+        if not isinstance(handle, int):
+            raise ValueError('handle must be int')
         self.handle = handle
         if type(info) != str:
             raise ValueError('only strings in info')
@@ -69,6 +71,10 @@ OP_GET_FIELD = 3
 OP_GET_STATIC_FIELD = 4
 OP_SET_FIELD = 5
 OP_SET_STATIC_FIELD = 6
+OP_NEW_ARRAY = 7
+OP_SET_ITEMS = 8
+OP_GET_ITEMS = 9
+OP_GET_ARRAY_LENGTH = 10
 
 # type_dict = {
 #     bool: 0,
@@ -97,7 +103,21 @@ primitives = {
     'const': 9,
 }
 
+trivials = {
+    _find_class('java/lang/Boolean'): primitives['boolean'],
+    _find_class('java/lang/Byte'): primitives['byte'],
+    _find_class('java/lang/Character'): primitives['character'],
+    _find_class('java/lang/Short'): primitives['short'],
+    _find_class('java/lang/Integer'): primitives['integer'],
+    _find_class('java/lang/Long'): primitives['long'],
+    _find_class('java/lang/Float'): primitives['float'],
+    _find_class('java/lang/Double'): primitives['double'],
+}
+revd=dict([reversed(i) for i in trivials.items()])
+trivials.update(revd)
+
 OBJECT_CLASS = _find_class('java/lang/Object')
+JNULL = jobject(0, 'null')
 
 class jprimitive:
     pass
@@ -106,41 +126,37 @@ class jboolean(jprimitive):
     def __init__(self, v):
         self.v = bool(v)
         self.t = primitives['boolean']
-        self.w = _find_class('java/lang/Boolean')
+        self.w = trivials[primitives['boolean']]
 
 class jshort(jprimitive):
     def __init__(self, v):
         self.v = int(v)
         self.t = primitives['short']
-        self.w = _find_class('java/lang/Short')
+        self.w = trivials[primitives['short']]
 
 class jint(jprimitive):
     def __init__(self, v):
         self.v = int(v)
         self.t = primitives['integer']
-        self.w = _find_class('java/lang/Integer')
+        self.w = trivials[primitives['integer']]
 
 class jlong(jprimitive):
     def __init__(self, v):
         self.v = int(v)
         self.t = primitives['long']
-        self.w = _find_class('java/lang/Long')
+        self.w = trivials[primitives['long']]
 
 class jfloat(jprimitive):
     def __init__(self, v):
         self.v = float(v)
         self.t = primitives['float']
-        self.w = _find_class('java/lang/Float')
+        self.w = trivials[primitives['float']]
 
 class jdouble(jprimitive):
     def __init__(self, v):
         self.v = float(v)
         self.t = primitives['double']
-        self.w = _find_class('java/lang/Double')
-
-class jstring(jobject):
-    def __init__(self, v):
-        self.v = make_string(v)
+        self.w = trivials[primitives['double']]
 
 class jbyte(jprimitive):
     def __init__(self, v):
@@ -152,7 +168,7 @@ class jbyte(jprimitive):
             pass
         self.v = int(self.v)
         self.t = primitives['byte']
-        self.w = _find_class('java/lang/Byte')
+        self.w = trivials[primitives['byte']]
 
 class jchar(jprimitive):
     def __init__(self, v):
@@ -164,11 +180,15 @@ class jchar(jprimitive):
             pass
         self.v = int(self.v)
         self.t = primitives['character']
-        self.w = _find_class('java/lang/Character')
+        self.w = trivials[primitives['character']]
+
+class jstring(jobject):
+    def __init__(self, v):
+        self.v = make_string(v)
 
 def auto_handle_wrapping(arg, needed_type, unboxed_needed_type):
     if arg is None:
-        return jobject(0, 'null')
+        return JNULL
 
     if isinstance(arg, jprimitive):
         if needed_type == primitives['object']:
@@ -196,9 +216,9 @@ def convert_arg(arg):
         return arg, arg.t
     elif isinstance(arg, bytes) or isinstance(arg, str):
         arg = jstring(arg)
-        return arg, arg.t
+        return arg, arg.t, primitives['object']
     elif arg is None:
-        return arg, OBJECT_CLASS
+        return arg, OBJECT_CLASS, primitives['object']
     else:
         if isinstance(arg, bool):
             arg = jboolean(arg)
@@ -211,7 +231,7 @@ def convert_arg(arg):
             arg = jdouble(arg)
         elif not isinstance(arg, jprimitive):
             raise ValueError('cannot pass {} to java'.format(type(arg)))
-        return arg, arg.w
+        return arg, arg.w, arg.t
 
 def _get_method(handle, name, arg_types):
     key = handle, name, arg_types
@@ -229,7 +249,7 @@ def call_method(clazz, obj, name, *args):
     args = list(args)
     arg_types = [None] * len(args)
     for i, arg in enumerate(args):
-        args[i], arg_types[i] = convert_arg(arg)
+        args[i], arg_types[i], _ = convert_arg(arg)
 
     method_id, needed_types, is_static = _get_method(clazz.handle, name, tuple(arg.handle for arg in arg_types))
 
@@ -257,12 +277,53 @@ def get_field(clazz, obj, name):
 def set_field(clazz, obj, name, value):
     field_id, (field_type, unboxed_field_type), is_static = _get_field(clazz.handle, name)
     print(field_type, unboxed_field_type)
-    value, _ = convert_arg(value)
+    value, _, _ = convert_arg(value)
     arg, ref = prepare_value(value, field_type, unboxed_field_type)
     if is_static:
         native_hapy.act(clazz.handle, field_id, (arg,), field_type, unboxed_field_type, OP_SET_STATIC_FIELD)
     else:
         native_hapy.act(obj.handle, field_id, (arg,), field_type, unboxed_field_type, OP_SET_FIELD)
+
+class array:
+    def __init__(self, obj, t, proper_t, clazz, length):
+        self.obj = obj
+        self.clazz = clazz
+        self.t = t
+        self.proper_t = proper_t
+        self.length = length
+
+    #the tuple in native_hapy.array must contain elements waiting to be filled with make_value, and None if it shouldn't be read from java at all
+    #therefore, None should never be actually passed from outside and will be changed to JNULL
+    def setitems(self, start, items): #TODO raise indexerror
+        args = tuple(convert_arg(item) for item in items)
+        values = tuple(prepare_value(arg, self.proper_t, t) for arg, w, t in args)
+
+        native_hapy.array(self.obj.handle, tuple(v for v, _ in values), start, self.proper_t, OP_SET_ITEMS, JNULL.handle)
+
+    #the tuple returned by native_hapy.array will contain primitives, jobject or None to denote NULL
+    def getitems(self, start, end):
+        array_len, obj, elements = native_hapy.array(self.obj.handle, (0,) * (end - start), start, self.proper_t, OP_GET_ITEMS, JNULL.handle)
+
+        if self.clazz is None:
+            return elements
+        else:
+            elements = [jobject(e, 'array element') if e is not None else None for e in elements]
+            return [e if e is None or self.t == primitives['object'] else native_hapy.unbox(e.handle, self.t) for e in elements]
+
+def make_array(l, array_type=None, clazz=None):
+    if array_type is None and not isinstance(clazz, jobject):
+        raise ValueError('must specify array_type or clazz')
+
+    if isinstance(clazz, jobject):
+        array_type = native_hapy.unbox_class(clazz.handle)
+        clazz_obj = clazz
+        proper_type = primitives['object']
+    else:
+        clazz_obj = JNULL
+        proper_type = array_type
+
+    array_len, obj, elements = native_hapy.array(JNULL.handle, (None,) * l, 0, proper_type, OP_NEW_ARRAY, clazz_obj.handle)
+    return array(jobject(obj, 'newarray'), array_type, proper_type, clazz, array_len)
 
 print('=================================begin')
 
@@ -315,7 +376,18 @@ def test4():
         # ~ == [i ** 2 for i in range(1000)] (0.8 ms per call) ((0.7ms per call with find_class memoize)) (((0.3ms with get_method memoize + find_class memoize)))
     t = time.time() - start_time
     print('{}/{} = {}'.format(t, n, t / n))
-test4()
+
+def test5():
+    arr = make_array(5, primitives['integer'])
+    arr.setitems(1, list(range(40, 40 + arr.length)))
+    print('arr1', arr.getitems(0, arr.length))
+
+    arr = make_array(5, primitives['object'], _find_class('java/lang/Long'))
+    print('arr2', arr.getitems(0, arr.length))
+    arr.setitems(1, list(jlong(i) for i in range(40, 40 + arr.length)))
+    print('arr2 2', arr.getitems(0, arr.length))
+
+test5()
 
 
 print('====================================end')

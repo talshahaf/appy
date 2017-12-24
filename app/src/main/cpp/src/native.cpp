@@ -22,6 +22,7 @@ jclass class_class = NULL;
 jclass reflection_class = NULL;
 jmethodID compatibleMethod = NULL;
 jmethodID getField = NULL;
+jmethodID unboxClassToEnum = NULL;
 
 //primitives
 jclass boolean_class = NULL;
@@ -75,6 +76,10 @@ enum Ops
     GET_STATIC_FIELD = 4,
     SET_FIELD = 5,
     SET_STATIC_FIELD = 6,
+    NEW_ARRAY = 7,
+    SET_ITEMS = 8,
+    GET_ITEMS = 9,
+    GET_ARRAY_LENGTH = 10,
 };
 
 struct Parameter
@@ -418,6 +423,11 @@ static void find_types(JNIEnv * env)
         getField = env->GetStaticMethodID(reflection_class, "getField", "(Ljava/lang/Class;Ljava/lang/String;)[Ljava/lang/Object;");
         CHECK_JAVA_EXC(env);
     }
+    if(unboxClassToEnum == NULL)
+    {
+        unboxClassToEnum = env->GetStaticMethodID(reflection_class, "unboxClassToEnum", "(Ljava/lang/Class;)I");
+        CHECK_JAVA_EXC(env);
+    }
     //---------primitive-accessors--------------------------
     if(booleanCtor == NULL)
     {
@@ -592,8 +602,9 @@ jmethodID get_method_raw(JNIEnv * env, jclass clazz, const char * method, int n,
     return methodID;
 }
 
-static jvalue unbox(JNIEnv * env, jobject obj, int value_type)
+static jvalue unbox_raw(JNIEnv * env, jobject obj, int value_type)
 {
+    find_types(env);
     jvalue ret;
     switch(value_type)
     {
@@ -647,6 +658,7 @@ static jvalue unbox(JNIEnv * env, jobject obj, int value_type)
 
 static jobject box_raw(JNIEnv * env, jvalue value, int value_type)
 {
+    find_types(env);
     jobject obj = NULL;
     switch(value_type)
     {
@@ -819,20 +831,18 @@ static PyObject * act(PyObject *self, PyObject *args)
             }
             if(unboxed_return_type != OBJECT)
             {
-                ret = unbox(env, ret.l, unboxed_return_type);
+                ret = unbox_raw(env, ret.l, unboxed_return_type);
+                env->DeleteGlobalRef(ret.l);
             }
         }
-        PyObject * ret_obj = unpack_value(ret, return_type);
-        return ret_obj;
+        return unpack_value(ret, return_type);
     }
     catch(java_exception & e)
     {
-        LOG("got java exception in call_static");
         PyErr_SetString(PyExc_ValueError, e.what());
     }
     catch(jni_exception & e)
     {
-        LOG("got jni exception in call_static");
         PyErr_SetString(PyExc_ValueError, e.what());
     }
     return NULL;
@@ -912,12 +922,10 @@ static PyObject * get_method(PyObject *self, PyObject *args)
     }
     catch(java_exception & e)
     {
-        LOG("got java exception in get_method");
         PyErr_SetString(PyExc_ValueError, e.what());
     }
     catch(jni_exception & e)
     {
-        LOG("got jni exception in get_method");
         PyErr_SetString(PyExc_ValueError, e.what());
     }
     return NULL;
@@ -948,12 +956,10 @@ static PyObject * get_field(PyObject *self, PyObject *args)
     }
     catch(java_exception & e)
     {
-        LOG("got java exception in get_field");
         PyErr_SetString(PyExc_ValueError, e.what());
     }
     catch(jni_exception & e)
     {
-        LOG("got jni exception in get_field");
         PyErr_SetString(PyExc_ValueError, e.what());
     }
     return NULL;
@@ -972,16 +978,41 @@ static PyObject * find_class(PyObject *self, PyObject *args)
         JNIEnv * env = get_env();
         jclass local_clazz = env->FindClass(clazz);
         CHECK_JAVA_EXC(env);
-        return PyLong_FromLong((unsigned long)make_global_ref(env, (jobject)local_clazz));
+        return PyLong_FromUnsignedLong((unsigned long)make_global_ref(env, (jobject)local_clazz));
     }
     catch(java_exception & e)
     {
-        LOG("got java exception in find_class");
         PyErr_SetString(PyExc_ValueError, e.what());
     }
     catch(jni_exception & e)
     {
-        LOG("got jni exception in find_class");
+        PyErr_SetString(PyExc_ValueError, e.what());
+    }
+    return NULL;
+}
+
+static PyObject * unbox_class(PyObject *self, PyObject *args)
+{
+    try
+    {
+        unsigned long object = 0;
+        if (!PyArg_ParseTuple(args, "k", &object))
+        {
+            return NULL;
+        }
+
+        JNIEnv * env = get_env();
+        find_types(env);
+        jint e = env->CallStaticIntMethod(reflection_class, unboxClassToEnum, (jobject)object);
+        CHECK_JAVA_EXC(env);
+        return PyLong_FromLong(e);
+    }
+    catch(java_exception & e)
+    {
+        PyErr_SetString(PyExc_ValueError, e.what());
+    }
+    catch(jni_exception & e)
+    {
         PyErr_SetString(PyExc_ValueError, e.what());
     }
     return NULL;
@@ -1000,16 +1031,14 @@ static PyObject * get_object_class(PyObject *self, PyObject *args)
         JNIEnv * env = get_env();
         jclass local_clazz = env->GetObjectClass((jobject)object);
         CHECK_JAVA_EXC(env);
-        return PyLong_FromLong((unsigned long)make_global_ref(env, (jobject)local_clazz));
+        return PyLong_FromUnsignedLong((unsigned long)make_global_ref(env, (jobject)local_clazz));
     }
     catch(java_exception & e)
     {
-        LOG("got java exception in get_object_class");
         PyErr_SetString(PyExc_ValueError, e.what());
     }
     catch(jni_exception & e)
     {
-        LOG("got jni exception in get_object_class");
         PyErr_SetString(PyExc_ValueError, e.what());
     }
     return NULL;
@@ -1154,54 +1183,286 @@ static PyObject * box(PyObject *self, PyObject *args)
     }
     catch(java_exception & e)
     {
-        LOG("got java exception in box");
         PyErr_SetString(PyExc_ValueError, e.what());
     }
     catch(jni_exception & e)
     {
-        LOG("got jni exception in box");
         PyErr_SetString(PyExc_ValueError, e.what());
     }
     return NULL;
 }
 
-//static PyObject * new_primitive_array(PyObject *self, PyObject *args)
-//{
-//    try
-//    {
-//        int type = 0;
-//        int length = 0;
-//        if (!PyArg_ParseTuple(args, "ii", &type, &length))
-//        {
-//            return NULL;
-//        }
-//
-//        JNIEnv * env = get_env();
-//        jobject local_arr = NULL;
-//        switch(type)
-//        {
-//            case BOOLEAN:
-//            {
-//                local_arr = env->NewBooleanArray(length);
-//                break;
-//            }
-//        }
-//
-//        CHECK_JAVA_EXC(env);
-//        return PyLong_FromLong((unsigned long)make_global_ref(env, local_arr));
-//    }
-//    catch(java_exception & e)
-//    {
-//        LOG("got java exception in find_class");
-//        PyErr_SetString(PyExc_ValueError, e.what());
-//    }
-//    catch(jni_exception & e)
-//    {
-//        LOG("got jni exception in find_class");
-//        PyErr_SetString(PyExc_ValueError, e.what());
-//    }
-//    return NULL;
-//}
+static PyObject * unbox(PyObject *self, PyObject *args)
+{
+    try
+    {
+        unsigned long object = 0;
+        int unboxed_type = 0;
+        if (!PyArg_ParseTuple(args, "ki", &object, &unboxed_type))
+        {
+            return NULL;
+        }
+
+        JNIEnv * env = get_env();
+        find_types(env);
+        jvalue v = unbox_raw(env, (jobject)object, unboxed_type);
+        return unpack_value(v, unboxed_type);
+    }
+    catch(java_exception & e)
+    {
+        PyErr_SetString(PyExc_ValueError, e.what());
+    }
+    catch(jni_exception & e)
+    {
+        PyErr_SetString(PyExc_ValueError, e.what());
+    }
+    return NULL;
+}
+
+struct Optional
+{
+    jvalue value;
+    bool exists;
+};
+
+#define ARRAY_CASE(TYPE, Type, jtype, union_name) \
+case TYPE: \
+{ \
+    jint array_len = 0; \
+    if(op == NEW_ARRAY) \
+    { \
+        array_len = values_start + values_len; \
+        array = env->New##Type##Array(array_len); \
+        if(array == NULL) \
+        { \
+            throw jni_exception("failed to create new array"); \
+        } \
+    } \
+    else \
+    { \
+        array_len = env->GetArrayLength((jtype##Array)array); \
+    } \
+\
+    *out_array_len = array_len; \
+\
+    if(op == GET_ARRAY_LENGTH) \
+    { \
+        return NULL; \
+    } \
+\
+    if(values != NULL) \
+    { \
+        jtype * nativearr = env->Get##Type##ArrayElements((jtype##Array)array, NULL); \
+        if(nativearr == NULL) \
+        { \
+            throw jni_exception("failed to get array elements"); \
+        } \
+\
+        if(op == NEW_ARRAY || op == SET_ITEMS) \
+        { \
+            for(int i = values_start; i < values_start + values_len && i < array_len; i++) \
+            { \
+                if(values[i - values_start].exists) \
+                { \
+                    nativearr[i] = values[i - values_start].value.union_name; \
+                } \
+            } \
+        } \
+\
+        if(op == GET_ITEMS) \
+        { \
+            for(int i = values_start; i < values_start + values_len && i < array_len; i++) \
+            { \
+                values[i - values_start].exists = true; \
+                values[i - values_start].value.union_name = nativearr[i]; \
+            } \
+        } \
+        env->Release##Type##ArrayElements((jtype##Array)array, nativearr, 0); \
+    } \
+    if(op == NEW_ARRAY) \
+    { \
+        return make_global_ref(env, array); \
+    } \
+    return NULL; \
+}
+
+static jobject array_raw(JNIEnv * env, jobject array, int type, Optional * values, int values_start, int values_len, int op, int * out_array_len, jclass objectclass)
+{
+    switch(type)
+    {
+        ARRAY_CASE(BOOLEAN, Boolean, jboolean, z)
+        ARRAY_CASE(BYTE, Byte, jbyte, b)
+        ARRAY_CASE(CHARACTER, Char, jchar, c)
+        ARRAY_CASE(SHORT, Short, jshort, s)
+        ARRAY_CASE(INTEGER, Int, jint, i)
+        ARRAY_CASE(LONG, Long, jlong, j)
+        ARRAY_CASE(FLOAT, Float, jfloat, f)
+        ARRAY_CASE(DOUBLE, Double, jdouble, d)
+        case OBJECT:
+        {
+            jint array_len = 0;
+            if(op == NEW_ARRAY)
+            {
+                array_len = values_start + values_len;
+                array = env->NewObjectArray(array_len, objectclass, NULL);
+                CHECK_JAVA_EXC(env);
+                if(array == NULL)
+                {
+                    throw jni_exception("failed to create new array");
+                }
+            }
+            else
+            {
+                array_len = env->GetArrayLength((jobjectArray)array);
+            }
+
+            *out_array_len = array_len;
+
+            if(op == GET_ARRAY_LENGTH)
+            {
+                return NULL;
+            }
+
+            if(values != NULL)
+            {
+                if(op == NEW_ARRAY || op == SET_ITEMS)
+                {
+                    for(int i = values_start; i < values_start + values_len && i < array_len; i++)
+                    {
+                        if(values[i - values_start].exists)
+                        {
+                            env->SetObjectArrayElement((jobjectArray)array, i, values[i - values_start].value.l);
+                            CHECK_JAVA_EXC(env);
+                        }
+                    }
+                }
+
+                if(op == GET_ITEMS)
+                {
+                    for(int i = values_start; i < values_start + values_len && i < array_len; i++)
+                    {
+                        jobject l = env->GetObjectArrayElement((jobjectArray)array, i);
+                        CHECK_JAVA_EXC(env);
+                        if(l == NULL)
+                        {
+                            values[i - values_start].value.l = NULL;
+                            values[i - values_start].exists = false;
+                        }
+                        else
+                        {
+                            values[i - values_start].value.l = make_global_ref(env, l);
+                            values[i - values_start].exists = true;
+                        }
+                    }
+                }
+            }
+            if(op == NEW_ARRAY)
+            {
+                return make_global_ref(env, array);
+            }
+            return NULL;
+        }
+    }
+    throw jni_exception("unknown type");
+}
+
+static PyObject * array(PyObject *self, PyObject *args)
+{
+    try
+    {
+        static_assert(sizeof(jvalue) == sizeof(unsigned long long));
+
+        scope_guards onexit;
+
+        unsigned long obj = 0;
+        PyObject * values = NULL;
+        int start = 0;
+        int type = 0;
+        int op = 0;
+        unsigned long objclass = 0;
+
+        if (!PyArg_ParseTuple(args, "kOiiik", &obj, &values, &start, &type, &op, &objclass)) {
+            return NULL;
+        }
+
+        Optional * jvalues = NULL;
+
+        Py_ssize_t value_num = 0;
+        if(values != Py_None)
+        {
+            if(!PyTuple_Check(values))
+            {
+                PyErr_SetString(PyExc_ValueError, "values must be a tuple");
+                return NULL;
+            }
+
+            value_num = PyTuple_Size(values);
+            if(value_num > 0)
+            {
+                jvalues = new Optional[value_num];
+                onexit += [&jvalues]{ if(jvalues != NULL) { delete[] jvalues; jvalues = NULL; } };
+
+                for(Py_ssize_t i = 0; i < value_num; i++)
+                {
+                    PyObject * item = PyTuple_GetItem(values, i);
+                    if(item == Py_None)
+                    {
+                        jvalues[i].exists = false;
+                    }
+                    else
+                    {
+                        if(!PyLong_Check(item))
+                        {
+                            PyErr_SetString(PyExc_ValueError, "value must be long");
+                            return NULL;
+                        }
+
+                        unsigned long long lng = PyLong_AsUnsignedLongLong(item);
+                        memcpy(&jvalues[i].value, &lng, sizeof(lng));
+                        jvalues[i].exists = true;
+                    }
+                }
+            }
+        }
+
+        PyObject * out_tuple = PyTuple_New(value_num);
+        if(out_tuple == NULL)
+        {
+            return NULL;
+        }
+
+        JNIEnv * env = get_env();
+        int out_array_len = 0;
+        jobject ret = array_raw(env, (jobject)obj, type, jvalues, start, value_num, op, &out_array_len, (jclass)objclass);
+
+        for (Py_ssize_t i = 0; i < value_num; ++i) {
+            if(jvalues[i].exists)
+            {
+                PyTuple_SET_ITEM(out_tuple, i, unpack_value(jvalues[i].value, type));
+            }
+            else
+            {
+                Py_INCREF(Py_None);
+                PyTuple_SET_ITEM(out_tuple, i, Py_None);
+            }
+        }
+
+        if(ret == NULL)
+        {
+            ret = (jobject)obj;
+        }
+        return Py_BuildValue("ikN", out_array_len, (unsigned long)ret, out_tuple);
+    }
+    catch(java_exception & e)
+    {
+        PyErr_SetString(PyExc_ValueError, e.what());
+    }
+    catch(jni_exception & e)
+    {
+        PyErr_SetString(PyExc_ValueError, e.what());
+    }
+    return NULL;
+}
 
 static PyObject * delete_global_ref(PyObject *self, PyObject *args)
 {
@@ -1252,8 +1513,11 @@ static PyMethodDef native_hapy_methods[] = {
         {"get_field",  get_field, METH_VARARGS, "Finds a java field"},
         {"find_class",  find_class, METH_VARARGS, "Finds a java class"},
         {"get_object_class",  get_object_class, METH_VARARGS, "Retrieves the object's class"},
-        {"box",  box, METH_VARARGS, "Performs boxing of value"},
+        {"box",  box, METH_VARARGS, "Performs boxing of a value"},
+        {"unbox", unbox, METH_VARARGS, "Performs unboxing of a value"},
         {"make_value", make_value, METH_VARARGS, "Makes values"},
+        {"array", array, METH_VARARGS, "everything array related"},
+        {"unbox_class", unbox_class, METH_VARARGS, "unbox object class"},
         {"delete_global_ref",  delete_global_ref, METH_VARARGS, "Delete a java reference"},
         {NULL, NULL, 0, NULL}        /* Sentinel */
 };
