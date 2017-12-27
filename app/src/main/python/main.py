@@ -200,9 +200,11 @@ def auto_handle_wrapping(arg, needed_type, unboxed_needed_type):
         return arg
     raise ValueError('error converting {} to {}'.format(type(arg), needed_type))
 
-def handle_ret(ret, unboxed_ret_type):
-    if unboxed_ret_type in (primitives['object'], primitives['const']) and ret is not None:
-        return jobject(ret, 'ret')
+def handle_ret(ret, ret_type, unboxed_ret_type):
+    if ret_type in (primitives['object'], primitives['const']) and ret is not None:
+        ret = jobject(ret, 'ret')
+        if unboxed_ret_type not in (primitives['object'], primitives['const']):
+            ret = native_hapy.unbox(ret.handle, unboxed_ret_type)
     return ret
 
 #returns arg as well so it won't be freed until we call the method
@@ -213,7 +215,7 @@ def prepare_value(arg, needed_type, unboxed_needed_type):
 
 def convert_arg(arg):
     if isinstance(arg, jobject):
-        return arg, arg.t
+        return arg, arg.t, primitives['object']
     elif isinstance(arg, bytes) or isinstance(arg, str):
         arg = jstring(arg)
         return arg, arg.t, primitives['object']
@@ -260,70 +262,69 @@ def call_method(clazz, obj, name, *args):
     args = tuple(arg for arg,_ in all_args)
 
     if is_static:
-        ret = native_hapy.act(clazz.handle, method_id, args, ret_type, unboxed_ret_type, OP_CALL_STATIC_METHOD)
+        ret = native_hapy.act(clazz.handle, method_id, args, ret_type, OP_CALL_STATIC_METHOD)
     else:
-        ret = native_hapy.act(obj.handle, method_id, args, ret_type, unboxed_ret_type, OP_CALL_METHOD)
+        ret = native_hapy.act(obj.handle, method_id, args, ret_type, OP_CALL_METHOD)
 
-    return handle_ret(ret, unboxed_ret_type)
+    return handle_ret(ret, ret_type, unboxed_ret_type)
 
 def get_field(clazz, obj, name):
     field_id, (field_type, unboxed_field_type), is_static = _get_field(clazz.handle, name)
     if is_static:
-        ret = native_hapy.act(clazz.handle, field_id, None, field_type, unboxed_field_type, OP_GET_STATIC_FIELD)
+        ret = native_hapy.act(clazz.handle, field_id, None, field_type, OP_GET_STATIC_FIELD)
     else:
-        ret = native_hapy.act(obj.handle, field_id, None, field_type, unboxed_field_type, OP_GET_FIELD)
-    return handle_ret(ret, unboxed_field_type)
+        ret = native_hapy.act(obj.handle, field_id, None, field_type, OP_GET_FIELD)
+    return handle_ret(ret, field_type, unboxed_field_type)
 
 def set_field(clazz, obj, name, value):
     field_id, (field_type, unboxed_field_type), is_static = _get_field(clazz.handle, name)
-    print(field_type, unboxed_field_type)
     value, _, _ = convert_arg(value)
     arg, ref = prepare_value(value, field_type, unboxed_field_type)
     if is_static:
-        native_hapy.act(clazz.handle, field_id, (arg,), field_type, unboxed_field_type, OP_SET_STATIC_FIELD)
+        native_hapy.act(clazz.handle, field_id, (arg,), field_type, OP_SET_STATIC_FIELD)
     else:
-        native_hapy.act(obj.handle, field_id, (arg,), field_type, unboxed_field_type, OP_SET_FIELD)
+        native_hapy.act(obj.handle, field_id, (arg,), field_type, OP_SET_FIELD)
 
 class array:
-    def __init__(self, obj, t, proper_t, clazz, length):
+    def __init__(self, obj, array_type, array_unboxed_type, clazz, length):
         self.obj = obj
         self.clazz = clazz
-        self.t = t
-        self.proper_t = proper_t
+        self.array_type = array_type
+        self.array_unboxed_type = array_unboxed_type
         self.length = length
 
     #the tuple in native_hapy.array must contain elements waiting to be filled with make_value, and None if it shouldn't be read from java at all
     #therefore, None should never be actually passed from outside and will be changed to JNULL
     def setitems(self, start, items): #TODO raise indexerror
         args = tuple(convert_arg(item) for item in items)
-        values = tuple(prepare_value(arg, self.proper_t, t) for arg, w, t in args)
+        values = tuple(prepare_value(arg, self.array_type, t) for arg, w, t in args)
 
-        native_hapy.array(self.obj.handle, tuple(v for v, _ in values), start, self.proper_t, OP_SET_ITEMS, JNULL.handle)
+        native_hapy.array(self.obj.handle, tuple(v for v, _ in values), start, self.array_type, OP_SET_ITEMS, JNULL.handle)
 
     #the tuple returned by native_hapy.array will contain primitives, jobject or None to denote NULL
     def getitems(self, start, end):
-        array_len, obj, elements = native_hapy.array(self.obj.handle, (0,) * (end - start), start, self.proper_t, OP_GET_ITEMS, JNULL.handle)
+        array_len, obj, elements = native_hapy.array(self.obj.handle, (0,) * (end - start), start, self.array_type, OP_GET_ITEMS, JNULL.handle)
 
         if self.clazz is None:
             return elements
         else:
-            elements = [jobject(e, 'array element') if e is not None else None for e in elements]
-            return [e if e is None or self.t == primitives['object'] else native_hapy.unbox(e.handle, self.t) for e in elements]
+            elements = tuple(jobject(e, 'array element') if e is not None else None for e in elements)
+            return tuple(e if e is None or self.array_unboxed_type == primitives['object'] else native_hapy.unbox(e.handle, self.array_unboxed_type) for e in elements)
 
 def make_array(l, array_type=None, clazz=None):
     if array_type is None and not isinstance(clazz, jobject):
         raise ValueError('must specify array_type or clazz')
 
     if isinstance(clazz, jobject):
-        array_type = native_hapy.unbox_class(clazz.handle)
+        array_unboxed_type = native_hapy.unbox_class(clazz.handle)
         clazz_obj = clazz
-        proper_type = primitives['object']
+        array_type = primitives['object']
     else:
         clazz_obj = JNULL
-        proper_type = array_type
+        array_unboxed_type = array_type
 
-    array_len, obj, elements = native_hapy.array(JNULL.handle, (None,) * l, 0, proper_type, OP_NEW_ARRAY, clazz_obj.handle)
-    return array(jobject(obj, 'newarray'), array_type, proper_type, clazz, array_len)
+    array_len, obj, elements = native_hapy.array(JNULL.handle, (None,) * l, 0, array_type, OP_NEW_ARRAY, clazz_obj.handle)
+    return array(jobject(obj, 'newarray'), array_type, array_unboxed_type, clazz, array_len)
 
 print('=================================begin')
 
@@ -333,38 +334,60 @@ def test1():
     test = call_method(Test, None, '', True, jbyte('b'),  jchar('c'),  10 ** 3, 2 * (10 ** 5), 3 * (10 ** 10), 1.1,  3.141529,
                                        None, None,        None,        None,    None,          None,           None, None,
                                        Test)
-
     print('test1', test)
+    assert(type(test) == jobject)
+
     test = call_method(Test, None, '', True, jbyte('b'),  jchar('c'),  10 ** 3, 2 * (10 ** 5), 3 * (10 ** 10), 1.1,  3.141529,
                                        True, jbyte('b'),  jchar('c'),  10 ** 3, 2 * (10 ** 5), 3 * (10 ** 10), 1.1,  3.141529,
                                        jshort(1000000))
     print('test2', test)
+    assert(type(test) == jobject)
+
 
     result = call_method(Test, None, 'all', True, jbyte('b'),  jchar('c'),  10 ** 3, 2 * (10 ** 5), 3 * (10 ** 10), 1.1,  3.141529,
                                             None, None,        None,        None,    None,          None,           None, None,
                                             Test)
     print('result1', result)
+    assert(type(result) == jobject)
+
 
     result = call_method(Test, None, 'all', True, jbyte('b'),  jchar('c'),  10 ** 3, 2 * (10 ** 5), 3 * (10 ** 10), 1.1,  3.141529,
                                             True, jbyte('b'),  jchar('c'),  10 ** 3, 2 * (10 ** 5), 3 * (10 ** 10), 1.1,  3.141529,
                                             jshort(1000000))
     print('result2', result)
+    assert(type(test) == jobject)
+
+    result = call_method(Test, None, 'primitive', jshort(1000000))
+    print('result3', result)
+    assert(result == 16960)
+
 
 def test2():
-    print('result1', call_method(Test, None, 'test_void'))
-    print('result2', call_method(Test, None, 'void_test', 67))
-    print('result3', call_method(Test, None, 'void_void'))
+    n = call_method(Test, None, 'test_void')
+    assert(n == 48);
+    print('result1', n)
+    n = call_method(Test, None, 'void_test', 67)
+    assert(n is None);
+    print('result2', n)
+    n = call_method(Test, None, 'void_void')
+    assert(n is None);
+    print('result3', n)
 
 def test3():
     test = call_method(Test, None, '')
-    print('result1', get_field(Test, None, 'value'))
-    print('result2', get_field(Test, test, 'ins_value'))
+    value = get_field(Test, None, 'value')
+    ins_value = get_field(Test, test, 'ins_value')
+    assert((value == 23 or value == 18) and ins_value == 24)
+    print('result1', value, ins_value)
 
-    set_field(Test, None, 'value', 18)
-    set_field(Test, test, 'ins_value', 19)
+    value = set_field(Test, None, 'value', 18)
+    ins_value = set_field(Test, test, 'ins_value', 19)
+    assert(value is None and ins_value is None)
 
-    print('result1', get_field(Test, None, 'value'))
-    print('result2', get_field(Test, test, 'ins_value'))
+    value = get_field(Test, None, 'value')
+    ins_value = get_field(Test, test, 'ins_value')
+    assert(value == 18 and ins_value == 19)
+    print('result1', value, ins_value)
 
 def test4():
     start_time = time.time()
@@ -379,14 +402,32 @@ def test4():
 
 def test5():
     arr = make_array(5, primitives['integer'])
-    arr.setitems(1, list(range(40, 40 + arr.length)))
-    print('arr1', arr.getitems(0, arr.length))
+    assert(type(arr) == array)
+
+    items = arr.setitems(1, list(range(40, 40 + arr.length)))
+    assert(items == None)
+
+    items = arr.getitems(0, arr.length)
+    print('arr1', items)
+    assert(items == (0, 40, 41, 42, 43))
 
     arr = make_array(5, primitives['object'], _find_class('java/lang/Long'))
-    print('arr2', arr.getitems(0, arr.length))
-    arr.setitems(1, list(jlong(i) for i in range(40, 40 + arr.length)))
-    print('arr2 2', arr.getitems(0, arr.length))
+    assert(type(arr) == array)
 
+    items = arr.getitems(0, arr.length)
+    print('arr2', items)
+    assert(items == (None,) * 5)
+
+    items = arr.setitems(1, list(jlong(i) for i in range(40, 40 + arr.length)))
+    assert(items is None)
+
+    items = arr.getitems(0, arr.length)
+    print('arr2 2', items)
+    assert(items == (None, 40, 41, 42, 43))
+
+test1()
+test2()
+test3()
 test5()
 
 
