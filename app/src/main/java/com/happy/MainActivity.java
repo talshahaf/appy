@@ -169,6 +169,11 @@ public class MainActivity extends AppCompatActivity
             Log.d("HAPY", "all got: "+z+" "+b+" "+c+" "+s+" "+i+" "+j+" "+f+" "+d+" | "+Z+" "+B+" "+C+" "+S+" "+I+" "+J+" "+F+" "+D+" | "+O);
             return O;
         }
+
+        public static Short primitive(Short x)
+        {
+            return x != null ? x : -1;
+        }
     }
 
     protected static native int pythonInit(String pythonpath);

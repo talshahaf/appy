@@ -778,10 +778,9 @@ static PyObject * act(PyObject *self, PyObject *args)
         unsigned long method = 0;
         PyObject * values = NULL;
         int return_type = 0;
-        int unboxed_return_type = 0;
         int op = 0;
 
-        if (!PyArg_ParseTuple(args, "kkOiii", &self, &method, &values, &return_type, &unboxed_return_type, &op)) {
+        if (!PyArg_ParseTuple(args, "kkOii", &self, &method, &values, &return_type, &op)) {
             return NULL;
         }
 
@@ -828,11 +827,6 @@ static PyObject * act(PyObject *self, PyObject *args)
             if(ret.l == NULL)
             {
                 Py_RETURN_NONE; //TODO think about this
-            }
-            if(unboxed_return_type != OBJECT)
-            {
-                ret = unbox_raw(env, ret.l, unboxed_return_type);
-                env->DeleteGlobalRef(ret.l);
             }
         }
         return unpack_value(ret, return_type);
