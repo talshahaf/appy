@@ -9,17 +9,11 @@ known_fields = {}
 
 class _jobject:
     _slots__ = []
-    def __init__(self, handle, info):
+    def __init__(self, handle):
         if not isinstance(handle, int):
             raise ValueError('handle must be int')
         self.handle = handle
-        if type(info) != str:
-            raise ValueError('only strings in info')
-        self.info = info
         #print('created {}'.format(self))
-
-    def __repr__(self):
-        return 'jobject {} ({})'.format(self.info, self.handle)
 
     def __del__(self):
         #TODO make sure this doesn't get called twice for the same handle
@@ -32,37 +26,44 @@ class _jobject:
         return bool(self.handle)
 
 class jobject(_jobject):
-    def __init__(self, handle, info):
-        super().__init__(handle, info)
-        self._t = None
+    def __init__(self, handle, info, isclass=False, isclassclass=False):
+        super().__init__(handle)
+        self.info = info
+        self._clazz = None
+        if isclass:
+            if isclassclass:
+                self._clazz = self
+            else:
+                self._clazz = CLASS_CLASS
+        #maybe
+        self.get_clazz()
+
+    def get_clazz(self):
+        if self and self._clazz is None:
+            self._clazz = self.__class__(native_hapy.get_object_class(self.handle), 'class of {}'.format(self), isclass=True)
+        return self._clazz
+
+    def __repr__(self):
+        return 'jobject of type {} - {} ({})'.format(native_hapy.class_name(self._clazz.handle), self.info, self.handle) #TODO
 
     @property
-    def t(self):
-        if self._t is None:
-            self._t = self.__class__(native_hapy.get_object_class(self.handle), 'class of {}'.format(self))
-        return self._t
+    def clazz(self):
+        return self.get_clazz()
 
     def __repr__(self):
         return '{}'.format(super().__repr__())
 
-class id:
-    def __init__(self, value):
-        self.value = value
-
-def _find_class(path):
+def find_class(path):
     if path not in known_classes:
-        known_classes[path] = jobject(native_hapy.find_class(path), path)
+        known_classes[path] = jobject(native_hapy.find_class(path), path, isclass=True, isclassclass=path == 'java/lang/Class')
     return known_classes[path]
 
-# def _get_field(clazz, name):
-#     method_id, field_type, is_static = native_hapy.get_field(clazz.handle, name)
-#     return id(method_id), field_type, bool(is_static)
-
-def _get_object_class(obj):
-    return jobject(native_hapy.get_object_class(obj.handle), 'class of {}'.format(obj))
+JNULL = jobject(0, 'null')
+CLASS_CLASS = find_class('java/lang/Class')
+OBJECT_CLASS = find_class('java/lang/Object')
 
 def make_string(s):
-    return jobject(native_hapy.make_string(str(s)), str(s))
+    return jobject(native_hapy.make_string(str(s)), str(s)) #TODO
 
 OP_NOOP = 0
 OP_CALL_METHOD = 1
@@ -76,26 +77,13 @@ OP_SET_ITEMS = 8
 OP_GET_ITEMS = 9
 OP_GET_ARRAY_LENGTH = 10
 
-# type_dict = {
-#     bool: 0,
-#     lambda x: bytes(x)[0]: 1,
-#     lambda x: str(x)[0]: 2,
-#     Short.TYPE: 3,
-#     Integer.TYPE: 4,
-#     Long.TYPE: 5,
-#     Float.TYPE: 6,
-#     Double.TYPE: 7,
-#     Void.TYPE: 8,
-# enumTypes.put(null, 9,
-# }
-
-primitives = {
+primitive_codes = {
     'object': -1,
     'boolean': 0,
     'byte': 1,
-    'character': 2,
+    'char': 2,
     'short': 3,
-    'integer': 4,
+    'int': 4,
     'long': 5,
     'float': 6,
     'double': 7,
@@ -103,124 +91,119 @@ primitives = {
     'const': 9,
 }
 
-trivials = {
-    _find_class('java/lang/Boolean'): primitives['boolean'],
-    _find_class('java/lang/Byte'): primitives['byte'],
-    _find_class('java/lang/Character'): primitives['character'],
-    _find_class('java/lang/Short'): primitives['short'],
-    _find_class('java/lang/Integer'): primitives['integer'],
-    _find_class('java/lang/Long'): primitives['long'],
-    _find_class('java/lang/Float'): primitives['float'],
-    _find_class('java/lang/Double'): primitives['double'],
+wrapper_to_primitive_code = {
+    find_class('java/lang/Boolean'): primitive_codes['boolean'],
+    find_class('java/lang/Byte'): primitive_codes['byte'],
+    find_class('java/lang/Character'): primitive_codes['char'],
+    find_class('java/lang/Short'): primitive_codes['short'],
+    find_class('java/lang/Integer'): primitive_codes['int'],
+    find_class('java/lang/Long'): primitive_codes['long'],
+    find_class('java/lang/Float'): primitive_codes['float'],
+    find_class('java/lang/Double'): primitive_codes['double'],
 }
-revd=dict([reversed(i) for i in trivials.items()])
-trivials.update(revd)
+revd=dict([reversed(i) for i in wrapper_to_primitive_code.items()])
+wrapper_to_primitive_code.update(revd)
 
-OBJECT_CLASS = _find_class('java/lang/Object')
-JNULL = jobject(0, 'null')
+class meta_primitive(type):
+    def __new__(cls, *args, **kwargs):
+        inst = type.__new__(cls, *args, **kwargs)
+        k = inst.__name__[1:] #drop the 'j'
+        if k != 'primitive':
+            inst.code = primitive_codes[k]
+            inst.wrapper_class = wrapper_to_primitive_code[inst.code]
+        return inst
 
-class jprimitive:
+class jprimitive(metaclass=meta_primitive):
     pass
 
 class jboolean(jprimitive):
     def __init__(self, v):
-        self.v = bool(v)
-        self.t = primitives['boolean']
-        self.w = trivials[primitives['boolean']]
+        self.value = bool(v)
 
 class jshort(jprimitive):
     def __init__(self, v):
-        self.v = int(v)
-        self.t = primitives['short']
-        self.w = trivials[primitives['short']]
+        self.value = int(v)
 
 class jint(jprimitive):
     def __init__(self, v):
-        self.v = int(v)
-        self.t = primitives['integer']
-        self.w = trivials[primitives['integer']]
+        self.value = int(v)
 
 class jlong(jprimitive):
     def __init__(self, v):
-        self.v = int(v)
-        self.t = primitives['long']
-        self.w = trivials[primitives['long']]
+        self.value = int(v)
 
 class jfloat(jprimitive):
     def __init__(self, v):
-        self.v = float(v)
-        self.t = primitives['float']
-        self.w = trivials[primitives['float']]
+        self.value = float(v)
 
 class jdouble(jprimitive):
     def __init__(self, v):
-        self.v = float(v)
-        self.t = primitives['double']
-        self.w = trivials[primitives['double']]
+        self.value = float(v)
 
 class jbyte(jprimitive):
     def __init__(self, v):
         try:
-            self.v = ord(v[0])
+            self.value = ord(v[0])
         except ValueError:
             pass
         except TypeError:
             pass
-        self.v = int(self.v)
-        self.t = primitives['byte']
-        self.w = trivials[primitives['byte']]
+        self.value = int(self.value)
 
 class jchar(jprimitive):
     def __init__(self, v):
         try:
-            self.v = ord(v[0])
+            self.value = ord(v[0])
         except ValueError:
             pass
         except TypeError:
             pass
-        self.v = int(self.v)
-        self.t = primitives['character']
-        self.w = trivials[primitives['character']]
+        self.value = int(self.value)
 
 class jstring(jobject):
     def __init__(self, v):
-        self.v = make_string(v)
+        self.value = make_string(v)
 
-def auto_handle_wrapping(arg, needed_type, unboxed_needed_type):
+def code_is_object(code):
+    return code in (primitive_codes['object'], primitive_codes['const'])
+
+def auto_handle_wrapping(arg, needed_code, unboxed_needed_code):
     if arg is None:
         return JNULL
 
     if isinstance(arg, jprimitive):
-        if needed_type == primitives['object']:
-            return jobject(native_hapy.box(arg.v, arg.t if unboxed_needed_type == primitives['object'] else unboxed_needed_type), 'arg')
+        if code_is_object(needed_code):
+            return jobject(native_hapy.box(arg.value, arg.code if code_is_object(unboxed_needed_code) else unboxed_needed_code), 'arg')
         else:
-            return arg.v
+            return arg.value
 
     if isinstance(arg, jobject):
         return arg
-    raise ValueError('error converting {} to {}'.format(type(arg), needed_type))
+    raise ValueError('error converting {} to {}'.format(type(arg), needed_code))
 
-def handle_ret(ret, ret_type, unboxed_ret_type):
-    if ret_type in (primitives['object'], primitives['const']) and ret is not None:
+def handle_ret(ret, ret_code, unboxed_ret_code):
+    if code_is_object(ret_code) and ret is not None:
         ret = jobject(ret, 'ret')
-        if unboxed_ret_type not in (primitives['object'], primitives['const']):
-            ret = native_hapy.unbox(ret.handle, unboxed_ret_type)
+        if not code_is_object(unboxed_ret_code):
+            ret = native_hapy.unbox(ret.handle, unboxed_ret_code)
     return ret
 
+#convert python jtype to native jvalue
 #returns arg as well so it won't be freed until we call the method
 #this is only a problem with inner functions extracting handles from objects
-def prepare_value(arg, needed_type, unboxed_needed_type):
-    arg = auto_handle_wrapping(arg, needed_type, unboxed_needed_type)
-    return native_hapy.make_value(arg.handle if isinstance(arg, jobject) else arg, needed_type), arg
+def prepare_value(arg, needed_code, unboxed_needed_code):
+    arg = auto_handle_wrapping(arg, needed_code, unboxed_needed_code)
+    return native_hapy.make_value(arg.handle if isinstance(arg, jobject) else arg, needed_code), arg
 
+#convert regular python type to our python jtypes
 def convert_arg(arg):
     if isinstance(arg, jobject):
-        return arg, arg.t, primitives['object']
+        return arg, arg.clazz, primitive_codes['object']
     elif isinstance(arg, bytes) or isinstance(arg, str):
         arg = jstring(arg)
-        return arg, arg.t, primitives['object']
+        return arg, arg.clazz, primitive_codes['object']
     elif arg is None:
-        return arg, OBJECT_CLASS, primitives['object']
+        return arg, OBJECT_CLASS, primitive_codes['object']
     else:
         if isinstance(arg, bool):
             arg = jboolean(arg)
@@ -233,10 +216,10 @@ def convert_arg(arg):
             arg = jdouble(arg)
         elif not isinstance(arg, jprimitive):
             raise ValueError('cannot pass {} to java'.format(type(arg)))
-        return arg, arg.w, arg.t
+        return arg, arg.wrapper_class, arg.code
 
-def _get_method(handle, name, arg_types):
-    key = handle, name, arg_types
+def _get_method(handle, name, arg_codes):
+    key = handle, name, arg_codes
     if key not in known_methods:
         known_methods[key] = native_hapy.get_method(*key)
     return known_methods[key]
@@ -248,87 +231,84 @@ def _get_field(handle, name):
     return known_fields[key]
 
 def call_method(clazz, obj, name, *args):
-    args = list(args)
-    arg_types = [None] * len(args)
-    for i, arg in enumerate(args):
-        args[i], arg_types[i], _ = convert_arg(arg)
+    args, arg_codes, _ = zip(*(convert_arg(arg) for arg in args)) if args else ([], [], 0)
 
-    method_id, needed_types, is_static = _get_method(clazz.handle, name, tuple(arg.handle for arg in arg_types))
+    method_id, needed_codes, is_static = _get_method(clazz.handle, name, tuple(arg.handle for arg in arg_codes))
 
-    ret_type, unboxed_ret_type = needed_types[-1]
-    needed_types = needed_types[:-1]
+    ret_code, unboxed_ret_code = needed_codes[-1]
+    needed_codes = needed_codes[:-1]
 
-    all_args = tuple(prepare_value(arg, needed_type, unboxed_needed_type) for arg, (needed_type, unboxed_needed_type) in zip(args, needed_types))
+    all_args = tuple(prepare_value(arg, needed_code, unboxed_needed_code) for arg, (needed_code, unboxed_needed_code) in zip(args, needed_codes))
     args = tuple(arg for arg,_ in all_args)
 
     if is_static:
-        ret = native_hapy.act(clazz.handle, method_id, args, ret_type, OP_CALL_STATIC_METHOD)
+        ret = native_hapy.act(clazz.handle, method_id, args, ret_code, OP_CALL_STATIC_METHOD)
     else:
-        ret = native_hapy.act(obj.handle, method_id, args, ret_type, OP_CALL_METHOD)
+        ret = native_hapy.act(obj.handle, method_id, args, ret_code, OP_CALL_METHOD)
 
-    return handle_ret(ret, ret_type, unboxed_ret_type)
+    return handle_ret(ret, ret_code, unboxed_ret_code)
 
 def get_field(clazz, obj, name):
-    field_id, (field_type, unboxed_field_type), is_static = _get_field(clazz.handle, name)
+    field_id, (field_code, unboxed_field_code), is_static = _get_field(clazz.handle, name)
     if is_static:
-        ret = native_hapy.act(clazz.handle, field_id, None, field_type, OP_GET_STATIC_FIELD)
+        ret = native_hapy.act(clazz.handle, field_id, None, field_code, OP_GET_STATIC_FIELD)
     else:
-        ret = native_hapy.act(obj.handle, field_id, None, field_type, OP_GET_FIELD)
-    return handle_ret(ret, field_type, unboxed_field_type)
+        ret = native_hapy.act(obj.handle, field_id, None, field_code, OP_GET_FIELD)
+    return handle_ret(ret, field_code, unboxed_field_code)
 
 def set_field(clazz, obj, name, value):
-    field_id, (field_type, unboxed_field_type), is_static = _get_field(clazz.handle, name)
+    field_id, (field_code, unboxed_field_code), is_static = _get_field(clazz.handle, name)
     value, _, _ = convert_arg(value)
-    arg, ref = prepare_value(value, field_type, unboxed_field_type)
+    arg, ref = prepare_value(value, field_code, unboxed_field_code)
     if is_static:
-        native_hapy.act(clazz.handle, field_id, (arg,), field_type, OP_SET_STATIC_FIELD)
+        native_hapy.act(clazz.handle, field_id, (arg,), field_code, OP_SET_STATIC_FIELD)
     else:
-        native_hapy.act(obj.handle, field_id, (arg,), field_type, OP_SET_FIELD)
+        native_hapy.act(obj.handle, field_id, (arg,), field_code, OP_SET_FIELD)
 
 class array:
-    def __init__(self, obj, array_type, array_unboxed_type, clazz, length):
+    def __init__(self, obj, type_code, type_unboxed_code, clazz, length):
         self.obj = obj
         self.clazz = clazz
-        self.array_type = array_type
-        self.array_unboxed_type = array_unboxed_type
+        self.type_code = type_code
+        self.type_unboxed_code = type_unboxed_code
         self.length = length
 
     #the tuple in native_hapy.array must contain elements waiting to be filled with make_value, and None if it shouldn't be read from java at all
     #therefore, None should never be actually passed from outside and will be changed to JNULL
     def setitems(self, start, items): #TODO raise indexerror
         args = tuple(convert_arg(item) for item in items)
-        values = tuple(prepare_value(arg, self.array_type, t) for arg, w, t in args)
+        values = tuple(prepare_value(arg, self.type_code, t) for arg, w, t in args)
 
-        native_hapy.array(self.obj.handle, tuple(v for v, _ in values), start, self.array_type, OP_SET_ITEMS, JNULL.handle)
+        native_hapy.array(self.obj.handle, tuple(v for v, _ in values), start, self.type_code, OP_SET_ITEMS, JNULL.handle)
 
     #the tuple returned by native_hapy.array will contain primitives, jobject or None to denote NULL
     def getitems(self, start, end):
-        array_len, obj, elements = native_hapy.array(self.obj.handle, (0,) * (end - start), start, self.array_type, OP_GET_ITEMS, JNULL.handle)
+        array_len, obj, elements = native_hapy.array(self.obj.handle, (0,) * (end - start), start, self.type_code, OP_GET_ITEMS, JNULL.handle)
 
         if self.clazz is None:
             return elements
         else:
             elements = tuple(jobject(e, 'array element') if e is not None else None for e in elements)
-            return tuple(e if e is None or self.array_unboxed_type == primitives['object'] else native_hapy.unbox(e.handle, self.array_unboxed_type) for e in elements)
+            return tuple(e if e is None or code_is_object(self.type_unboxed_code) else native_hapy.unbox(e.handle, self.type_unboxed_code) for e in elements)
 
-def make_array(l, array_type=None, clazz=None):
-    if array_type is None and not isinstance(clazz, jobject):
-        raise ValueError('must specify array_type or clazz')
+def make_array(l, type_code=None, clazz=None):
+    if type_code is None and not isinstance(clazz, jobject):
+        raise ValueError('must specify type_code or clazz')
 
     if isinstance(clazz, jobject):
-        array_unboxed_type = native_hapy.unbox_class(clazz.handle)
+        type_unboxed_code = native_hapy.unbox_class(clazz.handle)
         clazz_obj = clazz
-        array_type = primitives['object']
+        type_code = primitive_codes['object']
     else:
         clazz_obj = JNULL
-        array_unboxed_type = array_type
+        type_unboxed_code = type_code
 
-    array_len, obj, elements = native_hapy.array(JNULL.handle, (None,) * l, 0, array_type, OP_NEW_ARRAY, clazz_obj.handle)
-    return array(jobject(obj, 'newarray'), array_type, array_unboxed_type, clazz, array_len)
+    array_len, obj, elements = native_hapy.array(JNULL.handle, (None,) * l, 0, type_code, OP_NEW_ARRAY, clazz_obj.handle)
+    return array(jobject(obj, 'newarray'), type_code, type_unboxed_code, clazz, array_len)
 
 print('=================================begin')
 
-Test = _find_class("com/happy/MainActivity$Test")
+Test = find_class("com/happy/MainActivity$Test")
 
 def test1():
     test = call_method(Test, None, '', True, jbyte('b'),  jchar('c'),  10 ** 3, 2 * (10 ** 5), 3 * (10 ** 10), 1.1,  3.141529,
@@ -397,11 +377,18 @@ def test4():
                                            None, None,        None,        None,    None,          None,           None, None,
                                            Test)
         # ~ == [i ** 2 for i in range(1000)] (0.8 ms per call) ((0.7ms per call with find_class memoize)) (((0.3ms with get_method memoize + find_class memoize)))
-    t = time.time() - start_time
-    print('{}/{} = {}'.format(t, n, t / n))
+    mid_time = time.time()
+    sum(i ** 2 for i in range(n * 300))
+    end_time = time.time()
+
+    java_time = mid_time - start_time
+    square_time = end_time - mid_time
+
+    print('{}/{} = {}    ,     {}/{} = {}'.format(java_time, n, java_time / n, square_time, n, square_time / n))
+    assert(java_time < square_time)
 
 def test5():
-    arr = make_array(5, primitives['integer'])
+    arr = make_array(5, primitive_codes['int'])
     assert(type(arr) == array)
 
     items = arr.setitems(1, list(range(40, 40 + arr.length)))
@@ -411,7 +398,7 @@ def test5():
     print('arr1', items)
     assert(items == (0, 40, 41, 42, 43))
 
-    arr = make_array(5, primitives['object'], _find_class('java/lang/Long'))
+    arr = make_array(5, primitive_codes['object'], find_class('java/lang/Long'))
     assert(type(arr) == array)
 
     items = arr.getitems(0, arr.length)
@@ -428,6 +415,7 @@ def test5():
 test1()
 test2()
 test3()
+test4()
 test5()
 
 
