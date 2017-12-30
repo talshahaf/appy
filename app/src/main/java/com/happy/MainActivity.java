@@ -203,6 +203,17 @@ public class MainActivity extends AppCompatActivity
         {
             return new Object[len];
         }
+
+        public static String test_string(String s)
+        {
+            return "=" + s + "=";
+        }
+
+        public static String test_unicode(String s)
+        {
+            Log.d("HAPY", ""+s.length());
+            return "בדיקה";
+        }
     }
 
     protected static native int pythonInit(String pythonpath);
