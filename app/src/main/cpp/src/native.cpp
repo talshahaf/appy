@@ -12,6 +12,7 @@
 #include <chrono>
 #include <functional>
 #include <deque>
+#include <vector>
 #include "native.h"
 
 #define LOG(fmt, ...) __android_log_print(ANDROID_LOG_DEBUG, "HAPY", fmt, ##__VA_ARGS__)
@@ -24,6 +25,8 @@ jmethodID compatibleMethod = NULL;
 jmethodID getField = NULL;
 jmethodID unboxClassToEnum = NULL;
 jmethodID inspect = NULL;
+jmethodID stringToBytes = NULL;
+jmethodID bytesToString = NULL;
 
 //primitives
 jclass boolean_class = NULL;
@@ -176,6 +179,7 @@ public:
 
             char buf[16] = {};
             snprintf(buf, sizeof(buf) - 1, "%d", line);
+
             message = get_string(env, msg) + " in line " + buf;
         }
         catch(...)
@@ -451,6 +455,16 @@ static void find_types(JNIEnv * env)
     if(inspect == NULL)
     {
         inspect = env->GetStaticMethodID(reflection_class, "inspect", "(Ljava/lang/Class;)[Ljava/lang/Object;");
+        CHECK_JAVA_EXC(env);
+    }
+    if(stringToBytes == NULL)
+    {
+        stringToBytes = env->GetStaticMethodID(reflection_class, "stringToBytes", "(Ljava/lang/String;)[B");
+        CHECK_JAVA_EXC(env);
+    }
+    if(bytesToString == NULL)
+    {
+        bytesToString = env->GetStaticMethodID(reflection_class, "bytesToString", "([B)Ljava/lang/String;");
         CHECK_JAVA_EXC(env);
     }
     //---------primitive-accessors--------------------------
@@ -1557,9 +1571,109 @@ static PyObject * inspect_class(PyObject *self, PyObject *args)
         std::string class_name = inspect_class_raw(env, ref, &enum_type, &is_array, &component, &component_enum_type, &unboxed_component_enum_type);
         return Py_BuildValue("siikii", class_name.c_str(), enum_type, is_array, (unsigned long)component, component_enum_type, unboxed_component_enum_type);
     }
+    catch(java_exception & e)
+    {
+        PyErr_SetString(PyExc_ValueError, e.what());
+    }
     catch(jni_exception & e)
     {
-        LOG("got jni exception in delete_global_ref");
+        LOG("got jni exception in inspect_class");
+        PyErr_SetString(PyExc_ValueError, e.what());
+    }
+    return NULL;
+}
+
+static jstring make_string_raw(const char * str, int len)
+{
+    GET_ENV();
+    find_types(env);
+
+    jbyteArray barr = env->NewByteArray(len);
+    if(barr == NULL) \
+    {
+        throw jni_exception("failed to create byte array");
+    }
+
+    jbyte * bytes = env->GetByteArrayElements(barr, NULL);
+    if(bytes == NULL)
+    {
+        throw jni_exception("failed to get byte array elements");
+    }
+
+    memcpy(bytes, str, len);
+    env->ReleaseByteArrayElements(barr, bytes, 0);
+
+    jstring jstr = (jstring)env->CallStaticObjectMethod(reflection_class, bytesToString, barr);
+    CHECK_JAVA_EXC(env);
+
+    return (jstring)make_global_ref(env, jstr);
+}
+
+static PyObject * make_string(PyObject *self, PyObject *args)
+{
+    try
+    {
+        const char * str = NULL;
+        Py_ssize_t len = 0;
+        if (!PyArg_ParseTuple(args, "s#", &str, &len))
+        {
+            return NULL;
+        }
+
+        return Py_BuildValue("k", (unsigned long)make_string_raw(str, len));
+    }
+    catch(java_exception & e)
+    {
+        PyErr_SetString(PyExc_ValueError, e.what());
+    }
+    catch(jni_exception & e)
+    {
+        LOG("got jni exception in make_string");
+        PyErr_SetString(PyExc_ValueError, e.what());
+    }
+    return NULL;
+}
+
+static std::vector<char> unbox_string_raw(jstring jstr)
+{
+    GET_ENV();
+    find_types(env);
+
+    jbyteArray barr = (jbyteArray)env->CallStaticObjectMethod(reflection_class, stringToBytes, jstr);
+    jsize len = env->GetArrayLength(barr);
+    std::vector<char> str(len, 0);
+    jbyte * bytes = env->GetByteArrayElements(barr, NULL);
+    if(bytes == NULL)
+    {
+        throw jni_exception("failed to get byte array elements");
+    }
+
+    memcpy(str.data(), bytes, len);
+    env->ReleaseByteArrayElements(barr, bytes, 0);
+
+    return str;
+}
+
+static PyObject * unbox_string(PyObject *self, PyObject *args)
+{
+    try
+    {
+        unsigned long jstr = 0;
+        if (!PyArg_ParseTuple(args, "k", &jstr))
+        {
+            return NULL;
+        }
+
+        std::vector<char> str = unbox_string_raw((jstring)jstr);
+        return Py_BuildValue("s#", str.data(), str.size());
+    }
+    catch(java_exception & e)
+    {
+        PyErr_SetString(PyExc_ValueError, e.what());
+    }
+    catch(jni_exception & e)
+    {
+        LOG("got jni exception in make_string");
         PyErr_SetString(PyExc_ValueError, e.what());
     }
     return NULL;
@@ -1595,6 +1709,8 @@ static PyMethodDef native_hapy_methods[] = {
         {"unbox_class", unbox_class, METH_VARARGS, "unbox object class"},
         {"delete_global_ref",  delete_global_ref, METH_VARARGS, "Delete a java reference"},
         {"inspect_class",  inspect_class, METH_VARARGS, "inspects a java class"},
+        {"make_string", make_string, METH_VARARGS, "makes jstring from str"},
+        {"unbox_string", unbox_string, METH_VARARGS, "unbox string"},
         {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 

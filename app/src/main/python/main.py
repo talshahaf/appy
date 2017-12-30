@@ -70,9 +70,16 @@ class jclass(jobjectbase):
 class jstring(jobjectbase):
     def __init__(self, ref):
         self.ref = ref
+        self._value = None
 
     def __repr__(self):
         return 'jstring {} ({})'.format(self.value, self.ref.handle)
+
+    @property
+    def value(self):
+        if self._value is None:
+            self._value = native_hapy.unbox_string(self.ref.handle)
+        return self._value
 
     @property
     def clazz(self):
@@ -362,6 +369,9 @@ def upcast(obj):
     if not code_is_object(obj.clazz.code):
         return native_hapy.unbox(obj.ref.handle, obj.clazz.code)
 
+    if obj.clazz.class_name == 'java.lang.String':
+        return jstring(obj.ref).value
+
     return obj
 
 
@@ -498,6 +508,19 @@ def test6():
     items = arr.getitems(0, arr.length)
     print(items)
 
+def test7():
+    ret = call_method(Test, None, 'test_string', 'שלום')
+    print(ret.encode())
+    assert(ret == '=שלום=')
+
+    ret = call_method(Test, None, 'test_string', 'abcd\x00efgh')
+    print(ret.encode())
+    assert(ret == '=abcd\x00efgh=')
+
+    ret = call_method(Test, None, 'test_string', 'abשל\x00וםgh')
+    print(ret.encode())
+    assert(ret == '=abשל\x00וםgh=')
+
 
 test1()
 test2()
@@ -505,6 +528,7 @@ test3()
 test4()
 test5()
 test6()
+test7()
 
 
 print('====================================end')

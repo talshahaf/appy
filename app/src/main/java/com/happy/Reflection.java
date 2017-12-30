@@ -2,6 +2,7 @@ package com.happy;
 
 import android.util.Log;
 
+import java.io.UnsupportedEncodingException;
 import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
@@ -348,5 +349,15 @@ public class Reflection
         int componentEnumType = t == null ? OBJECT_TYPE : t;
         int unboxedComponentEnumType = unboxClassToEnum(component);
         return new Object[] {clazz.getCanonicalName(), unboxedEnumType, isArray, component, componentEnumType, unboxedComponentEnumType};
+    }
+
+    public static byte[] stringToBytes(String s) throws UnsupportedEncodingException
+    {
+        return s.getBytes("UTF-8");
+    }
+
+    public static String bytesToString(byte[] bytes) throws UnsupportedEncodingException
+    {
+        return new String(bytes, "UTF-8");
     }
 }
