@@ -363,7 +363,6 @@ def upcast(obj):
         return None
 
     if obj.clazz.is_array:
-        print(obj.clazz.element_code, obj.clazz.unboxed_element_code, obj.clazz.element_class)
         return array(obj.ref, obj.clazz.element_code, obj.clazz.unboxed_element_code, obj.clazz.element_class)
 
     if not code_is_object(obj.clazz.code):
@@ -375,160 +374,162 @@ def upcast(obj):
     return obj
 
 
-print('=================================begin')
+def tests():
+    print('=================================begin')
 
-Test = find_class("com.happy.MainActivity$Test")
+    Test = find_class("com.happy.MainActivity$Test")
 
-def test1():
-    test = call_method(Test, None, '', True, jbyte('b'),  jchar('c'),  10 ** 3, 2 * (10 ** 5), 3 * (10 ** 10), 1.1,  3.141529,
-                                       None, None,        None,        None,    None,          None,           None, None,
-                                       Test)
-    print('test1', test)
-    assert(type(test) == jobject)
-
-    test = call_method(Test, None, '', True, jbyte('b'),  jchar('c'),  10 ** 3, 2 * (10 ** 5), 3 * (10 ** 10), 1.1,  3.141529,
-                                       True, jbyte('b'),  jchar('c'),  10 ** 3, 2 * (10 ** 5), 3 * (10 ** 10), 1.1,  3.141529,
-                                       jshort(1000000))
-    print('test2', test)
-    assert(type(test) == jobject)
-
-
-    result = call_method(Test, None, 'all', True, jbyte('b'),  jchar('c'),  10 ** 3, 2 * (10 ** 5), 3 * (10 ** 10), 1.1,  3.141529,
-                                            None, None,        None,        None,    None,          None,           None, None,
-                                            Test)
-    print('result1', result)
-    assert(type(result) == jobject)
-
-
-    result = call_method(Test, None, 'all', True, jbyte('b'),  jchar('c'),  10 ** 3, 2 * (10 ** 5), 3 * (10 ** 10), 1.1,  3.141529,
-                                            True, jbyte('b'),  jchar('c'),  10 ** 3, 2 * (10 ** 5), 3 * (10 ** 10), 1.1,  3.141529,
-                                            jshort(1000000))
-    print('result2', result)
-    assert(type(test) == jobject)
-
-    result = call_method(Test, None, 'primitive', jshort(1000000))
-    print('result3', result)
-    assert(result == 16960)
-
-
-def test2():
-    n = call_method(Test, None, 'test_void')
-    assert(n == 48);
-    print('result1', n)
-    n = call_method(Test, None, 'void_test', 67)
-    assert(n is None);
-    print('result2', n)
-    n = call_method(Test, None, 'void_void')
-    assert(n is None);
-    print('result3', n)
-
-def test3():
-    test = call_method(Test, None, '')
-    value = get_field(Test, None, 'value')
-    ins_value = get_field(Test, test, 'ins_value')
-    assert((value == 23 or value == 18) and ins_value == 24)
-    print('result1', value, ins_value)
-
-    value = set_field(Test, None, 'value', 18)
-    ins_value = set_field(Test, test, 'ins_value', 19)
-    assert(value is None and ins_value is None)
-
-    value = get_field(Test, None, 'value')
-    ins_value = get_field(Test, test, 'ins_value')
-    assert(value == 18 and ins_value == 19)
-    print('result1', value, ins_value)
-
-def test4():
-    n = 1000
-    start_time = time.time()
-    for i in range(n):
+    def test1():
         test = call_method(Test, None, '', True, jbyte('b'),  jchar('c'),  10 ** 3, 2 * (10 ** 5), 3 * (10 ** 10), 1.1,  3.141529,
                                            None, None,        None,        None,    None,          None,           None, None,
                                            Test)
+        print('test1', test)
+        assert(type(test) == jobject)
 
-    mid_time = time.time()
-
-    #sum(i ** 2 for i in range(n * 300))
-    call_method(Test, None, 'test_work', n * 5)
-
-    end_time = time.time()
-
-    java_time = mid_time - start_time
-    square_time = end_time - mid_time
-
-    print('{}/{} = {}    ,     {}/{} = {}'.format(java_time, n, java_time / n, square_time, n, square_time / n))
-    #assert(java_time < square_time)
-
-def test5():
-    arr = make_array(5, primitive_codes['int'])
-    assert(type(arr) == array)
-
-    items = arr.setitems(1, list(range(40, 40 + arr.length - 1)))
-    assert(items == None)
-
-    items = arr.getitems(0, arr.length)
-    print('arr1', items)
-    assert(items == (0, 40, 41, 42, 43))
-
-    arr = make_array(5, primitive_codes['object'], find_class('java.lang.Long'))
-    assert(type(arr) == array)
-
-    items = arr.getitems(0, arr.length)
-    print('arr2', items)
-    assert(items == (None,) * 5)
-
-    items = arr.setitems(1, list(jlong(i) for i in range(40, 40 + arr.length - 1)))
-    assert(items is None)
-
-    items = arr.getitems(0, arr.length)
-    print('arr2 2', items)
-    assert(items == (None, 40, 41, 42, 43))
-
-def test6():
-    pos = 1
-
-    arr = call_method(Test, None, 'test_int_array', 13)
-    assert(arr.length == 13)
-    items = arr.setitems(pos, list(range(40, 40 + arr.length - pos)))
-    assert(items == None)
-    items = arr.getitems(0, arr.length)
-    print(items)
-
-    arr = call_method(Test, None, 'test_integer_array', 13)
-    assert(arr.length == 13)
-    items = arr.setitems(pos, list(range(40, 40 + arr.length - pos)))
-    assert(items == None)
-    items = arr.getitems(0, arr.length)
-    print(items)
-
-    arr = call_method(Test, None, 'test_object_array', 13)
-    assert(arr.length == 13)
-    items = arr.setitems(pos, list(range(40, 40 + arr.length - pos)))
-    assert(items == None)
-    items = arr.getitems(0, arr.length)
-    print(items)
-
-def test7():
-    ret = call_method(Test, None, 'test_string', 'שלום')
-    print(ret.encode())
-    assert(ret == '=שלום=')
-
-    ret = call_method(Test, None, 'test_string', 'abcd\x00efgh')
-    print(ret.encode())
-    assert(ret == '=abcd\x00efgh=')
-
-    ret = call_method(Test, None, 'test_string', 'abשל\x00וםgh')
-    print(ret.encode())
-    assert(ret == '=abשל\x00וםgh=')
+        test = call_method(Test, None, '', True, jbyte('b'),  jchar('c'),  10 ** 3, 2 * (10 ** 5), 3 * (10 ** 10), 1.1,  3.141529,
+                                           True, jbyte('b'),  jchar('c'),  10 ** 3, 2 * (10 ** 5), 3 * (10 ** 10), 1.1,  3.141529,
+                                           jshort(1000000))
+        print('test2', test)
+        assert(type(test) == jobject)
 
 
-test1()
-test2()
-test3()
-test4()
-test5()
-test6()
-test7()
+        result = call_method(Test, None, 'all', True, jbyte('b'),  jchar('c'),  10 ** 3, 2 * (10 ** 5), 3 * (10 ** 10), 1.1,  3.141529,
+                                                None, None,        None,        None,    None,          None,           None, None,
+                                                Test)
+        print('result1', result)
+        assert(type(result) == jobject)
 
 
-print('====================================end')
+        result = call_method(Test, None, 'all', True, jbyte('b'),  jchar('c'),  10 ** 3, 2 * (10 ** 5), 3 * (10 ** 10), 1.1,  3.141529,
+                                                True, jbyte('b'),  jchar('c'),  10 ** 3, 2 * (10 ** 5), 3 * (10 ** 10), 1.1,  3.141529,
+                                                jshort(1000000))
+        print('result2', result)
+        assert(type(test) == jobject)
+
+        result = call_method(Test, None, 'primitive', jshort(1000000))
+        print('result3', result)
+        assert(result == 16960)
+
+
+    def test2():
+        n = call_method(Test, None, 'test_void')
+        assert(n == 48);
+        print('result1', n)
+        n = call_method(Test, None, 'void_test', 67)
+        assert(n is None);
+        print('result2', n)
+        n = call_method(Test, None, 'void_void')
+        assert(n is None);
+        print('result3', n)
+
+    def test3():
+        test = call_method(Test, None, '')
+        value = get_field(Test, None, 'value')
+        ins_value = get_field(Test, test, 'ins_value')
+        assert((value == 23 or value == 18) and ins_value == 24)
+        print('result1', value, ins_value)
+
+        value = set_field(Test, None, 'value', 18)
+        ins_value = set_field(Test, test, 'ins_value', 19)
+        assert(value is None and ins_value is None)
+
+        value = get_field(Test, None, 'value')
+        ins_value = get_field(Test, test, 'ins_value')
+        assert(value == 18 and ins_value == 19)
+        print('result1', value, ins_value)
+
+    def test4():
+        n = 1000
+        start_time = time.time()
+        for i in range(n):
+            test = call_method(Test, None, '', True, jbyte('b'),  jchar('c'),  10 ** 3, 2 * (10 ** 5), 3 * (10 ** 10), 1.1,  3.141529,
+                                               None, None,        None,        None,    None,          None,           None, None,
+                                               Test)
+
+        mid_time = time.time()
+
+        #sum(i ** 2 for i in range(n * 300))
+        call_method(Test, None, 'test_work', n * 5)
+
+        end_time = time.time()
+
+        java_time = mid_time - start_time
+        square_time = end_time - mid_time
+
+        print('{}/{} = {}    ,     {}/{} = {}'.format(java_time, n, java_time / n, square_time, n, square_time / n))
+        #assert(java_time < square_time)
+
+    def test5():
+        arr = make_array(5, primitive_codes['int'])
+        assert(type(arr) == array)
+
+        items = arr.setitems(1, list(range(40, 40 + arr.length - 1)))
+        assert(items == None)
+
+        items = arr.getitems(0, arr.length)
+        print('arr1', items)
+        assert(items == (0, 40, 41, 42, 43))
+
+        arr = make_array(5, primitive_codes['object'], find_class('java.lang.Long'))
+        assert(type(arr) == array)
+
+        items = arr.getitems(0, arr.length)
+        print('arr2', items)
+        assert(items == (None,) * 5)
+
+        items = arr.setitems(1, list(jlong(i) for i in range(40, 40 + arr.length - 1)))
+        assert(items is None)
+
+        items = arr.getitems(0, arr.length)
+        print('arr2 2', items)
+        assert(items == (None, 40, 41, 42, 43))
+
+    def test6():
+        pos = 1
+
+        arr = call_method(Test, None, 'test_int_array', 13)
+        assert(arr.length == 13)
+        items = arr.setitems(pos, list(range(40, 40 + arr.length - pos)))
+        assert(items == None)
+        items = arr.getitems(0, arr.length)
+        print(items)
+
+        arr = call_method(Test, None, 'test_integer_array', 13)
+        assert(arr.length == 13)
+        items = arr.setitems(pos, list(range(40, 40 + arr.length - pos)))
+        assert(items == None)
+        items = arr.getitems(0, arr.length)
+        print(items)
+
+        arr = call_method(Test, None, 'test_object_array', 13)
+        assert(arr.length == 13)
+        items = arr.setitems(pos, list(range(40, 40 + arr.length - pos)))
+        assert(items == None)
+        items = arr.getitems(0, arr.length)
+        print(items)
+
+    def test7():
+        ret = call_method(Test, None, 'test_string', 'שלום')
+        print(ret.encode())
+        assert(ret == '=שלום=')
+
+        ret = call_method(Test, None, 'test_string', 'abcd\x00efgh')
+        print(ret.encode())
+        assert(ret == '=abcd\x00efgh=')
+
+        ret = call_method(Test, None, 'test_string', 'abשל\x00וםgh')
+        print(ret.encode())
+        assert(ret == '=abשל\x00וםgh=')
+
+    test1()
+    test2()
+    test3()
+    test4()
+    test5()
+    test6()
+    test7()
+
+    print('====================================end')
+
+if __name__ == '__main__':
+    tests()
