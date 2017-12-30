@@ -1,4 +1,3 @@
-import sys
 import logcat
 import time
 import native_hapy
@@ -245,22 +244,22 @@ def convert_arg(arg):
             raise ValueError('cannot pass {} to java'.format(type(arg)))
         return arg, arg.wrapper_class, arg.code
 
-def _get_method(handle, name, arg_codes):
-    key = handle, name, arg_codes
+def _get_method(clazz, name, arg_codes):
+    key = clazz.class_name, name, arg_codes
     if key not in known_methods:
-        known_methods[key] = native_hapy.get_method(*key)
+        known_methods[key] = native_hapy.get_method(clazz.ref.handle, name, arg_codes)
     return known_methods[key]
 
-def _get_field(handle, name):
-    key = handle, name
+def _get_field(clazz, name):
+    key = clazz.class_name, name
     if key not in known_fields:
-        known_fields[key] = native_hapy.get_field(*key)
+        known_fields[key] = native_hapy.get_field(clazz.ref.handle, name)
     return known_fields[key]
 
 def call_method(clazz, obj, name, *args):
     args, arg_codes, _ = zip(*(convert_arg(arg) for arg in args)) if args else ([], [], 0)
 
-    method_id, needed_codes, is_static = _get_method(clazz.ref.handle, name, tuple(arg.ref.handle for arg in arg_codes))
+    method_id, needed_codes, is_static = _get_method(clazz, name, tuple(arg.ref.handle for arg in arg_codes))
 
     ret_code, _ = needed_codes[-1]
     needed_codes = needed_codes[:-1]
@@ -276,7 +275,7 @@ def call_method(clazz, obj, name, *args):
     return handle_ret(ret, ret_code)
 
 def get_field(clazz, obj, name):
-    field_id, (field_code, _), is_static = _get_field(clazz.ref.handle, name)
+    field_id, (field_code, _), is_static = _get_field(clazz, name)
     if is_static:
         ret = native_hapy.act(clazz.ref.handle, field_id, None, field_code, OP_GET_STATIC_FIELD)
     else:
@@ -284,7 +283,7 @@ def get_field(clazz, obj, name):
     return handle_ret(ret, field_code)
 
 def set_field(clazz, obj, name, value):
-    field_id, (field_code, unboxed_field_code), is_static = _get_field(clazz.ref.handle, name)
+    field_id, (field_code, unboxed_field_code), is_static = _get_field(clazz, name)
     value, _, _ = convert_arg(value)
     arg, ref = prepare_value(value, field_code, unboxed_field_code)
     if is_static:
@@ -377,7 +376,7 @@ def upcast(obj):
 def tests():
     print('=================================begin')
 
-    Test = find_class("com.happy.MainActivity$Test")
+    Test = find_class("com.happy.Test")
 
     def test1():
         test = call_method(Test, None, '', True, jbyte('b'),  jchar('c'),  10 ** 3, 2 * (10 ** 5), 3 * (10 ** 10), 1.1,  3.141529,
