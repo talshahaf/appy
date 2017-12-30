@@ -174,6 +174,35 @@ public class MainActivity extends AppCompatActivity
         {
             return x != null ? x : -1;
         }
+
+        public static void test_work(int times)
+        {
+            String text = "";
+            for(int i = 0; i < 256; i++)
+            {
+                text += "a";
+            }
+            for(int i = 0; i < times; i++)
+            {
+                text = text.toLowerCase();
+                text = text.toUpperCase();
+            }
+        }
+
+        public static int[] test_int_array(int len)
+        {
+            return new int[len];
+        }
+
+        public static Integer[] test_integer_array(int len)
+        {
+            return new Integer[len];
+        }
+
+        public static Object[] test_object_array(int len)
+        {
+            return new Object[len];
+        }
     }
 
     protected static native int pythonInit(String pythonpath);

@@ -23,6 +23,7 @@ jclass reflection_class = NULL;
 jmethodID compatibleMethod = NULL;
 jmethodID getField = NULL;
 jmethodID unboxClassToEnum = NULL;
+jmethodID inspect = NULL;
 
 //primitives
 jclass boolean_class = NULL;
@@ -129,7 +130,17 @@ static int get_integer(JNIEnv * env, jobject integer)
     return i;
 }
 
-JNIEnv * get_env()
+#define GET_ENV_WITH_SCOPES() \
+JNIEnv * env = _get_env(); \
+env->PushLocalFrame(15); \
+CHECK_JAVA_EXC(env); \
+onexit += [env]{ env->PopLocalFrame(NULL); };
+
+#define GET_ENV() \
+scope_guards onexit; \
+GET_ENV_WITH_SCOPES()
+
+JNIEnv * _get_env()
 {
     JNIEnv * env = NULL;
     if(vm->AttachCurrentThread(&env, NULL) != JNI_OK)
@@ -199,7 +210,16 @@ public:
     }
 
     ~scope_guards() {
-        for(auto &f : *this) f(); // must not throw
+        try
+        {
+            for(auto &f : *this)
+            {
+                f();
+            }
+        }
+        catch(...)
+        {
+        }
     }
 
     void dismiss() noexcept {
@@ -428,6 +448,11 @@ static void find_types(JNIEnv * env)
         unboxClassToEnum = env->GetStaticMethodID(reflection_class, "unboxClassToEnum", "(Ljava/lang/Class;)I");
         CHECK_JAVA_EXC(env);
     }
+    if(inspect == NULL)
+    {
+        inspect = env->GetStaticMethodID(reflection_class, "inspect", "(Ljava/lang/Class;)[Ljava/lang/Object;");
+        CHECK_JAVA_EXC(env);
+    }
     //---------primitive-accessors--------------------------
     if(booleanCtor == NULL)
     {
@@ -514,11 +539,6 @@ static void find_types(JNIEnv * env)
 
 jfieldID get_field_raw(JNIEnv * env, jclass clazz, const char * field, Parameter * out_type, int * out_static)
 {
-    scope_guards onexit;
-    env->PushLocalFrame(15);
-    CHECK_JAVA_EXC(env);
-    onexit += [env]{ env->PopLocalFrame(NULL); };
-
     find_types(env);
 
     jstring field_str = env->NewStringUTF(field);
@@ -552,11 +572,6 @@ jfieldID get_field_raw(JNIEnv * env, jclass clazz, const char * field, Parameter
 
 jmethodID get_method_raw(JNIEnv * env, jclass clazz, const char * method, int n, jobjectArray type_arr, Parameter * outTypes, int * outStatic)
 {
-    scope_guards onexit;
-    env->PushLocalFrame(15);
-    CHECK_JAVA_EXC(env);
-    onexit += [env]{ env->PopLocalFrame(NULL); };
-
     find_types(env);
 
     jobjectArray result = NULL;
@@ -814,7 +829,7 @@ static PyObject * act(PyObject *self, PyObject *args)
                 }
             }
         }
-        JNIEnv * env = get_env();
+        GET_ENV_WITH_SCOPES();
         jvalue ret = act_raw(env, (jobject)self, (void *)method, jvalues, return_type, op);
 
         if(op == SET_FIELD || op == SET_STATIC_FIELD)
@@ -862,11 +877,7 @@ static PyObject * get_method(PyObject *self, PyObject *args)
 
         Py_ssize_t type_num = PyTuple_Size(types);
 
-        JNIEnv * env = get_env();
-        scope_guards onexit;
-        env->PushLocalFrame(15);
-        CHECK_JAVA_EXC(env);
-        onexit += [env]{ env->PopLocalFrame(NULL); };
+        GET_ENV();
         find_types(env);
 
         jobjectArray type_arr = env->NewObjectArray(type_num, class_class, NULL);
@@ -938,7 +949,7 @@ static PyObject * get_field(PyObject *self, PyObject *args)
 
         Parameter out_type;
         int out_static = 0;
-        JNIEnv * env = get_env();
+        GET_ENV();
         jfieldID res = get_field_raw(env, (jclass)clazz, field, &out_type, &out_static);
         if(res == NULL)
         {
@@ -969,7 +980,7 @@ static PyObject * find_class(PyObject *self, PyObject *args)
             return NULL;
         }
 
-        JNIEnv * env = get_env();
+        GET_ENV();
         jclass local_clazz = env->FindClass(clazz);
         CHECK_JAVA_EXC(env);
         return PyLong_FromUnsignedLong((unsigned long)make_global_ref(env, (jobject)local_clazz));
@@ -995,7 +1006,7 @@ static PyObject * unbox_class(PyObject *self, PyObject *args)
             return NULL;
         }
 
-        JNIEnv * env = get_env();
+        GET_ENV();
         find_types(env);
         jint e = env->CallStaticIntMethod(reflection_class, unboxClassToEnum, (jobject)object);
         CHECK_JAVA_EXC(env);
@@ -1022,7 +1033,7 @@ static PyObject * get_object_class(PyObject *self, PyObject *args)
             return NULL;
         }
 
-        JNIEnv * env = get_env();
+        GET_ENV();
         jclass local_clazz = env->GetObjectClass((jobject)object);
         CHECK_JAVA_EXC(env);
         return PyLong_FromUnsignedLong((unsigned long)make_global_ref(env, (jobject)local_clazz));
@@ -1172,7 +1183,7 @@ static PyObject * box(PyObject *self, PyObject *args)
             return NULL;
         }
 
-        JNIEnv * env = get_env();
+        GET_ENV();
         return PyLong_FromLong((unsigned long)box_raw(env, value, type));
     }
     catch(java_exception & e)
@@ -1197,7 +1208,7 @@ static PyObject * unbox(PyObject *self, PyObject *args)
             return NULL;
         }
 
-        JNIEnv * env = get_env();
+        GET_ENV();
         find_types(env);
         jvalue v = unbox_raw(env, (jobject)object, unboxed_type);
         return unpack_value(v, unboxed_type);
@@ -1282,6 +1293,7 @@ case TYPE: \
 
 static jobject array_raw(JNIEnv * env, jobject array, int type, Optional * values, int values_start, int values_len, int op, int * out_array_len, jclass objectclass)
 {
+
     switch(type)
     {
         ARRAY_CASE(BOOLEAN, Boolean, jboolean, z)
@@ -1425,7 +1437,7 @@ static PyObject * array(PyObject *self, PyObject *args)
             return NULL;
         }
 
-        JNIEnv * env = get_env();
+        GET_ENV_WITH_SCOPES();
         int out_array_len = 0;
         jobject ret = array_raw(env, (jobject)obj, type, jvalues, start, value_num, op, &out_array_len, (jclass)objclass);
 
@@ -1471,10 +1483,79 @@ static PyObject * delete_global_ref(PyObject *self, PyObject *args)
         jobject ref = (jobject)ref_lng;
         if(ref != NULL)
         {
-            JNIEnv * env = get_env();
+            GET_ENV();
             env->DeleteGlobalRef(ref);
         }
         Py_RETURN_NONE;
+    }
+    catch(jni_exception & e)
+    {
+        LOG("got jni exception in delete_global_ref");
+        PyErr_SetString(PyExc_ValueError, e.what());
+    }
+    return NULL;
+}
+
+static std::string inspect_class_raw(JNIEnv * env, jclass ref, int * enum_type, int * is_array, jclass * out_component, int * component_enum_type, int * unboxed_component_enum_type)
+{
+    find_types(env);
+
+    jobjectArray result = (jobjectArray)env->CallStaticObjectMethod(reflection_class, inspect, ref);
+    CHECK_JAVA_EXC(env);
+
+    jstring className = (jstring)env->GetObjectArrayElement(result, 0);
+    CHECK_JAVA_EXC(env);
+    std::string class_name = get_string(env, className);
+
+    jobject enumType = env->GetObjectArrayElement(result, 1);
+    CHECK_JAVA_EXC(env);
+    *enum_type = get_integer(env, enumType);
+
+    jobject isArray = env->GetObjectArrayElement(result, 2);
+    CHECK_JAVA_EXC(env);
+    *is_array = get_integer(env, isArray);
+
+    jclass component = (jclass)env->GetObjectArrayElement(result, 3);
+    CHECK_JAVA_EXC(env);
+
+    jobject componentEnumType = env->GetObjectArrayElement(result, 4);
+    CHECK_JAVA_EXC(env);
+    *component_enum_type = get_integer(env, componentEnumType);
+
+    jobject unboxedComponentEnumType = env->GetObjectArrayElement(result, 5);
+    CHECK_JAVA_EXC(env);
+    *unboxed_component_enum_type = get_integer(env, unboxedComponentEnumType);
+
+    if(component == NULL)
+    {
+        *out_component = NULL;
+    }
+    else
+    {
+        *out_component = (jclass)make_global_ref(env, component);
+    }
+    return class_name;
+}
+
+static PyObject * inspect_class(PyObject *self, PyObject *args)
+{
+    try
+    {
+        unsigned long ref_lng = 0;
+        if (!PyArg_ParseTuple(args, "k", &ref_lng))
+        {
+            return NULL;
+        }
+
+        jclass ref = (jclass)ref_lng;
+        GET_ENV();
+        int enum_type = 0;
+        int is_array = 0;
+        jclass component = NULL;
+        int component_enum_type = 0;
+        int unboxed_component_enum_type = 0;
+        std::string class_name = inspect_class_raw(env, ref, &enum_type, &is_array, &component, &component_enum_type, &unboxed_component_enum_type);
+        return Py_BuildValue("siikii", class_name.c_str(), enum_type, is_array, (unsigned long)component, component_enum_type, unboxed_component_enum_type);
     }
     catch(jni_exception & e)
     {
@@ -1513,6 +1594,7 @@ static PyMethodDef native_hapy_methods[] = {
         {"array", array, METH_VARARGS, "everything array related"},
         {"unbox_class", unbox_class, METH_VARARGS, "unbox object class"},
         {"delete_global_ref",  delete_global_ref, METH_VARARGS, "Delete a java reference"},
+        {"inspect_class",  inspect_class, METH_VARARGS, "inspects a java class"},
         {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
