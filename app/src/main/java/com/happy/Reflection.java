@@ -338,4 +338,15 @@ public class Reflection
         Integer t = enumTypes.get(unboxed);
         return t == null ? OBJECT_TYPE : t;
     }
+
+    public static Object[] inspect(Class<?> clazz)
+    {
+        int unboxedEnumType = unboxClassToEnum(clazz);
+        int isArray = clazz.isArray() ? 1 : 0;
+        Class<?> component = clazz.getComponentType();
+        Integer t = enumTypes.get(component);
+        int componentEnumType = t == null ? OBJECT_TYPE : t;
+        int unboxedComponentEnumType = unboxClassToEnum(component);
+        return new Object[] {clazz.getCanonicalName(), unboxedEnumType, isArray, component, componentEnumType, unboxedComponentEnumType};
+    }
 }
