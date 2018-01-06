@@ -133,7 +133,7 @@ static int get_integer(JNIEnv * env, jobject integer)
     return i;
 }
 
-#define GET_ENV_WITH_SCOPES() \
+#define GET_ENV_WITHOUT_SCOPES() \
 JNIEnv * env = _get_env(); \
 env->PushLocalFrame(15); \
 CHECK_JAVA_EXC(env); \
@@ -141,7 +141,7 @@ onexit += [env]{ env->PopLocalFrame(NULL); };
 
 #define GET_ENV() \
 scope_guards onexit; \
-GET_ENV_WITH_SCOPES()
+GET_ENV_WITHOUT_SCOPES()
 
 JNIEnv * _get_env()
 {
@@ -170,6 +170,25 @@ public:
                 env->ExceptionClear();
                 throw jni_exception("exception in exception");
             }
+
+            jclass clazzclazz = env->GetObjectClass(clazz);
+            jmethodID getName = env->GetMethodID(clazzclazz,
+                                                    "getName",
+                                                    "()Ljava/lang/String;");
+
+            if(env->ExceptionCheck())
+            {
+                env->ExceptionClear();
+                throw jni_exception("exception in exception");
+            }
+
+            jstring exc_name = (jstring)env->CallObjectMethod(clazz, getName);
+            if(env->ExceptionCheck())
+            {
+                env->ExceptionClear();
+                throw jni_exception("exception in exception");
+            }
+
             jstring msg = (jstring)env->CallObjectMethod(exc, getMessage);
             if(env->ExceptionCheck())
             {
@@ -180,7 +199,7 @@ public:
             char buf[16] = {};
             snprintf(buf, sizeof(buf) - 1, "%d", line);
 
-            message = get_string(env, msg) + " in line " + buf;
+            message = get_string(env, exc_name) + ": " + get_string(env, msg) + " in line " + buf;
         }
         catch(...)
         {
@@ -843,7 +862,7 @@ static PyObject * act(PyObject *self, PyObject *args)
                 }
             }
         }
-        GET_ENV_WITH_SCOPES();
+        GET_ENV_WITHOUT_SCOPES();
         jvalue ret = act_raw(env, (jobject)self, (void *)method, jvalues, return_type, op);
 
         if(op == SET_FIELD || op == SET_STATIC_FIELD)
@@ -1451,7 +1470,7 @@ static PyObject * array(PyObject *self, PyObject *args)
             return NULL;
         }
 
-        GET_ENV_WITH_SCOPES();
+        GET_ENV_WITHOUT_SCOPES();
         int out_array_len = 0;
         jobject ret = array_raw(env, (jobject)obj, type, jvalues, start, value_num, op, &out_array_len, (jclass)objclass);
 
@@ -1679,6 +1698,45 @@ static PyObject * unbox_string(PyObject *self, PyObject *args)
     return NULL;
 }
 
+static jclass array_of_class_raw(jclass clazz)
+{
+    GET_ENV();
+
+    jobjectArray arr = env->NewObjectArray(0, clazz, NULL);
+    CHECK_JAVA_EXC(env);
+    if(arr == NULL)
+    {
+        throw jni_exception("failed to create new array");
+    }
+    jclass local_clazz = env->GetObjectClass(arr);
+    CHECK_JAVA_EXC(env);
+    return (jclass)make_global_ref(env, local_clazz);
+}
+
+static PyObject * array_of_class(PyObject *self, PyObject *args)
+{
+    try
+    {
+        unsigned long ref_lng = 0;
+        if (!PyArg_ParseTuple(args, "k", &ref_lng))
+        {
+            return NULL;
+        }
+
+        return Py_BuildValue("k", array_of_class_raw((jclass)ref_lng));
+    }
+    catch(java_exception & e)
+    {
+        PyErr_SetString(PyExc_ValueError, e.what());
+    }
+    catch(jni_exception & e)
+    {
+        LOG("got jni exception in array_of_class");
+        PyErr_SetString(PyExc_ValueError, e.what());
+    }
+    return NULL;
+}
+
 extern "C" JNIEXPORT jint JNICALL Java_com_happy_MainActivity_pythonRun(JNIEnv * env, jclass clazz, jstring script)
 {
     auto path = get_string(env, script);
@@ -1711,6 +1769,7 @@ static PyMethodDef native_hapy_methods[] = {
         {"inspect_class",  inspect_class, METH_VARARGS, "inspects a java class"},
         {"make_string", make_string, METH_VARARGS, "makes jstring from str"},
         {"unbox_string", unbox_string, METH_VARARGS, "unbox string"},
+        {"array_of_class", array_of_class, METH_VARARGS, "gets the class which is the array of a given class"},
         {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 

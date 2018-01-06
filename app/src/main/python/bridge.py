@@ -25,8 +25,9 @@ class jref:
         return bool(self.handle)
 
 def know_class(clazz):
-    known_classes[clazz.class_name] = clazz
-    return known_classes[clazz.class_name]
+    if clazz.class_name not in known_classes:
+        known_classes[clazz.class_name] = clazz
+    return known_classes[clazz.class_name] #additional global refs to a known class will be destructed here
 
 def get_class(ref):
     return know_class(jclass(jref(native_hapy.get_object_class(ref.handle))))
@@ -88,11 +89,14 @@ class jstring(jobjectbase):
     def from_str(cls, v):
         return jstring(jref(native_hapy.make_string(str(v))))
 
-
 def find_class(path):
-    if path not in known_classes:
-        known_classes[path] = know_class(jclass(jref(native_hapy.find_class(path.replace('.', '/')))))
-    return known_classes[path]
+    return know_class(jclass(jref(native_hapy.find_class(path.replace('.', '/')))))
+
+def array_of_class(clazz):
+    return know_class(jclass(jref(native_hapy.array_of_class(clazz.ref.handle))))
+
+def find_primitive_array(code):
+    return primitive_code_to_array[code]
 
 JNULL = jobject(jref(0), 'null')
 OBJECT_CLASS = find_class('java.lang.Object')
@@ -123,18 +127,27 @@ primitive_codes = {
     'const': 9,
 }
 
-wrapper_to_primitive_code = {
-    find_class('java.lang.Boolean'): primitive_codes['boolean'],
-    find_class('java.lang.Byte'): primitive_codes['byte'],
-    find_class('java.lang.Character'): primitive_codes['char'],
-    find_class('java.lang.Short'): primitive_codes['short'],
-    find_class('java.lang.Integer'): primitive_codes['int'],
-    find_class('java.lang.Long'): primitive_codes['long'],
-    find_class('java.lang.Float'): primitive_codes['float'],
-    find_class('java.lang.Double'): primitive_codes['double'],
+primitive_code_to_wrapper = {
+    primitive_codes['boolean']: find_class('java.lang.Boolean'),
+    primitive_codes['byte']:    find_class('java.lang.Byte'),
+    primitive_codes['char']:    find_class('java.lang.Character'),
+    primitive_codes['short']:   find_class('java.lang.Short'),
+    primitive_codes['int']:     find_class('java.lang.Integer'),
+    primitive_codes['long']:    find_class('java.lang.Long'),
+    primitive_codes['float']:   find_class('java.lang.Float'),
+    primitive_codes['double']:  find_class('java.lang.Double'),
 }
-revd=dict([reversed(i) for i in wrapper_to_primitive_code.items()])
-wrapper_to_primitive_code.update(revd)
+
+primitive_code_to_array = {
+    primitive_codes['boolean']: find_class('[Z'),
+    primitive_codes['byte']:    find_class('[B'),
+    primitive_codes['char']:    find_class('[C'),
+    primitive_codes['short']:   find_class('[S'),
+    primitive_codes['int']:     find_class('[I'),
+    primitive_codes['long']:    find_class('[J'),
+    primitive_codes['float']:   find_class('[F'),
+    primitive_codes['double']:  find_class('[D'),
+}
 
 class meta_primitive(type):
     def __new__(cls, *args, **kwargs):
@@ -142,7 +155,7 @@ class meta_primitive(type):
         k = inst.__name__[1:] #drop the 'j'
         if k != 'primitive':
             inst.code = primitive_codes[k]
-            inst.wrapper_class = wrapper_to_primitive_code[inst.code]
+            inst.wrapper_class = primitive_code_to_wrapper[inst.code]
         return inst
 
 class jprimitive(metaclass=meta_primitive):
@@ -305,13 +318,28 @@ class array(jobjectbase):
             self._length, _, _ = native_hapy.array(self.ref.handle, tuple(), 0, self.type_code, OP_GET_ARRAY_LENGTH, JNULL.ref.handle)
         return self._length
 
+    @property
+    def clazz(self):
+        if code_is_object(self.type_code):
+            return array_of_class(self.element_class)
+        else:
+            return find_primitive_array(self.type_code)
+
     #the tuple in native_hapy.array must contain elements waiting to be filled with make_value, and None if it shouldn't be read from java at all
     #therefore, None should never be actually passed from outside and will be changed to JNULL
-    def setitems(self, start, items):
-        if start < 0:
-            start += self.length
-        if start < 0 or start + len(items) > self.length:
-            raise IndexError('out of range: {}'.format(self.length))
+    def __setitem__(self, key, items):
+        if isinstance(key, slice):
+            start, stop, step = key.indices(self.length)
+            items = list(items)
+            if step != 1:
+                raise ValueError('only step = 1 are supported')
+            if len(items) != stop - start:
+                raise ValueError('invalid array size: {}, needs to be {}'.format(len(items), stop - start))
+        elif isinstance(key, int):
+            start, stop = key, key + 1
+            items = [items]
+        else:
+            raise ValueError('invalid index: {}'.format(key))
 
         args = tuple(convert_arg(item) for item in items)
         values = tuple(prepare_value(arg, self.type_code, t) for arg, w, t in args)
@@ -319,38 +347,46 @@ class array(jobjectbase):
         native_hapy.array(self.ref.handle, tuple(v for v, _ in values), start, self.type_code, OP_SET_ITEMS, JNULL.ref.handle)
 
     #the tuple returned by native_hapy.array will contain primitives, jobject or None to denote NULL
-    def getitems(self, start, end):
-        if start < 0:
-            start += self.length
-        if end < 0:
-            end += self.length
-        if end - start == 1 and start < 0 or start >= self.length:
-            raise IndexError('out of range: {}'.format(self.length))
-        if end <= start:
-            return tuple()
-
-        array_len, obj, elements = native_hapy.array(self.ref.handle, (0,) * (end - start), start, self.type_code, OP_GET_ITEMS, JNULL.ref.handle)
-
-        if not code_is_object(self.type_code):
-            return elements
+    def __getitem__(self, key):
+        if isinstance(key, slice):
+            start, stop, step = key.indices(self.length)
+            if step != 1:
+                raise ValueError('only step = 1 are supported')
+            if stop <= start:
+                return tuple()
+        elif isinstance(key, int):
+            if key < 0 or key >= self.length:
+                raise ValueError('index out of range: {}, len is {}'.format(key, self.length))
+            start, stop = key, key + 1
         else:
-            elements = tuple(jobject(jref(e), 'array element') if e is not None else None for e in elements)
-            return tuple(upcast(e) for e in elements)
+            raise ValueError('invalid index: {}'.format(key))
 
-def make_array(l, type_code=None, clazz=None):
-    if type_code is None and not isinstance(clazz, jobjectbase):
-        raise ValueError('must specify type_code or clazz')
+        array_len, obj, elements = native_hapy.array(self.ref.handle, (0,) * (stop - start), start, self.type_code, OP_GET_ITEMS, JNULL.ref.handle)
 
-    if isinstance(clazz, jobjectbase):
-        type_unboxed_code = native_hapy.unbox_class(clazz.ref.handle)
-        clazz_obj = clazz
+        if code_is_object(self.type_code):
+            elements = tuple(upcast(jobject(jref(e), 'array element')) if e is not None else None for e in elements)
+
+        if isinstance(key, int):
+            return elements[0]
+        return elements
+
+    def __repr__(self):
+        return 'array of length {}: {}'.format(self.length, self[:])
+
+def make_array(l, type_code_or_clazz):
+    if isinstance(type_code_or_clazz, jobjectbase):
+        type_unboxed_code = native_hapy.unbox_class(type_code_or_clazz.ref.handle)
+        clazz_obj = type_code_or_clazz
         type_code = primitive_codes['object']
-    else:
+    elif type_code_or_clazz in primitive_code_to_array:
         clazz_obj = JNULL
-        type_unboxed_code = type_code
+        type_code = type_code_or_clazz
+        type_unboxed_code = type_code_or_clazz
+    else:
+        raise ValueError('must be primitive code or class')
 
     array_len, obj, elements = native_hapy.array(JNULL.ref.handle, (None,) * l, 0, type_code, OP_NEW_ARRAY, clazz_obj.ref.handle)
-    return array(jref(obj), type_code, type_unboxed_code, clazz, array_len)
+    return array(jref(obj), type_code, type_unboxed_code, clazz_obj, array_len)
 
 def upcast(obj):
     if obj is None:
@@ -459,27 +495,26 @@ def tests():
         #assert(java_time < square_time)
 
     def test5():
+        pos = 1
+
         arr = make_array(5, primitive_codes['int'])
         assert(type(arr) == array)
 
-        items = arr.setitems(1, list(range(40, 40 + arr.length - 1)))
-        assert(items == None)
-
-        items = arr.getitems(0, arr.length)
+        arr[pos : arr.length] = list(range(40, 40 + arr.length - pos))
+        items = arr[0:arr.length]
         print('arr1', items)
         assert(items == (0, 40, 41, 42, 43))
 
-        arr = make_array(5, primitive_codes['object'], find_class('java.lang.Long'))
+        arr = make_array(5, find_class('java.lang.Long'))
         assert(type(arr) == array)
 
-        items = arr.getitems(0, arr.length)
+        items = arr[0:arr.length]
         print('arr2', items)
         assert(items == (None,) * 5)
 
-        items = arr.setitems(1, list(jlong(i) for i in range(40, 40 + arr.length - 1)))
-        assert(items is None)
+        arr[pos : arr.length] = list(jlong(i) for i in range(40, 40 + arr.length - pos))
 
-        items = arr.getitems(0, arr.length)
+        items = arr[0:arr.length]
         print('arr2 2', items)
         assert(items == (None, 40, 41, 42, 43))
 
@@ -488,23 +523,20 @@ def tests():
 
         arr = call_method(Test, None, 'test_int_array', 13)
         assert(arr.length == 13)
-        items = arr.setitems(pos, list(range(40, 40 + arr.length - pos)))
-        assert(items == None)
-        items = arr.getitems(0, arr.length)
+        arr[pos : arr.length] = list(range(40, 40 + arr.length - pos))
+        items = arr[0:arr.length]
         print(items)
 
         arr = call_method(Test, None, 'test_integer_array', 13)
         assert(arr.length == 13)
-        items = arr.setitems(pos, list(range(40, 40 + arr.length - pos)))
-        assert(items == None)
-        items = arr.getitems(0, arr.length)
+        arr[pos : arr.length] = list(range(40, 40 + arr.length - pos))
+        items = arr[0:arr.length]
         print(items)
 
         arr = call_method(Test, None, 'test_object_array', 13)
         assert(arr.length == 13)
-        items = arr.setitems(pos, list(range(40, 40 + arr.length - pos)))
-        assert(items == None)
-        items = arr.getitems(0, arr.length)
+        arr[pos : arr.length] = list(range(40, 40 + arr.length - pos))
+        items = arr[0:arr.length]
         print(items)
 
     def test7():
