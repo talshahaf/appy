@@ -163,43 +163,49 @@ jdouble = jprimitive(bridge.jdouble)
 new = New('')
 
 #====================================
+def test1():
+    test = new.com.happy.Test()
 
-test = new.com.happy.Test()
+    print(test.ins_value)
+    test.ins_value = 38
+    print(test.ins_value)
+    print(~test.test_value)
+    print(test.test_value.ins_value)
+    test.test_value.ins_value = 59
+    print(test.test_value.ins_value)
+    print('=====')
+    print(test.value)
+    print(test.value())
 
-print(test.ins_value)
-test.ins_value = 38
-print(test.ins_value)
-print(~test.test_value)
-print(test.test_value.ins_value)
-test.test_value.ins_value = 59
-print(test.test_value.ins_value)
-print('=====')
-print(test.value)
-print(test.value())
+    arr = test.test_integer_array(13)
+    print(arr[1], arr[1:-2])
+    arr[1] = 15
+    arr[1:-2] = range(1,11)
+    arr[:4] = [50, 51, 52, 53]
+    print(arr[1], arr[1:-2])
+    print(arr)
+    print(arr.length)
+    print('===')
+    print(new.com.happy.Test[()])
+    print(new.com.happy.Test[()]([new.com.happy.Test(), new.com.happy.Test()]))
+    print(new.com.happy.Test[()][()]([new.com.happy.Test[()]([new.com.happy.Test(), new.com.happy.Test()])]))
+    print(jlong(13))
+    print(jlong[()](3))
+    print(jlong[()]([jlong(1), jlong(2), jlong(3)]))
+    print(jlong[()][()]([
+                            jlong[()]([jlong(1), jlong(2), jlong(3)]),
+                            jlong[()]([jlong(4), jlong(5), jlong(6)]),
+                            jlong[()]([jlong(7), jlong(8), jlong(9)])
+                        ]))
+    #bridge.tests()
+    #nul = test.null_test
+    #print(type(nul), nul == Null, nul == nul, nul is Null, nul, test.null_test, test.null_test())
+    #print(nul.get)
+    #print(nul.get())
+    #nul.set = 3
 
-arr = test.test_integer_array(13)
-print(arr[1], arr[1:-2])
-arr[1] = 15
-arr[1:-2] = range(1,11)
-arr[:4] = [50, 51, 52, 53]
-print(arr[1], arr[1:-2])
-print(arr)
-print(arr.length)
-print('===')
-print(new.com.happy.Test[()])
-print(new.com.happy.Test[()]([new.com.happy.Test(), new.com.happy.Test()]))
-print(new.com.happy.Test[()][()]([new.com.happy.Test[()]([new.com.happy.Test(), new.com.happy.Test()])]))
-print(jlong(13))
-print(jlong[()](3))
-print(jlong[()]([jlong(1), jlong(2), jlong(3)]))
-print(jlong[()][()]([
-                        jlong[()]([jlong(1), jlong(2), jlong(3)]),
-                        jlong[()]([jlong(4), jlong(5), jlong(6)]),
-                        jlong[()]([jlong(7), jlong(8), jlong(9)])
-                    ]))
-#bridge.tests()
-#nul = test.null_test
-#print(type(nul), nul == Null, nul == nul, nul is Null, nul, test.null_test, test.null_test())
-#print(nul.get)
-#print(nul.get())
-#nul.set = 3
+def test2():
+    test = new.com.happy.Test()
+    print('callback test returned: ', test.test_callback(test))
+
+test2()

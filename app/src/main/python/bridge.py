@@ -12,12 +12,12 @@ class jref:
         if not isinstance(handle, int):
             raise ValueError('handle must be int')
         self.handle = handle
-        #print('created {}'.format(self))
+        #print('created {}'.format(self.handle))
 
     def __del__(self):
         #TODO make sure this doesn't get called twice for the same handle
         if self.handle:
-            #print('deleting {}'.format(self))
+            #print('deleting {}'.format(self.handle))
             native_hapy.delete_global_ref(self.handle)
             self.handle = None
 
@@ -398,7 +398,9 @@ def upcast(obj):
         return None
 
     if obj.clazz.is_array:
-        return array(obj.ref, obj.clazz.element_code, obj.clazz.unboxed_element_code, obj.clazz.element_class)
+        arr = array(jref(obj.ref.handle), obj.clazz.element_code, obj.clazz.unboxed_element_code, obj.clazz.element_class)
+        obj.ref.handle = 0
+        return arr
 
     if not code_is_object(obj.clazz.code):
         return native_hapy.unbox(obj.ref.handle, obj.clazz.code)
@@ -408,6 +410,16 @@ def upcast(obj):
 
     return obj
 
+def callback(arg):
+    print('callback called')
+    args = upcast(jobject(jref(arg), 'callback arg'))
+    ret = args[0]
+    ref = native_hapy.new_global_ref(ret.ref.handle) #this crashes
+    print(ref)
+    return ref
+
+
+native_hapy.set_callback(callback)
 
 def tests():
     print('=================================begin')

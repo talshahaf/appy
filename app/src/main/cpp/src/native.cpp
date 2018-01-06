@@ -21,6 +21,7 @@
 JavaVM * vm = NULL;
 jclass class_class = NULL;
 jclass reflection_class = NULL;
+jclass python_exception_class = NULL;
 jmethodID compatibleMethod = NULL;
 jmethodID getField = NULL;
 jmethodID unboxClassToEnum = NULL;
@@ -405,6 +406,12 @@ static void find_types(JNIEnv * env)
         jclass local_reflection = env->FindClass("com/happy/Reflection");
         CHECK_JAVA_EXC(env);
         reflection_class = (jclass)make_global_ref(env, (jobject)local_reflection);
+    }
+    if(python_exception_class == NULL)
+    {
+        jclass local_python_exception = env->FindClass("com/happy/PythonException");
+        CHECK_JAVA_EXC(env);
+        python_exception_class = (jclass)make_global_ref(env, (jobject)local_python_exception);
     }
     //-------primitives-----------------
     if(boolean_class == NULL)
@@ -1504,30 +1511,57 @@ static PyObject * array(PyObject *self, PyObject *args)
 }
 
 static PyObject * delete_global_ref(PyObject *self, PyObject *args)
-{
-    try
-    {
-        unsigned long ref_lng = 0;
-        if (!PyArg_ParseTuple(args, "k", &ref_lng))
-        {
-            return NULL;
-        }
+ {
+     try
+     {
+         unsigned long ref_lng = 0;
+         if (!PyArg_ParseTuple(args, "k", &ref_lng))
+         {
+             return NULL;
+         }
 
-        jobject ref = (jobject)ref_lng;
-        if(ref != NULL)
-        {
-            GET_ENV();
-            env->DeleteGlobalRef(ref);
-        }
-        Py_RETURN_NONE;
-    }
-    catch(jni_exception & e)
-    {
-        LOG("got jni exception in delete_global_ref");
-        PyErr_SetString(PyExc_ValueError, e.what());
-    }
-    return NULL;
-}
+         jobject ref = (jobject)ref_lng;
+         if(ref != NULL)
+         {
+             GET_ENV();
+             env->DeleteGlobalRef(ref);
+         }
+         Py_RETURN_NONE;
+     }
+     catch(jni_exception & e)
+     {
+         LOG("got jni exception in delete_global_ref");
+         PyErr_SetString(PyExc_ValueError, e.what());
+     }
+     return NULL;
+ }
+
+ static PyObject * new_global_ref(PyObject *self, PyObject *args)
+ {
+     try
+     {
+         unsigned long ref_lng = 0;
+         if (!PyArg_ParseTuple(args, "k", &ref_lng))
+         {
+             return NULL;
+         }
+
+         jobject ref = (jobject)ref_lng;
+         jobject global_ref = NULL;
+         if(ref != NULL)
+         {
+             GET_ENV();
+             global_ref = env->NewGlobalRef(ref);
+         }
+         return Py_BuildValue("k", (unsigned long)global_ref);
+     }
+     catch(jni_exception & e)
+     {
+         LOG("got jni exception in new_global_ref");
+         PyErr_SetString(PyExc_ValueError, e.what());
+     }
+     return NULL;
+ }
 
 static std::string inspect_class_raw(JNIEnv * env, jclass ref, int * enum_type, int * is_array, jclass * out_component, int * component_enum_type, int * unboxed_component_enum_type)
 {
@@ -1737,6 +1771,77 @@ static PyObject * array_of_class(PyObject *self, PyObject *args)
     return NULL;
 }
 
+static PyObject * callback = NULL;
+static PyObject * set_callback(PyObject *self, PyObject *args)
+{
+    PyObject * temp = NULL;
+    if (!PyArg_ParseTuple(args, "O", &temp))
+    {
+        return NULL;
+    }
+
+    if (!PyCallable_Check(temp))
+    {
+        PyErr_SetString(PyExc_TypeError, "parameter must be callable");
+        return NULL;
+    }
+    Py_XINCREF(temp);         /* Add a reference to new callback */
+    Py_XDECREF(callback);  /* Dispose of previous callback */
+    callback = temp;       /* Remember new callback */
+    Py_RETURN_NONE;
+}
+
+extern "C" JNIEXPORT jobject JNICALL Java_com_happy_MainActivity_pythonCall(JNIEnv * env, jclass clazz, jobjectArray args)
+{
+    scope_guards guards;
+
+    find_types(env);
+
+    if(callback == NULL)
+    {
+        env->ThrowNew(python_exception_class, "No callback defined");
+        return NULL;
+    }
+
+    PyGILState_STATE gstate;
+    gstate = PyGILState_Ensure();
+    guards += [&gstate] {PyGILState_Release(gstate);};
+
+    PyObject * arg = Py_BuildValue("(k)", (unsigned long)make_global_ref(env, args));
+    if(arg == NULL)
+    {
+        PyErr_Clear();
+        env->ThrowNew(python_exception_class, "build value failed");
+        return NULL;
+    }
+    PyObject * result = PyObject_CallObject(callback, arg);
+    Py_XDECREF(arg);
+    if (result == NULL)
+    {
+        PyErr_Clear();
+        env->ThrowNew(python_exception_class, "python exception..."); //TODO
+        return NULL;
+    }
+
+    if(!PyLong_Check(result))
+    {
+        Py_DECREF(result);
+        env->ThrowNew(python_exception_class, "callback result is invalid");
+        return NULL;
+    }
+
+    jobject global_ref = (jobject)PyLong_AsUnsignedLong(result);
+    Py_DECREF(result);
+
+    if(global_ref != NULL)
+    {
+        jobject local = env->NewLocalRef(global_ref);
+        env->DeleteGlobalRef(global_ref);
+        return local;
+    }
+    return NULL;
+}
+
 extern "C" JNIEXPORT jint JNICALL Java_com_happy_MainActivity_pythonRun(JNIEnv * env, jclass clazz, jstring script)
 {
     auto path = get_string(env, script);
@@ -1766,10 +1871,12 @@ static PyMethodDef native_hapy_methods[] = {
         {"array", array, METH_VARARGS, "everything array related"},
         {"unbox_class", unbox_class, METH_VARARGS, "unbox object class"},
         {"delete_global_ref",  delete_global_ref, METH_VARARGS, "Delete a java reference"},
+        {"new_global_ref", new_global_ref, METH_VARARGS, "created a new global reference (should be used only on callbacks)"},
         {"inspect_class",  inspect_class, METH_VARARGS, "inspects a java class"},
         {"make_string", make_string, METH_VARARGS, "makes jstring from str"},
         {"unbox_string", unbox_string, METH_VARARGS, "unbox string"},
         {"array_of_class", array_of_class, METH_VARARGS, "gets the class which is the array of a given class"},
+        {"set_callback", set_callback, METH_VARARGS, "sets callback to be called from java"},
         {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
@@ -1802,3 +1909,4 @@ extern "C" JNIEXPORT jint JNICALL Java_com_happy_MainActivity_pythonInit(JNIEnv 
 
     return 0;
 }
+

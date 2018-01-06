@@ -121,4 +121,17 @@ public class Test
         Log.d("HAPY", ""+s.length());
         return "בדיקה";
     }
+
+    public static int test_callback(int i)
+    {
+        Log.d("HAPY", "test_callback2!");
+        Integer x = (Integer)MainActivity.pythonCall(i * 2);
+        return x == null ? 0 : x;
+    }
+
+    public static Object test_callback(Object i)
+    {
+        Log.d("HAPY", "test_callback!");
+        return MainActivity.pythonCall(i);
+    }
 }
