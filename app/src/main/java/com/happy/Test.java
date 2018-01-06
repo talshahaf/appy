@@ -11,11 +11,24 @@ public class Test
     public static Long value = 23L;
     public Long ins_value = 24L;
     public Test2 test_value = new Test2();
+    public static Long null_test = null;
+
+    public static Long value()
+    {
+        return 85L;
+    }
+
+    public static Long null_test()
+    {
+        return 87L;
+    }
 
     public class Test2
     {
         public Long ins_value = 11L;
     }
+
+
 
     public Test()
     {
