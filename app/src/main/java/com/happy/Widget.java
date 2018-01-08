@@ -300,7 +300,7 @@ public class Widget extends RemoteViewsService {
                 String ran = "" + (char)('A' + new Random().nextInt(26));
                 view.attrs.put("setText", new SetVariable((CharSequence)ran));
 
-                MainActivity.pythonRun("/sdcard/main.py");
+                MainActivity.pythonRun("/sdcard/main.py", getApplicationContext());
             }
         };
 

@@ -19,6 +19,7 @@
 #define PYTHON_CALL
 
 JavaVM * vm = NULL;
+jobject g_context = NULL;
 jclass class_class = NULL;
 jclass reflection_class = NULL;
 jclass python_exception_class = NULL;
@@ -28,6 +29,7 @@ jmethodID unboxClassToEnum = NULL;
 jmethodID inspect = NULL;
 jmethodID stringToBytes = NULL;
 jmethodID bytesToString = NULL;
+jmethodID createInterface = NULL;
 
 //primitives
 jclass boolean_class = NULL;
@@ -115,6 +117,10 @@ static void find_types(JNIEnv * env);
 
 static std::string get_string(JNIEnv * env, jstring str)
 {
+    if(str == NULL)
+    {
+        return "";
+    }
     const char * cstr = env->GetStringUTFChars(str, NULL);
     if(cstr == NULL)
     {
@@ -492,6 +498,11 @@ static void find_types(JNIEnv * env)
     {
         bytesToString = env->GetStaticMethodID(reflection_class, "bytesToString", "([B)Ljava/lang/String;");
         CHECK_JAVA_EXC(env);
+    }
+    if(createInterface == NULL)
+    {
+         createInterface = env->GetStaticMethodID(reflection_class, "createInterface", "(J[Ljava/lang/Class;)Ljava/lang/Object;");
+         CHECK_JAVA_EXC(env);
     }
     //---------primitive-accessors--------------------------
     if(booleanCtor == NULL)
@@ -1771,6 +1782,45 @@ static PyObject * array_of_class(PyObject *self, PyObject *args)
     return NULL;
 }
 
+static jobject create_interface_raw(jlong id, jobjectArray classes)
+{
+    GET_ENV();
+    find_types(env);
+
+    jobject iface = env->CallStaticObjectMethod(reflection_class, createInterface, id, classes);
+    CHECK_JAVA_EXC(env);
+    if(iface == NULL)
+    {
+        throw jni_exception("failed to create interface");
+    }
+    return make_global_ref(env, iface);
+}
+
+static PyObject * create_interface(PyObject *self, PyObject *args)
+{
+    try
+    {
+        long long id = 0;
+        unsigned long classes = 0;
+        if (!PyArg_ParseTuple(args, "Lk", &id, &classes))
+        {
+            return NULL;
+        }
+
+        return Py_BuildValue("k", (unsigned long)create_interface_raw((jlong)id, (jobjectArray)classes));
+    }
+    catch(java_exception & e)
+    {
+        PyErr_SetString(PyExc_ValueError, e.what());
+    }
+    catch(jni_exception & e)
+    {
+        LOG("got jni exception in array_of_class");
+        PyErr_SetString(PyExc_ValueError, e.what());
+    }
+    return NULL;
+}
+
 static PyObject * callback = NULL;
 static PyObject * set_callback(PyObject *self, PyObject *args)
 {
@@ -1789,6 +1839,16 @@ static PyObject * set_callback(PyObject *self, PyObject *args)
     Py_XDECREF(callback);  /* Dispose of previous callback */
     callback = temp;       /* Remember new callback */
     Py_RETURN_NONE;
+}
+
+static PyObject * get_global_context(PyObject *self, PyObject *args)
+{
+    if(g_context == NULL)
+    {
+        PyErr_SetString(PyExc_SystemError, "no context available");
+        return NULL;
+    }
+    return PyLong_FromUnsignedLong((unsigned long)g_context);
 }
 
 extern "C" JNIEXPORT jobject JNICALL Java_com_happy_MainActivity_pythonCall(JNIEnv * env, jclass clazz, jobjectArray args)
@@ -1842,9 +1902,14 @@ extern "C" JNIEXPORT jobject JNICALL Java_com_happy_MainActivity_pythonCall(JNIE
     return NULL;
 }
 
-extern "C" JNIEXPORT jint JNICALL Java_com_happy_MainActivity_pythonRun(JNIEnv * env, jclass clazz, jstring script)
+extern "C" JNIEXPORT jint JNICALL Java_com_happy_MainActivity_pythonRun(JNIEnv * env, jclass clazz, jstring script, jobject context)
 {
     auto path = get_string(env, script);
+
+    if(g_context == NULL)
+    {
+        g_context = env->NewGlobalRef(context);
+    }
 
     FILE * fh = fopen(path.c_str(), "r");
     if(fh == NULL)
@@ -1877,6 +1942,8 @@ static PyMethodDef native_hapy_methods[] = {
         {"unbox_string", unbox_string, METH_VARARGS, "unbox string"},
         {"array_of_class", array_of_class, METH_VARARGS, "gets the class which is the array of a given class"},
         {"set_callback", set_callback, METH_VARARGS, "sets callback to be called from java"},
+        {"create_interface", create_interface, METH_VARARGS, "creates interface"},
+        {"get_global_context", get_global_context, METH_VARARGS, "gets the global context"},
         {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 

@@ -2,12 +2,9 @@ package com.happy;
 
 import android.util.Log;
 
-/**
- * Created by Tal on 30/12/2017.
- */
-
 public class Test
 {
+
     public static Long value = 23L;
     public Long ins_value = 24L;
     public Test2 test_value = new Test2();
@@ -122,16 +119,9 @@ public class Test
         return "בדיקה";
     }
 
-    public static int test_callback(int i)
-    {
-        Log.d("HAPY", "test_callback2!");
-        Integer x = (Integer)MainActivity.pythonCall(i * 2);
-        return x == null ? 0 : x;
-    }
-
-    public static Object test_callback(Object i)
+    public static Object test_callback(Interfaces iface, Object obj) throws Throwable
     {
         Log.d("HAPY", "test_callback!");
-        return MainActivity.pythonCall(i);
+        return iface.action(obj);
     }
 }

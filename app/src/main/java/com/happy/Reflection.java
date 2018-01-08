@@ -1,5 +1,8 @@
 package com.happy;
 
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
 import android.util.Log;
 
 import java.io.UnsupportedEncodingException;
@@ -9,6 +12,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.lang.reflect.Proxy;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -359,6 +363,44 @@ public class Reflection
     public static String bytesToString(byte[] bytes) throws UnsupportedEncodingException
     {
         return new String(bytes, "UTF-8");
+    }
+
+    public static class ProxyListener implements java.lang.reflect.InvocationHandler {
+        private long id;
+        public ProxyListener(long id)
+        {
+            this.id = id;
+        }
+        public Object invoke(Object proxy, Method m, Object[] args) throws Throwable
+        {
+            return MainActivity.pythonCall(id, m.getDeclaringClass(), m.getName(), args);
+        }
+    }
+
+    public static Object createInterface(long id, Class<?>[] classes)
+    {
+        return Proxy.newProxyInstance(classes[0].getClassLoader(), classes, new ProxyListener(id));
+    }
+
+    static class BroadcastInterfaceBridge extends BroadcastReceiver
+    {
+        private BroadcastInterface iface;
+
+        public BroadcastInterfaceBridge(BroadcastInterface iface)
+        {
+            super();
+            this.iface = iface;
+        }
+
+        @Override
+        public void onReceive(Context context, Intent intent)
+        {
+            iface.onReceive(context, intent);
+        }
+    }
+    public static Object createBroadcastReceiver(long id)
+    {
+        return new BroadcastInterfaceBridge((BroadcastInterface)createInterface(id, new Class[]{BroadcastInterface.class}));
     }
 }
 

@@ -3,6 +3,9 @@ import bridge
 
 primitive_wraps = {}
 
+def raise_(exc):
+    raise exc
+
 def wrap(obj, *args, **kwargs):
     if obj is None:
         return Null(obj, *args, **kwargs), False
@@ -27,21 +30,50 @@ def unwrap(obj):
 def unwrap_args(args):
     return (unwrap(arg) for arg in args)
 
-class New:
-    def __init__(self, path):
+def find_class_with_inner(path):
+    while True:
+        try:
+            return bridge.find_class(path)
+        except ValueError:
+            if '.' not in path:
+                raise
+            start, sep, end = path.rpartition('.')
+            path = '{}${}'.format(start, end)
+
+class Path:
+    def __init__(self, path_func=None, cls_func=None, arr_func=None, path='', array_dim=0):
+        self.path_func = path_func
+        self.cls_func = cls_func
+        self.arr_func = arr_func
         self.path = path
+        self.array_dim = array_dim
 
     def __getattr__(self, attr):
-        return New(attr if not self.path else '{}.{}'.format(self.path, attr))
+        if self.array_dim != 0:
+            raise ValueError('invalid path')
+        return Path(self.cls_func, self.arr_func, attr if not self.path else '{}.{}'.format(self.path, attr))
 
     def __call__(self, *args):
-        return wrap(bridge.call_method(bridge.find_class(self.path), None, '', *unwrap_args(args)))[0]
+        if self.path_func is not None:
+            return self.path_func(self.path, *args)
+        cls = find_class_with_inner(self.path)
+        if self.array_dim == 0:
+            if self.cls_func is None:
+                raise ValueError('operation not supported')
+            return self.cls_func(cls, *args)
+        else:
+            if self.arr_func is None:
+                raise ValueError('operation not supported')
+            element_cls = cls
+            for _ in range(self.array_dim - 1):
+                element_cls = bridge.array_of_class(element_cls)
+            arr_cls = bridge.array_of_class(element_cls)
+            return self.arr_func(arr_cls, element_cls, *args)
 
     def __getitem__(self, key):
         if not isinstance(key, tuple) or len(key) != 0:
             raise ValueError('must be ()')
-        clazz = bridge.find_class(self.path)
-        return ClassArray(bridge.array_of_class(clazz), Class(clazz))
+        return Path(self.cls_func, self.arr_func, self.path, self.array_dim + 1)
 
 def _call(parent, attrname, *args):
     return wrap(bridge.call_method(parent.bridge.clazz, parent.bridge, attrname, *unwrap_args(args)))[0]
@@ -99,33 +131,23 @@ class Null(Object):
     def __invert__(self):
         return self
 
+def construct(cls, *args):
+    return wrap(bridge.call_method(cls, None, '', *unwrap_args(args)))[0]
+
 class Class(Object):
     def __call__(self, *args):
-        return wrap(bridge.call_method(self.bridge, None, '', *unwrap_args(args)))[0]
+        return construct(self.bridge, *args)
 
-class ClassArray(Class):
-    def __init__(self, bridge_obj, element_class):
-        super().__init__(bridge_obj)
-        self.__dict__['element_class'] = element_class
-
-    def __call__(self, l):
-        if not isinstance(l, int):
-            items = list(l)
-            l = len(items)
-        else:
-            items = None
-        arr = wrap(bridge.make_array(l, self.element_class.bridge))[0]
-        if items is not None:
-            arr[:] = items
-        return arr
-
-    def __getitem__(self, key):
-        if not isinstance(key, tuple) or len(key) != 0:
-            raise ValueError('must be ()')
-        return ClassArray(bridge.array_of_class(self.bridge), self)
-
-    def __repr__(self):
-        return 'array class of {}'.format(self.bridge)
+def make_array(element_class, l):
+    if not isinstance(l, int):
+        items = list(l)
+        l = len(items)
+    else:
+        items = None
+    arr = wrap(bridge.make_array(l, element_class.bridge))[0]
+    if items is not None:
+        arr[:] = items
+    return arr
 
 class Array(Object):
     def __len__(self):
@@ -141,16 +163,39 @@ class Array(Object):
             value = unwrap(value)
         self.bridge[key] = value
 
+class primitive_array:
+    def __init__(self, code, array_dim=1):
+        self.code = code
+        self.array_dim = array_dim
+
+    def __call__(self, *args):
+        element_cls = bridge.find_primitive_array(self.code)
+        if self.array_dim > 1:
+            for _ in range(self.array_dim - 2):
+                element_cls = bridge.array_of_class(element_cls)
+        return make_array(element_cls, *args)
+
+    def __getitem__(self, key):
+        if not isinstance(key, tuple) or len(key) != 0:
+            raise ValueError('must be ()')
+        return primitive_array(self.code, self.array_dim + 1)
+
 class jprimitive:
     def __init__(self, bridge_class):
         self.bridge_class = bridge_class
-        self.bridge = self.bridge_class.code
+        self.code = self.bridge_class.code
     def __call__(self, *args, **kwargs):
         return self.bridge_class(*args, **kwargs)
     def __getitem__(self, key):
         if not isinstance(key, tuple) or len(key) != 0:
             raise ValueError('must be ()')
-        return ClassArray(bridge.find_primitive_array(self.bridge), self)
+        return primitive_array(self.code)
+
+def interface(f):
+    def func(*args):
+        return unwrap(f(*(wrap(arg)[0] for arg in args)))
+    func.__interface__ = True
+    return func
 
 jlong = jprimitive(bridge.jboolean)
 jbyte = jprimitive(bridge.jbyte)
@@ -160,11 +205,22 @@ jint = jprimitive(bridge.jint)
 jlong = jprimitive(bridge.jlong)
 jfloat = jprimitive(bridge.jfloat)
 jdouble = jprimitive(bridge.jdouble)
-new = New('')
+
+new = Path(cls_func=construct,
+           arr_func=lambda _, element_cls, *args: make_array(element_cls, *args))
+
+clazz = Path(cls_func=lambda cls: cls,
+             arr_func=lambda arr_cls, _: arr_cls)
+
+#TODO think about scope
+#package = Path(path_func=set_package)
 
 #====================================
 def test1():
+    Test = clazz.com.happy.Test()
     test = new.com.happy.Test()
+    test2 = Test()
+    print(test, test2)
 
     print(test.ins_value)
     test.ins_value = 38
@@ -205,7 +261,15 @@ def test1():
     #nul.set = 3
 
 def test2():
+    class Interface:
+        @interface
+        def action(self, *args):
+            print('action ', args)
+            return 'shas'
+
     test = new.com.happy.Test()
-    print('callback test returned: ', test.test_callback(test))
+    iface = wrap(bridge.make_interface(Interface(), [clazz.com.happy.TestInterface()]))[0]
+    ret = test.test_callback(iface, 'what')
+    print('callback test returned: ', ret)
 
 test2()
