@@ -100,6 +100,7 @@ def find_primitive_array(code):
 
 JNULL = jobject(jref(0), 'null')
 OBJECT_CLASS = find_class('java.lang.Object')
+CLASS_CLASS = find_class('java.lang.Class')
 
 OP_NOOP = 0
 OP_CALL_METHOD = 1
@@ -334,12 +335,12 @@ class array(jobjectbase):
             if step != 1:
                 raise ValueError('only step = 1 are supported')
             if len(items) != stop - start:
-                raise ValueError('invalid array size: {}, needs to be {}'.format(len(items), stop - start))
+                raise IndexError('invalid array size: {}, needs to be {}'.format(len(items), stop - start))
         elif isinstance(key, int):
             start, stop = key, key + 1
             items = [items]
         else:
-            raise ValueError('invalid index: {}'.format(key))
+            raise IndexError('invalid index: {}'.format(key))
 
         args = tuple(convert_arg(item) for item in items)
         values = tuple(prepare_value(arg, self.type_code, t) for arg, w, t in args)
@@ -356,10 +357,10 @@ class array(jobjectbase):
                 return tuple()
         elif isinstance(key, int):
             if key < 0 or key >= self.length:
-                raise ValueError('index out of range: {}, len is {}'.format(key, self.length))
+                raise IndexError('index out of range: {}, len is {}'.format(key, self.length))
             start, stop = key, key + 1
         else:
-            raise ValueError('invalid index: {}'.format(key))
+            raise IndexError('invalid index: {}'.format(key))
 
         array_len, obj, elements = native_hapy.array(self.ref.handle, (0,) * (stop - start), start, self.type_code, OP_GET_ITEMS, JNULL.ref.handle)
 
@@ -410,13 +411,38 @@ def upcast(obj):
 
     return obj
 
+interfaces = {}
+
+def make_interface(self, classes):
+    key = id(self)
+    if key in interfaces:
+        raise ValueError('class already added')
+    interfaces[key] = self
+    classes = list(classes)
+    arr = make_array(len(classes), CLASS_CLASS)
+    arr[:] = classes
+    return upcast(jobject(jref(native_hapy.create_interface(key, arr.ref.handle)), 'interface'))
+
 def callback(arg):
     print('callback called')
     args = upcast(jobject(jref(arg), 'callback arg'))
-    ret = args[0]
-    ref = native_hapy.new_global_ref(ret.ref.handle) #this crashes
-    print(ref)
-    return ref
+    try:
+        key, cls, method, args = args
+
+        if key not in interfaces:
+            raise Exception('not implemented')
+
+        func = getattr(interfaces[key], method)
+        if not hasattr(func, '__interface__'):
+            raise Exception('not implemented')
+
+        ret = func(*args)
+        value, _, _ = convert_arg(ret)
+        _, ref = prepare_value(value, primitive_codes['object'], primitive_codes['object'])
+        return native_hapy.new_global_ref(ref.ref.handle)
+    except Exception as e:
+        print('exception: ',e)
+    return 0
 
 
 native_hapy.set_callback(callback)
