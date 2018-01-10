@@ -7,7 +7,7 @@ import android.content.Intent;
  * Created by Tal on 30/12/2017.
  */
 
-interface Interfaces
+interface TestInterface
 {
     Object action(Object i) throws Throwable;
 }
