@@ -119,9 +119,14 @@ public class Test
         return "בדיקה";
     }
 
-    public static Object test_callback(Interfaces iface, Object obj) throws Throwable
+    public static Object test_callback(TestInterface iface, Object obj) throws Throwable
     {
         Log.d("HAPY", "test_callback!");
         return iface.action(obj);
+    }
+
+    public static class Inner
+    {
+
     }
 }

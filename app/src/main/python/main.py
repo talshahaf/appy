@@ -51,7 +51,7 @@ class Path:
     def __getattr__(self, attr):
         if self.array_dim != 0:
             raise ValueError('invalid path')
-        return Path(self.cls_func, self.arr_func, attr if not self.path else '{}.{}'.format(self.path, attr))
+        return Path(cls_func=self.cls_func, arr_func=self.arr_func, path=attr if not self.path else '{}.{}'.format(self.path, attr))
 
     def __call__(self, *args):
         if self.path_func is not None:
@@ -60,7 +60,7 @@ class Path:
         if self.array_dim == 0:
             if self.cls_func is None:
                 raise ValueError('operation not supported')
-            return self.cls_func(cls, *args)
+            return self.cls_func(Class(cls), *args)
         else:
             if self.arr_func is None:
                 raise ValueError('operation not supported')
@@ -68,12 +68,12 @@ class Path:
             for _ in range(self.array_dim - 1):
                 element_cls = bridge.array_of_class(element_cls)
             arr_cls = bridge.array_of_class(element_cls)
-            return self.arr_func(arr_cls, element_cls, *args)
+            return self.arr_func(Class(arr_cls), Class(element_cls), *args)
 
     def __getitem__(self, key):
         if not isinstance(key, tuple) or len(key) != 0:
             raise ValueError('must be ()')
-        return Path(self.cls_func, self.arr_func, self.path, self.array_dim + 1)
+        return Path(cls_func=self.cls_func, arr_func=self.arr_func, path=self.path, array_dim=self.array_dim + 1)
 
 def _call(parent, attrname, *args):
     return wrap(bridge.call_method(parent.bridge.clazz, parent.bridge, attrname, *unwrap_args(args)))[0]
@@ -131,20 +131,17 @@ class Null(Object):
     def __invert__(self):
         return self
 
-def construct(cls, *args):
-    return wrap(bridge.call_method(cls, None, '', *unwrap_args(args)))[0]
-
 class Class(Object):
     def __call__(self, *args):
-        return construct(self.bridge, *args)
+        return wrap(bridge.call_method(self.bridge, None, '', *unwrap_args(args)))[0]
 
-def make_array(element_class, l):
+def make_array(element_bridge_class, l):
     if not isinstance(l, int):
         items = list(l)
         l = len(items)
     else:
         items = None
-    arr = wrap(bridge.make_array(l, element_class.bridge))[0]
+    arr = wrap(bridge.make_array(l, element_bridge_class))[0]
     if items is not None:
         arr[:] = items
     return arr
@@ -169,11 +166,14 @@ class primitive_array:
         self.array_dim = array_dim
 
     def __call__(self, *args):
+        if self.array_dim == 1:
+            return make_array(self.code, *args)
+
         element_cls = bridge.find_primitive_array(self.code)
-        if self.array_dim > 1:
-            for _ in range(self.array_dim - 2):
-                element_cls = bridge.array_of_class(element_cls)
+        for _ in range(self.array_dim - 2):
+            element_cls = bridge.array_of_class(element_cls)
         return make_array(element_cls, *args)
+
 
     def __getitem__(self, key):
         if not isinstance(key, tuple) or len(key) != 0:
@@ -206,8 +206,8 @@ jlong = jprimitive(bridge.jlong)
 jfloat = jprimitive(bridge.jfloat)
 jdouble = jprimitive(bridge.jdouble)
 
-new = Path(cls_func=construct,
-           arr_func=lambda _, element_cls, *args: make_array(element_cls, *args))
+new = Path(cls_func=lambda cls: cls(),
+           arr_func=lambda _, element_cls, *args: make_array(element_cls.bridge, *args))
 
 clazz = Path(cls_func=lambda cls: cls,
              arr_func=lambda arr_cls, _: arr_cls)
@@ -219,7 +219,9 @@ clazz = Path(cls_func=lambda cls: cls,
 def test1():
     Test = clazz.com.happy.Test()
     test = new.com.happy.Test()
+    Inner = clazz.com.happy.Test.Inner()
     test2 = Test()
+    print(type(test2))
     print(test, test2)
 
     print(test.ins_value)
@@ -268,8 +270,9 @@ def test2():
             return 'shas'
 
     test = new.com.happy.Test()
-    iface = wrap(bridge.make_interface(Interface(), [clazz.com.happy.TestInterface()]))[0]
+    iface = wrap(bridge.make_interface(Interface(), [clazz.com.happy.TestInterface().bridge]))[0]
     ret = test.test_callback(iface, 'what')
     print('callback test returned: ', ret)
 
+test1()
 test2()
