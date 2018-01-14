@@ -1,5 +1,6 @@
 import logcat
 import time
+import traceback
 import native_hapy
 
 known_classes = {}
@@ -423,16 +424,25 @@ def make_interface(self, classes):
     arr[:] = classes
     return upcast(jobject(jref(native_hapy.create_interface(key, arr.ref.handle)), 'interface'))
 
+def get_global_context():
+    return upcast(jobject(jref(native_hapy.get_global_context()), 'context'))
+
 def callback(arg):
-    print('callback called')
-    args = upcast(jobject(jref(arg), 'callback arg'))
     try:
+        print('callback called')
+        args = upcast(jobject(jref(arg), 'callback arg'))
         key, cls, method, args = args
 
         if key not in interfaces:
             raise Exception('not implemented')
 
-        func = getattr(interfaces[key], method)
+        if hasattr(interfaces[key], method):
+            func = getattr(interfaces[key], method)
+        elif method in interfaces[key]:
+            func = interfaces[key][method]
+        else:
+            raise Exception('no callback for method {}'.format(method))
+
         if not hasattr(func, '__interface__'):
             raise Exception('not implemented')
 
@@ -440,10 +450,8 @@ def callback(arg):
         value, _, _ = convert_arg(ret)
         _, ref = prepare_value(value, primitive_codes['object'], primitive_codes['object'])
         return native_hapy.new_global_ref(ref.ref.handle)
-    except Exception as e:
-        print('exception: ',e)
-    return 0
-
+    except Exception:
+        raise Exception(traceback.format_exc())
 
 native_hapy.set_callback(callback)
 

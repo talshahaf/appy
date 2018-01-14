@@ -957,7 +957,7 @@ static PyObject * get_method(PyObject *self, PyObject *args)
         jmethodID res = get_method_raw(env, (jclass)clazz, method, type_num, type_arr, out_types, &out_static);
         if(res == NULL)
         {
-            PyErr_SetString(PyExc_ValueError, "Method not found");
+            PyErr_Format(PyExc_ValueError, "Method %s() not found", method);
             return NULL;
         }
 
@@ -1878,8 +1878,19 @@ extern "C" JNIEXPORT jobject JNICALL Java_com_happy_MainActivity_pythonCall(JNIE
     Py_XDECREF(arg);
     if (result == NULL)
     {
-        PyErr_Clear();
-        env->ThrowNew(python_exception_class, "python exception..."); //TODO
+        PyObject *type = NULL, *value = NULL, *traceback = NULL;
+        PyErr_Fetch(&type, &value, &traceback);
+        const char * cstr = "python exception...";
+        if(value != NULL)
+        {
+            PyObject * str = PyObject_Str(value);
+            cstr = PyUnicode_AsUTF8(str);
+            Py_XDECREF(str);
+        }
+        Py_XDECREF(type);
+        Py_XDECREF(value);
+        Py_XDECREF(traceback);
+        env->ThrowNew(python_exception_class, cstr); //TODO
         return NULL;
     }
 

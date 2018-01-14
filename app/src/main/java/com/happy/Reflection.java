@@ -382,7 +382,7 @@ public class Reflection
         return Proxy.newProxyInstance(classes[0].getClassLoader(), classes, new ProxyListener(id));
     }
 
-    static class BroadcastInterfaceBridge extends BroadcastReceiver
+    public static class BroadcastInterfaceBridge extends BroadcastReceiver
     {
         private BroadcastInterface iface;
 
@@ -397,10 +397,6 @@ public class Reflection
         {
             iface.onReceive(context, intent);
         }
-    }
-    public static Object createBroadcastReceiver(long id)
-    {
-        return new BroadcastInterfaceBridge((BroadcastInterface)createInterface(id, new Class[]{BroadcastInterface.class}));
     }
 }
 
