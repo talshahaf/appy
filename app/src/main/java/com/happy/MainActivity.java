@@ -120,6 +120,6 @@ public class MainActivity extends AppCompatActivity
     }
 
     protected static native int pythonInit(String pythonpath);
-    protected static native int pythonRun(String script, Context context);
+    protected static native int pythonRun(String script, Object obj);
     protected static native Object pythonCall(Object... args) throws Throwable;
 }

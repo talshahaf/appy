@@ -125,6 +125,15 @@ public class Test
         return iface.action(obj);
     }
 
+    public static String cast_test(String str)
+    {
+        return "not good";
+    }
+    public static String cast_test(CharSequence str)
+    {
+        return "yes!";
+    }
+
     public static class Inner
     {
 

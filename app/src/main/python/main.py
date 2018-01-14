@@ -1,5 +1,8 @@
 import logcat
 import bridge
+import time
+import faulthandler
+import random
 
 primitive_wraps = {}
 
@@ -19,8 +22,7 @@ def wrap(obj, *args, **kwargs):
     if isinstance(obj, bridge.jclass):
         return Class(obj, *args, **kwargs), False
 
-    if isinstance(obj, bridge.jobject):
-        return Object(obj, *args, **kwargs), False
+    return Object(obj, *args, **kwargs), False
 
 def unwrap(obj):
     if isinstance(obj, (Object, Class, Array)):
@@ -135,6 +137,10 @@ class Object:
     def __repr__(self):
         return repr(self.bridge)
 
+    def __rshift__(self, cast_to):
+        return bridge.cast(self.bridge, cast_to.bridge)
+
+
 class Null(Object):
     def __eq__(self, other):
         return other == Null or isinstance(other, Null)
@@ -228,6 +234,7 @@ jint = jprimitive(bridge.jint)
 jlong = jprimitive(bridge.jlong)
 jfloat = jprimitive(bridge.jfloat)
 jdouble = jprimitive(bridge.jdouble)
+jstring = lambda x: wrap(bridge.jstring.from_str(x))[0]
 
 new = Path(cls_func=lambda cls, *args: cls(*args),
            arr_func=lambda _, element_cls, *args: make_array(element_cls.bridge, *args))
@@ -238,8 +245,8 @@ clazz = Path(cls_func=lambda cls: cls,
 def create_interface(ins, *ifaces):
     return wrap(bridge.make_interface(ins, unwrap_args(ifaces)))[0]
 
-def get_application_context():
-    return wrap(bridge.get_global_context())[0]
+def get_java_arg():
+    return wrap(bridge.get_java_arg())[0]
 
 #TODO think about scope
 #package = Path(path_func=set_package)
@@ -302,9 +309,60 @@ def test2():
 
     iface = create_interface(Receiver(), clazz.com.happy.BroadcastInterface())
     receiver = new.com.happy.Reflection.BroadcastInterfaceBridge(iface)
-    filter = new.android.content.IntentFilter(clazz.android.content.Intent().ACTION_USER_PRESENT)
-    get_application_context().registerReceiver(receiver, filter)
+
+    start_time = time.time()
+    for _ in range(1):
+        filter = new.android.content.IntentFilter(clazz.android.content.Intent().ACTION_USER_PRESENT)
+    end_time = time.time()
+
+    d = end_time - start_time
+    #get_widget_manager().registerReceiver(receiver, filter)
     print('end')
 
-test1()
-test2()
+def test3():
+    print('test3')
+    obj = jstring('test')
+    obj_cast = obj >> clazz.java.lang.CharSequence()
+    print(obj, obj_cast)
+    Test = clazz.com.happy.Test()
+    print(Test.cast_test(obj), Test.cast_test(obj_cast))
+
+@interface
+def onClick(view):
+    print('onclick1!!')
+    i = random.randint(0, 100)
+    view.attrs.put("setText", new.com.happy.SetVariable(jstring(i) >> clazz.java.lang.CharSequence()))
+
+widgets = set()
+@interface
+def onUpdate(widget_id, widget):
+    print('got update')
+    if widget_id in widgets:
+        return
+    widgets.add(widget_id)
+    text1 = new.com.happy.DynamicView()
+    text1.type = 'TextView'
+    seq = jstring('dfg') >> clazz.java.lang.CharSequence()
+    var = new.com.happy.SetVariable(seq)
+    text1.attrs.put('setText', var)
+    text1.attrs.put("setTextViewTextSize", new.com.happy.SimpleVariables(new.java.lang.Object[()]([clazz.android.util.TypedValue().COMPLEX_UNIT_SP, 30])))
+    text1.id = 1
+    text1.onClick = create_interface({'onClick': onClick}, clazz.com.happy.DynamicView.OnClick())
+
+    widget.children.add(text1)
+    print('end got update')
+
+
+def init(java_arg):
+    print('init')
+    widget_manager = java_arg
+    widget_manager.registerOnWidgetUpdate(create_interface({'onUpdate': onUpdate}, clazz.com.happy.WidgetUpdateListener()))
+
+faulthandler.enable()
+
+init(get_java_arg())
+
+# test1()
+# test2()
+# test3()
+

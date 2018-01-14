@@ -2,7 +2,6 @@ package com.happy;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -10,15 +9,10 @@ import java.util.Random;
 
 import android.app.PendingIntent;
 import android.appwidget.AppWidgetManager;
-import android.appwidget.AppWidgetProvider;
-import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
-import android.graphics.Bitmap;
-import android.graphics.drawable.Icon;
 import android.net.Uri;
-import android.os.Bundle;
 import android.util.Log;
 import android.util.Pair;
 import android.util.SparseArray;
@@ -51,207 +45,9 @@ public class Widget extends RemoteViewsService {
     }
     public static SparseArray<HashSet<String>> remotableMethods = new SparseArray<>();
 
-    interface Variable
-    {
-        void Call(Context context, RemoteViews view, String remoteMethod, int id) throws InvocationTargetException, IllegalAccessException;
-    }
-
-    class SetVariable implements Variable
-    {
-        String type;
-        Object var;
-
-        public SetVariable(String type, Object o)
-        {
-            type = "set" + type.substring(0, 1).toUpperCase() + type.substring(1);
-            var = o;
-        }
-        public SetVariable(boolean bool)
-        {
-            type = "setBoolean";
-            var = bool;
-        }
-        public SetVariable(byte b)
-        {
-            type = "setByte";
-            var = b;
-        }
-        public SetVariable(short s)
-        {
-            type = "setShort";
-            var = s;
-        }
-        public SetVariable(int i)
-        {
-            type = "setInt";
-            var = i;
-        }
-        public SetVariable(long l)
-        {
-            type = "setLong";
-            var = l;
-        }
-        public SetVariable(float f)
-        {
-            type = "setFloat";
-            var = f;
-        }
-        public SetVariable(double d)
-        {
-            type = "setDouble";
-            var = d;
-        }
-        public SetVariable(char c)
-        {
-            type = "setChar";
-            var = c;
-        }
-        public SetVariable(String string)
-        {
-            type = "setString";
-            var = string;
-        }
-        public SetVariable(CharSequence charSequence)
-        {
-            type = "setCharSequence";
-            var = charSequence;
-        }
-        public SetVariable(Uri uri)
-        {
-            type = "setUri";
-            var = uri;
-        }
-        public SetVariable(Bitmap bitmap)
-        {
-            type = "setBitmap";
-            var = bitmap;
-        }
-        public SetVariable(Bundle bundle)
-        {
-            type = "setBundle";
-            var = bundle;
-        }
-        public SetVariable(Intent intent)
-        {
-            type = "setIntent";
-            var = intent;
-        }
-        public SetVariable(Icon icon)
-        {
-            type = "setIcon";
-            var = icon;
-        }
-
-        public void Call(Context context, RemoteViews view, String remoteMethod, int id) throws InvocationTargetException, IllegalAccessException
-        {
-            Method[] methods = RemoteViews.class.getMethods();
-            Method method = null;
-            for(Method _method : methods)
-            {
-                if(_method.getName().equalsIgnoreCase(type))
-                {
-                    method = _method;
-                    break;
-                }
-            }
-            if(method == null)
-            {
-                throw new RuntimeException("no such type");
-            }
-
-            if(remotableMethods.get(view.getLayoutId()) == null)
-            {
-                remotableMethods.put(view.getLayoutId(), getRemotableMethods(context, view.getLayoutId()));
-            }
-            if(!remotableMethods.get(view.getLayoutId()).contains(remoteMethod))
-            {
-                throw new RuntimeException("method "+remoteMethod+" not remotable");
-            }
-
-            Log.d("HAPY", "calling "+id+" "+remoteMethod+" "+method.getName()+" "+var);
-            method.invoke(view, id, remoteMethod, var);
-        }
-    }
-
-    class SimpleVariables implements Variable
-    {
-        Object[] arguments;
-        public SimpleVariables(Object... args)
-        {
-            arguments = args;
-        }
-
-        public void Call(Context context, RemoteViews view, String remoteMethod, int id) throws InvocationTargetException, IllegalAccessException
-        {
-            Method[] methods = RemoteViews.class.getMethods();
-            Method method = null;
-            for(Method _method : methods)
-            {
-                if(_method.getName().equalsIgnoreCase(remoteMethod))
-                {
-                    method = _method;
-                    break;
-                }
-            }
-            if(method == null)
-            {
-                throw new RuntimeException("no such type");
-            }
-
-            Log.d("HAPY", "calling "+id+" "+remoteMethod+" "+method.getName());
-            switch (arguments.length)
-            {
-                case 0:
-                {
-                    method.invoke(view, id);
-                    break;
-                }
-                case 1:
-                {
-                    method.invoke(view, id, arguments[0]);
-                    break;
-                }
-                case 2:
-                {
-                    method.invoke(view, id, arguments[0], arguments[1]);
-                    break;
-                }
-                case 3:
-                {
-                    method.invoke(view, id, arguments[0], arguments[1], arguments[2]);
-                    break;
-                }
-                case 4:
-                {
-                    method.invoke(view, id, arguments[0], arguments[1], arguments[2], arguments[3]);
-                    break;
-                }
-            }
-
-        }
-    }
-
-    interface OnClick
-    {
-        void onClick(DynamicView view);
-    }
-
-    interface OnItemClick
-    {
-        boolean onClick(DynamicView collection, DynamicView item, int position);
-    }
-
-    class DynamicView
-    {
-        public ArrayList<DynamicView> children = new ArrayList<>();
-        public String type;
-        public HashMap<String, Variable> attrs = new HashMap<>();
-        public int id;
-        public OnClick onClick;
-        public OnItemClick onItemClick;
-    }
 
     SparseArray<DynamicView> widgets = new SparseArray<>();
+    WidgetUpdateListener updateListener = null;
 
     public DynamicView initWidget(int widgetId)
     {
@@ -260,7 +56,7 @@ public class Widget extends RemoteViewsService {
         widget.type = "ListView";
         widget.id = 0;
 
-        widget.onItemClick = new OnItemClick()
+        widget.onItemClick = new DynamicView.OnItemClick()
         {
             @Override
             public boolean onClick(DynamicView collection, DynamicView item, int position)
@@ -275,7 +71,7 @@ public class Widget extends RemoteViewsService {
         text1.attrs.put("setText", new SetVariable((CharSequence)"dfg"));
         text1.attrs.put("setTextViewTextSize", new SimpleVariables(TypedValue.COMPLEX_UNIT_SP, 30));
         text1.id = 1;
-        text1.onClick = new OnClick()
+        text1.onClick = new DynamicView.OnClick()
         {
             @Override
             public void onClick(DynamicView view)
@@ -291,7 +87,7 @@ public class Widget extends RemoteViewsService {
         text2.attrs.put("setText", new SetVariable((CharSequence)"xcv"));
         text2.attrs.put("setTextViewTextSize", new SimpleVariables(TypedValue.COMPLEX_UNIT_SP, 30));
         text2.id = 2;
-        text2.onClick = new OnClick()
+        text2.onClick = new DynamicView.OnClick()
         {
             @Override
             public void onClick(DynamicView view)
@@ -300,7 +96,7 @@ public class Widget extends RemoteViewsService {
                 String ran = "" + (char)('A' + new Random().nextInt(26));
                 view.attrs.put("setText", new SetVariable((CharSequence)ran));
 
-                MainActivity.pythonRun("/sdcard/main.py", getApplicationContext());
+
             }
         };
 
@@ -326,7 +122,7 @@ public class Widget extends RemoteViewsService {
         return widget;
     }
 
-    public RemoteViews generate(Context context, DynamicView view, int widgetId, boolean collectionParent) throws InvocationTargetException, IllegalAccessException
+    public static RemoteViews generate(Context context, DynamicView view, int widgetId, boolean collectionParent) throws InvocationTargetException, IllegalAccessException
     {
         Pair<Integer, ChildrenType> layout = typeToLayout.get(view.type);
         RemoteViews remoteView = new RemoteViews(context.getPackageName(), layout.first);
@@ -429,7 +225,7 @@ public class Widget extends RemoteViewsService {
         view.onClick.onClick(view);
     }
 
-    public HashSet<String> getRemotableMethods(Context context, int layoutid)
+    public static HashSet<String> getRemotableMethods(Context context, int layoutid)
     {
         View layout = LayoutInflater.from(context).inflate(layoutid, null);
         View view = layout.findViewById(R.id.element);
@@ -456,7 +252,7 @@ public class Widget extends RemoteViewsService {
         return methods;
     }
 
-    class ListFactory implements RemoteViewsFactory
+    static class ListFactory implements RemoteViewsFactory
     {
         DynamicView item;
         Context context;
@@ -560,6 +356,17 @@ public class Widget extends RemoteViewsService {
         return new ListFactory(this, widgetId, view);
     }
 
+    public Widget()
+    {
+        super();
+        MainActivity.pythonRun("/sdcard/main.py", this);
+    }
+
+    public void registerOnWidgetUpdate(WidgetUpdateListener listener)
+    {
+        updateListener = listener;
+    }
+
     @Override
     public int onStartCommand(Intent intent, int flags, int startId)
     {
@@ -586,7 +393,15 @@ public class Widget extends RemoteViewsService {
                 DynamicView widget = widgets.get(widgetId);
                 if(widget == null)
                 {
-                    widget = initWidget(widgetId);
+                    widget = new DynamicView();
+                    widget.type = "Layout";
+                    widget.id = 0;
+                    widgets.put(widgetId, widget);
+                }
+
+                if(updateListener != null)
+                {
+                    updateListener.onUpdate(widgetId, widget);
                 }
 
                 try

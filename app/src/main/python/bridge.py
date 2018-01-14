@@ -33,6 +33,14 @@ def know_class(clazz):
 def get_class(ref):
     return know_class(jclass(jref(native_hapy.get_object_class(ref.handle))))
 
+def cast(obj, cast_class):
+    if not native_hapy.castable(obj.clazz.ref.handle, cast_class.ref.handle):
+        raise ValueError('{} cannot be cast to {}'.format(obj.clazz, cast_class))
+
+    dup = jobject(obj.ref, obj.info)
+    dup.cast_class = cast_class
+    return dup
+
 class jobjectbase:
     def __bool__(self):
         return bool(self.ref)
@@ -41,10 +49,14 @@ class jobject(jobjectbase):
     def __init__(self, ref, info):
         self.ref = ref
         self.info = info
+        #print('created {}'.format(self.info))
         self._clazz = None
 
     def __repr__(self):
-        return 'jobject: {} {} ({})'.format(self.info, self.clazz, self.ref.handle)
+        rep = 'jobject: {} {} ({})'.format(self.info, self.clazz, self.ref.handle)
+        if hasattr(self, 'cast_class'):
+            rep = '{} cast as {}'.format(rep, self.cast_class)
+        return rep
 
     @property
     def clazz(self):
@@ -81,6 +93,10 @@ class jstring(jobjectbase):
         if self._value is None:
             self._value = native_hapy.unbox_string(self.ref.handle)
         return self._value
+
+    @property
+    def info(self):
+        return self.value
 
     @property
     def clazz(self):
@@ -239,7 +255,7 @@ def prepare_value(arg, needed_code, unboxed_needed_code):
 #convert regular python type to our python jtypes
 def convert_arg(arg):
     if isinstance(arg, jobjectbase):
-        return arg, arg.clazz, primitive_codes['object']
+        return arg, arg.cast_class if hasattr(arg, 'cast_class') else arg.clazz, primitive_codes['object']
     elif isinstance(arg, bytes) or isinstance(arg, str):
         arg = jstring.from_str(arg)
         return arg, arg.clazz, primitive_codes['object']
@@ -272,9 +288,9 @@ def _get_field(clazz, name):
     return known_fields[key]
 
 def call_method(clazz, obj, name, *args):
-    args, arg_codes, _ = zip(*(convert_arg(arg) for arg in args)) if args else ([], [], 0)
+    args, arg_classes, _ = zip(*(convert_arg(arg) for arg in args)) if args else ([], [], 0)
 
-    method_id, needed_codes, is_static = _get_method(clazz, name, tuple(arg.ref.handle for arg in arg_codes))
+    method_id, needed_codes, is_static = _get_method(clazz, name, tuple(arg.ref.handle for arg in arg_classes))
 
     ret_code, _ = needed_codes[-1]
     needed_codes = needed_codes[:-1]
@@ -344,7 +360,7 @@ class array(jobjectbase):
             raise IndexError('invalid index: {}'.format(key))
 
         args = tuple(convert_arg(item) for item in items)
-        values = tuple(prepare_value(arg, self.type_code, t) for arg, w, t in args)
+        values = tuple(prepare_value(arg, self.type_code, t) for arg, _, t in args)
 
         native_hapy.array(self.ref.handle, tuple(v for v, _ in values), start, self.type_code, OP_SET_ITEMS, JNULL.ref.handle)
 
@@ -424,8 +440,8 @@ def make_interface(self, classes):
     arr[:] = classes
     return upcast(jobject(jref(native_hapy.create_interface(key, arr.ref.handle)), 'interface'))
 
-def get_global_context():
-    return upcast(jobject(jref(native_hapy.get_global_context()), 'context'))
+def get_java_arg():
+    return upcast(jobject(jref(native_hapy.get_java_arg()), 'java arg'))
 
 def callback(arg):
     try:
