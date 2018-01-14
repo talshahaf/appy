@@ -25,6 +25,8 @@ def wrap(obj, *args, **kwargs):
 def unwrap(obj):
     if isinstance(obj, (Object, Class, Array)):
         return obj.bridge
+    if isinstance(obj, UnknownField):
+        raise ValueError('field does not exists')
     return obj
 
 def unwrap_args(args):
@@ -76,7 +78,10 @@ class Path:
         return Path(cls_func=self.cls_func, arr_func=self.arr_func, path=self.path, array_dim=self.array_dim + 1)
 
 def _call(parent, attrname, *args):
-    return wrap(bridge.call_method(parent.bridge.clazz, parent.bridge, attrname, *unwrap_args(args)))[0]
+    if parent.use_static:
+        return wrap(bridge.call_method(parent.bridge, None, attrname, *unwrap_args(args)))[0]
+    else:
+        return wrap(bridge.call_method(parent.bridge.clazz, parent.bridge, attrname, *unwrap_args(args)))[0]
 
 class UnknownField:
     def __init__(self, parent, attrname):
@@ -87,12 +92,18 @@ class UnknownField:
         return _call(self.parent, self.attrname, *args)
 
 class Object:
-    def __init__(self, bridge_obj):
+    def __init__(self, bridge_obj, use_static=False):
         self.__dict__['bridge'] = bridge_obj
+        self.__dict__['use_static'] = use_static
+        self.__dict__['__parent__'] = None
+        self.__dict__['__attrname__'] = None
 
     def __getattr__(self, attr):
         try:
-            obj, primitive = wrap(bridge.get_field(self.bridge.clazz, self.bridge, attr))
+            if self.use_static:
+                obj, primitive = wrap(bridge.get_field(self.bridge, None, attr))
+            else:
+                obj, primitive = wrap(bridge.get_field(self.bridge.clazz, self.bridge, attr))
             if primitive:
                 if type(obj) not in primitive_wraps:
                     primitive_wraps[type(obj)] = type('Wrapped_{}'.format(type(obj).__name__), (type(obj),),
@@ -101,8 +112,8 @@ class Object:
                 obj.__jparent__ = self
                 obj.__jattrname__ = attr
             else:
-                obj.__dict__['__parent__'] = self
-                obj.__dict__['__attrname__'] = attr
+                obj.__parent__ = self
+                obj.__attrname__ = attr
             return obj
         except Exception as e: #TODO specific
             return UnknownField(self, attr)
@@ -111,10 +122,15 @@ class Object:
         return _call(self.__parent__, self.__attrname__, *args)
 
     def __setattr__(self, attr, value):
+        if attr in self.__dict__:
+            self.__dict__[attr] = value
+            return
         bridge.set_field(self.bridge.clazz, self.bridge, attr, unwrap(value))
 
     def __invert__(self):
-        return wrap(self.bridge.clazz)[0]
+        cls = wrap(self.bridge.clazz)[0]
+        cls.use_static = False
+        return cls
 
     def __repr__(self):
         return repr(self.bridge)
@@ -132,6 +148,9 @@ class Null(Object):
         return self
 
 class Class(Object):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, use_static=True, **kwargs)
+
     def __call__(self, *args):
         return wrap(bridge.call_method(self.bridge, None, '', *unwrap_args(args)))[0]
 
@@ -147,6 +166,10 @@ def make_array(element_bridge_class, l):
     return arr
 
 class Array(Object):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.__dict__['length'] = self.bridge.length
+
     def __len__(self):
         return self.bridge.length
 
@@ -206,11 +229,17 @@ jlong = jprimitive(bridge.jlong)
 jfloat = jprimitive(bridge.jfloat)
 jdouble = jprimitive(bridge.jdouble)
 
-new = Path(cls_func=lambda cls: cls(),
+new = Path(cls_func=lambda cls, *args: cls(*args),
            arr_func=lambda _, element_cls, *args: make_array(element_cls.bridge, *args))
 
 clazz = Path(cls_func=lambda cls: cls,
              arr_func=lambda arr_cls, _: arr_cls)
+
+def create_interface(ins, *ifaces):
+    return wrap(bridge.make_interface(ins, unwrap_args(ifaces)))[0]
+
+def get_application_context():
+    return wrap(bridge.get_global_context())[0]
 
 #TODO think about scope
 #package = Path(path_func=set_package)
@@ -224,6 +253,7 @@ def test1():
     print(type(test2))
     print(test, test2)
 
+
     print(test.ins_value)
     test.ins_value = 38
     print(test.ins_value)
@@ -234,6 +264,8 @@ def test1():
     print('=====')
     print(test.value)
     print(test.value())
+    print(Test.value)
+    print(Test.value())
 
     arr = test.test_integer_array(13)
     print(arr[1], arr[1:-2])
@@ -263,16 +295,16 @@ def test1():
     #nul.set = 3
 
 def test2():
-    class Interface:
+    class Receiver:
         @interface
-        def action(self, *args):
-            print('action ', args)
-            return 'shas'
+        def onReceive(self, context, intent):
+            print('action ', intent.getAction())
 
-    test = new.com.happy.Test()
-    iface = wrap(bridge.make_interface(Interface(), [clazz.com.happy.TestInterface().bridge]))[0]
-    ret = test.test_callback(iface, 'what')
-    print('callback test returned: ', ret)
+    iface = create_interface(Receiver(), clazz.com.happy.BroadcastInterface())
+    receiver = new.com.happy.Reflection.BroadcastInterfaceBridge(iface)
+    filter = new.android.content.IntentFilter(clazz.android.content.Intent().ACTION_USER_PRESENT)
+    get_application_context().registerReceiver(receiver, filter)
+    print('end')
 
 test1()
 test2()
