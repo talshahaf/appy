@@ -14,6 +14,7 @@ class LogcatWriter:
         self.android_log_print = getattr(self.liblog, '__android_log_print')
         self.lvl = lvl
         self.buf = b''
+        self.crash_handler = None
         
     def write(self, s):
         if isinstance(s, str):
@@ -25,6 +26,12 @@ class LogcatWriter:
                 break
             self.android_log_print(self.lvl, b'HAPY', self.buf[:i])
             self.buf = self.buf[i + 1:]
+
+    @property
+    def fileno(self):
+        if self.crash_handler is None:
+            self.crash_handler = open('/sdcard/crash.txt', 'wb')
+        return self.crash_handler.fileno
             
 sys.stdout = LogcatWriter(LogcatWriter.INFO)
 sys.stderr = LogcatWriter(LogcatWriter.ERROR)

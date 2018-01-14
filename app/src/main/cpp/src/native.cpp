@@ -19,7 +19,7 @@
 #define PYTHON_CALL
 
 JavaVM * vm = NULL;
-jobject g_context = NULL;
+jobject g_java_arg = NULL;
 jclass class_class = NULL;
 jclass reflection_class = NULL;
 jclass python_exception_class = NULL;
@@ -1563,6 +1563,10 @@ static PyObject * delete_global_ref(PyObject *self, PyObject *args)
          {
              GET_ENV();
              global_ref = env->NewGlobalRef(ref);
+             if(global_ref == NULL)
+             {
+                 throw jni_exception("failed to create global ref");
+             }
          }
          return Py_BuildValue("k", (unsigned long)global_ref);
      }
@@ -1841,14 +1845,67 @@ static PyObject * set_callback(PyObject *self, PyObject *args)
     Py_RETURN_NONE;
 }
 
-static PyObject * get_global_context(PyObject *self, PyObject *args)
+static PyObject * get_java_arg(PyObject *self, PyObject *args)
 {
-    if(g_context == NULL)
+    try
     {
-        PyErr_SetString(PyExc_SystemError, "no context available");
-        return NULL;
+        if(g_java_arg == NULL)
+        {
+            PyErr_SetString(PyExc_SystemError, "no java arg available");
+            return NULL;
+        }
+        GET_ENV();
+        jobject ref = env->NewGlobalRef(g_java_arg);
+        if(ref == NULL)
+        {
+            throw jni_exception("failed to create global ref");
+        }
+        return PyLong_FromUnsignedLong((unsigned long)ref);
     }
-    return PyLong_FromUnsignedLong((unsigned long)g_context);
+    catch(java_exception & e)
+    {
+        PyErr_SetString(PyExc_ValueError, e.what());
+    }
+    catch(jni_exception & e)
+    {
+        LOG("got jni exception in get_java_arg");
+        PyErr_SetString(PyExc_ValueError, e.what());
+    }
+    return NULL;
+}
+
+static PyObject * castable(PyObject *self, PyObject *args)
+{
+    try
+    {
+        unsigned long src = 0;
+        unsigned long dest = 0;
+        if (!PyArg_ParseTuple(args, "kk", &src, &dest))
+        {
+            return NULL;
+        }
+
+        GET_ENV();
+        jboolean ret = env->IsAssignableFrom((jclass)src, (jclass)dest);
+        if(ret == JNI_TRUE)
+        {
+            Py_RETURN_TRUE;
+        }
+        else
+        {
+            Py_RETURN_FALSE;
+        }
+    }
+    catch(java_exception & e)
+    {
+        PyErr_SetString(PyExc_ValueError, e.what());
+    }
+    catch(jni_exception & e)
+    {
+        LOG("got jni exception in castable");
+        PyErr_SetString(PyExc_ValueError, e.what());
+    }
+    return NULL;
 }
 
 extern "C" JNIEXPORT jobject JNICALL Java_com_happy_MainActivity_pythonCall(JNIEnv * env, jclass clazz, jobjectArray args)
@@ -1913,13 +1970,13 @@ extern "C" JNIEXPORT jobject JNICALL Java_com_happy_MainActivity_pythonCall(JNIE
     return NULL;
 }
 
-extern "C" JNIEXPORT jint JNICALL Java_com_happy_MainActivity_pythonRun(JNIEnv * env, jclass clazz, jstring script, jobject context)
+extern "C" JNIEXPORT jint JNICALL Java_com_happy_MainActivity_pythonRun(JNIEnv * env, jclass clazz, jstring script, jobject arg)
 {
     auto path = get_string(env, script);
 
-    if(g_context == NULL)
+    if(g_java_arg == NULL)
     {
-        g_context = env->NewGlobalRef(context);
+        g_java_arg = env->NewGlobalRef(arg);
     }
 
     FILE * fh = fopen(path.c_str(), "r");
@@ -1954,7 +2011,8 @@ static PyMethodDef native_hapy_methods[] = {
         {"array_of_class", array_of_class, METH_VARARGS, "gets the class which is the array of a given class"},
         {"set_callback", set_callback, METH_VARARGS, "sets callback to be called from java"},
         {"create_interface", create_interface, METH_VARARGS, "creates interface"},
-        {"get_global_context", get_global_context, METH_VARARGS, "gets the global context"},
+        {"get_java_arg", get_java_arg, METH_VARARGS, "gets the arg passed from java"},
+        {"castable", castable, METH_VARARGS, "checks whether an object can be cast into class"},
         {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
