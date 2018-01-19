@@ -20,7 +20,7 @@ public class DynamicView
 
     public ArrayList<DynamicView> children = new ArrayList<>();
     public String type;
-    public HashMap<String, Variable> attrs = new HashMap<>();
+    public ArrayList<RemoteMethodCall> methodCalls = new ArrayList<>();
     public int id;
     public OnClick onClick;
     public OnItemClick onItemClick;
