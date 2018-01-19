@@ -25,7 +25,3 @@ interface WidgetUpdateListener
     void onUpdate(int widgetId, DynamicView currentView);
 }
 
-interface Variable
-{
-    void Call(Context context, RemoteViews view, String remoteMethod, int id) throws InvocationTargetException, IllegalAccessException;
-}

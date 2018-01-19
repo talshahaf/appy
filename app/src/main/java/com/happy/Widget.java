@@ -1,4 +1,10 @@
 package com.happy;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -12,15 +18,22 @@ import android.appwidget.AppWidgetManager;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.drawable.Icon;
 import android.net.Uri;
+import android.os.Build;
+import android.os.Bundle;
 import android.util.Log;
 import android.util.Pair;
 import android.util.SparseArray;
 import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.widget.LinearLayout;
+import android.widget.ListView;
 import android.widget.RemoteViews;
 import android.widget.RemoteViewsService;
+import android.widget.TextView;
 
 public class Widget extends RemoteViewsService {
     private static final String ITEM_ID_EXTRA = "ITEM_ID";
@@ -37,14 +50,52 @@ public class Widget extends RemoteViewsService {
     }
 
     public static HashMap<String, Pair<Integer, ChildrenType>> typeToLayout = new HashMap<>();
+    public static HashMap<String, Class<?>> typeToClass = new HashMap<>();
+    public static HashMap<String, HashMap<String, String>> typeToRemotableMethod = new HashMap<>();
+    public static HashMap<Class<?>, String> parameterToSetter = new HashMap<>();
     static
     {
         typeToLayout.put("TextView", new Pair<>(R.layout.text_layout, ChildrenType.NO_CHILDS));
         typeToLayout.put("Layout", new Pair<>(R.layout.widget_layout, ChildrenType.GROUP));
         typeToLayout.put("ListView", new Pair<>(R.layout.listview_layout, ChildrenType.COLLECTION));
-    }
-    public static SparseArray<HashSet<String>> remotableMethods = new SparseArray<>();
 
+        typeToClass.put("TextView", TextView.class);
+        typeToClass.put("Layout", LinearLayout.class);
+        typeToClass.put("ListView", ListView.class);
+
+        parameterToSetter.put(Boolean.TYPE, "setBoolean");
+        parameterToSetter.put(Byte.TYPE, "setByte");
+        parameterToSetter.put(Short.TYPE, "setShort");
+        parameterToSetter.put(Integer.TYPE, "setInt");
+        parameterToSetter.put(Long.TYPE, "setLong");
+        parameterToSetter.put(Float.TYPE, "setFloat");
+        parameterToSetter.put(Double.TYPE, "setDouble");
+        parameterToSetter.put(Character.TYPE, "setChar");
+
+        parameterToSetter.put(Boolean.class, "setBoolean");
+        parameterToSetter.put(Byte.class, "setByte");
+        parameterToSetter.put(Short.class, "setShort");
+        parameterToSetter.put(Integer.class, "setInt");
+        parameterToSetter.put(Long.class, "setLong");
+        parameterToSetter.put(Float.class, "setFloat");
+        parameterToSetter.put(Double.class, "setDouble");
+        parameterToSetter.put(Character.class, "setChar");
+        parameterToSetter.put(String.class, "setString");
+        parameterToSetter.put(CharSequence.class, "setCharSequence");
+        parameterToSetter.put(Uri.class, "setUri");
+        parameterToSetter.put(Bitmap.class, "setBitmap");
+        parameterToSetter.put(Bundle.class, "setBundle");
+        parameterToSetter.put(Intent.class, "setIntent");
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M)
+        {
+            parameterToSetter.put(Icon.class, "setIcon");
+        }
+
+        for(String type: typeToLayout.keySet())
+        {
+            typeToRemotableMethod.put(type, getRemotableMethods(type));
+        }
+    }
 
     SparseArray<DynamicView> widgets = new SparseArray<>();
     WidgetUpdateListener updateListener = null;
@@ -68,8 +119,8 @@ public class Widget extends RemoteViewsService {
 
         DynamicView text1 = new DynamicView();
         text1.type = "TextView";
-        text1.attrs.put("setText", new SetVariable((CharSequence)"dfg"));
-        text1.attrs.put("setTextViewTextSize", new SimpleVariables(TypedValue.COMPLEX_UNIT_SP, 30));
+        text1.methodCalls.add(new RemoteMethodCall(getSetterMethod(text1.type, "setText"), "setText", "dfg"));
+        text1.methodCalls.add(new RemoteMethodCall("setTextViewTextSize", TypedValue.COMPLEX_UNIT_SP, 30));
         text1.id = 1;
         text1.onClick = new DynamicView.OnClick()
         {
@@ -78,14 +129,14 @@ public class Widget extends RemoteViewsService {
             {
                 Log.d("HAPY", "onclick1!!");
                 String ran = new Random().nextInt(100)+"";
-                view.attrs.put("setText", new SetVariable((CharSequence)ran));
+                view.methodCalls.add(new RemoteMethodCall(getSetterMethod(view.type, "setText"), "setText", ran));
             }
         };
 
         DynamicView text2 = new DynamicView();
         text2.type = "TextView";
-        text2.attrs.put("setText", new SetVariable((CharSequence)"xcv"));
-        text2.attrs.put("setTextViewTextSize", new SimpleVariables(TypedValue.COMPLEX_UNIT_SP, 30));
+        text1.methodCalls.add(new RemoteMethodCall(getSetterMethod(text2.type, "setText"), "setText", "xcv"));
+        text1.methodCalls.add(new RemoteMethodCall("setTextViewTextSize", TypedValue.COMPLEX_UNIT_SP, 30));
         text2.id = 2;
         text2.onClick = new DynamicView.OnClick()
         {
@@ -94,9 +145,7 @@ public class Widget extends RemoteViewsService {
             {
                 Log.d("HAPY", "onclick2!!");
                 String ran = "" + (char)('A' + new Random().nextInt(26));
-                view.attrs.put("setText", new SetVariable((CharSequence)ran));
-
-
+                view.methodCalls.add(new RemoteMethodCall(getSetterMethod(view.type, "setText"), "setText", ran));
             }
         };
 
@@ -127,9 +176,9 @@ public class Widget extends RemoteViewsService {
         Pair<Integer, ChildrenType> layout = typeToLayout.get(view.type);
         RemoteViews remoteView = new RemoteViews(context.getPackageName(), layout.first);
 
-        for(Map.Entry<String,Variable> attr : view.attrs.entrySet())
+        for(RemoteMethodCall methodCall : view.methodCalls)
         {
-            attr.getValue().Call(context, remoteView, attr.getKey(), R.id.element);
+            methodCall.call(remoteView, R.id.element);
         }
 
         if(view.onClick != null && !collectionParent)
@@ -201,7 +250,7 @@ public class Widget extends RemoteViewsService {
 
     public void handle(DynamicView widget, int collectionId, int dynamicId, int collectionPosition)
     {
-        Log.d("HAPY", "handling "+dynamicId+" of "+collectionId);
+        Log.d("HAPY", "handling "+dynamicId+" in collection "+collectionId);
         DynamicView view = find(widget, dynamicId);
         if(view == null)
         {
@@ -218,20 +267,24 @@ public class Widget extends RemoteViewsService {
         }
         if(!callOnClick || view.onClick == null)
         {
-            Log.d("HAPY", "no onclick... !!"+callOnClick+" "+view.id);
+            Log.d("HAPY", "no onclick... !! "+callOnClick+" "+view.id);
             return;
         }
 
         view.onClick.onClick(view);
     }
 
-    public static HashSet<String> getRemotableMethods(Context context, int layoutid)
+    public static String getSetterMethod(String type, String method)
     {
-        View layout = LayoutInflater.from(context).inflate(layoutid, null);
-        View view = layout.findViewById(R.id.element);
+        return typeToRemotableMethod.get(type).get(method);
+    }
 
-        HashSet<String> methods = new HashSet<>();
-        for(Method method : view.getClass().getMethods())
+    public static HashMap<String, String> getRemotableMethods(String type)
+    {
+        Class<?> clazz = typeToClass.get(type);
+
+        HashMap<String, String> methods = new HashMap<>();
+        for(Method method : clazz.getMethods())
         {
             Annotation[] annotations = method.getAnnotations();
             boolean remotable = false;
@@ -246,7 +299,11 @@ public class Widget extends RemoteViewsService {
 
             if(remotable)
             {
-                methods.add(method.getName());
+                if(method.getParameterTypes().length != 1)
+                {
+                    continue; //TODO?
+                }
+                methods.put(method.getName(), parameterToSetter.get(method.getParameterTypes()[0]));
             }
         }
         return methods;
@@ -359,7 +416,6 @@ public class Widget extends RemoteViewsService {
     public Widget()
     {
         super();
-        MainActivity.pythonRun("/sdcard/main.py", this);
     }
 
     public void registerOnWidgetUpdate(WidgetUpdateListener listener)
@@ -367,9 +423,24 @@ public class Widget extends RemoteViewsService {
         updateListener = listener;
     }
 
+    boolean started = false;
     @Override
     public int onStartCommand(Intent intent, int flags, int startId)
     {
+        if(!started)
+        {
+            started = true;
+
+            makePython();
+
+            System.load(new File(getFilesDir(), "/lib/libpython3.6m.so.1.0").getAbsolutePath());
+            System.loadLibrary("native");
+
+            pythonInit(getFilesDir().getAbsolutePath());
+
+            pythonRun("/sdcard/main.py", Widget.this);
+        }
+
         Intent widgetIntent = intent.getParcelableExtra(WIDGET_INTENT);
         if(AppWidgetManager.ACTION_APPWIDGET_UPDATE.equals(widgetIntent.getAction()))
         {
@@ -419,4 +490,91 @@ public class Widget extends RemoteViewsService {
 
         return super.onStartCommand(intent, flags, startId);
     }
+
+    //-----------------------------------python--------------------------------------------------------------
+
+    public static void printFnames(File sDir){
+        File[] faFiles = sDir.listFiles();
+        for(File file: faFiles){
+            Log.d("HAPY", file.getAbsolutePath());
+            if(file.isDirectory()){
+                printFnames(file);
+            }
+        }
+    }
+
+    public static void printFile(File file)
+    {
+        try
+        {
+            FileReader fileReader = new FileReader(file);
+            BufferedReader bufferedReader = new BufferedReader(fileReader);
+            String line;
+            while ((line = bufferedReader.readLine()) != null)
+            {
+                Log.e("HAPY", line);
+            }
+            fileReader.close();
+        }
+        catch(IOException e)
+        {
+            Log.e("HAPY", "exception", e);
+        }
+    }
+
+    public static void printAll(InputStream is)
+    {
+        InputStreamReader isr = new InputStreamReader(is);
+        BufferedReader br = new BufferedReader(isr);
+        String line;
+        try
+        {
+            while ( (line = br.readLine()) != null)
+            {
+                Log.d("HAPY", line);
+            }
+        }
+        catch (IOException e)
+        {
+            e.printStackTrace();
+        }
+    }
+
+    public static void runProcess(String[] command)
+    {
+        try
+        {
+            Process process = Runtime.getRuntime().exec(command);
+            printAll(process.getInputStream());
+            process.waitFor();
+        }
+        catch (IOException|InterruptedException e)
+        {
+            Log.e("HAPY", "exception", e);
+        }
+    }
+
+    public void makePython()
+    {
+        if(!new File(getFilesDir(), "lib/libpython3.so").exists())
+        {
+            Log.d("HAPY", "unpacking python");
+
+            File newfile = new File(getFilesDir(), "test");
+            //TODO without creating?
+
+            runProcess(new String[]{"sh", "-c", "tar -xf /sdcard/python.tar -C " + getFilesDir().getAbsolutePath()+" 2>&1"});
+
+            //printFnames(getFilesDir());
+            Log.d("HAPY", "done unpacking python");
+        }
+        else
+        {
+            Log.d("HAPY", "not unpacking python");
+        }
+    }
+
+    protected static native int pythonInit(String pythonpath);
+    protected static native int pythonRun(String script, Object obj);
+    protected static native Object pythonCall(Object... args) throws Throwable;
 }

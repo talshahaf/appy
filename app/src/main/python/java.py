@@ -1,8 +1,5 @@
-import logcat
 import bridge
 import time
-import faulthandler
-import random
 
 primitive_wraps = {}
 
@@ -42,7 +39,7 @@ def find_class_with_inner(path):
             if '.' not in path:
                 raise
             start, sep, end = path.rpartition('.')
-            path = '{}${}'.format(start, end)
+            path = f'{start}${end}'
 
 class Path:
     def __init__(self, path_func=None, cls_func=None, arr_func=None, path='', array_dim=0):
@@ -55,7 +52,7 @@ class Path:
     def __getattr__(self, attr):
         if self.array_dim != 0:
             raise ValueError('invalid path')
-        return Path(cls_func=self.cls_func, arr_func=self.arr_func, path=attr if not self.path else '{}.{}'.format(self.path, attr))
+        return Path(cls_func=self.cls_func, arr_func=self.arr_func, path=attr if not self.path else f'{self.path}.{attr}')
 
     def __call__(self, *args):
         if self.path_func is not None:
@@ -108,7 +105,7 @@ class Object:
                 obj, primitive = wrap(bridge.get_field(self.bridge.clazz, self.bridge, attr))
             if primitive:
                 if type(obj) not in primitive_wraps:
-                    primitive_wraps[type(obj)] = type('Wrapped_{}'.format(type(obj).__name__), (type(obj),),
+                    primitive_wraps[type(obj)] = type(f'Wrapped_{type(obj).__name__}', (type(obj),),
                                                     dict(__call__=lambda self, *args: _call(self.__jparent__, self.__jattrname__, *args)))
                 obj = primitive_wraps[type(obj)](obj)
                 obj.__jparent__ = self
@@ -137,9 +134,6 @@ class Object:
     def __repr__(self):
         return repr(self.bridge)
 
-    def __rshift__(self, cast_to):
-        return bridge.cast(self.bridge, cast_to.bridge)
-
 
 class Null(Object):
     def __eq__(self, other):
@@ -159,6 +153,9 @@ class Class(Object):
 
     def __call__(self, *args):
         return wrap(bridge.call_method(self.bridge, None, '', *unwrap_args(args)))[0]
+
+    def __lshift__(self, obj):
+        return bridge.cast(bridge.box_python(unwrap(obj)), self.bridge)
 
 def make_array(element_bridge_class, l):
     if not isinstance(l, int):
@@ -221,6 +218,8 @@ class jprimitive:
         return primitive_array(self.code)
 
 def interface(f):
+    if hasattr(f, '__interface__'):
+        return f
     def func(*args):
         return unwrap(f(*(wrap(arg)[0] for arg in args)))
     func.__interface__ = True
@@ -243,6 +242,8 @@ clazz = Path(cls_func=lambda cls: cls,
              arr_func=lambda arr_cls, _: arr_cls)
 
 def create_interface(ins, *ifaces):
+    if isinstance(ins, dict):
+        ins = {k: interface(v) for k,v in ins.items()}
     return wrap(bridge.make_interface(ins, unwrap_args(ifaces)))[0]
 
 def get_java_arg():
@@ -252,117 +253,85 @@ def get_java_arg():
 #package = Path(path_func=set_package)
 
 #====================================
-def test1():
-    Test = clazz.com.happy.Test()
-    test = new.com.happy.Test()
-    Inner = clazz.com.happy.Test.Inner()
-    test2 = Test()
-    print(type(test2))
-    print(test, test2)
+def tests():
+    def test1():
+        Test = clazz.com.happy.Test()
+        test = new.com.happy.Test()
+        Inner = clazz.com.happy.Test.Inner()
+        test2 = Test()
+        print(type(test2))
+        print(test, test2)
 
 
-    print(test.ins_value)
-    test.ins_value = 38
-    print(test.ins_value)
-    print(~test.test_value)
-    print(test.test_value.ins_value)
-    test.test_value.ins_value = 59
-    print(test.test_value.ins_value)
-    print('=====')
-    print(test.value)
-    print(test.value())
-    print(Test.value)
-    print(Test.value())
+        print(test.ins_value)
+        test.ins_value = 38
+        print(test.ins_value)
+        print(~test.test_value)
+        print(test.test_value.ins_value)
+        test.test_value.ins_value = 59
+        print(test.test_value.ins_value)
+        print('=====')
+        print(test.value)
+        print(test.value())
+        print(Test.value)
+        print(Test.value())
 
-    arr = test.test_integer_array(13)
-    print(arr[1], arr[1:-2])
-    arr[1] = 15
-    arr[1:-2] = range(1,11)
-    arr[:4] = [50, 51, 52, 53]
-    print(arr[1], arr[1:-2])
-    print(arr)
-    print(arr.length)
-    print('===')
-    print(new.com.happy.Test[()])
-    print(new.com.happy.Test[()]([new.com.happy.Test(), new.com.happy.Test()]))
-    print(new.com.happy.Test[()][()]([new.com.happy.Test[()]([new.com.happy.Test(), new.com.happy.Test()])]))
-    print(jlong(13))
-    print(jlong[()](3))
-    print(jlong[()]([jlong(1), jlong(2), jlong(3)]))
-    print(jlong[()][()]([
-                            jlong[()]([jlong(1), jlong(2), jlong(3)]),
-                            jlong[()]([jlong(4), jlong(5), jlong(6)]),
-                            jlong[()]([jlong(7), jlong(8), jlong(9)])
-                        ]))
-    #bridge.tests()
-    #nul = test.null_test
-    #print(type(nul), nul == Null, nul == nul, nul is Null, nul, test.null_test, test.null_test())
-    #print(nul.get)
-    #print(nul.get())
-    #nul.set = 3
+        arr = test.test_integer_array(13)
+        print(arr[1], arr[1:-2])
+        arr[1] = 15
+        arr[1:-2] = range(1,11)
+        arr[:4] = [50, 51, 52, 53]
+        print(arr[1], arr[1:-2])
+        print(arr)
+        print(arr.length)
+        print('===')
+        print(new.com.happy.Test[()])
+        print(new.com.happy.Test[()]([new.com.happy.Test(), new.com.happy.Test()]))
+        print(new.com.happy.Test[()][()]([new.com.happy.Test[()]([new.com.happy.Test(), new.com.happy.Test()])]))
+        print(jlong(13))
+        print(jlong[()](3))
+        print(jlong[()]([jlong(1), jlong(2), jlong(3)]))
+        print(jlong[()][()]([
+                                jlong[()]([jlong(1), jlong(2), jlong(3)]),
+                                jlong[()]([jlong(4), jlong(5), jlong(6)]),
+                                jlong[()]([jlong(7), jlong(8), jlong(9)])
+                            ]))
+        #bridge.tests()
+        #nul = test.null_test
+        #print(type(nul), nul == Null, nul == nul, nul is Null, nul, test.null_test, test.null_test())
+        #print(nul.get)
+        #print(nul.get())
+        #nul.set = 3
 
-def test2():
-    class Receiver:
-        @interface
-        def onReceive(self, context, intent):
-            print('action ', intent.getAction())
+    def test2():
+        class Receiver:
+            @interface
+            def onReceive(self, context, intent):
+                print('action ', intent.getAction())
 
-    iface = create_interface(Receiver(), clazz.com.happy.BroadcastInterface())
-    receiver = new.com.happy.Reflection.BroadcastInterfaceBridge(iface)
+        iface = create_interface(Receiver(), clazz.com.happy.BroadcastInterface())
+        receiver = new.com.happy.Reflection.BroadcastInterfaceBridge(iface)
 
-    start_time = time.time()
-    for _ in range(1):
-        filter = new.android.content.IntentFilter(clazz.android.content.Intent().ACTION_USER_PRESENT)
-    end_time = time.time()
+        start_time = time.time()
+        for _ in range(1):
+            filter = new.android.content.IntentFilter(clazz.android.content.Intent().ACTION_USER_PRESENT)
+        end_time = time.time()
 
-    d = end_time - start_time
-    #get_widget_manager().registerReceiver(receiver, filter)
-    print('end')
+        d = end_time - start_time
+        #get_widget_manager().registerReceiver(receiver, filter)
+        print('end')
 
-def test3():
-    print('test3')
-    obj = jstring('test')
-    obj_cast = obj >> clazz.java.lang.CharSequence()
-    print(obj, obj_cast)
-    Test = clazz.com.happy.Test()
-    print(Test.cast_test(obj), Test.cast_test(obj_cast))
+    def test3():
+        print('test3')
+        obj = jstring('test')
+        obj_cast = clazz.java.lang.CharSequence() << obj
+        obj_cast2 = clazz.java.lang.CharSequence() << 'tes2t'
+        print(obj, obj_cast, obj_cast2)
+        Test = clazz.com.happy.Test()
+        print(Test.cast_test(obj), Test.cast_test(obj_cast))
 
-@interface
-def onClick(view):
-    print('onclick1!!')
-    i = random.randint(0, 100)
-    view.attrs.put("setText", new.com.happy.SetVariable(jstring(i) >> clazz.java.lang.CharSequence()))
-
-widgets = set()
-@interface
-def onUpdate(widget_id, widget):
-    print('got update')
-    if widget_id in widgets:
-        return
-    widgets.add(widget_id)
-    text1 = new.com.happy.DynamicView()
-    text1.type = 'TextView'
-    seq = jstring('dfg') >> clazz.java.lang.CharSequence()
-    var = new.com.happy.SetVariable(seq)
-    text1.attrs.put('setText', var)
-    text1.attrs.put("setTextViewTextSize", new.com.happy.SimpleVariables(new.java.lang.Object[()]([clazz.android.util.TypedValue().COMPLEX_UNIT_SP, 30])))
-    text1.id = 1
-    text1.onClick = create_interface({'onClick': onClick}, clazz.com.happy.DynamicView.OnClick())
-
-    widget.children.add(text1)
-    print('end got update')
-
-
-def init(java_arg):
-    print('init')
-    widget_manager = java_arg
-    widget_manager.registerOnWidgetUpdate(create_interface({'onUpdate': onUpdate}, clazz.com.happy.WidgetUpdateListener()))
-
-faulthandler.enable()
-
-init(get_java_arg())
-
-# test1()
-# test2()
-# test3()
+    bridge.tests()
+    test1()
+    test2()
+    test3()
 

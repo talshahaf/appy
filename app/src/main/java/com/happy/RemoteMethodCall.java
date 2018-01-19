@@ -6,37 +6,34 @@ import android.widget.RemoteViews;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.HashMap;
 
 /**
  * Created by Tal on 14/01/2018.
  */
-public class SimpleVariables implements Variable
+public class RemoteMethodCall
 {
+    Method method;
     Object[] arguments;
-
-    public SimpleVariables(Object... args)
+    public static HashMap<String, Method> remoteViewMethods = new HashMap<>();
+    static
     {
+        Method[] methods = RemoteViews.class.getMethods();
+        for(Method method : methods)
+        {
+            remoteViewMethods.put(method.getName(), method);
+        }
+    }
+
+    public RemoteMethodCall(String method, Object... args)
+    {
+        this.method = remoteViewMethods.get(method);
         arguments = args;
     }
 
-    public void Call(Context context, RemoteViews view, String remoteMethod, int id) throws InvocationTargetException, IllegalAccessException
+    public void call(RemoteViews view, int id) throws InvocationTargetException, IllegalAccessException
     {
-        Method[] methods = RemoteViews.class.getMethods();
-        Method method = null;
-        for (Method _method : methods)
-        {
-            if (_method.getName().equalsIgnoreCase(remoteMethod))
-            {
-                method = _method;
-                break;
-            }
-        }
-        if (method == null)
-        {
-            throw new RuntimeException("no such type");
-        }
-
-        Log.d("HAPY", "calling " + id + " " + remoteMethod + " " + method.getName());
+        Log.d("HAPY", "calling " + id + " " + method.getName());
         switch (arguments.length)
         {
             case 0:

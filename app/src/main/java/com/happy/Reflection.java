@@ -260,7 +260,7 @@ public class Reflection
                                 // conversion allowed
                                 continue;
                             }
-                            Log.d("HAPY", "method fails because "+methodTypes[j].getName() + " != "+parameterTypes[j].getName());
+                            Log.d("HAPY", "method " + m.getName() + " fails because "+methodTypes[j].getName() + " != "+parameterTypes[j].getName());
                             isCompatible = false;
                             break;
                         }
@@ -373,7 +373,7 @@ public class Reflection
         }
         public Object invoke(Object proxy, Method m, Object[] args) throws Throwable
         {
-            return MainActivity.pythonCall(id, m.getDeclaringClass(), m.getName(), args);
+            return Widget.pythonCall(id, m.getDeclaringClass(), m.getName(), args);
         }
     }
 

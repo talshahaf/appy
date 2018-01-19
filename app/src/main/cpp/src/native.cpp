@@ -1908,7 +1908,7 @@ static PyObject * castable(PyObject *self, PyObject *args)
     return NULL;
 }
 
-extern "C" JNIEXPORT jobject JNICALL Java_com_happy_MainActivity_pythonCall(JNIEnv * env, jclass clazz, jobjectArray args)
+extern "C" JNIEXPORT jobject JNICALL Java_com_happy_Widget_pythonCall(JNIEnv * env, jclass clazz, jobjectArray args)
 {
     scope_guards guards;
 
@@ -1970,7 +1970,7 @@ extern "C" JNIEXPORT jobject JNICALL Java_com_happy_MainActivity_pythonCall(JNIE
     return NULL;
 }
 
-extern "C" JNIEXPORT jint JNICALL Java_com_happy_MainActivity_pythonRun(JNIEnv * env, jclass clazz, jstring script, jobject arg)
+extern "C" JNIEXPORT jint JNICALL Java_com_happy_Widget_pythonRun(JNIEnv * env, jclass clazz, jstring script, jobject arg)
 {
     auto path = get_string(env, script);
 
@@ -2030,7 +2030,7 @@ PyMODINIT_FUNC PyInit_native_hapy(void)
     return PyModule_Create(&native_hapymodule);
 }
 
-extern "C" JNIEXPORT jint JNICALL Java_com_happy_MainActivity_pythonInit(JNIEnv * env, jclass clazz, jstring pythonpath)
+extern "C" JNIEXPORT jint JNICALL Java_com_happy_Widget_pythonInit(JNIEnv * env, jclass clazz, jstring pythonpath)
 {
     env->GetJavaVM(&vm);
 

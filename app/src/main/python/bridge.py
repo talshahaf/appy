@@ -1,4 +1,3 @@
-import logcat
 import time
 import traceback
 import native_hapy
@@ -13,12 +12,12 @@ class jref:
         if not isinstance(handle, int):
             raise ValueError('handle must be int')
         self.handle = handle
-        #print('created {}'.format(self.handle))
+        #print(f'created {self.handle}')
 
     def __del__(self):
         #TODO make sure this doesn't get called twice for the same handle
         if self.handle:
-            #print('deleting {}'.format(self.handle))
+            #print(f'deleting {self.handle}')
             native_hapy.delete_global_ref(self.handle)
             self.handle = None
 
@@ -35,7 +34,7 @@ def get_class(ref):
 
 def cast(obj, cast_class):
     if not native_hapy.castable(obj.clazz.ref.handle, cast_class.ref.handle):
-        raise ValueError('{} cannot be cast to {}'.format(obj.clazz, cast_class))
+        raise ValueError(f'{obj.clazz} cannot be cast to {cast_class}')
 
     dup = jobject(obj.ref, obj.info)
     dup.cast_class = cast_class
@@ -49,13 +48,13 @@ class jobject(jobjectbase):
     def __init__(self, ref, info):
         self.ref = ref
         self.info = info
-        #print('created {}'.format(self.info))
+        #print(f'created {self.info}')
         self._clazz = None
 
     def __repr__(self):
-        rep = 'jobject: {} {} ({})'.format(self.info, self.clazz, self.ref.handle)
+        rep = f'jobject: {self.info} {self.clazz} ({self.ref.handle})'
         if hasattr(self, 'cast_class'):
-            rep = '{} cast as {}'.format(rep, self.cast_class)
+            rep = f'{rep} cast as {self.cast_class}'
         return rep
 
     @property
@@ -73,7 +72,7 @@ class jclass(jobjectbase):
             self.element_class = know_class(jclass(jref(element_class)))
 
     def __repr__(self):
-        return 'class {} ({})'.format(self.class_name, self.ref.handle)
+        return f'class {self.class_name} ({self.ref.handle})'
 
     @property
     def clazz(self):
@@ -86,7 +85,7 @@ class jstring(jobjectbase):
         self._value = None
 
     def __repr__(self):
-        return 'jstring {} ({})'.format(self.value, self.ref.handle)
+        return f'jstring {self.value} ({self.ref.handle})'
 
     @property
     def value(self):
@@ -238,12 +237,19 @@ def auto_handle_wrapping(arg, needed_code, unboxed_needed_code):
 
     if isinstance(arg, jobjectbase):
         return arg
-    raise ValueError('error converting {} to {}'.format(type(arg), needed_code))
+    raise ValueError(f'error converting {type(arg)} to {needed_code}')
 
 def handle_ret(ret, ret_code):
     if code_is_object(ret_code) and ret is not None:
         ret = upcast(jobject(jref(ret), 'ret'))
     return ret
+
+def box_python(val):
+    arg, _, code = convert_arg(val)
+    if code == primitive_codes['object']:
+        return arg
+
+    return jobject(jref(native_hapy.box(arg, code)), 'boxed')
 
 #convert python jtype to native jvalue
 #returns arg as well so it won't be freed until we call the method
@@ -272,7 +278,7 @@ def convert_arg(arg):
         elif isinstance(arg, float):
             arg = jdouble(arg)
         elif not isinstance(arg, jprimitive):
-            raise ValueError('cannot pass {} to java'.format(type(arg)))
+            raise ValueError(f'cannot pass {type(arg)} to java')
         return arg, arg.wrapper_class, arg.code
 
 def _get_method(clazz, name, arg_codes):
@@ -352,12 +358,12 @@ class array(jobjectbase):
             if step != 1:
                 raise ValueError('only step = 1 are supported')
             if len(items) != stop - start:
-                raise IndexError('invalid array size: {}, needs to be {}'.format(len(items), stop - start))
+                raise IndexError(f'invalid array size: {len(items)}, needs to be {stop - start}')
         elif isinstance(key, int):
             start, stop = key, key + 1
             items = [items]
         else:
-            raise IndexError('invalid index: {}'.format(key))
+            raise IndexError(f'invalid index: {key}')
 
         args = tuple(convert_arg(item) for item in items)
         values = tuple(prepare_value(arg, self.type_code, t) for arg, _, t in args)
@@ -374,10 +380,10 @@ class array(jobjectbase):
                 return tuple()
         elif isinstance(key, int):
             if key < 0 or key >= self.length:
-                raise IndexError('index out of range: {}, len is {}'.format(key, self.length))
+                raise IndexError(f'index out of range: {key}, len is {self.length}')
             start, stop = key, key + 1
         else:
-            raise IndexError('invalid index: {}'.format(key))
+            raise IndexError('invalid index: {key}')
 
         array_len, obj, elements = native_hapy.array(self.ref.handle, (0,) * (stop - start), start, self.type_code, OP_GET_ITEMS, JNULL.ref.handle)
 
@@ -389,7 +395,7 @@ class array(jobjectbase):
         return elements
 
     def __repr__(self):
-        return 'array of length {}: {}'.format(self.length, self[:])
+        return f'array of length {self.length}: {self[:]}'
 
 def make_array(l, type_code_or_clazz):
     if isinstance(type_code_or_clazz, jobjectbase):
@@ -450,17 +456,17 @@ def callback(arg):
         key, cls, method, args = args
 
         if key not in interfaces:
-            raise Exception('not implemented')
+            raise Exception(f'interface not registered: {key}')
 
         if hasattr(interfaces[key], method):
             func = getattr(interfaces[key], method)
         elif method in interfaces[key]:
             func = interfaces[key][method]
         else:
-            raise Exception('no callback for method {}'.format(method))
+            raise Exception(f'no callback for method {method}')
 
         if not hasattr(func, '__interface__'):
-            raise Exception('not implemented')
+            raise Exception(f'function not an interface: {method}')
 
         ret = func(*args)
         value, _, _ = convert_arg(ret)
@@ -474,7 +480,7 @@ native_hapy.set_callback(callback)
 def tests():
     print('=================================begin')
 
-    Test = find_class("com.happy.Test")
+    Test = find_class('com.happy.Test')
 
     def test1():
         test = call_method(Test, None, '', True, jbyte('b'),  jchar('c'),  10 ** 3, 2 * (10 ** 5), 3 * (10 ** 10), 1.1,  3.141529,
@@ -553,7 +559,7 @@ def tests():
         java_time = mid_time - start_time
         square_time = end_time - mid_time
 
-        print('{}/{} = {}    ,     {}/{} = {}'.format(java_time, n, java_time / n, square_time, n, square_time / n))
+        print(f'{java_time}/{n} = {java_time / n}    ,     {square_time}/{n} = {square_time / n}')
         #assert(java_time < square_time)
 
     def test5():
