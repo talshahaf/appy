@@ -33,13 +33,16 @@ def get_element(id, view):
 
 class Element:
     @classmethod
-    def create(cls, type):
+    def create(cls, type, **kwargs):
         id = gen_id()
         view = new.com.happy.DynamicView()
         view.id = id
         view.type = type
-        elements[id] = Element(gen_id(), view, type)
-        return elements[id]
+        e = Element(gen_id(), view, type)
+        for k,v in kwargs.items():
+            setattr(e, k, v)
+
+        return e
 
     def __init__(self, id, view, type):
         self.__dict__['type'] = type
@@ -92,16 +95,17 @@ class Handler:
         if widget_id in self.widgets:
             return
         self.widgets.add(widget_id)
-        element = Element.create('TextView')
-        element.text = 'dfg'
-        element.textViewTextSize = (clazz.android.util.TypedValue().COMPLEX_UNIT_SP, 30)
-
-        #element.setTextViewTextSize(clazz.android.util.TypedValue().COMPLEX_UNIT_SP, 30) #TODO
 
         def click(e):
             print('clickccc')
             e.text = str(random.randint(0, 100))
-        element.onClick = click
+
+        element = Element.create('TextView',
+                                 text='dfg',
+                                 textViewTextSize=(clazz.android.util.TypedValue().COMPLEX_UNIT_SP, 30),
+                                 onClick=click)
+
+        #element.setTextViewTextSize(clazz.android.util.TypedValue().COMPLEX_UNIT_SP, 30) #TODO
 
         widget.children.add(element.view)
         print('end got update')
