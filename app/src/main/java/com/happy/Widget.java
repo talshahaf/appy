@@ -272,6 +272,7 @@ public class Widget extends RemoteViewsService {
 
         if(collectionId != -1)
         {
+            Log.d("HAPY", "calling listener onItemClick");
             DynamicView ret = updateListener.onItemClick(widgetId, widget, collectionId, dynamicId, collectionPosition);
             //TODO cannot change layout and not suppress click
             if(ret != null)
@@ -281,6 +282,7 @@ public class Widget extends RemoteViewsService {
             }
         }
 
+        Log.d("HAPY", "calling listener onClick");
         return updateListener.onClick(widgetId, widget, dynamicId);
     }
 
@@ -552,6 +554,7 @@ public class Widget extends RemoteViewsService {
 
                 if(updateListener != null)
                 {
+                    Log.d("HAPY", "calling listener onUpdate");
                     DynamicView newwidget = updateListener.onUpdate(widgetId, widget);
                     if(newwidget != null)
                     {
