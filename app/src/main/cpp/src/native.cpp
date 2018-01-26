@@ -1910,85 +1910,119 @@ static PyObject * castable(PyObject *self, PyObject *args)
 
 extern "C" JNIEXPORT jobject JNICALL Java_com_happy_Widget_pythonCall(JNIEnv * env, jclass clazz, jobjectArray args)
 {
-    scope_guards guards;
-
-    find_types(env);
-
-    if(callback == NULL)
+    try
     {
-        env->ThrowNew(python_exception_class, "No callback defined");
-        return NULL;
-    }
+        scope_guards guards;
 
-    PyGILState_STATE gstate;
-    gstate = PyGILState_Ensure();
-    guards += [&gstate] {PyGILState_Release(gstate);};
+        find_types(env);
 
-    PyObject * arg = Py_BuildValue("(k)", (unsigned long)make_global_ref(env, args));
-    if(arg == NULL)
-    {
-        PyErr_Clear();
-        env->ThrowNew(python_exception_class, "build value failed");
-        return NULL;
-    }
-    PyObject * result = PyObject_CallObject(callback, arg);
-    Py_XDECREF(arg);
-    if (result == NULL)
-    {
-        PyObject *type = NULL, *value = NULL, *traceback = NULL;
-        PyErr_Fetch(&type, &value, &traceback);
-        const char * cstr = "python exception...";
-        if(value != NULL)
+        if(callback == NULL)
         {
-            PyObject * str = PyObject_Str(value);
-            cstr = PyUnicode_AsUTF8(str);
-            Py_XDECREF(str);
+            env->ThrowNew(python_exception_class, "No callback defined");
+            return NULL;
         }
-        Py_XDECREF(type);
-        Py_XDECREF(value);
-        Py_XDECREF(traceback);
-        env->ThrowNew(python_exception_class, cstr); //TODO
-        return NULL;
-    }
 
-    if(!PyLong_Check(result))
-    {
+        PyGILState_STATE gstate;
+        gstate = PyGILState_Ensure();
+        guards += [&gstate] {PyGILState_Release(gstate);};
+
+        PyObject * arg = Py_BuildValue("(k)", (unsigned long)make_global_ref(env, args));
+        if(arg == NULL)
+        {
+            PyErr_Clear();
+            env->ThrowNew(python_exception_class, "build value failed");
+            return NULL;
+        }
+        PyObject * result = PyObject_CallObject(callback, arg);
+        Py_XDECREF(arg);
+        if (result == NULL)
+        {
+            PyObject *type = NULL, *value = NULL, *traceback = NULL;
+            PyErr_Fetch(&type, &value, &traceback);
+            const char * cstr = "python exception...";
+            if(value != NULL)
+            {
+                PyObject * str = PyObject_Str(value);
+                cstr = PyUnicode_AsUTF8(str);
+                Py_XDECREF(str);
+            }
+            Py_XDECREF(type);
+            Py_XDECREF(value);
+            Py_XDECREF(traceback);
+            env->ThrowNew(python_exception_class, cstr); //TODO
+            return NULL;
+        }
+
+        if(!PyLong_Check(result))
+        {
+            Py_DECREF(result);
+            env->ThrowNew(python_exception_class, "callback result is invalid");
+            return NULL;
+        }
+
+        jobject global_ref = (jobject)PyLong_AsUnsignedLong(result);
         Py_DECREF(result);
-        env->ThrowNew(python_exception_class, "callback result is invalid");
-        return NULL;
+
+        if(global_ref != NULL)
+        {
+            jobject local = env->NewLocalRef(global_ref);
+            env->DeleteGlobalRef(global_ref);
+            return local;
+        }
     }
-
-    jobject global_ref = (jobject)PyLong_AsUnsignedLong(result);
-    Py_DECREF(result);
-
-    if(global_ref != NULL)
+    catch(...)
     {
-        jobject local = env->NewLocalRef(global_ref);
-        env->DeleteGlobalRef(global_ref);
-        return local;
+        LOG("cpp exception");
     }
     return NULL;
 }
 
 extern "C" JNIEXPORT jint JNICALL Java_com_happy_Widget_pythonRun(JNIEnv * env, jclass clazz, jstring script, jobject arg)
 {
-    auto path = get_string(env, script);
-
-    if(g_java_arg == NULL)
+    try
     {
-        g_java_arg = env->NewGlobalRef(arg);
-    }
+        auto path = get_string(env, script);
 
-    FILE * fh = fopen(path.c_str(), "r");
-    if(fh == NULL)
+        if(arg != NULL)
+        {
+            if(g_java_arg == NULL)
+            {
+                g_java_arg = env->NewGlobalRef(arg);
+            }
+            if(g_java_arg == NULL)
+            {
+                LOG("NewGlobalRef failed");
+                return -1;
+            }
+        }
+
+        FILE * fh = fopen(path.c_str(), "r");
+        if(fh == NULL)
+        {
+            LOG("fopen failed");
+            return -2;
+        }
+
+        wchar_t *program = Py_DecodeLocale(path.c_str(), NULL);
+        if(program == NULL)
+        {
+            LOG("Py_DecodeLocale failed");
+            return -3;
+        }
+
+        PySys_SetArgv(1, &program);
+        int ret = PyRun_SimpleFileExFlags(fh, path.c_str(), 1, NULL);
+        if(ret == -1)
+        {
+            LOG("PyRun_SimpleFileExFlags failed");
+            return -4;
+        }
+    }
+    catch(...)
     {
-        LOG("fopen failed");
-        return -1;
+        LOG("exception was thrown from pythonRun");
+        return -5;
     }
-
-    wchar_t *program = Py_DecodeLocale(path.c_str(), NULL);
-    PySys_SetArgv(1, &program);
-    PyRun_SimpleFileExFlags(fh, path.c_str(), 1, NULL);
     return 0;
 }
 
@@ -2032,17 +2066,46 @@ PyMODINIT_FUNC PyInit_native_hapy(void)
 
 extern "C" JNIEXPORT jint JNICALL Java_com_happy_Widget_pythonInit(JNIEnv * env, jclass clazz, jstring pythonpath)
 {
-    env->GetJavaVM(&vm);
+    try
+    {
+        int ret = env->GetJavaVM(&vm);
+        if(ret != 0)
+        {
+            LOG("GetJavaVM failed");
+            return -1;
+        }
 
-    auto path = get_string(env, pythonpath);
+        auto path = get_string(env, pythonpath);
 
-    setenv("PYTHONHOME", path.c_str(), 1);
-    setenv("LD_LIBRARY_PATH", (path + "/lib").c_str(), 1);
+        ret = setenv("PYTHONHOME", path.c_str(), 1);
+        if(ret == -1)
+        {
+            LOG("setenv1 failed");
+            return -2;
+        }
 
-    PyImport_AppendInittab("native_hapy", PyInit_native_hapy);
+        ret = setenv("LD_LIBRARY_PATH", (path + "/lib").c_str(), 1);
+        if(ret == -1)
+        {
+            LOG("setenv2 failed");
+            return -3;
+        }
 
-    Py_InitializeEx(0);
+        ret = PyImport_AppendInittab("native_hapy", PyInit_native_hapy);
+        if(ret == -1)
+        {
+            LOG("PyImport_AppendInittab failed");
+            return -4;
+        }
 
-    return 0;
+        Py_InitializeEx(0);
+
+        return 0;
+    }
+    catch(...)
+    {
+        LOG("exception was thrown from pythonInit");
+        return -5;
+    }
 }
 
