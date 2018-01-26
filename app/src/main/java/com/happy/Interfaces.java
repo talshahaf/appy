@@ -22,6 +22,9 @@ interface BroadcastInterface
 
 interface WidgetUpdateListener
 {
-    void onUpdate(int widgetId, DynamicView currentView);
+    DynamicView onCreate(int widgetId);
+    DynamicView onUpdate(int widgetId, DynamicView currentView);
+    DynamicView onItemClick(int widgetId, DynamicView root, int collectionId, int id, int position);
+    DynamicView onClick(int widgetId, DynamicView root, int id);
 }
 

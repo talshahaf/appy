@@ -436,11 +436,11 @@ def upcast(obj):
 
 interfaces = {}
 
-def make_interface(self, classes):
+def make_interface(self, classes, throw):
     key = id(self)
     if key in interfaces:
         raise ValueError('class already added')
-    interfaces[key] = self
+    interfaces[key] = (self, throw)
     classes = list(classes)
     arr = make_array(len(classes), CLASS_CLASS)
     arr[:] = classes
@@ -458,20 +458,30 @@ def callback(arg):
         if key not in interfaces:
             raise Exception(f'interface not registered: {key}')
 
-        if hasattr(interfaces[key], method):
-            func = getattr(interfaces[key], method)
-        elif method in interfaces[key]:
-            func = interfaces[key][method]
-        else:
-            raise Exception(f'no callback for method {method}')
+        iface, throw = interfaces[key]
 
-        if not hasattr(func, '__interface__'):
-            raise Exception(f'function not an interface: {method}')
+        try:
+            if hasattr(iface, method):
+                func = getattr(iface, method)
+            elif method in iface:
+                func = iface[method]
+            else:
+                raise Exception(f'no callback for method {method}')
 
-        ret = func(*args)
-        value, _, _ = convert_arg(ret)
-        _, ref = prepare_value(value, primitive_codes['object'], primitive_codes['object'])
-        return native_hapy.new_global_ref(ref.ref.handle)
+            if not hasattr(func, '__interface__'):
+                raise Exception(f'function not an interface: {method}')
+
+            ret = func(*args)
+            value, _, _ = convert_arg(ret)
+            _, ref = prepare_value(value, primitive_codes['object'], primitive_codes['object'])
+            return native_hapy.new_global_ref(ref.ref.handle)
+        except:
+            trace = traceback.format_exc()
+            if throw:
+                raise Exception(trace)
+            else:
+                print(trace)
+        return JNULL
     except Exception:
         raise Exception(traceback.format_exc())
 

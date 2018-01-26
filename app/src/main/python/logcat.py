@@ -1,6 +1,8 @@
 import ctypes
 import sys
 
+__buffer__ = []
+
 class LogcatWriter:
     VERBOSE = 2
     DEBUG = 3
@@ -24,7 +26,9 @@ class LogcatWriter:
             i = self.buf.find(b'\n')
             if i == -1:
                 break
-            self.android_log_print(self.lvl, b'HAPY', self.buf[:i])
+            b = self.buf[:i]
+            __buffer__.append(b)
+            self.android_log_print(self.lvl, b'HAPY', b)
             self.buf = self.buf[i + 1:]
 
     @property
@@ -35,3 +39,6 @@ class LogcatWriter:
             
 sys.stdout = LogcatWriter(LogcatWriter.INFO)
 sys.stderr = LogcatWriter(LogcatWriter.ERROR)
+
+def buffer():
+    return __buffer__[:]

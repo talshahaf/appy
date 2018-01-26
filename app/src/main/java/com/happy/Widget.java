@@ -9,8 +9,6 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
 import java.util.Random;
 
 import android.app.PendingIntent;
@@ -27,13 +25,24 @@ import android.util.Log;
 import android.util.Pair;
 import android.util.SparseArray;
 import android.util.TypedValue;
-import android.view.LayoutInflater;
-import android.view.View;
+import android.widget.AdapterViewFlipper;
+import android.widget.AnalogClock;
+import android.widget.Button;
+import android.widget.Chronometer;
+import android.widget.FrameLayout;
+import android.widget.GridLayout;
+import android.widget.GridView;
+import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ListView;
+import android.widget.ProgressBar;
+import android.widget.RelativeLayout;
 import android.widget.RemoteViews;
 import android.widget.RemoteViewsService;
+import android.widget.StackView;
 import android.widget.TextView;
+import android.widget.ViewFlipper;
 
 public class Widget extends RemoteViewsService {
     private static final String ITEM_ID_EXTRA = "ITEM_ID";
@@ -55,13 +64,40 @@ public class Widget extends RemoteViewsService {
     public static HashMap<Class<?>, String> parameterToSetter = new HashMap<>();
     static
     {
-        typeToLayout.put("TextView", new Pair<>(R.layout.text_layout, ChildrenType.NO_CHILDS));
-        typeToLayout.put("Layout", new Pair<>(R.layout.widget_layout, ChildrenType.GROUP));
-        typeToLayout.put("ListView", new Pair<>(R.layout.listview_layout, ChildrenType.COLLECTION));
 
+        typeToLayout.put("FrameLayout", new Pair<>(R.layout.framelayout_layout, ChildrenType.GROUP));
+        typeToLayout.put("LinearLayout", new Pair<>(R.layout.linearlayout_layout, ChildrenType.GROUP));
+        typeToLayout.put("RelativeLayout", new Pair<>(R.layout.relativelayout_layout, ChildrenType.GROUP));
+        typeToLayout.put("GridLayout", new Pair<>(R.layout.gridlayout_layout, ChildrenType.GROUP));
+        typeToLayout.put("AnalogClock", new Pair<>(R.layout.analogclock_layout, ChildrenType.NO_CHILDS));
+        typeToLayout.put("Button", new Pair<>(R.layout.button_layout, ChildrenType.NO_CHILDS));
+        typeToLayout.put("Chronometer", new Pair<>(R.layout.chronometer_layout, ChildrenType.NO_CHILDS));
+        typeToLayout.put("ImageButton", new Pair<>(R.layout.imagebutton_layout, ChildrenType.NO_CHILDS));
+        typeToLayout.put("ImageView", new Pair<>(R.layout.imageview_layout, ChildrenType.NO_CHILDS));
+        typeToLayout.put("ProgressBar", new Pair<>(R.layout.progressbar_layout, ChildrenType.NO_CHILDS));
+        typeToLayout.put("TextView", new Pair<>(R.layout.textview_layout, ChildrenType.NO_CHILDS));
+        typeToLayout.put("ViewFlipper", new Pair<>(R.layout.viewflipper_layout, ChildrenType.GROUP));
+        typeToLayout.put("ListView", new Pair<>(R.layout.listview_layout, ChildrenType.COLLECTION));
+        typeToLayout.put("GridView", new Pair<>(R.layout.gridview_layout, ChildrenType.COLLECTION));
+        typeToLayout.put("StackView", new Pair<>(R.layout.stackview_layout, ChildrenType.COLLECTION));
+        typeToLayout.put("AdapterViewFlipper", new Pair<>(R.layout.adapterviewflipper_layout, ChildrenType.COLLECTION));
+
+        typeToClass.put("FrameLayout", FrameLayout.class);
+        typeToClass.put("LinearLayout", LinearLayout.class);
+        typeToClass.put("RelativeLayout", RelativeLayout.class);
+        typeToClass.put("GridLayout", GridLayout.class);
+        typeToClass.put("AnalogClock", AnalogClock.class);
+        typeToClass.put("Button", Button.class);
+        typeToClass.put("Chronometer", Chronometer.class);
+        typeToClass.put("ImageButton", ImageButton.class);
+        typeToClass.put("ImageView", ImageView.class);
+        typeToClass.put("ProgressBar", ProgressBar.class);
         typeToClass.put("TextView", TextView.class);
-        typeToClass.put("Layout", LinearLayout.class);
+        typeToClass.put("ViewFlipper", ViewFlipper.class);
         typeToClass.put("ListView", ListView.class);
+        typeToClass.put("GridView", GridView.class);
+        typeToClass.put("StackView", StackView.class);
+        typeToClass.put("AdapterViewFlipper", AdapterViewFlipper.class);
 
         parameterToSetter.put(Boolean.TYPE, "setBoolean");
         parameterToSetter.put(Byte.TYPE, "setByte");
@@ -100,78 +136,46 @@ public class Widget extends RemoteViewsService {
     SparseArray<DynamicView> widgets = new SparseArray<>();
     WidgetUpdateListener updateListener = null;
 
-    public DynamicView initWidget(int widgetId)
+    public DynamicView initWidget(int widgetId) throws Exception
     {
-        DynamicView widget;
-        widget = new DynamicView();
-        widget.type = "ListView";
-        widget.id = 0;
-
-        widget.onItemClick = new DynamicView.OnItemClick()
-        {
-            @Override
-            public boolean onClick(DynamicView collection, DynamicView item, int position)
-            {
-                Log.d("HAPY", "on item click!!  "+position);
-                return false;
-            }
-        };
-
-        DynamicView text1 = new DynamicView();
-        text1.type = "TextView";
-        text1.methodCalls.add(new RemoteMethodCall(getSetterMethod(text1.type, "setText"), "setText", "dfg"));
-        text1.methodCalls.add(new RemoteMethodCall("setTextViewTextSize", TypedValue.COMPLEX_UNIT_SP, 30));
-        text1.id = 1;
-        text1.onClick = new DynamicView.OnClick()
-        {
-            @Override
-            public void onClick(DynamicView view)
-            {
-                Log.d("HAPY", "onclick1!!");
-                String ran = new Random().nextInt(100)+"";
-                view.methodCalls.add(new RemoteMethodCall(getSetterMethod(view.type, "setText"), "setText", ran));
-            }
-        };
-
-        DynamicView text2 = new DynamicView();
-        text2.type = "TextView";
-        text1.methodCalls.add(new RemoteMethodCall(getSetterMethod(text2.type, "setText"), "setText", "xcv"));
-        text1.methodCalls.add(new RemoteMethodCall("setTextViewTextSize", TypedValue.COMPLEX_UNIT_SP, 30));
-        text2.id = 2;
-        text2.onClick = new DynamicView.OnClick()
-        {
-            @Override
-            public void onClick(DynamicView view)
-            {
-                Log.d("HAPY", "onclick2!!");
-                String ran = "" + (char)('A' + new Random().nextInt(26));
-                view.methodCalls.add(new RemoteMethodCall(getSetterMethod(view.type, "setText"), "setText", ran));
-            }
-        };
-
-//        DynamicView layout1 = new DynamicView();
-//        layout1.type = "Layout";
-//        layout1.id = 3;
-//
-//        DynamicView layout2 = new DynamicView();
-//        layout2.type = "Layout";
-//        layout2.id = 4;
-//
-//        layout1.children.add(text1);
-//        layout2.children.add(text2);
-//
-//        widget.children.add(layout1);
-//        widget.children.add(layout2);
-
-        widget.children.add(text1);
-        widget.children.add(text2);
-
-
-        widgets.put(widgetId, widget);
-        return widget;
+        return new DynamicView("ListView");
     }
 
-    public static RemoteViews generate(Context context, DynamicView view, int widgetId, boolean collectionParent) throws InvocationTargetException, IllegalAccessException
+    public DynamicView updateWidget(int widgetId, DynamicView root) throws Exception
+    {
+        root.children.clear();
+        for(int i = 0; i < 100; i++)
+        {
+            DynamicView text1 = new DynamicView("TextView");
+            text1.methodCalls.add(new RemoteMethodCall("setText", getSetterMethod(text1.type, "setText"), "setText", ""+new Random().nextInt(1000)));
+            text1.methodCalls.add(new RemoteMethodCall("setTextViewTextSize", "setTextViewTextSize", TypedValue.COMPLEX_UNIT_SP, 30));
+//            text1.onClick = new DynamicView.OnClick()
+//            {
+//                @Override
+//                public void onClick(DynamicView view)
+//                {
+//                }
+//            };
+            root.children.add(text1);
+        }
+        return null;
+    }
+
+    public static int getId(Class<?> cls, String name)
+    {
+        try
+        {
+            return (Integer)cls.getField(name).get(null);
+        }
+        catch (IllegalAccessException|NoSuchFieldException e)
+        {
+            //shouldn't happen
+            e.printStackTrace();
+        }
+        return -1;
+    }
+
+    public RemoteViews generate(Context context, DynamicView view, int widgetId, boolean collectionParent, boolean isRoot) throws InvocationTargetException, IllegalAccessException
     {
         Pair<Integer, ChildrenType> layout = typeToLayout.get(view.type);
         RemoteViews remoteView = new RemoteViews(context.getPackageName(), layout.first);
@@ -181,15 +185,15 @@ public class Widget extends RemoteViewsService {
             methodCall.call(remoteView, R.id.element);
         }
 
-        if(view.onClick != null && !collectionParent)
+        if(!collectionParent && layout.second != ChildrenType.COLLECTION) //TODO check if you can never setOnClick on collection
         {
             Intent intent = new Intent(context, WidgetReceiver.class);
 
             intent.setAction(AppWidgetManager.ACTION_APPWIDGET_UPDATE);
             intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, new int[]{widgetId});
-            intent.putExtra(ITEM_ID_EXTRA, view.id);
+            intent.putExtra(ITEM_ID_EXTRA, view.getId());
             PendingIntent pendingIntent = PendingIntent.getBroadcast(context,
-                    widgetId + (view.id << 8), intent, PendingIntent.FLAG_UPDATE_CURRENT);
+                    widgetId + (view.getId() << 8), intent, PendingIntent.FLAG_UPDATE_CURRENT);
             remoteView.setOnClickPendingIntent(R.id.element, pendingIntent);
         }
 
@@ -197,18 +201,19 @@ public class Widget extends RemoteViewsService {
         {
             if(layout.second == ChildrenType.COLLECTION)
             {
+                Log.d("HAPY", "adding list "+view.getId());
                 Intent clickintent = new Intent(context, WidgetReceiver.class);
                 clickintent.setAction(AppWidgetManager.ACTION_APPWIDGET_UPDATE);
                 clickintent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, new int[]{widgetId});
-                clickintent.putExtra(COLLECTION_ITEM_ID_EXTRA, view.id);
+                clickintent.putExtra(COLLECTION_ITEM_ID_EXTRA, view.getId());
 
                 PendingIntent clickPendingIntent = PendingIntent.getBroadcast(context,
-                        widgetId + (view.id << 8), clickintent, PendingIntent.FLAG_UPDATE_CURRENT);
+                        widgetId + (view.getId() << 8), clickintent, PendingIntent.FLAG_UPDATE_CURRENT);
                 remoteView.setPendingIntentTemplate(R.id.element, clickPendingIntent);
 
                 Intent intent = new Intent(context, Widget.class);
                 intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId);
-                intent.putExtra(ITEM_ID_EXTRA, view.id);
+                intent.putExtra(ITEM_ID_EXTRA, view.getId());
                 intent.setData(Uri.parse(intent.toUri(Intent.URI_INTENT_SCHEME)));
                 remoteView.setRemoteAdapter(R.id.element, intent);
             }
@@ -217,8 +222,8 @@ public class Widget extends RemoteViewsService {
                 remoteView.removeAllViews(R.id.element);
                 for (DynamicView child : view.children)
                 {
-                    RemoteViews remoteChild = generate(context, child, widgetId, false);
-                    Log.d("HAPY", "adding child");
+                    RemoteViews remoteChild = generate(context, child, widgetId, false, false);
+                    Log.d("HAPY", "adding child "+child.getId()+" "+child.type);
                     remoteView.addView(R.id.element, remoteChild);
                 }
             }
@@ -232,7 +237,7 @@ public class Widget extends RemoteViewsService {
         {
             return null;
         }
-        if(root.id == dynamicId)
+        if(root.getId() == dynamicId)
         {
             return root;
         }
@@ -248,30 +253,35 @@ public class Widget extends RemoteViewsService {
         return null;
     }
 
-    public void handle(DynamicView widget, int collectionId, int dynamicId, int collectionPosition)
+    public DynamicView handle(int widgetId, DynamicView widget, int collectionId, int dynamicId, int collectionPosition)
     {
         Log.d("HAPY", "handling "+dynamicId+" in collection "+collectionId);
         DynamicView view = find(widget, dynamicId);
         if(view == null)
         {
             Log.d("HAPY", "no view?");
-            return;
+            return null;
         }
 
         boolean callOnClick = true;
 
-        DynamicView collectionView = find(widget, collectionId);
-        if(collectionView != null && collectionView.onItemClick != null)
+        if(updateListener == null)
         {
-            callOnClick = !collectionView.onItemClick.onClick(collectionView, view, collectionPosition);
-        }
-        if(!callOnClick || view.onClick == null)
-        {
-            Log.d("HAPY", "no onclick... !! "+callOnClick+" "+view.id);
-            return;
+            return null;
         }
 
-        view.onClick.onClick(view);
+        if(collectionId != -1)
+        {
+            DynamicView ret = updateListener.onItemClick(widgetId, widget, collectionId, dynamicId, collectionPosition);
+            //TODO cannot change layout and not suppress click
+            if(ret != null)
+            {
+                Log.d("HAPY", "suppressing click on "+view.getId());
+                return ret;
+            }
+        }
+
+        return updateListener.onClick(widgetId, widget, dynamicId);
     }
 
     public static String getSetterMethod(String type, String method)
@@ -309,17 +319,25 @@ public class Widget extends RemoteViewsService {
         return methods;
     }
 
-    static class ListFactory implements RemoteViewsFactory
+    class ListFactory implements RemoteViewsFactory
     {
         DynamicView item;
         Context context;
         int widgetId;
+        int itemId;
 
-        public ListFactory(Context ctx, int widget, DynamicView i)
+        public ListFactory(Context ctx, int widgetId, int itemId)
         {
-            item = i;
-            widgetId = widget;
+            this.widgetId = widgetId;
+            this.itemId = itemId;
             context = ctx;
+
+            DynamicView widget = widgets.get(widgetId);
+            if(widget != null)
+            {
+                item = find(widget, itemId);
+            }
+            Log.d("HAPY", "list factory item is "+item);
         }
 
         @Override
@@ -331,7 +349,15 @@ public class Widget extends RemoteViewsService {
         @Override
         public void onDataSetChanged()
         {
-
+            DynamicView widget = widgets.get(widgetId);
+            if (widget != null)
+            {
+                item = find(widget, itemId);
+            }
+            if(item != null)
+            {
+                Log.d("HAPY", "update list factory item is " + item.children.size() + " " + item);
+            }
         }
 
         @Override
@@ -343,25 +369,35 @@ public class Widget extends RemoteViewsService {
         @Override
         public int getCount()
         {
-            return item.children.size();
+            if (item == null)
+            {
+                return 0;
+            }
+            int count = item.children.size();
+            Log.d("HAPY", "get count called: " + count);
+            return count;
         }
 
         @Override
         public RemoteViews getViewAt(int position)
         {
-            Log.d("HAPY", "get view at "+position);
+            Log.d("HAPY", "get view at " + position);
+
             try
             {
-                DynamicView view = item.children.get(position);
-                RemoteViews remote = generate(context, view, widgetId, true);
+                if (item != null)
+                {
+                    DynamicView view = item.children.get(position);
+                    RemoteViews remote = generate(context, view, widgetId, true, false);
 
-                Intent intent = new Intent(context, WidgetReceiver.class);
-                intent.putExtra(ITEM_ID_EXTRA, view.id);
-                intent.putExtra(COLLECTION_POSITION_EXTRA, position);
-                remote.setOnClickFillInIntent(R.id.element, intent);
-                return remote;
+                    Intent intent = new Intent(context, WidgetReceiver.class);
+                    intent.putExtra(ITEM_ID_EXTRA, view.getId());
+                    intent.putExtra(COLLECTION_POSITION_EXTRA, position);
+                    remote.setOnClickFillInIntent(R.id.element, intent);
+                    return remote;
+                }
             }
-            catch (InvocationTargetException|IllegalAccessException e)
+            catch (InvocationTargetException | IllegalAccessException e)
             {
                 e.printStackTrace();
             }
@@ -377,6 +413,11 @@ public class Widget extends RemoteViewsService {
         @Override
         public int getViewTypeCount()
         {
+            Log.d("HAPY", "get view type count called");
+            if (item == null)
+            {
+                return 0;
+            }
             return item.children.size();
         }
 
@@ -399,18 +440,7 @@ public class Widget extends RemoteViewsService {
         int widgetId = intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, -1);
         int dynamicId = intent.getIntExtra(ITEM_ID_EXTRA, -1);
         Log.d("HAPY", "onGetViewFactory: "+widgetId + " "+dynamicId);
-        DynamicView widget = widgets.get(widgetId);
-        if(widget == null)
-        {
-            Log.d("HAPY", "NO widget");
-        }
-        DynamicView view = find(widget, dynamicId);
-        if(view == null)
-        {
-            Log.d("HAPY", "HERE");
-            return null;
-        }
-        return new ListFactory(this, widgetId, view);
+        return new ListFactory(this, widgetId, dynamicId);
     }
 
     public Widget()
@@ -427,6 +457,7 @@ public class Widget extends RemoteViewsService {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId)
     {
+        Log.d("HAPY", "call");
         if(!started)
         {
             started = true;
@@ -439,6 +470,37 @@ public class Widget extends RemoteViewsService {
             pythonInit(getFilesDir().getAbsolutePath());
 
             pythonRun("/sdcard/main.py", Widget.this);
+
+//            registerOnWidgetUpdate(new WidgetUpdateListener()
+//            {
+//                @Override
+//                public DynamicView onCreate(int widgetId)
+//                {
+//                    try
+//                    {
+//                        return initWidget(widgetId);
+//                    }
+//                    catch (Exception e)
+//                    {
+//                        e.printStackTrace();
+//                    }
+//                    return null;
+//                }
+//
+//                @Override
+//                public DynamicView onUpdate(int widgetId, DynamicView currentView)
+//                {
+//                    try
+//                    {
+//                        return updateWidget(widgetId, currentView);
+//                    }
+//                    catch (Exception e)
+//                    {
+//                        e.printStackTrace();
+//                    }
+//                    return null;
+//                }
+//            });
         }
 
         Intent widgetIntent = intent.getParcelableExtra(WIDGET_INTENT);
@@ -455,7 +517,11 @@ public class Widget extends RemoteViewsService {
             DynamicView eventWidget = widgets.get(eventWidgetId);
             if(eventWidget != null)
             {
-                handle(eventWidget, widgetIntent.getIntExtra(COLLECTION_ITEM_ID_EXTRA, -1), dynamicId, widgetIntent.getIntExtra(COLLECTION_POSITION_EXTRA, -1));
+                DynamicView newwidget = handle(eventWidgetId, eventWidget, widgetIntent.getIntExtra(COLLECTION_ITEM_ID_EXTRA, -1), dynamicId, widgetIntent.getIntExtra(COLLECTION_POSITION_EXTRA, -1));
+                if(newwidget != null)
+                {
+                    widgets.put(eventWidgetId, newwidget);
+                }
             }
 
             for (int widgetId : allWidgetIds) {
@@ -464,20 +530,40 @@ public class Widget extends RemoteViewsService {
                 DynamicView widget = widgets.get(widgetId);
                 if(widget == null)
                 {
-                    widget = new DynamicView();
-                    widget.type = "Layout";
-                    widget.id = 0;
+                    if(updateListener != null)
+                    {
+                        Log.d("HAPY", "calling listener onCreate");
+                        widget = updateListener.onCreate(widgetId);
+                    }
+                    if(widget == null)
+                    {
+                        Log.d("HAPY", "doing default onCreate");
+                        try
+                        {
+                            widget = new DynamicView("LinearLayout");
+                        }
+                        catch (Exception e)
+                        {
+                            //shouldn't happen
+                        }
+                    }
                     widgets.put(widgetId, widget);
                 }
 
                 if(updateListener != null)
                 {
-                    updateListener.onUpdate(widgetId, widget);
+                    DynamicView newwidget = updateListener.onUpdate(widgetId, widget);
+                    if(newwidget != null)
+                    {
+                        widget = newwidget;
+                        widgets.put(widgetId, widget);
+                    }
                 }
+                Log.d("HAPY", widget.toString());
 
                 try
                 {
-                    RemoteViews view = generate(this, widget, widgetId, false);
+                    RemoteViews view = generate(this, widgets.get(widgetId), widgetId, false, true);
                     appWidgetManager.notifyAppWidgetViewDataChanged(widgetId, R.id.element);
                     appWidgetManager.updateAppWidget(widgetId, view);
                 }

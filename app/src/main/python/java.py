@@ -241,10 +241,10 @@ new = Path(cls_func=lambda cls, *args: cls(*args),
 clazz = Path(cls_func=lambda cls: cls,
              arr_func=lambda arr_cls, _: arr_cls)
 
-def create_interface(ins, *ifaces):
+def create_interface(ins, *ifaces, throw=False):
     if isinstance(ins, dict):
         ins = {k: interface(v) for k,v in ins.items()}
-    return wrap(bridge.make_interface(ins, unwrap_args(ifaces)))[0]
+    return wrap(bridge.make_interface(ins, unwrap_args(ifaces), throw))[0]
 
 def get_java_arg():
     return wrap(bridge.get_java_arg())[0]

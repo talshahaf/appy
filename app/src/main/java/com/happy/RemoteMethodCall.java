@@ -4,6 +4,10 @@ import android.content.Context;
 import android.util.Log;
 import android.widget.RemoteViews;
 
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.HashMap;
@@ -13,8 +17,9 @@ import java.util.HashMap;
  */
 public class RemoteMethodCall
 {
-    Method method;
-    Object[] arguments;
+    private String identifier;
+    private Method method;
+    private Object[] arguments;
     public static HashMap<String, Method> remoteViewMethods = new HashMap<>();
     static
     {
@@ -25,10 +30,31 @@ public class RemoteMethodCall
         }
     }
 
-    public RemoteMethodCall(String method, Object... args)
+    public RemoteMethodCall(String identifier, String method, Object... args) throws Exception
     {
-        this.method = remoteViewMethods.get(method);
+        this.identifier = identifier;
         arguments = args;
+        this.method = remoteViewMethods.get(method);
+        if(this.method == null)
+        {
+            throw new Exception("no method "+method);
+        }
+    }
+
+    public String getIdentifier()
+    {
+        return identifier;
+    }
+
+    public String toString()
+    {
+        String ret = identifier + ": " + method.getName()+"(";
+        for(Object argument : arguments)
+        {
+            ret += argument + ", ";
+        }
+        ret += ")";
+        return ret;
     }
 
     public void call(RemoteViews view, int id) throws InvocationTargetException, IllegalAccessException
@@ -62,6 +88,41 @@ public class RemoteMethodCall
                 break;
             }
         }
+    }
 
+    public static RemoteMethodCall fromJSON(String json) throws Exception{
+        JSONObject obj = new JSONObject(json);
+        return fromJSON(obj);
+    }
+
+    public static RemoteMethodCall fromJSON(JSONObject obj) throws Exception{
+        Object[] args = new Object[0];
+        if(obj.has("arguments"))
+        {
+            JSONArray jsonargs = obj.getJSONArray("arguments");
+            args = new Object[jsonargs.length()];
+            for (int i = 0; i < jsonargs.length(); i++)
+            {
+                args[i] = jsonargs.get(i);
+            }
+        }
+        return new RemoteMethodCall(obj.getString("identifier"), obj.getString("method"), args);
+    }
+
+    public JSONObject toJSONObj() throws JSONException
+    {
+        JSONObject obj = new JSONObject();
+        obj.put("identifier", identifier);
+        obj.put("method", method.getName());
+        if(arguments.length > 0)
+        {
+            JSONArray jsonargs = new JSONArray();
+            for (Object arg : arguments)
+            {
+                jsonargs.put(arg);
+            }
+            obj.put("arguments", jsonargs);
+        }
+        return obj;
     }
 }
