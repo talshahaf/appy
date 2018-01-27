@@ -19,6 +19,8 @@ public class DynamicView
     public ArrayList<RemoteMethodCall> methodCalls = new ArrayList<>();
     public ArrayList<DynamicView> children = new ArrayList<>();
     public Object tag;
+    public int xml_id;
+    public int view_id;
 
     private static int id_counter = 0;
     private static int genId()

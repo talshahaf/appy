@@ -44,6 +44,8 @@ import android.widget.StackView;
 import android.widget.TextView;
 import android.widget.ViewFlipper;
 
+import org.json.JSONException;
+
 public class Widget extends RemoteViewsService {
     private static final String ITEM_ID_EXTRA = "ITEM_ID";
     public static final String WIDGET_INTENT = "WIDGET_INTENT";
@@ -253,7 +255,7 @@ public class Widget extends RemoteViewsService {
         return null;
     }
 
-    public DynamicView handle(int widgetId, DynamicView widget, int collectionId, int dynamicId, int collectionPosition)
+    public String handle(int widgetId, DynamicView widget, int collectionId, int dynamicId, int collectionPosition) throws JSONException
     {
         Log.d("HAPY", "handling "+dynamicId+" in collection "+collectionId);
         DynamicView view = find(widget, dynamicId);
@@ -273,7 +275,7 @@ public class Widget extends RemoteViewsService {
         if(collectionId != -1)
         {
             Log.d("HAPY", "calling listener onItemClick");
-            DynamicView ret = updateListener.onItemClick(widgetId, widget, collectionId, dynamicId, collectionPosition);
+            String ret = updateListener.onItemClick(widgetId, widget.toJSON(), collectionId, dynamicId, collectionPosition);
             //TODO cannot change layout and not suppress click
             if(ret != null)
             {
@@ -283,7 +285,7 @@ public class Widget extends RemoteViewsService {
         }
 
         Log.d("HAPY", "calling listener onClick");
-        return updateListener.onClick(widgetId, widget, dynamicId);
+        return updateListener.onClick(widgetId, widget.toJSON(), dynamicId);
     }
 
     public static String getSetterMethod(String type, String method)
@@ -519,7 +521,15 @@ public class Widget extends RemoteViewsService {
             DynamicView eventWidget = widgets.get(eventWidgetId);
             if(eventWidget != null)
             {
-                DynamicView newwidget = handle(eventWidgetId, eventWidget, widgetIntent.getIntExtra(COLLECTION_ITEM_ID_EXTRA, -1), dynamicId, widgetIntent.getIntExtra(COLLECTION_POSITION_EXTRA, -1));
+                DynamicView newwidget = null;
+                try
+                {
+                    newwidget = DynamicView.fromJSON(handle(eventWidgetId, eventWidget, widgetIntent.getIntExtra(COLLECTION_ITEM_ID_EXTRA, -1), dynamicId, widgetIntent.getIntExtra(COLLECTION_POSITION_EXTRA, -1)));
+                }
+                catch (Exception e)
+                {
+                    Log.d("HAPY", "error in handle");
+                }
                 if(newwidget != null)
                 {
                     widgets.put(eventWidgetId, newwidget);
@@ -535,7 +545,14 @@ public class Widget extends RemoteViewsService {
                     if(updateListener != null)
                     {
                         Log.d("HAPY", "calling listener onCreate");
-                        widget = updateListener.onCreate(widgetId);
+                        try
+                        {
+                            widget = DynamicView.fromJSON(updateListener.onCreate(widgetId));
+                        }
+                        catch(Exception e)
+                        {
+                            Log.d("HAPY", "error in listener onCreate");
+                        }
                     }
                     if(widget == null)
                     {
@@ -555,7 +572,15 @@ public class Widget extends RemoteViewsService {
                 if(updateListener != null)
                 {
                     Log.d("HAPY", "calling listener onUpdate");
-                    DynamicView newwidget = updateListener.onUpdate(widgetId, widget);
+                    DynamicView newwidget = null;
+                    try
+                    {
+                        newwidget = DynamicView.fromJSON(updateListener.onUpdate(widgetId, widget.toJSON()));
+                    }
+                    catch(Exception e)
+                    {
+                        Log.d("HAPY", "error in listener onUpdate");
+                    }
                     if(newwidget != null)
                     {
                         widget = newwidget;
