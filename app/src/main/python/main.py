@@ -202,7 +202,7 @@ class Handler:
     def export(self, e):
         if e is None:
             return None
-        return clazz.com.happy.DynamicView().fromJSON(e.json())
+        return e.json()
 
     @interface
     def onCreate(self, widget_id):
@@ -212,12 +212,12 @@ class Handler:
     @interface
     def onUpdate(self, widget_id, root):
         print(f'python got onUpdate')
-        return self.export(widget_manager_update(widget_id, Element(root.toJSON())))
+        return self.export(widget_manager_update(widget_id, Element(root)))
 
     @interface
     def onItemClick(self, widget_id, root, parent_id, view_id, position):
         print(f'python got onitemclick {widget_id}')
-        root = Element(root.toJSON())
+        root = Element(root)
         v = root.find(view_id)
         handled = v.__itemclick__(root.find(parent_id), v, position)
         if not handled:
@@ -227,7 +227,7 @@ class Handler:
     @interface
     def onClick(self, widget_id, root, view_id):
         print(f'python got onclick {widget_id}')
-        root = Element(root.toJSON())
+        root = Element(root)
         v = root.find(view_id)
         v.__click__(v)
         return self.export(root)
