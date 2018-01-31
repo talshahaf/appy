@@ -2,6 +2,7 @@ package com.happy;
 
 import android.util.Pair;
 
+import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.HashMap;
 
@@ -13,23 +14,66 @@ import javax.xml.transform.Result;
 
 public class BestFit
 {
+    static class MutablePair<T1, T2>
+    {
+        public T1 first;
+        public T2 second;
+        public MutablePair(T1 first, T2 second)
+        {
+            this.first = first;
+            this.second = second;
+        }
+        public MutablePair()
+        {
+
+        }
+
+        public String toString()
+        {
+            return "("+first.toString() + ", " + second.toString()+")";
+        }
+    }
     static class ResultTree
     {
-        public ResultTree(int from, int to, boolean or)
+        enum ResultType
+        {
+            OR,
+            AND,
+            ANY,
+        }
+
+        public ResultTree(int from, int to, ResultType type)
         {
             this.from = from;
             this.to = to;
-            this.or = or;
+            this.type = type;
         }
         int from;
         int to;
-        boolean or;
+        ResultType type;
         ArrayList<ResultTree> children = new ArrayList<>();
+
+        public String toString()
+        {
+            String ret = "("+from + " " + to+" "+type+"): {";
+            boolean first = true;
+            for(ResultTree child : children)
+            {
+                if(!first)
+                {
+                    ret += ", ";
+                }
+                ret += child.toString();
+                first = false;
+            }
+            ret += "}";
+            return ret;
+        }
     }
 
-    DynamicView[] templates;
+    ArrayList<DynamicView> templates;
 
-    public BestFit(DynamicView[] views)
+    public BestFit(ArrayList<DynamicView> views)
     {
         templates = views;
     }
@@ -40,11 +84,11 @@ public class BestFit
         findAll(input, type, storage, false);
         return storage;
     }
-    void findAll(DynamicView input, String color, ArrayList<DynamicView> storage, boolean includeself)
+    void findAll(DynamicView input, String type, ArrayList<DynamicView> storage, boolean includeself)
     {
         if(includeself)
         {
-            if(input.type.equals(color))
+            if(input.type.equals(type) || input.type.equals("*"))
             {
                 storage.add(input);
             }
@@ -52,19 +96,23 @@ public class BestFit
 
         for(DynamicView child : input.children)
         {
-            findAll(child, color, storage, true);
+            findAll(child, type, storage, true);
         }
     }
 
     public ResultTree possible(DynamicView input, DynamicView template)
     {
+        if(template.type.equals("*"))
+        {
+            return new ResultTree(0, 0, ResultTree.ResultType.ANY);
+        }
         ArrayList<DynamicView> results = findAll(template, input.type); //without root
         ArrayList<ResultTree> ret = new ArrayList<>();
         for(DynamicView result : results)
         {
             if(input.children.isEmpty())
             {
-                ret.add(new ResultTree(result.getId(), input.getId(), true));
+                ret.add(new ResultTree(result.getId(), input.getId(), ResultTree.ResultType.OR));
             }
             else
             {
@@ -73,58 +121,54 @@ public class BestFit
                 for(DynamicView child : input.children)
                 {
                     ResultTree subret = possible(child, result);
-                    if(subret.children.isEmpty())
+                    if(subret.type != ResultTree.ResultType.ANY)
                     {
-                        deadend = true;
-                        break;
-                    }
-                    else
-                    {
-                        midret.add(subret);
+                        if (subret.children.isEmpty())
+                        {
+                            deadend = true;
+                            break;
+                        }
+                        else
+                        {
+                            midret.add(subret);
+                        }
                     }
                 }
                 if(deadend)
                 {
                     continue;
                 }
-                ResultTree newtree = new ResultTree(result.getId(), input.getId(), false);
+                ResultTree newtree = new ResultTree(result.getId(), input.getId(), ResultTree.ResultType.AND);
                 newtree.children.addAll(midret);
                 ret.add(newtree);
             }
         }
-        ResultTree tree = new ResultTree(0, 0, true);
+        ResultTree tree = new ResultTree(0, 0, ResultTree.ResultType.OR);
         tree.children.addAll(ret);
         return tree;
     }
 
-    public Pair<Integer, ResultTree> min_route(ResultTree tree)
+    public MutablePair<Integer, ResultTree> bestRoute(ResultTree tree)
     {
-        ResultTree me = new ResultTree(tree.from, tree.to, true);
-        Pair<Integer, ResultTree> best = null;
+        ResultTree me = new ResultTree(tree.from, tree.to, ResultTree.ResultType.OR);
+        MutablePair<Integer, ResultTree> best = null;
         for(ResultTree child : tree.children)
         {
-            Pair<Integer, ResultTree> runner = min_route(child);
-            if(tree.or)
-            {
-                if(best == null || runner.first < best.first)
-                {
-                    best = runner;
-                }
-            }
-            else
+            MutablePair<Integer, ResultTree> runner = bestRoute(child);
+            if(tree.type == ResultTree.ResultType.AND)
             {
                 me.children.add(runner.second);
-                if(best == null || runner.first > best.first)
-                {
-                    best = runner;
-                }
+            }
+            if(best == null || runner.first > best.first)
+            {
+                best = runner;
             }
         }
 
         int depth = 1;
         if(best != null)
         {
-            if (tree.or)
+            if (tree.type == ResultTree.ResultType.OR)
             {
                 me.children.add(best.second);
                 depth = best.first;
@@ -134,39 +178,72 @@ public class BestFit
                 depth += best.first;
             }
         }
-        return new Pair<>(depth, me);
+        return new MutablePair<>(depth, me);
     }
 
-    public HashMap<Integer, Integer> best_fit(DynamicView input)
+    public MutablePair<Integer, Integer> treelen(ResultTree tree)
     {
-        Pair<Integer, ResultTree> best = null;
+        MutablePair<Integer, Integer> storage = new MutablePair<>(0, 0);
+        treelen(tree, storage);
+        return storage;
+    }
+    public void treelen(ResultTree tree, MutablePair<Integer, Integer> storage)
+    {
+        storage.first += 1;
+        if(tree.from != 0)
+        {
+            storage.second += 1;
+        }
+
+        for(ResultTree child : tree.children)
+        {
+            treelen(child, storage);
+        }
+    }
+
+    public MutablePair<DynamicView, HashMap<Integer, Integer>> bestFit(DynamicView input)
+    {
+        MutablePair<Integer, Integer> bestLen = null;
+        ResultTree best = null;
+        DynamicView bestTemplate = null;
         for(DynamicView template : templates)
         {
-            Pair<Integer, ResultTree> runner = min_route(possible(input, template));
-            if(best == null || runner.first < best.first)
+            ResultTree pos = possible(input, template);
+            ResultTree runner = bestRoute(pos).second;
+            MutablePair<Integer, Integer> len = treelen(runner);
+            //no best       ||       fit more of the input   ||   fit the same input          but less crowded in template
+            if(best == null || (len.second > bestLen.second) || (len.second == bestLen.second && len.first < bestLen.first))
             {
                 best = runner;
+                bestTemplate = template;
+                bestLen = len;
             }
         }
 
-        HashMap<Integer, Integer> storage = new HashMap<>();
-        make_list(best.second, storage);
-        if(storage.isEmpty())
+        HashMap<Integer, Integer> lst = makeList(best);
+        if(lst.isEmpty())
         {
             return null;
         }
-        return storage;
+        return new MutablePair<>(bestTemplate, lst);
     }
 
-    void make_list(ResultTree possible, HashMap<Integer, Integer> storage)
+
+    HashMap<Integer, Integer> makeList(ResultTree possible)
     {
-        if(possible.to != 0)
+        HashMap<Integer, Integer> storage = new HashMap<>();
+        makeList(possible, storage);
+        return storage;
+    }
+    void makeList(ResultTree possible, HashMap<Integer, Integer> storage)
+    {
+        if(possible.from != 0)
         {
             storage.put(possible.from, possible.to);
         }
         for(ResultTree child : possible.children)
         {
-            make_list(child, storage);
+            makeList(child, storage);
         }
     }
 }
