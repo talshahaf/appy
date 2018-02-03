@@ -19,7 +19,7 @@ def cap(s):
 
 @functools.lru_cache(maxsize=128, typed=True)
 def validate_type(type):
-    return clazz.com.happy.Widget().typeToLayout.containsKey(type)
+    return clazz.com.happy.Widget().typeToClass.containsKey(type)
 
 @functools.lru_cache(maxsize=128, typed=True)
 def get_param_setter(type, attr):
@@ -54,7 +54,7 @@ class Element:
         if 'children' not in self.d:
             self.d['children'] = []
         else:
-            print(self.d)
+            #print(self.d)
             self.d['children'] = [Element(json.dumps(child)) for child in self.d['children']]
 
     @property
@@ -84,7 +84,7 @@ class Element:
     def __click__(self, *args):
         if 'tag' not in self.d or 'click' not in self.d['tag']:
             #raise ValueError('no click?')
-            print(f'no onclick: {d}, {callbacks}')
+            print(f'no onclick: {self.d}, {callbacks}')
             return
         callbacks[self.d['tag']['click']](*args)
 
@@ -216,7 +216,8 @@ class Handler:
 
     @interface
     def onItemClick(self, widget_id, root, parent_id, view_id, position):
-        print(f'python got onitemclick {widget_id}')
+        print(f'python got onitemclick {widget_id} {parent_id} {view_id} {position}')
+        print(f'{root}')
         root = Element(root)
         v = root.find(view_id)
         handled = v.__itemclick__(root.find(parent_id), v, position)
@@ -226,7 +227,8 @@ class Handler:
 
     @interface
     def onClick(self, widget_id, root, view_id):
-        print(f'python got onclick {widget_id}')
+        print(f'python got onclick {widget_id} {view_id}')
+        print(f'{root}')
         root = Element(root)
         v = root.find(view_id)
         v.__click__(v)
@@ -264,7 +266,10 @@ def logcat_on_create():
     return ListView(children=[TextView(text='ready...', textViewTextSize=(clazz.android.util.TypedValue().COMPLEX_UNIT_SP, 15), click=lambda e: None)])
 
 def logcat_on_update(root):
-    return ListView(children=[TextView(text=l.decode(), textViewTextSize=(clazz.android.util.TypedValue().COMPLEX_UNIT_SP, 15), click=lambda e: None) for l in logcat.buffer()[-50:]])
+    return RelativeLayout(children=[
+        Button(text='ref', textViewTextSize=(clazz.android.util.TypedValue().COMPLEX_UNIT_SP, 30), click=lambda e: None),
+        ListView(children=[TextView(text=str(random.randint(300, 400)), textViewTextSize=(clazz.android.util.TypedValue().COMPLEX_UNIT_SP, 15), click=lambda e: None) for _ in range(3)]),
+    ])
 
 def newwidget_on_create():
     return None
@@ -272,8 +277,8 @@ def newwidget_on_create():
 def newwidget_on_update(root):
     print(root)
 
-available_widgets['example'] = (example_on_create, None)
-available_widgets['example2'] = (example2_on_create, None)
+#available_widgets['example'] = (example_on_create, None)
+#available_widgets['example2'] = (example2_on_create, None)
 available_widgets['logcat'] = (logcat_on_create, logcat_on_update)
 
 #TODO fix bytes serialization

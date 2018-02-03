@@ -6,8 +6,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.lang.annotation.Annotation;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Random;
 
@@ -44,46 +46,20 @@ import android.widget.StackView;
 import android.widget.TextView;
 import android.widget.ViewFlipper;
 
-import org.json.JSONException;
-
 public class Widget extends RemoteViewsService {
     private static final String ITEM_ID_EXTRA = "ITEM_ID";
     public static final String WIDGET_INTENT = "WIDGET_INTENT";
     private static final String COLLECTION_ITEM_ID_EXTRA = "COLLECTION_ITEM_ID_EXTRA";
     private static final String COLLECTION_POSITION_EXTRA = "COLLECTION_POSITION_EXTRA";
+    private static final String LIST_SERIALIZED_EXTRA = "LIST_SERIALIZED_EXTRA";
+    private static final String XML_ID_EXTRA = "XML_ID_EXTRA";
+    private static final String VIEW_ID_EXTRA = "VIEW_ID_EXTRA";
 
-
-    enum ChildrenType
-    {
-        NO_CHILDS,
-        GROUP,
-        COLLECTION,
-    }
-
-    public static HashMap<String, Pair<Integer, ChildrenType>> typeToLayout = new HashMap<>();
     public static HashMap<String, Class<?>> typeToClass = new HashMap<>();
     public static HashMap<String, HashMap<String, String>> typeToRemotableMethod = new HashMap<>();
     public static HashMap<Class<?>, String> parameterToSetter = new HashMap<>();
     static
     {
-
-        typeToLayout.put("FrameLayout", new Pair<>(R.layout.framelayout_layout, ChildrenType.GROUP));
-        typeToLayout.put("LinearLayout", new Pair<>(R.layout.linearlayout_layout, ChildrenType.GROUP));
-        typeToLayout.put("RelativeLayout", new Pair<>(R.layout.relativelayout_layout, ChildrenType.GROUP));
-        typeToLayout.put("GridLayout", new Pair<>(R.layout.gridlayout_layout, ChildrenType.GROUP));
-        typeToLayout.put("AnalogClock", new Pair<>(R.layout.analogclock_layout, ChildrenType.NO_CHILDS));
-        typeToLayout.put("Button", new Pair<>(R.layout.button_layout, ChildrenType.NO_CHILDS));
-        typeToLayout.put("Chronometer", new Pair<>(R.layout.chronometer_layout, ChildrenType.NO_CHILDS));
-        typeToLayout.put("ImageButton", new Pair<>(R.layout.imagebutton_layout, ChildrenType.NO_CHILDS));
-        typeToLayout.put("ImageView", new Pair<>(R.layout.imageview_layout, ChildrenType.NO_CHILDS));
-        typeToLayout.put("ProgressBar", new Pair<>(R.layout.progressbar_layout, ChildrenType.NO_CHILDS));
-        typeToLayout.put("TextView", new Pair<>(R.layout.textview_layout, ChildrenType.NO_CHILDS));
-        typeToLayout.put("ViewFlipper", new Pair<>(R.layout.viewflipper_layout, ChildrenType.GROUP));
-        typeToLayout.put("ListView", new Pair<>(R.layout.listview_layout, ChildrenType.COLLECTION));
-        typeToLayout.put("GridView", new Pair<>(R.layout.gridview_layout, ChildrenType.COLLECTION));
-        typeToLayout.put("StackView", new Pair<>(R.layout.stackview_layout, ChildrenType.COLLECTION));
-        typeToLayout.put("AdapterViewFlipper", new Pair<>(R.layout.adapterviewflipper_layout, ChildrenType.COLLECTION));
-
         typeToClass.put("FrameLayout", FrameLayout.class);
         typeToClass.put("LinearLayout", LinearLayout.class);
         typeToClass.put("RelativeLayout", RelativeLayout.class);
@@ -129,21 +105,156 @@ public class Widget extends RemoteViewsService {
             parameterToSetter.put(Icon.class, "setIcon");
         }
 
-        for(String type: typeToLayout.keySet())
+        for(String type: typeToClass.keySet())
         {
             typeToRemotableMethod.put(type, getRemotableMethods(type));
         }
     }
 
-    SparseArray<DynamicView> widgets = new SparseArray<>();
-    WidgetUpdateListener updateListener = null;
-
-    public DynamicView initWidget(int widgetId) throws Exception
+    public static ArrayList<DynamicView> templates = new ArrayList<>();
+    static
     {
-        return new DynamicView("ListView");
+        try
+        {
+            String list =   "{" +
+                            "    \"id\": 0," +
+                            "    \"type\": \"*\"," +
+                            "    \"children\":" +
+                            "    [" +
+                            "        {" +
+                            "            \"id\": 1," +
+                            "            \"type\": \"RelativeLayout\"," +
+                            "            \"xmlId\": "+ R.layout.bestfit_layout +"," +
+                            "            \"viewId\": "+ R.id.e1 +"," +
+                            "            \"children\":" +
+                            "            [" +
+                            "                {" +
+                            "                    \"id\": 2," +
+                            "                    \"type\": \"ListView\"," +
+                            "                    \"xmlId\": "+ R.layout.bestfit_layout +"," +
+                            "                    \"viewId\": "+ R.id.e2 +"," +
+                            "                    \"children\":" +
+                            "                    [" +
+                            "                        {" +
+                            "                            \"id\": 0," +
+                            "                            \"type\": \"*\"" +
+                            "                        }" +
+                            "                    ]" +
+                            "                }," +
+                            "                {" +
+                            "                    \"id\": 3," +
+                            "                    \"type\": \"RelativeLayout\"," +
+                            "                    \"xmlId\": "+ R.layout.bestfit_layout +"," +
+                            "                    \"viewId\": "+ R.id.e3 +"," +
+                            "                    \"children\":" +
+                            "                    [" +
+                            "                        {" +
+                            "                            \"id\": 0," +
+                            "                            \"type\": \"*\"" +
+                            "                        }" +
+                            "                    ]" +
+                            "                }" +
+                            "            ]" +
+                            "        }" +
+                            "    ]" +
+                            "}";
+
+            String text =   "{" +
+                    "    \"id\": 0," +
+                    "    \"type\": \"*\"," +
+                    "    \"children\":" +
+                    "    [" +
+                    "        {" +
+                    "            \"id\": 1," +
+                    "            \"type\": \"TextView\"," +
+                    "            \"xmlId\": "+ R.layout.textview_layout +"," +
+                    "            \"viewId\": "+ R.id.element +
+                    "        }" +
+                    "    ]" +
+                    "}";
+
+            String button =   "{" +
+                    "    \"id\": 0," +
+                    "    \"type\": \"*\"," +
+                    "    \"children\":" +
+                    "    [" +
+                    "        {" +
+                    "            \"id\": 1," +
+                    "            \"type\": \"Button\"," +
+                    "            \"xmlId\": "+ R.layout.button_layout +"," +
+                    "            \"viewId\": "+ R.id.element +
+                    "        }" +
+                    "    ]" +
+                    "}";
+
+            templates.add(DynamicView.fromJSON(list, true));
+            templates.add(DynamicView.fromJSON(text, true));
+            templates.add(DynamicView.fromJSON(button, true));
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+        }
+
     }
 
-    public DynamicView updateWidget(int widgetId, DynamicView root) throws Exception
+    BestFit bestFit = new BestFit(templates);
+
+    HashMap<Integer, String> widgets = new HashMap<>();
+    WidgetUpdateListener updateListener = null;
+
+    public String initWidget(int widgetId)
+    {
+        String widget = "{" +
+                        "    \"id\": 1," +
+                        "    \"type\": \"RelativeLayout\"," +
+                        "    \"children\":" +
+                        "    [" +
+                        "       {" +
+                        "           \"id\": 2," +
+                        "           \"type\": \"ListView\"," +
+                        "           \"children\":" +
+                        "           [" +
+                        "               {" +
+                        "                   \"id\": 3," +
+                        "                   \"type\": \"TextView\"," +
+                        "                   \"methodCalls\":" +
+                        "                   [" +
+                        "                       {" +
+                        "                           \"identifier\": \"setText\"," +
+                        "                           \"method\": \"setCharSequence\"," +
+                        "                           \"arguments\":" +
+                        "                           [" +
+                        "                               \"setText\"," +
+                        "                               \"abcde\"" +
+                        "                           ]" +
+                        "                       }" +
+                        "                   ]" +
+                        "               }," +
+                        "               {" +
+                        "                   \"id\": 4," +
+                        "                   \"type\": \"TextView\"," +
+                        "                   \"methodCalls\":" +
+                        "                   [" +
+                        "                       {" +
+                        "                           \"identifier\": \"setText\"," +
+                        "                           \"method\": \"setCharSequence\"," +
+                        "                           \"arguments\":" +
+                        "                           [" +
+                        "                               \"setText\"," +
+                        "                               \"fghij\"" +
+                        "                           ]" +
+                        "                       }" +
+                        "                   ]" +
+                        "               }" +
+                        "           ]" +
+                        "       }" +
+                        "    ]" +
+                        "}";
+        return widget;
+    }
+
+    public DynamicView updateWidget(int widgetId, DynamicView root)
     {
         root.children.clear();
         for(int i = 0; i < 100; i++)
@@ -151,91 +262,279 @@ public class Widget extends RemoteViewsService {
             DynamicView text1 = new DynamicView("TextView");
             text1.methodCalls.add(new RemoteMethodCall("setText", getSetterMethod(text1.type, "setText"), "setText", ""+new Random().nextInt(1000)));
             text1.methodCalls.add(new RemoteMethodCall("setTextViewTextSize", "setTextViewTextSize", TypedValue.COMPLEX_UNIT_SP, 30));
-//            text1.onClick = new DynamicView.OnClick()
-//            {
-//                @Override
-//                public void onClick(DynamicView view)
-//                {
-//                }
-//            };
             root.children.add(text1);
         }
         return null;
     }
 
-    public static int getId(Class<?> cls, String name)
+    public RemoteViews newGenerate(Context context, int widgetId, DynamicView layout, boolean inCollection, boolean root) throws InvocationTargetException, IllegalAccessException
     {
-        try
-        {
-            return (Integer)cls.getField(name).get(null);
-        }
-        catch (IllegalAccessException|NoSuchFieldException e)
-        {
-            //shouldn't happen
-            e.printStackTrace();
-        }
-        return -1;
+        ArrayList<RemoteViews> storage = new ArrayList<>();
+        newGenerate(context, widgetId, storage, null, layout, 0, null, null, inCollection, root);
+        return storage.get(0);
     }
 
-    public RemoteViews generate(Context context, DynamicView view, int widgetId, boolean collectionParent, boolean isRoot) throws InvocationTargetException, IllegalAccessException
+    public boolean isCollection(String type)
     {
-        Pair<Integer, ChildrenType> layout = typeToLayout.get(view.type);
-        RemoteViews remoteView = new RemoteViews(context.getPackageName(), layout.first);
+        return "ListView".equals(type) ||
+                "GridView".equals(type) ||
+                "StackView".equals(type) ||
+                "AdapterViewFlipper".equals(type);
+    }
 
-        for(RemoteMethodCall methodCall : view.methodCalls)
+    public boolean isGroup(String type)
+    {
+        return "FrameLayout".equals(type) ||
+                "LinearLayout".equals(type) ||
+                "RelativeLayout".equals(type) ||
+                "GridLayout".equals(type) ||
+                "ViewFlipper".equals(type);
+    }
+
+
+    HashMap<Pair<Integer, Integer>, HashMap<Integer, NewListFactory>> factories = new HashMap<>();
+    public NewListFactory getFactory(Context context, int widgetId, int xml, int view, String list)
+    {
+        Pair<Integer, Integer> key = new Pair<>(widgetId, xml);
+        HashMap<Integer, NewListFactory> inWidgetXml = factories.get(key);
+        if(inWidgetXml == null)
         {
-            methodCall.call(remoteView, R.id.element);
+            inWidgetXml = new HashMap<>();
+            factories.put(key, inWidgetXml);
         }
 
-        if(!collectionParent && layout.second != ChildrenType.COLLECTION) //TODO check if you can never setOnClick on collection
+        NewListFactory foundFactory = inWidgetXml.get(view);
+        if(foundFactory == null)
         {
-            Intent intent = new Intent(context, WidgetReceiver.class);
-
-            intent.setAction(AppWidgetManager.ACTION_APPWIDGET_UPDATE);
-            intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, new int[]{widgetId});
-            intent.putExtra(ITEM_ID_EXTRA, view.getId());
-            PendingIntent pendingIntent = PendingIntent.getBroadcast(context,
-                    widgetId + (view.getId() << 8), intent, PendingIntent.FLAG_UPDATE_CURRENT);
-            remoteView.setOnClickPendingIntent(R.id.element, pendingIntent);
+            foundFactory = new NewListFactory(context, widgetId, list);
+            inWidgetXml.put(view, foundFactory);
+        }
+        else
+        {
+            foundFactory.reload(list);
         }
 
-        if(layout.second != ChildrenType.NO_CHILDS)
+        return foundFactory;
+    }
+
+    class NewListFactory implements RemoteViewsFactory
+    {
+        int widgetId;
+        Context context;
+        DynamicView list;
+
+        public NewListFactory(Context context, int widgetId, String list)
         {
-            if(layout.second == ChildrenType.COLLECTION)
+            this.context = context;
+            this.widgetId = widgetId;
+            reload(list);
+        }
+
+        public void reload(String list)
+        {
+            DynamicView view = DynamicView.fromJSON(list, true);
+            Log.d("HAPY", "reloadFactory: "+widgetId + " "+list+" "+view.view_id+", "+view.xml_id+" dynamic: "+view.getId());
+            this.list = view;
+        }
+
+        @Override
+        public void onCreate()
+        {
+
+        }
+
+        @Override
+        public void onDataSetChanged()
+        {
+            Log.d("HAPY", "onDataSet");
+        }
+
+        @Override
+        public void onDestroy()
+        {
+
+        }
+
+        @Override
+        public int getCount()
+        {
+            Log.d("HAPY", "count: "+list.children.size());
+            return list.children.size();
+        }
+
+        @Override
+        public RemoteViews getViewAt(int position)
+        {
+            Log.d("HAPY", "get view at: "+position +"/"+list.children.size());
+            try
             {
-                Log.d("HAPY", "adding list "+view.getId());
-                Intent clickintent = new Intent(context, WidgetReceiver.class);
-                clickintent.setAction(AppWidgetManager.ACTION_APPWIDGET_UPDATE);
-                clickintent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, new int[]{widgetId});
-                clickintent.putExtra(COLLECTION_ITEM_ID_EXTRA, view.getId());
+                if(position < list.children.size())
+                {
+                    DynamicView view = list.children.get(position);
+                    RemoteViews remoteView = newGenerate(context, widgetId, view, true, false);
+                    Log.d("HAPY", "inflating child "+view.toJSON());
+                    Log.d("HAPY", remoteView.toString());
+                    Intent fillIntent = new Intent(context, WidgetReceiver.class);
+                    fillIntent.putExtra(ITEM_ID_EXTRA, view.getId());
+                    fillIntent.putExtra(COLLECTION_POSITION_EXTRA, position);
+                    remoteView.setOnClickFillInIntent(view.view_id, fillIntent);
+                    return remoteView;
+                }
+            }
+            catch (InvocationTargetException|IllegalAccessException e)
+            {
+                e.printStackTrace();
+            }
+            return null; //maybe TODO?
+        }
 
-                PendingIntent clickPendingIntent = PendingIntent.getBroadcast(context,
-                        widgetId + (view.getId() << 8), clickintent, PendingIntent.FLAG_UPDATE_CURRENT);
-                remoteView.setPendingIntentTemplate(R.id.element, clickPendingIntent);
+        @Override
+        public RemoteViews getLoadingView()
+        {
+            return null;
+        }
 
-                Intent intent = new Intent(context, Widget.class);
-                intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId);
-                intent.putExtra(ITEM_ID_EXTRA, view.getId());
-                intent.setData(Uri.parse(intent.toUri(Intent.URI_INTENT_SCHEME)));
-                remoteView.setRemoteAdapter(R.id.element, intent);
+        @Override
+        public int getViewTypeCount()
+        {
+            return getCount();
+        }
+
+        @Override
+        public long getItemId(int position)
+        {
+            return position;
+        }
+
+        @Override
+        public boolean hasStableIds()
+        {
+            return false;
+        }
+    }
+
+    //the arraylist acts as a pointer
+    public void newGenerate(Context context, int widgetId, ArrayList<RemoteViews> storage, RemoteViews current, DynamicView layout, int parentViewId, DynamicView currentTemplate, HashMap<Integer, Integer> currentMap, boolean inCollection, boolean root) throws InvocationTargetException, IllegalAccessException
+    {
+        if(currentMap != null && currentMap.containsKey(layout.getId()))
+        {
+            DynamicView templateMap = find(currentTemplate, currentMap.get(layout.getId()));
+            layout.xml_id = templateMap.xml_id;
+            layout.view_id = templateMap.view_id;
+        }
+        else
+        {
+            Log.d("HAPY", "forking on "+layout.getId()+" as child of "+parentViewId);
+            Pair<DynamicView, HashMap<Integer, Integer>> fit = bestFit.bestFit(layout);
+            if(fit == null)
+            {
+                throw new IllegalArgumentException("cannot inflate: " + layout.toJSON());
+            }
+
+            currentTemplate = fit.first;
+            currentMap = fit.second;
+
+            Log.d("HAPY", "best fit: "+currentMap);
+
+            if(!currentMap.containsKey(layout.getId()))
+            {
+                throw new IllegalArgumentException("no key " + layout.getId() + " in " + currentMap);
+            }
+
+            DynamicView templateMap = find(currentTemplate, currentMap.get(layout.getId()));
+
+            if(!templateMap.type.equals(layout.type))
+            {
+                throw new IllegalArgumentException(templateMap.type+ " != "+layout.type+" in "+templateMap+" , "+layout);
+            }
+
+            layout.xml_id = templateMap.xml_id;
+            layout.view_id = templateMap.view_id;
+            RemoteViews newView = new RemoteViews(context.getPackageName(), layout.xml_id);
+            if(current != null)
+            {
+                if(parentViewId == 0)
+                {
+                    throw new IllegalArgumentException("parentViewId == 0");
+                }
+
+                current.addView(parentViewId, newView);
+                root = false;
             }
             else
             {
-                remoteView.removeAllViews(R.id.element);
-                for (DynamicView child : view.children)
+                if(storage.size() != 0)
                 {
-                    RemoteViews remoteChild = generate(context, child, widgetId, false, false);
-                    Log.d("HAPY", "adding child "+child.getId()+" "+child.type);
-                    remoteView.addView(R.id.element, remoteChild);
+                    throw new IllegalArgumentException("WHAT");
+                }
+                storage.add(newView);
+            }
+            current = newView;
+        }
+
+        if(layout.xml_id == 0)
+        {
+            throw new IllegalArgumentException("layout.xml_id == 0");
+        }
+
+        if(layout.view_id == 0)
+        {
+            throw new IllegalArgumentException("layout.view_id == 0");
+        }
+
+
+        for(RemoteMethodCall methodCall : layout.methodCalls)
+        {
+            methodCall.call(current, layout.view_id);
+        }
+
+        Intent clickIntent = new Intent(context, WidgetReceiver.class);
+        clickIntent.setAction(AppWidgetManager.ACTION_APPWIDGET_UPDATE);
+        clickIntent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, new int[]{widgetId});
+
+        if(isCollection(layout.type))
+        {
+            if(!root)
+            {
+                throw new IllegalArgumentException("listview not in root!: "+layout.toJSON());
+            }
+            clickIntent.putExtra(COLLECTION_ITEM_ID_EXTRA, layout.getId());
+            current.setPendingIntentTemplate(layout.view_id, PendingIntent.getBroadcast(context, widgetId + (layout.getId() << 8), clickIntent, PendingIntent.FLAG_UPDATE_CURRENT));
+
+            //prepare factory
+            getFactory(context, widgetId, layout.xml_id, layout.view_id, layout.toJSON());
+
+            Intent listintent = new Intent(context, Widget.class);
+            listintent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId);
+            listintent.putExtra(LIST_SERIALIZED_EXTRA, layout.toJSON());
+            listintent.putExtra(XML_ID_EXTRA, layout.xml_id);
+            listintent.putExtra(VIEW_ID_EXTRA, layout.view_id);
+            listintent.setData(Uri.parse(listintent.toUri(Intent.URI_INTENT_SCHEME)));
+            current.setRemoteAdapter(layout.view_id, listintent);
+
+            Log.d("HAPY", "set remote adapter on " + layout.view_id+", "+layout.xml_id+" in dynamic "+layout.getId());
+        }
+        else
+        {
+            if(!inCollection)
+            {
+                clickIntent.putExtra(ITEM_ID_EXTRA, layout.getId());
+                current.setOnClickPendingIntent(layout.view_id, PendingIntent.getBroadcast(context, widgetId + (layout.getId() << 8), clickIntent, PendingIntent.FLAG_UPDATE_CURRENT));
+            }
+
+            if(isGroup(layout.type))
+            {
+                for (DynamicView child : layout.children)
+                {
+                    newGenerate(context, widgetId, storage, current, child, layout.view_id, currentTemplate, currentMap, false, root);
                 }
             }
         }
-        return remoteView;
     }
 
     public DynamicView find(DynamicView root, int dynamicId)
     {
-        if(dynamicId == -1 || root == null)
+        if(dynamicId <= 0 || root == null)
         {
             return null;
         }
@@ -255,37 +554,31 @@ public class Widget extends RemoteViewsService {
         return null;
     }
 
-    public String handle(int widgetId, DynamicView widget, int collectionId, int dynamicId, int collectionPosition) throws JSONException
+    public String handle(int widgetId, String widgetJson, int collectionId, int itemId, int collectionPosition)
     {
-        Log.d("HAPY", "handling "+dynamicId+" in collection "+collectionId);
-        DynamicView view = find(widget, dynamicId);
-        if(view == null)
-        {
-            Log.d("HAPY", "no view?");
-            return null;
-        }
+        Log.d("HAPY", "handling "+itemId+" in collection "+collectionId);
 
-        boolean callOnClick = true;
+        //boolean callOnClick = true;
 
         if(updateListener == null)
         {
             return null;
         }
 
-        if(collectionId != -1)
+        if(collectionId != 0)
         {
             Log.d("HAPY", "calling listener onItemClick");
-            String ret = updateListener.onItemClick(widgetId, widget.toJSON(), collectionId, dynamicId, collectionPosition);
+            String ret = updateListener.onItemClick(widgetId, widgetJson, collectionId, itemId, collectionPosition);
             //TODO cannot change layout and not suppress click
             if(ret != null)
             {
-                Log.d("HAPY", "suppressing click on "+view.getId());
+                Log.d("HAPY", "suppressing click on "+itemId);
                 return ret;
             }
         }
 
         Log.d("HAPY", "calling listener onClick");
-        return updateListener.onClick(widgetId, widget.toJSON(), dynamicId);
+        return updateListener.onClick(widgetId, widgetJson, itemId);
     }
 
     public static String getSetterMethod(String type, String method)
@@ -323,133 +616,52 @@ public class Widget extends RemoteViewsService {
         return methods;
     }
 
-    class ListFactory implements RemoteViewsFactory
+    private void java_widget()
     {
-        DynamicView item;
-        Context context;
-        int widgetId;
-        int itemId;
-
-        public ListFactory(Context ctx, int widgetId, int itemId)
-        {
-            this.widgetId = widgetId;
-            this.itemId = itemId;
-            context = ctx;
-
-            DynamicView widget = widgets.get(widgetId);
-            if(widget != null)
+        registerOnWidgetUpdate(new WidgetUpdateListener()
             {
-                item = find(widget, itemId);
-            }
-            Log.d("HAPY", "list factory item is "+item);
-        }
-
-        @Override
-        public void onCreate()
-        {
-
-        }
-
-        @Override
-        public void onDataSetChanged()
-        {
-            DynamicView widget = widgets.get(widgetId);
-            if (widget != null)
-            {
-                item = find(widget, itemId);
-            }
-            if(item != null)
-            {
-                Log.d("HAPY", "update list factory item is " + item.children.size() + " " + item);
-            }
-        }
-
-        @Override
-        public void onDestroy()
-        {
-
-        }
-
-        @Override
-        public int getCount()
-        {
-            if (item == null)
-            {
-                return 0;
-            }
-            int count = item.children.size();
-            Log.d("HAPY", "get count called: " + count);
-            return count;
-        }
-
-        @Override
-        public RemoteViews getViewAt(int position)
-        {
-            Log.d("HAPY", "get view at " + position);
-
-            try
-            {
-                if (item != null)
+                @Override
+                public String onCreate(int widgetId)
                 {
-                    DynamicView view = item.children.get(position);
-                    RemoteViews remote = generate(context, view, widgetId, true, false);
-
-                    Intent intent = new Intent(context, WidgetReceiver.class);
-                    intent.putExtra(ITEM_ID_EXTRA, view.getId());
-                    intent.putExtra(COLLECTION_POSITION_EXTRA, position);
-                    remote.setOnClickFillInIntent(R.id.element, intent);
-                    return remote;
+                    return initWidget(widgetId);
                 }
-            }
-            catch (InvocationTargetException | IllegalAccessException e)
-            {
-                e.printStackTrace();
-            }
-            return null;
-        }
 
-        @Override
-        public RemoteViews getLoadingView()
-        {
-            return null;
-        }
+                @Override
+                public String onUpdate(int widgetId, String currentView)
+                {
+                    DynamicView out = updateWidget(widgetId, DynamicView.fromJSON(currentView, true));
+                    if(out != null)
+                    {
+                        return out.toJSON();
+                    }
+                    return null;
+                }
 
-        @Override
-        public int getViewTypeCount()
-        {
-            Log.d("HAPY", "get view type count called");
-            if (item == null)
-            {
-                return 0;
-            }
-            return item.children.size();
-        }
+                @Override
+                public String onItemClick(int widgetId, String root, int collectionId, int id, int position)
+                {
+                    Log.d("HAPY", "on item click: "+collectionId+" "+id+" "+position);
+                    return null;
+                }
 
-        @Override
-        public long getItemId(int position)
-        {
-            return position;
-        }
-
-        @Override
-        public boolean hasStableIds()
-        {
-            return false;
-        }
+                @Override
+                public String onClick(int widgetId, String root, int id)
+                {
+                    Log.d("HAPY", "on click: "+id);
+                    return null;
+                }
+            });
     }
 
     @Override
     public RemoteViewsFactory onGetViewFactory(Intent intent)
     {
         int widgetId = intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, -1);
-        int dynamicId = intent.getIntExtra(ITEM_ID_EXTRA, -1);
-        Log.d("HAPY", "onGetViewFactory: "+widgetId + " "+dynamicId);
-        return new ListFactory(this, widgetId, dynamicId);
-    }
-
-    public Widget()
-    {
-        super();
+        int xmlId = intent.getIntExtra(XML_ID_EXTRA, 0);
+        int viewId = intent.getIntExtra(VIEW_ID_EXTRA, 0);
+        Log.d("HAPY", "onGetViewFactory: "+xmlId+", "+ viewId);
+        String list = intent.getStringExtra(LIST_SERIALIZED_EXTRA);
+        return getFactory(this, widgetId, xmlId, viewId, list);
     }
 
     public void registerOnWidgetUpdate(WidgetUpdateListener listener)
@@ -461,7 +673,6 @@ public class Widget extends RemoteViewsService {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId)
     {
-        Log.d("HAPY", "call");
         if(!started)
         {
             started = true;
@@ -475,129 +686,108 @@ public class Widget extends RemoteViewsService {
 
             pythonRun("/sdcard/main.py", Widget.this);
 
-//            registerOnWidgetUpdate(new WidgetUpdateListener()
-//            {
-//                @Override
-//                public DynamicView onCreate(int widgetId)
-//                {
-//                    try
-//                    {
-//                        return initWidget(widgetId);
-//                    }
-//                    catch (Exception e)
-//                    {
-//                        e.printStackTrace();
-//                    }
-//                    return null;
-//                }
-//
-//                @Override
-//                public DynamicView onUpdate(int widgetId, DynamicView currentView)
-//                {
-//                    try
-//                    {
-//                        return updateWidget(widgetId, currentView);
-//                    }
-//                    catch (Exception e)
-//                    {
-//                        e.printStackTrace();
-//                    }
-//                    return null;
-//                }
-//            });
+            //java_widget();
         }
 
-        Intent widgetIntent = intent.getParcelableExtra(WIDGET_INTENT);
-        if(AppWidgetManager.ACTION_APPWIDGET_UPDATE.equals(widgetIntent.getAction()))
+        if(intent != null)
         {
-            AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(this);
-            // Get all ids
-            ComponentName thisWidget = new ComponentName(this, WidgetReceiver.class);
-            int[] allWidgetIds = appWidgetManager.getAppWidgetIds(thisWidget);
-
-            int eventWidgetId = widgetIntent.getIntArrayExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS)[0];
-            int dynamicId = widgetIntent.getIntExtra(ITEM_ID_EXTRA, -1);
-            Log.d("HAPY", "got intent: " + eventWidgetId + " " + dynamicId + " ("+widgetIntent.getIntArrayExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS).length+")");
-            DynamicView eventWidget = widgets.get(eventWidgetId);
-            if(eventWidget != null)
+            Intent widgetIntent = intent.getParcelableExtra(WIDGET_INTENT);
+            if (widgetIntent != null && AppWidgetManager.ACTION_APPWIDGET_UPDATE.equals(widgetIntent.getAction()))
             {
-                DynamicView newwidget = null;
-                try
-                {
-                    newwidget = DynamicView.fromJSON(handle(eventWidgetId, eventWidget, widgetIntent.getIntExtra(COLLECTION_ITEM_ID_EXTRA, -1), dynamicId, widgetIntent.getIntExtra(COLLECTION_POSITION_EXTRA, -1)));
-                }
-                catch (Exception e)
-                {
-                    Log.d("HAPY", "error in handle");
-                }
-                if(newwidget != null)
-                {
-                    widgets.put(eventWidgetId, newwidget);
-                }
-            }
+                AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(this);
+                // Get all ids
+                ComponentName thisWidget = new ComponentName(this, WidgetReceiver.class);
+                int[] allWidgetIds = appWidgetManager.getAppWidgetIds(thisWidget);
 
-            for (int widgetId : allWidgetIds) {
-                Log.d("HAPY", "update: "+widgetId);
+                int eventWidgetId = widgetIntent.getIntArrayExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS)[0];
+                int dynamicId = widgetIntent.getIntExtra(ITEM_ID_EXTRA, 0);
+                Log.d("HAPY", "got intent: " + eventWidgetId + " " + dynamicId + " (" + widgetIntent.getIntArrayExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS).length + ")");
 
-                DynamicView widget = widgets.get(widgetId);
-                if(widget == null)
+                String eventWidget = widgets.get(eventWidgetId);
+                if (eventWidget != null)
                 {
-                    if(updateListener != null)
+                    try
                     {
-                        Log.d("HAPY", "calling listener onCreate");
-                        try
-                        {
-                            widget = DynamicView.fromJSON(updateListener.onCreate(widgetId));
-                        }
-                        catch(Exception e)
-                        {
-                            Log.d("HAPY", "error in listener onCreate");
-                        }
+                        String newwidget = handle(eventWidgetId, eventWidget, widgetIntent.getIntExtra(COLLECTION_ITEM_ID_EXTRA, 0), dynamicId, widgetIntent.getIntExtra(COLLECTION_POSITION_EXTRA, -1));
+                        widgets.put(eventWidgetId, newwidget);
                     }
-                    if(widget == null)
+                    catch (Exception e)
                     {
-                        Log.d("HAPY", "doing default onCreate");
+                        Log.d("HAPY", "error in handle");
+                    }
+                }
+
+                for (int widgetId : allWidgetIds)
+                {
+                    Log.d("HAPY", "update: " + widgetId);
+
+                    String widget = widgets.get(widgetId);
+                    if (widget == null)
+                    {
+                        if (updateListener != null)
+                        {
+                            Log.d("HAPY", "calling listener onCreate");
+                            try
+                            {
+                                widget = updateListener.onCreate(widgetId);
+                            }
+                            catch (Exception e)
+                            {
+                                Log.d("HAPY", "error in listener onCreate");
+                            }
+                        }
+                        if (widget == null)
+                        {
+                            Log.d("HAPY", "doing default onCreate");
+                            widget = "        {" +
+                                    "            \"id\": 1," +
+                                    "            \"type\": \"TextView\"," +
+                                    "            \"methodCalls\":" +
+                                    "            [" +
+                                    "                {" +
+                                    "                    \"identifier\": \"setText\"," +
+                                    "                    \"method\": \"setCharSequence\"," +
+                                    "                    \"arguments\":" +
+                                    "                    [" +
+                                    "                        \"setText\"," +
+                                    "                        \"Error\"" +
+                                    "                    ]" +
+                                    "                }" +
+                                    "            ]" +
+                                    "        }";
+                        }
+                        widgets.put(widgetId, widget);
+                    }
+
+                    if (updateListener != null)
+                    {
+                        Log.d("HAPY", "calling listener onUpdate");
                         try
                         {
-                            widget = new DynamicView("LinearLayout");
+                            String newwidget = updateListener.onUpdate(widgetId, widget);
+                            if (newwidget != null)
+                            {
+                                widget = newwidget;
+                                widgets.put(widgetId, widget);
+                            }
                         }
                         catch (Exception e)
                         {
-                            //shouldn't happen
+                            Log.d("HAPY", "error in listener onUpdate");
                         }
                     }
-                    widgets.put(widgetId, widget);
-                }
+                    Log.d("HAPY", widget);
 
-                if(updateListener != null)
-                {
-                    Log.d("HAPY", "calling listener onUpdate");
-                    DynamicView newwidget = null;
                     try
                     {
-                        newwidget = DynamicView.fromJSON(updateListener.onUpdate(widgetId, widget.toJSON()));
+                        RemoteViews view = newGenerate(this, widgetId, DynamicView.fromJSON(widgets.get(widgetId), true), false, true); //TODO extractAll temporary true
+                        appWidgetManager.updateAppWidget(widgetId, view);
+                        appWidgetManager.notifyAppWidgetViewDataChanged(widgetId, R.id.e2);
                     }
-                    catch(Exception e)
+                    catch (InvocationTargetException | IllegalAccessException e)
                     {
-                        Log.d("HAPY", "error in listener onUpdate");
+                        e.printStackTrace();
                     }
-                    if(newwidget != null)
-                    {
-                        widget = newwidget;
-                        widgets.put(widgetId, widget);
-                    }
-                }
-                Log.d("HAPY", widget.toString());
-
-                try
-                {
-                    RemoteViews view = generate(this, widgets.get(widgetId), widgetId, false, true);
-                    appWidgetManager.notifyAppWidgetViewDataChanged(widgetId, R.id.element);
-                    appWidgetManager.updateAppWidget(widgetId, view);
-                }
-                catch (InvocationTargetException|IllegalAccessException e)
-                {
-                    e.printStackTrace();
                 }
             }
         }

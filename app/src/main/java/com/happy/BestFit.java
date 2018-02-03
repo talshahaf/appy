@@ -100,9 +100,9 @@ public class BestFit
         }
     }
 
-    public ResultTree possible(DynamicView input, DynamicView template)
+    public ResultTree possible(DynamicView input, DynamicView template, boolean root)
     {
-        if(template.type.equals("*"))
+        if(template.type.equals("*") && !root)
         {
             return new ResultTree(0, 0, ResultTree.ResultType.ANY);
         }
@@ -112,7 +112,7 @@ public class BestFit
         {
             if(input.children.isEmpty())
             {
-                ret.add(new ResultTree(result.getId(), input.getId(), ResultTree.ResultType.OR));
+                ret.add(new ResultTree(result.getId() == 0 ? 0 : input.getId(), result.getId(), ResultTree.ResultType.OR));
             }
             else
             {
@@ -120,7 +120,7 @@ public class BestFit
                 boolean deadend = false;
                 for(DynamicView child : input.children)
                 {
-                    ResultTree subret = possible(child, result);
+                    ResultTree subret = possible(child, result, false);
                     if(subret.type != ResultTree.ResultType.ANY)
                     {
                         if (subret.children.isEmpty())
@@ -138,7 +138,7 @@ public class BestFit
                 {
                     continue;
                 }
-                ResultTree newtree = new ResultTree(result.getId(), input.getId(), ResultTree.ResultType.AND);
+                ResultTree newtree = new ResultTree(result.getId() == 0 ? 0 : input.getId(), result.getId(), ResultTree.ResultType.AND);
                 newtree.children.addAll(midret);
                 ret.add(newtree);
             }
@@ -201,18 +201,18 @@ public class BestFit
         }
     }
 
-    public MutablePair<DynamicView, HashMap<Integer, Integer>> bestFit(DynamicView input)
+    public Pair<DynamicView, HashMap<Integer, Integer>> bestFit(DynamicView input)
     {
         MutablePair<Integer, Integer> bestLen = null;
         ResultTree best = null;
         DynamicView bestTemplate = null;
         for(DynamicView template : templates)
         {
-            ResultTree pos = possible(input, template);
+            ResultTree pos = possible(input, template, true);
             ResultTree runner = bestRoute(pos).second;
             MutablePair<Integer, Integer> len = treelen(runner);
             //no best       ||       fit more of the input   ||   fit the same input          but less crowded in template
-            if(best == null || (len.second > bestLen.second) || (len.second == bestLen.second && len.first < bestLen.first))
+            if(best == null || (len.second > bestLen.second) || (len.second.equals(bestLen.second) && len.first < bestLen.first))
             {
                 best = runner;
                 bestTemplate = template;
@@ -225,7 +225,7 @@ public class BestFit
         {
             return null;
         }
-        return new MutablePair<>(bestTemplate, lst);
+        return new Pair<>(bestTemplate, lst);
     }
 
 
@@ -239,6 +239,10 @@ public class BestFit
     {
         if(possible.from != 0)
         {
+            if(storage.containsKey(possible.from))
+            {
+                throw new IllegalArgumentException(storage + " already contains " + possible.from);
+            }
             storage.put(possible.from, possible.to);
         }
         for(ResultTree child : possible.children)
