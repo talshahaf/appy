@@ -22,7 +22,7 @@
 
         <receiver
             android:icon="@mipmap/ic_launcher"
-            android:label="Example Widget"
+            android:label="Appy"
             android:name="com.happy.WidgetReceiver" >
             <intent-filter >
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />

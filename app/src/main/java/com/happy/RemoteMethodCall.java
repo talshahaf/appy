@@ -30,14 +30,14 @@ public class RemoteMethodCall
         }
     }
 
-    public RemoteMethodCall(String identifier, String method, Object... args) throws Exception
+    public RemoteMethodCall(String identifier, String method, Object... args)
     {
         this.identifier = identifier;
         arguments = args;
         this.method = remoteViewMethods.get(method);
         if(this.method == null)
         {
-            throw new Exception("no method "+method);
+            throw new IllegalArgumentException("no method "+method);
         }
     }
 
@@ -90,12 +90,21 @@ public class RemoteMethodCall
         }
     }
 
-    public static RemoteMethodCall fromJSON(String json) throws Exception{
-        JSONObject obj = new JSONObject(json);
-        return fromJSON(obj);
+    public static RemoteMethodCall fromJSON(String json)
+    {
+        try
+        {
+            return fromJSON(new JSONObject(json));
+        }
+        catch (JSONException e)
+        {
+            e.printStackTrace();
+            throw new IllegalArgumentException("json deserialization failed");
+        }
     }
 
-    public static RemoteMethodCall fromJSON(JSONObject obj) throws Exception{
+    public static RemoteMethodCall fromJSON(JSONObject obj) throws JSONException
+    {
         Object[] args = new Object[0];
         if(obj.has("arguments"))
         {
@@ -114,7 +123,7 @@ public class RemoteMethodCall
         JSONObject obj = new JSONObject();
         obj.put("identifier", identifier);
         obj.put("method", method.getName());
-        if(arguments.length > 0)
+        if (arguments.length > 0)
         {
             JSONArray jsonargs = new JSONArray();
             for (Object arg : arguments)

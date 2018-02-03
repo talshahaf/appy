@@ -8,6 +8,7 @@ import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Created by Tal on 14/01/2018.
@@ -19,13 +20,13 @@ public class DynamicView
     public ArrayList<RemoteMethodCall> methodCalls = new ArrayList<>();
     public ArrayList<DynamicView> children = new ArrayList<>();
     public Object tag;
-    public int xml_id;
     public int view_id;
+    public int xml_id;
 
-    private static int id_counter = 0;
+    private static AtomicInteger id_counter = new AtomicInteger(1);
     private static int genId()
     {
-        return id_counter++;
+        return id_counter.getAndIncrement();
     }
 
     public String toString()
@@ -53,19 +54,27 @@ public class DynamicView
         return ret;
     }
 
-    public DynamicView(String type) throws Exception
+    public DynamicView(String type)
     {
         this(genId(), type);
     }
 
-    private DynamicView(int id, String type) throws Exception
+    private DynamicView(int id, String type)
+    {
+        this(id, type, 0, 0);
+    }
+
+    public DynamicView(int id, String type, int view_id, int xml_id)
     {
         this.id = id;
-        if(!Widget.typeToLayout.containsKey(type))
-        {
-            throw new Exception("no such type: "+type);
-        }
         this.type = type;
+        this.view_id = view_id;
+        this.xml_id = xml_id;
+
+        if(!Widget.typeToClass.containsKey(type) && !type.equals("*"))
+        {
+            throw new IllegalArgumentException("no such type: "+type);
+        }
     }
 
     public int getId()
@@ -73,38 +82,21 @@ public class DynamicView
         return id;
     }
 
-//    public DynamicView duplicate() throws Exception
-//    {
-//        DynamicView view = new DynamicView(this.type);
-//        for(DynamicView child : children)
-//        {
-//            view.children.add(child.duplicate());
-//        }
-//        view.methodCalls.addAll(methodCalls);
-//        return view;
-//    }
-//
-//    public void removeIdentifierMethods(String identifier)
-//    {
-//        ArrayList<RemoteMethodCall> found = new ArrayList<>();
-//        for(RemoteMethodCall call : methodCalls)
-//        {
-//            if(identifier.equals(call.getIdentifier()))
-//            {
-//                found.add(call);
-//            }
-//        }
-//        methodCalls.removeAll(found);
-//    }
-
-    public static DynamicView fromJSON(String json) throws Exception{
-        JSONObject obj = new JSONObject(json);
-        return fromJSON(obj);
+    public static DynamicView fromJSON(String json, boolean extractAll) {
+        try
+        {
+            return fromJSON(new JSONObject(json), extractAll);
+        }
+        catch (JSONException e)
+        {
+            e.printStackTrace();
+            throw new IllegalArgumentException("json deserialization failed");
+        }
     }
-    private static DynamicView fromJSON(JSONObject obj) throws Exception
+    private static DynamicView fromJSON(JSONObject obj, boolean extractAll) throws JSONException
     {
         int id;
-        if(obj.has("id"))
+        if(obj.has("id") && extractAll)
         {
             id = obj.getInt("id");
         }
@@ -112,7 +104,19 @@ public class DynamicView
         {
             id = genId();
         }
-        DynamicView view = new DynamicView(id, obj.getString("type"));
+
+        int xml_id = 0;
+        int view_id = 0;
+        if(obj.has("xmlId") && extractAll)
+        {
+            xml_id = obj.getInt("xmlId");
+        }
+        if(obj.has("viewId") && extractAll)
+        {
+            view_id = obj.getInt("viewId");
+        }
+
+        DynamicView view = new DynamicView(id, obj.getString("type"), view_id, xml_id);
 
         Log.d("HAPY", "building "+view.id+" "+view.type);
 
@@ -136,7 +140,7 @@ public class DynamicView
             Log.d("HAPY", childarr.length() + " children");
             for (int i = 0; i < childarr.length(); i++)
             {
-                DynamicView child = DynamicView.fromJSON(childarr.getJSONObject(i));
+                DynamicView child = DynamicView.fromJSON(childarr.getJSONObject(i), extractAll);
                 Log.d("HAPY", "adding child: " + child.toString());
                 view.children.add(child);
             }
@@ -149,6 +153,8 @@ public class DynamicView
         JSONObject obj = new JSONObject();
         obj.put("id", id);
         obj.put("type", type);
+        obj.put("xmlId", xml_id);
+        obj.put("viewId", view_id);
         if(tag != null)
         {
             obj.put("tag", tag);
@@ -173,8 +179,16 @@ public class DynamicView
         }
         return obj;
     }
-    public String toJSON() throws JSONException
+    public String toJSON()
     {
-        return toJSONObj().toString();
+        try
+        {
+            return toJSONObj().toString(2);
+        }
+        catch (JSONException e)
+        {
+            e.printStackTrace();
+            throw new IllegalArgumentException("json serialization failed");
+        }
     }
 }
