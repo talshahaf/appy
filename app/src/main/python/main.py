@@ -72,6 +72,8 @@ attrs = {'left': 'LEFT', 'top': 'TOP', 'right': 'RIGHT', 'bottom': 'BOTTOM', 'wi
 class Element:
     def __init__(self, d):
         self.__dict__['d'] = d
+        if 'id' not in self.d:
+            self.d['id'] = get_id()
         if 'children' in self.d:
             self.d['children'] = [[c if isinstance(c, Element) else Element(c) for c in arr] for arr in self.d['children']]
 
@@ -121,15 +123,18 @@ class Element:
         children = [c if isinstance(c, (list, tuple)) else [c] for c in children]
 
         #children is now list of lists
-        e = cls(dict(id=get_id(), type=type, children=children))
+        e = cls(dict(type=type, children=children))
         [setattr(e, k, v) for k,v in kwargs.items()]
         return e
 
-    def dict(self):
-        d = {k:copy.deepcopy(v) for k,v in self.d.items() if k != 'children'}
+    def dict(self, without_id=None):
+        d = {k:copy.deepcopy(v) for k,v in self.d.items() if k != 'children' and (not without_id or k != 'id')}
         if 'children' in self.d:
-            d['children'] = [[c.dict() if isinstance(c, Element) else c for c in arr] for arr in self.d['children']]
+            d['children'] = [[c.dict(without_id=without_id) if isinstance(c, Element) else c for c in arr] for arr in self.d['children']]
         return d
+
+    def duplicate(self):
+        return Element(self.dict(without_id=True))
 
     #TODO write to children
 
@@ -245,7 +250,7 @@ def example_on_create(widget_id):
     txt = TextView(text='zxc', textViewTextSize=(clazz.android.util.TypedValue().COMPLEX_UNIT_SP, 30), click=lambda e: setattr(e, 'text', str(random.randint(50, 60))))
     lst = ListView(children=[
         txt,
-        #txt.duplicate()
+        txt.duplicate()
     ])
     return lst
 
