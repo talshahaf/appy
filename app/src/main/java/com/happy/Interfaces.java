@@ -23,8 +23,8 @@ interface BroadcastInterface
 interface WidgetUpdateListener
 {
     String onCreate(int widgetId);
-    String onUpdate(int widgetId, String currentView);
-    String onItemClick(int widgetId, String root, int collectionId, int id, int position);
-    String onClick(int widgetId, String root, int id);
+    String onUpdate(int widgetId, String currentViews);
+    String onItemClick(int widgetId, String views, int collectionId, int position);
+    String onClick(int widgetId, String views, int id);
 }
 

@@ -4,15 +4,18 @@ import random
 import json
 import functools
 import pprint
+import copy
+import traceback
 from java import *
 
 context = get_java_arg()
 
-id_counter = 0
+id_counter = 1
 def get_id():
     global id_counter
+    c = id_counter
     id_counter += 1
-    return id_counter
+    return c
 
 def cap(s):
     return s[0].upper() + s[1:]
@@ -27,137 +30,112 @@ def get_param_setter(type, attr):
     setter = clazz.com.happy.Widget().getSetterMethod(type, method)
     return setter if setter != Null else None, method
 
-callbacks = {}
+class Reference:
+    def __init__(self, id, key, factor):
+        self.id = id
+        self.key = key
+        self.factor = factor
 
+    def compile(self):
+        return dict(id=self.id, type=self.key, factor=self.factor)
+
+class AttributeValue:
+    def __init__(self, *args):
+        self.pol = args
+
+    def __add__(self, other):
+        if isinstance(other, AttributeValue):
+            return AttributeValue(*self.pol, *other.pol)
+        else:
+            return AttributeValue(*self.pol, other)
+
+    def __mul__(self, other):
+        return AttributeValue(*(Reference(e.id, e.key, e.factor * other) for e in self.pol))
+
+    def __truediv__(self, other):
+        return self * (1/other)
+
+    def compile(self):
+        amount = 0
+        refs = []
+        for e in self.pol:
+            if isinstance(e, Reference):
+                refs.append(e.compile())
+            else:
+                amount += e
+        return dict(function='IDENTITY', arguments=[dict(amount=amount, references=refs)])
+
+
+storage = {}
+
+attrs = {'left': 'LEFT', 'top': 'TOP', 'right': 'RIGHT', 'bottom': 'BOTTOM', 'width': 'WIDTH', 'height': 'HEIGHT'}
 class Element:
+    def __init__(self, d):
+        self.__dict__['d'] = d
+        if 'children' in self.d:
+            self.d['children'] = [[c if isinstance(c, Element) else Element(c) for c in arr] for arr in self.d['children']]
+
+    def __event__(self, key, *args):
+        if 'tag' in self.d and key in self.d['tag']:
+            storage[self.d['tag'][key]](*args)
+
+    def __getattr__(self, item):
+        if item in attrs:
+            return AttributeValue(Reference(self.d['id'], attrs[item], 1))
+        raise AttributeError()
+
+    def __setattr__(self, key, value):
+        if key in attrs:
+            if not isinstance(value, AttributeValue):
+                value = AttributeValue(value)
+            if 'attributes' not in self.d:
+                self.d['attributes'] = {}
+            self.d['attributes'][attrs[key]] = value.compile()
+        elif key in ('click', 'itemclick'):
+            if 'tag' not in self.d:
+                self.d['tag'] = {}
+            self.d['tag'][key] = id(value)
+            storage[id(value)] = value
+        else:
+            param_setter, method = get_param_setter(self.d['type'], key)
+            if param_setter is not None:
+                identifier = method
+                arguments = [method, value]
+                method = param_setter
+            else:
+                identifier = method
+                if not isinstance(value, (list, tuple)):
+                    value = [value]
+                arguments = [getattr(v, '__raw__', lambda: v)() for v in value]
+
+            if 'methodCalls' not in self.d:
+                self.d['methodCalls'] = []
+            self.d['methodCalls'] = [c for c in self.d['methodCalls'] if c['identifier'] != method] + [dict(identifier=identifier, method=method, arguments=arguments)]
+
     @classmethod
-    def create(cls, type, **kwargs):
-        if not validate_type(type):
-            raise TypeError(f'unknown type {type}')
+    def create(cls, type, children=None, **kwargs):
+        if children is None:
+            children = []
+        if not isinstance(children, (list, tuple)):
+            children = [children]
+        children = [c if isinstance(c, (list, tuple)) else [c] for c in children]
 
-        d = dict(type=type)
-        if 'children' in kwargs:
-            d['children'] = [cls.pure_dict(e) for e in kwargs['children']]
-            del kwargs['children']
-
-        e = Element(json.dumps(d))
+        #children is now list of lists
+        e = cls(dict(id=get_id(), type=type, children=children))
         [setattr(e, k, v) for k,v in kwargs.items()]
         return e
 
-    def __init__(self, j):
-        self.__dict__['d'] = json.loads(j)
-        if 'id' not in self.d:
-            self.d['id'] = get_id()
-        if 'methodCalls' not in self.d:
-            self.d['methodCalls'] = []
+    def dict(self):
+        d = {k:copy.deepcopy(v) for k,v in self.d.items() if k != 'children'}
+        if 'children' in self.d:
+            d['children'] = [[c.dict() if isinstance(c, Element) else c for c in arr] for arr in self.d['children']]
+        return d
 
-        if 'children' not in self.d:
-            self.d['children'] = []
-        else:
-            #print(self.d)
-            self.d['children'] = [Element(json.dumps(child)) for child in self.d['children']]
+    #TODO write to children
 
-    @property
-    def type(self):
-        return self.d['type']
-
-    @property
-    def id(self):
-        return self.d['id']
-
-    @property
-    def children(self):
-        return self.d['children'] #readwrite
-
-    def find(self, view_id):
-        if self.d['id'] == view_id:
-            return self
-        for c in self.d['children']:
-            ret = c.find(view_id)
-            if ret is not None:
-                return ret
-        return None
-
-    def duplicate(self):
-        return Element(self.json(without_id=True))
-
-    def __click__(self, *args):
-        if 'tag' not in self.d or 'click' not in self.d['tag']:
-            #raise ValueError('no click?')
-            print(f'no onclick: {self.d}, {callbacks}')
-            return
-        callbacks[self.d['tag']['click']](*args)
-
-    def __itemclick__(self, *args):
-        if 'tag' not in self.d or 'item_click' not in self.d['tag']:
-            #raise ValueError('no item_click?')
-            return
-        callbacks[self.d['tag']['item_click']](*args)
-
-    def __setattr__(self, attr, value):
-        if attr == 'click':
-            print('setting special onclick')
-            callbacks[id(value)] = value
-            if 'tag' not in self.d:
-                self.d['tag'] = {}
-            self.d['tag']['click'] = id(value)
-            return
-        elif attr == 'itemclick':
-            print('setting special onitemclick')
-            callbacks[id(value)] = value
-            if 'tag' not in self.d:
-                self.d['tag'] = {}
-            self.d['tag']['item_click'] = id(value)
-            return
-
-        param_setter, method = get_param_setter(self.type, attr)
-        if param_setter is not None:
-            identifier = method
-            arguments = [method, value]
-            method = param_setter
-        else:
-            identifier = method
-            if not isinstance(value, (list, tuple)):
-                value = [value]
-            arguments = value
-
-        self.d['methodCalls'] = [c for c in self.d['methodCalls'] if c['identifier'] != method] + [dict(identifier=identifier, method=method, arguments=arguments)]
-
-    @classmethod
-    def pure_dict(cls, e, without_id=False):
-        if isinstance(e, Element):
-            return {k: cls.pure_dict(v, without_id=without_id) for k,v in e.d.items() if k != 'id' or not without_id}
-        if isinstance(e, dict):
-            return {k: cls.pure_dict(v, without_id=without_id) for k,v in e.items()}
-        elif isinstance(e, list):
-            return [cls.pure_dict(v, without_id=without_id) for v in e]
-        elif isinstance(e, tuple):
-            return tuple(cls.pure_dict(v, without_id=without_id) for v in e)
-        else:
-            return e
-
-    def json(self, without_id=False):
-        return json.dumps(self.pure_dict(self, without_id=without_id))
-
-def creator(type):
-    return lambda **kwargs: Element.create(type, **kwargs)
-
-FrameLayout = creator('FrameLayout')
-LinearLayout = creator('LinearLayout')
-RelativeLayout = creator('RelativeLayout')
-GridLayout = creator('GridLayout')
-AnalogClock = creator('AnalogClock')
-Button = creator('Button')
-Chronometer = creator('Chronometer')
-ImageButton = creator('ImageButton')
-ImageView = creator('ImageView')
-ProgressBar = creator('ProgressBar')
-TextView = creator('TextView')
-ViewFlipper = creator('ViewFlipper')
-ListView = creator('ListView')
-GridView = creator('GridView')
-StackView = creator('StackView')
-AdapterViewFlipper = creator('AdapterViewFlipper')
+Button = lambda *args, **kwargs: Element.create('Button', *args, **kwargs)
+TextView = lambda *args, **kwargs: Element.create('TextView', *args, **kwargs)
+ListView = lambda *args, **kwargs: Element.create('ListView', *args, **kwargs)
 
 available_widgets = {}
 chosen_widgets = {}
@@ -172,7 +150,7 @@ def widget_manager_create(widget_id):
                                        click=(lambda widget_id, name: (lambda _: choose_widget(widget_id, name)))(widget_id, name)) #capture
                               for name in available_widgets])
 
-def widget_manager_update(widget_id, root):
+def widget_manager_update(widget_id, views):
     try:
         if widget_id in chosen_widgets:
             name, inited = chosen_widgets[widget_id]
@@ -181,28 +159,41 @@ def widget_manager_update(widget_id, root):
                 chosen_widgets[widget_id] = (name, True)
                 print(f'calling oncreate of {name}')
                 if on_create:
-                    return on_create()
+                    return on_create(widget_id)
             else:
                 print(f'calling onupdate of {name}')
                 if on_update:
-                    newroot = on_update(root)
-                    if newroot is not None:
-                        return newroot
+                    return on_update(widget_id, views)
             return None #doesn't update the root
-
     except Exception as e:
         print('got exception')
-        print(e)
+        print(traceback.format_exc())
         return widget_manager_create(widget_id) #maybe present error widget
 
 class Handler:
     def __init__(self):
         self.iface = create_interface(self, clazz.com.happy.WidgetUpdateListener())
 
-    def export(self, e):
-        if e is None:
+    def export(self, views):
+        if not views:
             return None
-        return e.json()
+        if not isinstance(views, (list, tuple)):
+            views = [views]
+        return json.dumps([e.dict() for e in views], indent=4)
+
+    def import_(self, s):
+        return [Element(e) for e in json.loads(s)]
+
+    def find(self, views, id):
+        for e in views:
+            if e.d['id'] == id:
+                return e
+            if 'children' in e.d:
+                for c in e.d['children']:
+                    r = self.find(c, id)
+                    if r is not None:
+                        return r
+        return None
 
     @interface
     def onCreate(self, widget_id):
@@ -210,32 +201,37 @@ class Handler:
         return self.export(widget_manager_create(widget_id))
 
     @interface
-    def onUpdate(self, widget_id, root):
+    def onUpdate(self, widget_id, views):
         print(f'python got onUpdate')
-        return self.export(widget_manager_update(widget_id, Element(root)))
+        out = self.export(widget_manager_update(widget_id, self.import_(views)))
+        print('out: ', out)
+        return out
 
     @interface
-    def onItemClick(self, widget_id, root, parent_id, view_id, position):
-        print(f'python got onitemclick {widget_id} {parent_id} {view_id} {position}')
-        print(f'{root}')
-        root = Element(root)
-        v = root.find(view_id)
-        handled = v.__itemclick__(root.find(parent_id), v, position)
+    def onItemClick(self, widget_id, views, collection_id, position):
+        print(f'python got onitemclick {widget_id} {collection_id} {position}')
+        #print(f'{views}')
+        views = self.import_(views)
+        v = self.find(views, collection_id)
+        handled = v.__event__('itemclick', v, position)
         if not handled:
             return None #TODO fix not flushing root in this case
-        return self.export(root)
+        return self.export(views)
 
     @interface
-    def onClick(self, widget_id, root, view_id):
+    def onClick(self, widget_id, views, view_id):
         print(f'python got onclick {widget_id} {view_id}')
-        print(f'{root}')
-        root = Element(root)
-        v = root.find(view_id)
-        v.__click__(v)
-        return self.export(root)
+        #print(f'{views}')
+        views = self.import_(views)
+        v = self.find(views, view_id)
+        v.__event__('click', v)
+        return self.export(views)
 
+java_widget_manager = None
 
 def init(widget_manager):
+    global java_widget_manager
+    java_widget_manager = widget_manager
     print('init')
     widget_manager.registerOnWidgetUpdate(Handler().iface)
 
@@ -245,37 +241,40 @@ init(context)
 
 
 #=========================================================================
-def example_on_create():
+def example_on_create(widget_id):
     txt = TextView(text='zxc', textViewTextSize=(clazz.android.util.TypedValue().COMPLEX_UNIT_SP, 30), click=lambda e: setattr(e, 'text', str(random.randint(50, 60))))
     lst = ListView(children=[
-        LinearLayout(children=[
-            txt
-        ]),
-        LinearLayout(children=[
-            txt.duplicate()
-        ]),
+        txt,
+        #txt.duplicate()
     ])
     return lst
 
-def example2_on_create():
-    return LinearLayout(children=[Button(text='ref', textViewTextSize=(clazz.android.util.TypedValue().COMPLEX_UNIT_SP, 30), click=lambda e: None),
-                                  TextView(text='bbb', textViewTextSize=(clazz.android.util.TypedValue().COMPLEX_UNIT_SP, 30))
-                                  ])
+def example2_on_create(widget_id):
+    return [
+            Button(text='ref', textViewTextSize=(clazz.android.util.TypedValue().COMPLEX_UNIT_SP, 30), click=lambda e: None),
+            TextView(text='bbb', textViewTextSize=(clazz.android.util.TypedValue().COMPLEX_UNIT_SP, 30))
+        ]
 
-def logcat_on_create():
+def logcat_on_create(widget_id):
     return ListView(children=[TextView(text='ready...', textViewTextSize=(clazz.android.util.TypedValue().COMPLEX_UNIT_SP, 15), click=lambda e: None)])
 
-def logcat_on_update(root):
-    return RelativeLayout(children=[
-        Button(text='ref', textViewTextSize=(clazz.android.util.TypedValue().COMPLEX_UNIT_SP, 30), click=lambda e: None),
-        ListView(children=[TextView(text=str(random.randint(300, 400)), textViewTextSize=(clazz.android.util.TypedValue().COMPLEX_UNIT_SP, 15), click=lambda e: None) for _ in range(3)]),
-    ])
+i = 1
+def logcat_on_update(widget_id, views):
+    global i
+    btn = Button(text='ref', textViewTextSize=(clazz.android.util.TypedValue().COMPLEX_UNIT_SP, 30), click=lambda e: None)
+    lst = ListView(children=[TextView(text=str(random.randint(300, 400)), textViewTextSize=(clazz.android.util.TypedValue().COMPLEX_UNIT_SP, 15), click=lambda e: None) for _ in range(i)])
 
-def newwidget_on_create():
+    btn.top = 400
+    lst.top = btn.top / 2
+
+    i += 1
+    return [btn, lst]
+
+def newwidget_on_create(widget_id):
     return None
 
-def newwidget_on_update(root):
-    print(root)
+def newwidget_on_update(widget_id, views):
+    print(views)
 
 #available_widgets['example'] = (example_on_create, None)
 #available_widgets['example2'] = (example2_on_create, None)
