@@ -733,12 +733,23 @@ public class Widget extends RemoteViewsService {
             Attributes.AttributeValue bottom = dynamicView.attributes.attributes.get(Attributes.Type.BOTTOM);
             Attributes.AttributeValue height = dynamicView.attributes.attributes.get(Attributes.Type.HEIGHT);
 
-            Pair<Integer, Integer> hor = resolveAxis(widthLimit, left, right, width);
-            Pair<Integer, Integer> ver = resolveAxis(heightLimit, top, bottom, height);
+            Pair<Integer, Integer> hor;
+            Pair<Integer, Integer> ver;
+            if(inCollection)
+            {
+                //in list, we have no size limit, so no real width, height, right or bottom
+                hor = new Pair<>(left.resolvedValue.intValue(), 0);
+                ver = new Pair<>(top.resolvedValue.intValue(), 0);
+            }
+            else
+            {
+                hor = resolveAxis(widthLimit, left, right, width);
+                ver = resolveAxis(heightLimit, top, bottom, height);
 
-            //for collection children
-            dynamicView.actualWidth = widthLimit - hor.second - hor.first;
-            dynamicView.actualHeight = heightLimit - ver.second - ver.first;
+                //for collection children
+                dynamicView.actualWidth = widthLimit - hor.second - hor.first;
+                dynamicView.actualHeight = heightLimit - ver.second - ver.first;
+            }
 
             Log.d("HAPY", "resolved attributes: ");
             for(Map.Entry<Attributes.Type, Attributes.AttributeValue> entry : dynamicView.attributes.attributes.entrySet())
@@ -754,9 +765,7 @@ public class Widget extends RemoteViewsService {
                     ver.second));
         }
 
-        RemoteViews remoteViews = generate(context, widgetId, dynamicList, true, inCollection);
-        //remoteViews.setInt(R.id.root, "setBackgroundColor", 0xFFA0A0A0); //TODO debug
-        return remoteViews;
+        return generate(context, widgetId, dynamicList, true, inCollection);
     }
 
     public String handle(int widgetId, String widgetJson, int collectionId, int itemId, int collectionPosition)
@@ -818,7 +827,7 @@ public class Widget extends RemoteViewsService {
             {
                 if(method.getParameterTypes().length != 1)
                 {
-                    continue; //TODO?
+                    continue;
                 }
                 methods.put(method.getName(), parameterToSetter.get(method.getParameterTypes()[0]));
             }
