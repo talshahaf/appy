@@ -18,6 +18,7 @@ import java.util.HashMap;
 public class RemoteMethodCall
 {
     private String identifier;
+    private boolean parentCall;
     private Method method;
     private Object[] arguments;
     public static HashMap<String, Method> remoteViewMethods = new HashMap<>();
@@ -30,9 +31,10 @@ public class RemoteMethodCall
         }
     }
 
-    public RemoteMethodCall(String identifier, String method, Object... args)
+    public RemoteMethodCall(String identifier, boolean parentCall, String method, Object... args)
     {
         this.identifier = identifier;
+        this.parentCall = parentCall;
         arguments = args;
         this.method = remoteViewMethods.get(method);
         if(this.method == null)
@@ -48,13 +50,19 @@ public class RemoteMethodCall
 
     public String toString()
     {
-        String ret = identifier + ": " + method.getName()+"(";
-        for(Object argument : arguments)
+        try
         {
-            ret += argument + ", ";
+            return toJSONObj().toString(2);
         }
-        ret += ")";
-        return ret;
+        catch (JSONException e)
+        {
+            return "failed to string";
+        }
+    }
+
+    public boolean isParentCall()
+    {
+        return parentCall;
     }
 
     public void call(RemoteViews view, int id) throws InvocationTargetException, IllegalAccessException
@@ -115,13 +123,20 @@ public class RemoteMethodCall
                 args[i] = jsonargs.get(i);
             }
         }
-        return new RemoteMethodCall(obj.getString("identifier"), obj.getString("method"), args);
+
+        boolean parentCall = false;
+        if(obj.has("parentCall"))
+        {
+            parentCall = obj.getBoolean("parentCall");
+        }
+        return new RemoteMethodCall(obj.getString("identifier"), parentCall, obj.getString("method"), args);
     }
 
     public JSONObject toJSONObj() throws JSONException
     {
         JSONObject obj = new JSONObject();
         obj.put("identifier", identifier);
+        obj.put("parentCall", parentCall);
         obj.put("method", method.getName());
         if (arguments.length > 0)
         {

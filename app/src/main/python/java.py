@@ -106,7 +106,7 @@ class Object:
             if primitive:
                 if type(obj) not in primitive_wraps:
                     primitive_wraps[type(obj)] = type(f'Wrapped_{type(obj).__name__}', (type(obj),),
-                                                    dict(__call__=lambda self, *args: _call(self.__jparent__, self.__jattrname__, *args)))
+                                                    dict(__raw__=(lambda t: lambda self, *args: t(self))(type(obj)), __call__=lambda self, *args: _call(self.__jparent__, self.__jattrname__, *args)))
                 obj = primitive_wraps[type(obj)](obj)
                 obj.__jparent__ = self
                 obj.__jattrname__ = attr

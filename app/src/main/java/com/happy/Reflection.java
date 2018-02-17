@@ -23,34 +23,6 @@ import java.util.List;
 
 public class Reflection
 {
-//    /**
-//     * Get a compatible constructor to the supplied parameter types.
-//     *
-//     * @param clazz the class which we want to construct
-//     * @param parameterTypes the types required of the constructor
-//     *
-//     * @return a compatible constructor or null if none exists
-//     * @throws InvocationTargetException
-//     * @throws IllegalArgumentException
-//     * @throws IllegalAccessException
-//     */
-//
-//    public static Object invoke(Method m, Object cls, Object... args) throws IllegalAccessException, IllegalArgumentException, InvocationTargetException
-//    {
-//        Class<?>[] parameterTypes = m.getParameterTypes();
-//        for(int i = 0; i < m.getParameterCount(); i++)
-//        {
-//            if(args[i].getClass().equals(Integer.class))
-//            {
-//                args[i] = ((long)args[i]);
-//            }
-//            else
-//            {
-//                args[i] = parameterTypes[i].cast(args[i]);
-//            }
-//        }
-//        return m.invoke(cls, args);
-//    }
 
     private static HashMap<Class<?>, Integer> groups;
     private static HashMap<Class<?>, Integer> enumTypes;
