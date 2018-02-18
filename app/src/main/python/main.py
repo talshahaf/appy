@@ -241,8 +241,16 @@ def init(widget_manager):
     widget_manager.registerOnWidgetUpdate(Handler().iface)
 
 faulthandler.enable()
-init(context)
+#init(context)
 
+def install(package):
+    import pip
+    pip.main(['install', package])
+
+import zlib
+import ensurepip
+ensurepip._main()
+#install('requests')
 
 
 #=========================================================================

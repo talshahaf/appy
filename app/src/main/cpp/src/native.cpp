@@ -2010,7 +2010,7 @@ extern "C" JNIEXPORT jint JNICALL Java_com_happy_Widget_pythonRun(JNIEnv * env, 
             return -3;
         }
 
-        PySys_SetArgv(1, &program);
+        PySys_SetArgv(2, &program);
         int ret = PyRun_SimpleFileExFlags(fh, path.c_str(), 1, NULL);
         if(ret == -1)
         {
@@ -2064,10 +2064,15 @@ PyMODINIT_FUNC PyInit_native_hapy(void)
     return PyModule_Create(&native_hapymodule);
 }
 
-extern "C" JNIEXPORT jint JNICALL Java_com_happy_Widget_pythonInit(JNIEnv * env, jclass clazz, jstring pythonpath)
+extern "C" void android_get_LD_LIBRARY_PATH(char*, size_t);
+extern "C" void android_update_LD_LIBRARY_PATH(const char*);
+
+extern "C" JNIEXPORT jint JNICALL Java_com_happy_Widget_pythonInit(JNIEnv * env, jclass clazz, jstring pythonpath, jstring tmppath)
 {
     try
     {
+        LOG("python init");
+
         int ret = env->GetJavaVM(&vm);
         if(ret != 0)
         {
@@ -2076,6 +2081,7 @@ extern "C" JNIEXPORT jint JNICALL Java_com_happy_Widget_pythonInit(JNIEnv * env,
         }
 
         auto path = get_string(env, pythonpath);
+        auto tmp = get_string(env, tmppath);
 
         ret = setenv("PYTHONHOME", path.c_str(), 1);
         if(ret == -1)
@@ -2084,20 +2090,42 @@ extern "C" JNIEXPORT jint JNICALL Java_com_happy_Widget_pythonInit(JNIEnv * env,
             return -2;
         }
 
-        ret = setenv("LD_LIBRARY_PATH", (path + "/lib").c_str(), 1);
+        ret = setenv("SHELL", "/system/bin/sh", 1);
         if(ret == -1)
         {
             LOG("setenv2 failed");
             return -3;
         }
 
+        //LD_LIBRARY_PATH hack
+        char buffer[1024] = {};
+        ((decltype(&android_get_LD_LIBRARY_PATH))dlsym(RTLD_DEFAULT, "android_get_LD_LIBRARY_PATH"))(buffer, sizeof(buffer) - 1);
+
+        std::string library_path(buffer);
+        library_path = library_path + ":" + path + "/lib";
+
+        ((decltype(&android_update_LD_LIBRARY_PATH))dlsym(RTLD_DEFAULT, "android_update_LD_LIBRARY_PATH"))(library_path.c_str());
+        //--------------------
+
+        ret = setenv("TMP", tmp.c_str(), 1);
+        if(ret == -1)
+        {
+            LOG("setenv3 failed");
+            return -4;
+        }
+
         ret = PyImport_AppendInittab("native_hapy", PyInit_native_hapy);
         if(ret == -1)
         {
             LOG("PyImport_AppendInittab failed");
-            return -4;
+            return -5;
         }
 
+        char progbuf[1024] = {};
+        readlink("/proc/self/exe", progbuf, sizeof(progbuf) - 1);
+        wchar_t * program_name = Py_DecodeLocale(progbuf, NULL);
+
+        Py_SetProgramName(program_name);
         Py_InitializeEx(0);
 
         return 0;
@@ -2105,7 +2133,7 @@ extern "C" JNIEXPORT jint JNICALL Java_com_happy_Widget_pythonInit(JNIEnv * env,
     catch(...)
     {
         LOG("exception was thrown from pythonInit");
-        return -5;
+        return -6;
     }
 }
 
