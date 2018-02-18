@@ -910,11 +910,10 @@ public class Widget extends RemoteViewsService {
             handler = new Handler();
 
             makePython();
-            System.load(new File(getFilesDir(), "/lib/libpython3.6m.so.1.0").getAbsolutePath());
+            System.load(new File(getFilesDir(), "/lib/libpython3.6m.so").getAbsolutePath());
             System.loadLibrary("native");
-            pythonInit(getFilesDir().getAbsolutePath());
+            pythonInit(getFilesDir().getAbsolutePath(), getCacheDir().getAbsolutePath());
             pythonRun("/sdcard/main.py", Widget.this);
-
             //java_widget();
         }
 
@@ -1111,7 +1110,7 @@ public class Widget extends RemoteViewsService {
         }
     }
 
-    protected static native int pythonInit(String pythonpath);
+    protected static native int pythonInit(String pythonpath, String tmppath);
     protected static native int pythonRun(String script, Object obj);
     protected static native Object pythonCall(Object... args) throws Throwable;
 }
