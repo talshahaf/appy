@@ -899,11 +899,11 @@ static PyObject * act(PyObject *self, PyObject *args)
     }
     catch(java_exception & e)
     {
-        PyErr_SetString(PyExc_ValueError, e.what());
+        PyErr_SetString(PyExc_RuntimeError, e.what());
     }
     catch(jni_exception & e)
     {
-        PyErr_SetString(PyExc_ValueError, e.what());
+        PyErr_SetString(PyExc_RuntimeError, e.what());
     }
     return NULL;
 }
@@ -957,7 +957,7 @@ static PyObject * get_method(PyObject *self, PyObject *args)
         jmethodID res = get_method_raw(env, (jclass)clazz, method, type_num, type_arr, out_types, &out_static);
         if(res == NULL)
         {
-            PyErr_Format(PyExc_ValueError, "Method %s() not found", method);
+            PyErr_Format(PyExc_RuntimeError, "Method %s() not found", method);
             return NULL;
         }
 
@@ -978,11 +978,11 @@ static PyObject * get_method(PyObject *self, PyObject *args)
     }
     catch(java_exception & e)
     {
-        PyErr_SetString(PyExc_ValueError, e.what());
+        PyErr_SetString(PyExc_RuntimeError, e.what());
     }
     catch(jni_exception & e)
     {
-        PyErr_SetString(PyExc_ValueError, e.what());
+        PyErr_SetString(PyExc_RuntimeError, e.what());
     }
     return NULL;
 }
@@ -1004,7 +1004,7 @@ static PyObject * get_field(PyObject *self, PyObject *args)
         jfieldID res = get_field_raw(env, (jclass)clazz, field, &out_type, &out_static);
         if(res == NULL)
         {
-            PyErr_SetString(PyExc_ValueError, "Field not found");
+            PyErr_SetString(PyExc_RuntimeError, "Field not found");
             return NULL;
         }
 
@@ -1012,11 +1012,11 @@ static PyObject * get_field(PyObject *self, PyObject *args)
     }
     catch(java_exception & e)
     {
-        PyErr_SetString(PyExc_ValueError, e.what());
+        PyErr_SetString(PyExc_RuntimeError, e.what());
     }
     catch(jni_exception & e)
     {
-        PyErr_SetString(PyExc_ValueError, e.what());
+        PyErr_SetString(PyExc_RuntimeError, e.what());
     }
     return NULL;
 }
@@ -1038,11 +1038,11 @@ static PyObject * find_class(PyObject *self, PyObject *args)
     }
     catch(java_exception & e)
     {
-        PyErr_SetString(PyExc_ValueError, e.what());
+        PyErr_SetString(PyExc_RuntimeError, e.what());
     }
     catch(jni_exception & e)
     {
-        PyErr_SetString(PyExc_ValueError, e.what());
+        PyErr_SetString(PyExc_RuntimeError, e.what());
     }
     return NULL;
 }
@@ -1065,11 +1065,11 @@ static PyObject * unbox_class(PyObject *self, PyObject *args)
     }
     catch(java_exception & e)
     {
-        PyErr_SetString(PyExc_ValueError, e.what());
+        PyErr_SetString(PyExc_RuntimeError, e.what());
     }
     catch(jni_exception & e)
     {
-        PyErr_SetString(PyExc_ValueError, e.what());
+        PyErr_SetString(PyExc_RuntimeError, e.what());
     }
     return NULL;
 }
@@ -1091,11 +1091,11 @@ static PyObject * get_object_class(PyObject *self, PyObject *args)
     }
     catch(java_exception & e)
     {
-        PyErr_SetString(PyExc_ValueError, e.what());
+        PyErr_SetString(PyExc_RuntimeError, e.what());
     }
     catch(jni_exception & e)
     {
-        PyErr_SetString(PyExc_ValueError, e.what());
+        PyErr_SetString(PyExc_RuntimeError, e.what());
     }
     return NULL;
 }
@@ -1201,7 +1201,7 @@ static PyObject * make_value(PyObject *self, PyObject *args)
     }
 
     jvalue result;
-    result.j = 0; //easy for debugging
+    result.j = 0; //easier for debugging
     if(!make_value_raw(object, type, &result))
     {
         PyErr_SetString(PyExc_ValueError, "type mismatch");
@@ -1239,11 +1239,11 @@ static PyObject * box(PyObject *self, PyObject *args)
     }
     catch(java_exception & e)
     {
-        PyErr_SetString(PyExc_ValueError, e.what());
+        PyErr_SetString(PyExc_RuntimeError, e.what());
     }
     catch(jni_exception & e)
     {
-        PyErr_SetString(PyExc_ValueError, e.what());
+        PyErr_SetString(PyExc_RuntimeError, e.what());
     }
     return NULL;
 }
@@ -1266,11 +1266,11 @@ static PyObject * unbox(PyObject *self, PyObject *args)
     }
     catch(java_exception & e)
     {
-        PyErr_SetString(PyExc_ValueError, e.what());
+        PyErr_SetString(PyExc_RuntimeError, e.what());
     }
     catch(jni_exception & e)
     {
-        PyErr_SetString(PyExc_ValueError, e.what());
+        PyErr_SetString(PyExc_RuntimeError, e.what());
     }
     return NULL;
 }
@@ -1512,11 +1512,11 @@ static PyObject * array(PyObject *self, PyObject *args)
     }
     catch(java_exception & e)
     {
-        PyErr_SetString(PyExc_ValueError, e.what());
+        PyErr_SetString(PyExc_RuntimeError, e.what());
     }
     catch(jni_exception & e)
     {
-        PyErr_SetString(PyExc_ValueError, e.what());
+        PyErr_SetString(PyExc_RuntimeError, e.what());
     }
     return NULL;
 }
@@ -1541,8 +1541,7 @@ static PyObject * delete_global_ref(PyObject *self, PyObject *args)
      }
      catch(jni_exception & e)
      {
-         LOG("got jni exception in delete_global_ref");
-         PyErr_SetString(PyExc_ValueError, e.what());
+         PyErr_SetString(PyExc_RuntimeError, e.what());
      }
      return NULL;
  }
@@ -1572,8 +1571,7 @@ static PyObject * delete_global_ref(PyObject *self, PyObject *args)
      }
      catch(jni_exception & e)
      {
-         LOG("got jni exception in new_global_ref");
-         PyErr_SetString(PyExc_ValueError, e.what());
+         PyErr_SetString(PyExc_RuntimeError, e.what());
      }
      return NULL;
  }
@@ -1641,12 +1639,11 @@ static PyObject * inspect_class(PyObject *self, PyObject *args)
     }
     catch(java_exception & e)
     {
-        PyErr_SetString(PyExc_ValueError, e.what());
+        PyErr_SetString(PyExc_RuntimeError, e.what());
     }
     catch(jni_exception & e)
     {
-        LOG("got jni exception in inspect_class");
-        PyErr_SetString(PyExc_ValueError, e.what());
+        PyErr_SetString(PyExc_RuntimeError, e.what());
     }
     return NULL;
 }
@@ -1692,12 +1689,11 @@ static PyObject * make_string(PyObject *self, PyObject *args)
     }
     catch(java_exception & e)
     {
-        PyErr_SetString(PyExc_ValueError, e.what());
+        PyErr_SetString(PyExc_RuntimeError, e.what());
     }
     catch(jni_exception & e)
     {
-        LOG("got jni exception in make_string");
-        PyErr_SetString(PyExc_ValueError, e.what());
+        PyErr_SetString(PyExc_RuntimeError, e.what());
     }
     return NULL;
 }
@@ -1737,12 +1733,11 @@ static PyObject * unbox_string(PyObject *self, PyObject *args)
     }
     catch(java_exception & e)
     {
-        PyErr_SetString(PyExc_ValueError, e.what());
+        PyErr_SetString(PyExc_RuntimeError, e.what());
     }
     catch(jni_exception & e)
     {
-        LOG("got jni exception in make_string");
-        PyErr_SetString(PyExc_ValueError, e.what());
+        PyErr_SetString(PyExc_RuntimeError, e.what());
     }
     return NULL;
 }
@@ -1776,12 +1771,11 @@ static PyObject * array_of_class(PyObject *self, PyObject *args)
     }
     catch(java_exception & e)
     {
-        PyErr_SetString(PyExc_ValueError, e.what());
+        PyErr_SetString(PyExc_RuntimeError, e.what());
     }
     catch(jni_exception & e)
     {
-        LOG("got jni exception in array_of_class");
-        PyErr_SetString(PyExc_ValueError, e.what());
+        PyErr_SetString(PyExc_RuntimeError, e.what());
     }
     return NULL;
 }
@@ -1815,12 +1809,11 @@ static PyObject * create_interface(PyObject *self, PyObject *args)
     }
     catch(java_exception & e)
     {
-        PyErr_SetString(PyExc_ValueError, e.what());
+        PyErr_SetString(PyExc_RuntimeError, e.what());
     }
     catch(jni_exception & e)
     {
-        LOG("got jni exception in array_of_class");
-        PyErr_SetString(PyExc_ValueError, e.what());
+        PyErr_SetString(PyExc_RuntimeError, e.what());
     }
     return NULL;
 }
@@ -1864,12 +1857,11 @@ static PyObject * get_java_arg(PyObject *self, PyObject *args)
     }
     catch(java_exception & e)
     {
-        PyErr_SetString(PyExc_ValueError, e.what());
+        PyErr_SetString(PyExc_RuntimeError, e.what());
     }
     catch(jni_exception & e)
     {
-        LOG("got jni exception in get_java_arg");
-        PyErr_SetString(PyExc_ValueError, e.what());
+        PyErr_SetString(PyExc_RuntimeError, e.what());
     }
     return NULL;
 }
@@ -1898,12 +1890,11 @@ static PyObject * castable(PyObject *self, PyObject *args)
     }
     catch(java_exception & e)
     {
-        PyErr_SetString(PyExc_ValueError, e.what());
+        PyErr_SetString(PyExc_RuntimeError, e.what());
     }
     catch(jni_exception & e)
     {
-        LOG("got jni exception in castable");
-        PyErr_SetString(PyExc_ValueError, e.what());
+        PyErr_SetString(PyExc_RuntimeError, e.what());
     }
     return NULL;
 }
@@ -1977,6 +1968,29 @@ extern "C" JNIEXPORT jobject JNICALL Java_com_happy_Widget_pythonCall(JNIEnv * e
     return NULL;
 }
 
+static PyObject * logcat_write(PyObject *self, PyObject *args)
+{
+    int level = 0;
+    const char * tag = NULL;
+    Py_ssize_t taglen = 0;
+    const char * msg = NULL;
+    Py_ssize_t msglen = 0;
+    if (!PyArg_ParseTuple(args, "is#s#", &level, &tag, &taglen, &msg, &msglen))
+    {
+        return NULL;
+    }
+    int ret = __android_log_write(level, tag, msg);
+    if(ret >= 0)
+    {
+        return Py_BuildValue("i", ret);
+    }
+    else
+    {
+        PyErr_SetString(PyExc_RuntimeError, "logcat write failed");
+        return NULL;
+    }
+}
+
 extern "C" JNIEXPORT jint JNICALL Java_com_happy_Widget_pythonRun(JNIEnv * env, jclass clazz, jstring script, jobject arg)
 {
     try
@@ -2010,7 +2024,7 @@ extern "C" JNIEXPORT jint JNICALL Java_com_happy_Widget_pythonRun(JNIEnv * env, 
             return -3;
         }
 
-        PySys_SetArgv(2, &program);
+        PySys_SetArgv(1, &program);
         int ret = PyRun_SimpleFileExFlags(fh, path.c_str(), 1, NULL);
         if(ret == -1)
         {
@@ -2047,6 +2061,7 @@ static PyMethodDef native_hapy_methods[] = {
         {"create_interface", create_interface, METH_VARARGS, "creates interface"},
         {"get_java_arg", get_java_arg, METH_VARARGS, "gets the arg passed from java"},
         {"castable", castable, METH_VARARGS, "checks whether an object can be cast into class"},
+        {"logcat_write", logcat_write, METH_VARARGS, "writes to logcat"},
         {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
@@ -2067,7 +2082,7 @@ PyMODINIT_FUNC PyInit_native_hapy(void)
 extern "C" void android_get_LD_LIBRARY_PATH(char*, size_t);
 extern "C" void android_update_LD_LIBRARY_PATH(const char*);
 
-extern "C" JNIEXPORT jint JNICALL Java_com_happy_Widget_pythonInit(JNIEnv * env, jclass clazz, jstring pythonpath, jstring tmppath)
+extern "C" JNIEXPORT jint JNICALL Java_com_happy_Widget_pythonInit(JNIEnv * env, jclass clazz, jstring j_pythonhome, jstring j_tmppath, jstring j_pythonlib)
 {
     try
     {
@@ -2080,60 +2095,47 @@ extern "C" JNIEXPORT jint JNICALL Java_com_happy_Widget_pythonInit(JNIEnv * env,
             return -1;
         }
 
-        auto path = get_string(env, pythonpath);
-        auto tmp = get_string(env, tmppath);
+        auto pythonhome = get_string(env, j_pythonhome);
+        auto tmppath = get_string(env, j_tmppath);
+        auto pythonlib = get_string(env, j_pythonlib);
 
-        ret = setenv("PYTHONHOME", path.c_str(), 1);
-        if(ret == -1)
-        {
-            LOG("setenv1 failed");
-            return -2;
-        }
-
-        ret = setenv("SHELL", "/system/bin/sh", 1);
-        if(ret == -1)
-        {
-            LOG("setenv2 failed");
-            return -3;
-        }
+        setenv("PYTHONHOME", pythonhome.c_str(), 1);
+        setenv("HOME", pythonhome.c_str(), 1);
+        setenv("SHELL", "/system/bin/sh", 1);
+        setenv("TMP", tmppath.c_str(), 1);
 
         //LD_LIBRARY_PATH hack
         char buffer[1024] = {};
         ((decltype(&android_get_LD_LIBRARY_PATH))dlsym(RTLD_DEFAULT, "android_get_LD_LIBRARY_PATH"))(buffer, sizeof(buffer) - 1);
 
         std::string library_path(buffer);
-        library_path = library_path + ":" + path + "/lib";
+        library_path = library_path + ":" + pythonhome + "/lib";
 
         ((decltype(&android_update_LD_LIBRARY_PATH))dlsym(RTLD_DEFAULT, "android_update_LD_LIBRARY_PATH"))(library_path.c_str());
         //--------------------
-
-        ret = setenv("TMP", tmp.c_str(), 1);
-        if(ret == -1)
-        {
-            LOG("setenv3 failed");
-            return -4;
-        }
 
         ret = PyImport_AppendInittab("native_hapy", PyInit_native_hapy);
         if(ret == -1)
         {
             LOG("PyImport_AppendInittab failed");
-            return -5;
+            return -2;
         }
 
-        char progbuf[1024] = {};
-        readlink("/proc/self/exe", progbuf, sizeof(progbuf) - 1);
-        wchar_t * program_name = Py_DecodeLocale(progbuf, NULL);
+        wchar_t * pythonlib_w = Py_DecodeLocale(pythonlib.c_str(), NULL);
+        if(pythonlib_w == NULL)
+        {
+            LOG("Py_DecodeLocale failed");
+            return -4;
+        }
 
-        Py_SetProgramName(program_name);
+        Py_SetProgramName(pythonlib_w);
         Py_InitializeEx(0);
-
         return 0;
     }
     catch(...)
     {
         LOG("exception was thrown from pythonInit");
-        return -6;
+        return -5;
     }
 }
 

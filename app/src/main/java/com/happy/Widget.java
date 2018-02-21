@@ -14,6 +14,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
 
+import android.app.AlarmManager;
 import android.app.PendingIntent;
 import android.appwidget.AppWidgetManager;
 import android.content.ComponentName;
@@ -901,6 +902,15 @@ public class Widget extends RemoteViewsService {
         widgets.put(widgetId, DynamicView.toJSONString(DynamicView.fromJSONArray(json))); //assign ids
     }
 
+    public void restart()
+    {
+        Intent intent = new Intent(this, getClass());
+        PendingIntent pendingIntent = PendingIntent.getService(this, 1, intent, PendingIntent.FLAG_CANCEL_CURRENT);
+        AlarmManager mgr = (AlarmManager)getSystemService(Context.ALARM_SERVICE);
+        mgr.set(AlarmManager.RTC, System.currentTimeMillis() + 100, pendingIntent);
+        System.exit(0);
+    }
+
     @Override
     public int onStartCommand(Intent intent, int flags, int startId)
     {
@@ -909,10 +919,14 @@ public class Widget extends RemoteViewsService {
             started = true;
             handler = new Handler();
 
-            makePython();
-            System.load(new File(getFilesDir(), "/lib/libpython3.6m.so").getAbsolutePath());
+            String pythonHome = getFilesDir().getAbsolutePath();
+            String pythonLib = new File(pythonHome, "/lib/libpython3.6m.so").getAbsolutePath(); //must be without
+            String cacheDir = getCacheDir().getAbsolutePath();
+
+            unpackPython(pythonHome);
+            System.load(pythonLib);
             System.loadLibrary("native");
-            pythonInit(getFilesDir().getAbsolutePath(), getCacheDir().getAbsolutePath());
+            pythonInit(pythonHome, cacheDir, pythonLib);
             pythonRun("/sdcard/main.py", Widget.this);
             //java_widget();
         }
@@ -1090,18 +1104,15 @@ public class Widget extends RemoteViewsService {
         }
     }
 
-    public void makePython()
+    public void unpackPython(String pythonHome)
     {
-        if(!new File(getFilesDir(), "lib/libpython3.so").exists())
+        if(!new File(pythonHome, "lib/libpython3.so").exists())
         {
             Log.d("HAPY", "unpacking python");
 
-            File newfile = new File(getFilesDir(), "test");
-            //TODO without creating?
+            runProcess(new String[]{"sh", "-c", "tar -xf /sdcard/python.tar -C " + pythonHome + " 2>&1"});
 
-            runProcess(new String[]{"sh", "-c", "tar -xf /sdcard/python.tar -C " + getFilesDir().getAbsolutePath()+" 2>&1"});
-
-            //printFnames(getFilesDir());
+            //printFnames(pythonHome);
             Log.d("HAPY", "done unpacking python");
         }
         else
@@ -1110,7 +1121,7 @@ public class Widget extends RemoteViewsService {
         }
     }
 
-    protected static native int pythonInit(String pythonpath, String tmppath);
+    protected static native int pythonInit(String pythonHome, String tmpPath, String pythonLibPath);
     protected static native int pythonRun(String script, Object obj);
     protected static native Object pythonCall(Object... args) throws Throwable;
 }
