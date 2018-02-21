@@ -2010,7 +2010,7 @@ extern "C" JNIEXPORT jint JNICALL Java_com_happy_Widget_pythonRun(JNIEnv * env, 
             return -3;
         }
 
-        PySys_SetArgv(1, &program);
+        PySys_SetArgv(2, &program);
         int ret = PyRun_SimpleFileExFlags(fh, path.c_str(), 1, NULL);
         if(ret == -1)
         {
@@ -2090,6 +2090,13 @@ extern "C" JNIEXPORT jint JNICALL Java_com_happy_Widget_pythonInit(JNIEnv * env,
             return -2;
         }
 
+        ret = setenv("SHELL", "/system/bin/sh", 1);
+        if(ret == -1)
+        {
+            LOG("setenv2 failed");
+            return -3;
+        }
+
         //LD_LIBRARY_PATH hack
         char buffer[1024] = {};
         ((decltype(&android_get_LD_LIBRARY_PATH))dlsym(RTLD_DEFAULT, "android_get_LD_LIBRARY_PATH"))(buffer, sizeof(buffer) - 1);
@@ -2114,6 +2121,11 @@ extern "C" JNIEXPORT jint JNICALL Java_com_happy_Widget_pythonInit(JNIEnv * env,
             return -5;
         }
 
+        char progbuf[1024] = {};
+        readlink("/proc/self/exe", progbuf, sizeof(progbuf) - 1);
+        wchar_t * program_name = Py_DecodeLocale(progbuf, NULL);
+
+        Py_SetProgramName(program_name);
         Py_InitializeEx(0);
 
         return 0;
