@@ -1,4 +1,4 @@
-import ctypes
+import native_hapy
 import sys
 
 __buffer__ = []
@@ -12,8 +12,6 @@ class LogcatWriter:
     FATAL = 7
     
     def __init__(self, lvl):
-        self.liblog = ctypes.cdll.LoadLibrary('liblog.so')
-        self.android_log_print = getattr(self.liblog, '__android_log_print')
         self.lvl = lvl
         self.buf = b''
         self.crash_handler = None
@@ -28,7 +26,7 @@ class LogcatWriter:
                 break
             b = self.buf[:i]
             __buffer__.append(b)
-            self.android_log_print(self.lvl, b'HAPY', b)
+            native_hapy.logcat_write(self.lvl, b'HAPY', b)
             self.buf = self.buf[i + 1:]
 
     @property
@@ -36,6 +34,9 @@ class LogcatWriter:
         if self.crash_handler is None:
             self.crash_handler = open('/sdcard/crash.txt', 'wb')
         return self.crash_handler.fileno
+
+    def isatty(self):
+        return False
             
 sys.stdout = LogcatWriter(LogcatWriter.INFO)
 sys.stderr = LogcatWriter(LogcatWriter.ERROR)
