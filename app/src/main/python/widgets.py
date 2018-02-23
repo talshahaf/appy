@@ -5,6 +5,30 @@ import functools
 import copy
 import traceback
 import java
+import pickle
+import base64
+
+class AttrDict(dict):
+    def __getattr__(self, item):
+        try:
+            return self.__getitem__(item)
+        except KeyError:
+            raise AttributeError()
+
+    def __setattr__(self, key, value):
+        try:
+            return self.__setitem__(key, value)
+        except KeyError:
+            raise AttributeError()
+
+    @classmethod
+    def make(cls, d):
+        if isinstance(d, dict):
+            return AttrDict({k: cls.make(v) for k,v in d.items()})
+        elif isinstance(d, (list, tuple, set)):
+            return type(d)(cls.make(v) for v in d)
+        else:
+            return d
 
 id_counter = 1
 def get_id():
@@ -61,25 +85,36 @@ class AttributeValue:
                 amount += e
         return dict(function='IDENTITY', arguments=[dict(amount=amount, references=refs)])
 
-
-storage = {}
-
-attrs = {'left': 'LEFT', 'top': 'TOP', 'right': 'RIGHT', 'bottom': 'BOTTOM', 'width': 'WIDTH', 'height': 'HEIGHT'}
+attrs = dict(left='LEFT', top='TOP', right='RIGHT', bottom='BOTTOM', width='WIDTH', height='HEIGHT')
 class Element:
     def __init__(self, d):
-        self.__dict__['d'] = d
+        self.__dict__['d'] = AttrDict.make(d)
         if 'id' not in self.d:
-            self.d['id'] = get_id()
+            self.d.id = get_id()
         if 'children' in self.d:
-            self.d['children'] = [[c if isinstance(c, Element) else Element(c) for c in arr] for arr in self.d['children']]
+            self.d.children = [[c if isinstance(c, Element) else Element(c) for c in arr] for arr in self.d.children]
 
     def __event__(self, key, *args):
-        if 'tag' in self.d and key in self.d['tag']:
-            storage[self.d['tag'][key]](*args)
+        if 'tag' in self.d and key in self.d.tag:
+            f, captures = self.d.tag[key]
+            captures = pickle.loads(base64.b64decode(captures.encode()))
+            usable_functions[f](*args, **captures)
+
+    def set_handler(self, key, f, **captures):
+        assert_usable(f)
+        if 'tag' not in self.d:
+            self.d.tag = {}
+        self.d.tag[key] = (id(f), base64.b64encode(pickle.dumps(captures, protocol=pickle.HIGHEST_PROTOCOL)).decode())
+
+    def click(self, f, **captures):
+        self.set_handler('click', f, **captures)
+
+    def itemclick(self, f, **captures):
+        self.set_handler('itemclick', f, **captures)
 
     def __getattr__(self, item):
         if item in attrs:
-            return AttributeValue(Reference(self.d['id'], attrs[item], 1))
+            return AttributeValue(Reference(self.d.id, attrs[item], 1))
         raise AttributeError()
 
     def __setattr__(self, key, value):
@@ -87,15 +122,14 @@ class Element:
             if not isinstance(value, AttributeValue):
                 value = AttributeValue(value)
             if 'attributes' not in self.d:
-                self.d['attributes'] = {}
-            self.d['attributes'][attrs[key]] = value.compile()
+                self.d.attributes = {}
+            self.d.attributes[attrs[key]] = value.compile()
         elif key in ('click', 'itemclick'):
-            if 'tag' not in self.d:
-                self.d['tag'] = {}
-            self.d['tag'][key] = id(value)
-            storage[id(value)] = value
+            if not isinstance(value, (list, tuple)):
+                value = (value, {})
+            self.set_handler(key, value[0], **value[1])
         else:
-            param_setter, method = get_param_setter(self.d['type'], key)
+            param_setter, method = get_param_setter(self.d.type, key)
             if param_setter is not None:
                 identifier = method
                 arguments = [method, value]
@@ -107,8 +141,8 @@ class Element:
                 arguments = [getattr(v, '__raw__', lambda: v)() for v in value]
 
             if 'methodCalls' not in self.d:
-                self.d['methodCalls'] = []
-            self.d['methodCalls'] = [c for c in self.d['methodCalls'] if c['identifier'] != method] + [dict(identifier=identifier, method=method, arguments=arguments)]
+                self.d.methodCalls = []
+            self.d.methodCalls = [c for c in self.d.methodCalls if c.identifier != method] + [AttrDict(identifier=identifier, method=method, arguments=arguments)]
 
     @classmethod
     def create(cls, type, children=None, **kwargs):
@@ -124,9 +158,9 @@ class Element:
         return e
 
     def dict(self, without_id=None):
-        d = {k:copy.deepcopy(v) for k,v in self.d.items() if k != 'children' and (not without_id or k != 'id')}
+        d = AttrDict.make({k:copy.deepcopy(v) for k,v in self.d.items() if k != 'children' and (not without_id or k != 'id')})
         if 'children' in self.d:
-            d['children'] = [[c.dict(without_id=without_id) if isinstance(c, Element) else c for c in arr] for arr in self.d['children']]
+            d.children = [[c.dict(without_id=without_id) if isinstance(c, Element) else c for c in arr] for arr in self.d.children]
         return d
 
     def duplicate(self):
@@ -141,13 +175,35 @@ ListView = lambda *args, **kwargs: Element.create('ListView', *args, **kwargs)
 available_widgets = {}
 chosen_widgets = {}
 
-def choose_widget(widget_id, name):
+usable_functions = {}
+__simpledefined_locked = False
+
+def lock_simplydefined():
+    global __simpledefined_locked
+    __simpledefined_locked = True
+
+def simplydefined(f):
+    if __simpledefined_locked:
+        raise ValueError('function is not simply defined')
+    usable_functions[id(f)] = f
+    return f
+
+def is_usable_function(f):
+    return id(f) in usable_functions
+
+def assert_usable(*args):
+    for f in args:
+        if not is_usable_function(f):
+            raise ValueError(f'function {f.__name__} is not decorated with @simplydefined')
+
+@simplydefined
+def choose_widget(*args, widget_id, name):
     chosen_widgets[widget_id] = (name, False)
 
 def widget_manager_create(widget_id):
     chosen_widgets.pop(widget_id, None)
     return ListView(children=[TextView(text=name, textViewTextSize=(java.clazz.android.util.TypedValue().COMPLEX_UNIT_SP, 30),
-                                       click=(lambda widget_id, name: (lambda _: choose_widget(widget_id, name)))(widget_id, name)) #capture
+                                       click=(choose_widget, dict(widget_id=widget_id, name=name)))
                               for name in available_widgets])
 
 def widget_manager_update(widget_id, views):
@@ -167,6 +223,13 @@ def widget_manager_update(widget_id, views):
         print(traceback.format_exc())
         return widget_manager_create(widget_id) #maybe present error widget
 
+# class State:
+#     def __init__(self, widget_id):
+#         self.widget_id = widget_id
+#
+#     def __getitem__(self, item):
+
+
 class Handler:
     def __init__(self):
         self.iface = java.create_interface(self, java.clazz.com.happy.WidgetUpdateListener())
@@ -183,10 +246,10 @@ class Handler:
 
     def find(self, views, id):
         for e in views:
-            if e.d['id'] == id:
+            if e.d.id == id:
                 return e
             if 'children' in e.d:
-                for c in e.d['children']:
+                for c in e.d.children:
                     r = self.find(c, id)
                     if r is not None:
                         return r
@@ -225,19 +288,20 @@ class Handler:
 def register_widget(name, on_create, on_update=None):
     if name in available_widgets:
         raise ValueError(f'name {name} exists')
+
+    assert_usable(on_create, on_update)
     available_widgets[name] = (on_create, on_update)
 
 java_widget_manager = None
 
-def init(widget_manager):
+def init():
     global java_widget_manager
-    java_widget_manager = widget_manager
+    faulthandler.enable()
+    lock_simplydefined()
+    context = java.get_java_arg()
+    java_widget_manager = context
     print('init')
-    widget_manager.registerOnWidgetUpdate(Handler().iface)
-
-faulthandler.enable()
-context = java.get_java_arg()
-init(context)
+    context.registerOnWidgetUpdate(Handler().iface)
 
 def pip_install(package):
     import pip
