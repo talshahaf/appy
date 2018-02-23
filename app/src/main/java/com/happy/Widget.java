@@ -934,6 +934,12 @@ public class Widget extends RemoteViewsService {
         Log.d("HAPY", "startCommand");
         if(intent != null)
         {
+            if(intent.getBooleanExtra("restart", false))
+            {
+                restart();
+                return super.onStartCommand(intent, flags, startId); //not really reachable
+            }
+
             Intent widgetIntent = intent.getParcelableExtra(WIDGET_INTENT);
             if (widgetIntent != null && AppWidgetManager.ACTION_APPWIDGET_UPDATE.equals(widgetIntent.getAction()))
             {
