@@ -1,4 +1,4 @@
-package com.happy;
+package com.appy;
 
 import android.content.Context;
 import android.support.test.InstrumentationRegistry;
@@ -23,6 +23,6 @@ public class ExampleInstrumentedTest
         // Context of the app under test.
         Context appContext = InstrumentationRegistry.getTargetContext();
 
-        assertEquals("com.hapy", appContext.getPackageName());
+        assertEquals("com.appy", appContext.getPackageName());
     }
 }

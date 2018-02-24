@@ -1,4 +1,4 @@
-package com.happy;
+package com.appy;
 
 public class PythonException extends Exception
 {

@@ -1,6 +1,5 @@
-package com.happy;
+package com.appy;
 
-import android.content.Context;
 import android.util.Log;
 import android.widget.RemoteViews;
 
@@ -67,7 +66,7 @@ public class RemoteMethodCall
 
     public void call(RemoteViews view, int id) throws InvocationTargetException, IllegalAccessException
     {
-        Log.d("HAPY", "calling " + id + " " + method.getName());
+        Log.d("APPY", "calling " + id + " " + method.getName());
         switch (arguments.length)
         {
             case 0:

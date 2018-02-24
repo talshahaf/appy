@@ -1,10 +1,7 @@
-package com.happy;
+package com.appy;
 
 import android.content.Context;
 import android.content.Intent;
-import android.widget.RemoteViews;
-
-import java.lang.reflect.InvocationTargetException;
 
 /**
  * Created by Tal on 30/12/2017.

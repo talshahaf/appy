@@ -1,4 +1,4 @@
-package com.happy;
+package com.appy;
 
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -6,16 +6,12 @@ import android.content.Intent;
 import android.util.Log;
 
 import java.io.UnsupportedEncodingException;
-import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Proxy;
-import java.util.Arrays;
 import java.util.HashMap;
-import java.util.List;
 
 /**
  * Created by Tal on 15/12/2017.
@@ -65,7 +61,7 @@ public class Reflection
         {
             types += ", "+t.getName();
         }
-        Log.d("HAPY", clazz.getName() +"."+ method + " " + types);
+        Log.d("APPY", clazz.getName() +"."+ method + " " + types);
     }
 
     public static final boolean python_types = true;
@@ -232,7 +228,7 @@ public class Reflection
                                 // conversion allowed
                                 continue;
                             }
-                            Log.d("HAPY", "method " + m.getName() + " fails because "+methodTypes[j].getName() + " != "+parameterTypes[j].getName());
+                            Log.d("APPY", "method " + m.getName() + " fails because "+methodTypes[j].getName() + " != "+parameterTypes[j].getName());
                             isCompatible = false;
                             break;
                         }
@@ -261,7 +257,7 @@ public class Reflection
             return new Object[]{result.get(), result.isStatic() ? 1 : 0, args};
         }
 
-        Log.d("HAPY", "no such func");
+        Log.d("APPY", "no such func");
         return null;
     }
 

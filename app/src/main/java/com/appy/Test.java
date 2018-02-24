@@ -1,4 +1,4 @@
-package com.happy;
+package com.appy;
 
 import android.util.Log;
 
@@ -36,41 +36,41 @@ public class Test
                 Boolean Z, Byte B, Character C, Short S, Integer I, Long J, Float F, Double D,
                 Object O)
     {
-        //Log.d("HAPY", "const got: "+z+" "+b+" "+c+" "+s+" "+i+" "+j+" "+f+" "+d+" | "+Z+" "+B+" "+C+" "+S+" "+I+" "+J+" "+F+" "+D+" | "+O);
+        //Log.d("APPY", "const got: "+z+" "+b+" "+c+" "+s+" "+i+" "+j+" "+f+" "+d+" | "+Z+" "+B+" "+C+" "+S+" "+I+" "+J+" "+F+" "+D+" | "+O);
     }
 
     public static long test(long i)
     {
-        Log.d("HAPY", "test: "+i);
+        Log.d("APPY", "test: "+i);
         return i * 2;
     }
     public long ins_test(long i)
     {
-        Log.d("HAPY", "ins_test: "+i);
+        Log.d("APPY", "ins_test: "+i);
         return i * 7;
     }
 
     public static long test_void()
     {
-        Log.d("HAPY", "test_void");
+        Log.d("APPY", "test_void");
         return 48;
     }
 
     public static void void_test(long l)
     {
-        Log.d("HAPY", "test_void: "+l);
+        Log.d("APPY", "test_void: "+l);
     }
 
     public static void void_void()
     {
-        Log.d("HAPY", "void_void");
+        Log.d("APPY", "void_void");
     }
 
     public static Object all(boolean z, byte b, char c,      short s, int i,     long j, float f, double d,
                              Boolean Z, Byte B, Character C, Short S, Integer I, Long J, Float F, Double D,
                              Object O)
     {
-        Log.d("HAPY", "all got: "+z+" "+b+" "+c+" "+s+" "+i+" "+j+" "+f+" "+d+" | "+Z+" "+B+" "+C+" "+S+" "+I+" "+J+" "+F+" "+D+" | "+O);
+        Log.d("APPY", "all got: "+z+" "+b+" "+c+" "+s+" "+i+" "+j+" "+f+" "+d+" | "+Z+" "+B+" "+C+" "+S+" "+I+" "+J+" "+F+" "+D+" | "+O);
         return O;
     }
 
@@ -115,13 +115,13 @@ public class Test
 
     public static String test_unicode(String s)
     {
-        Log.d("HAPY", ""+s.length());
+        Log.d("APPY", ""+s.length());
         return "בדיקה";
     }
 
     public static Object test_callback(TestInterface iface, Object obj) throws Throwable
     {
-        Log.d("HAPY", "test_callback!");
+        Log.d("APPY", "test_callback!");
         return iface.action(obj);
     }
 

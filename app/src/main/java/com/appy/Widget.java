@@ -1,4 +1,4 @@
-package com.happy;
+package com.appy;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
@@ -20,6 +20,7 @@ import android.appwidget.AppWidgetManager;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.drawable.Icon;
 import android.net.Uri;
@@ -176,7 +177,7 @@ public class Widget extends RemoteViewsService {
 
     public ArrayList<DynamicView> initWidget(int widgetId)
     {
-        Log.d("HAPY", "initWidget "+widgetId);
+        Log.d("APPY", "initWidget "+widgetId);
 
         ArrayList<DynamicView> views = new ArrayList<>();
 
@@ -187,7 +188,7 @@ public class Widget extends RemoteViewsService {
         Attributes.AttributeValue halfWidth = attributeParse("w(r)*0.5");
         Attributes.AttributeValue halfHeight = attributeParse("h(r)*0.5");
 
-        Log.d("HAPY", "100: "+_100px+"     btnWidth: "+halfWidth+"      btnHeight: "+halfHeight);
+        Log.d("APPY", "100: "+_100px+"     btnWidth: "+halfWidth+"      btnHeight: "+halfHeight);
 
         btn.attributes.attributes.put(Attributes.Type.WIDTH, halfWidth);
         //btn.attributes.attributes.put(Attributes.Type.HEIGHT, halfHeight);
@@ -221,7 +222,7 @@ public class Widget extends RemoteViewsService {
 
     public ArrayList<DynamicView> updateWidget(int widgetId, ArrayList<DynamicView> root)
     {
-        Log.d("HAPY", "updateWidget "+widgetId);
+        Log.d("APPY", "updateWidget "+widgetId);
 
         DynamicView view = root.get(0);
         view.methodCalls.add(new RemoteMethodCall("setText", false, getSetterMethod(view.type, "setText"), "setText", ""+new Random().nextInt(1000)));
@@ -278,7 +279,7 @@ public class Widget extends RemoteViewsService {
         public void reload(String list)
         {
             DynamicView view = DynamicView.fromJSON(list);
-            Log.d("HAPY", "reloadFactory: "+widgetId + " " + view.view_id + ", " + view.xml_id + " dynamic: " + view.getId());
+            Log.d("APPY", "reloadFactory: "+widgetId + " " + view.view_id + ", " + view.xml_id + " dynamic: " + view.getId());
             this.list = view;
         }
 
@@ -291,7 +292,7 @@ public class Widget extends RemoteViewsService {
         @Override
         public void onDataSetChanged()
         {
-            Log.d("HAPY", "onDataSet");
+            Log.d("APPY", "onDataSet");
         }
 
         @Override
@@ -303,14 +304,14 @@ public class Widget extends RemoteViewsService {
         @Override
         public int getCount()
         {
-            Log.d("HAPY", "count: "+list.children.size());
+            Log.d("APPY", "count: "+list.children.size());
             return list.children.size();
         }
 
         @Override
         public RemoteViews getViewAt(int position)
         {
-            Log.d("HAPY", "get view at: "+position +"/"+list.children.size());
+            Log.d("APPY", "get view at: "+position +"/"+list.children.size());
 
             try
             {
@@ -437,7 +438,7 @@ public class Widget extends RemoteViewsService {
         }
 
 
-        Log.d("HAPY", "chosen "+root_xml);
+        Log.d("APPY", "chosen "+root_xml);
         RemoteViews rootView = new RemoteViews(context.getPackageName(), root_xml);
         rootView.removeAllViews(elements_id);
 
@@ -453,7 +454,7 @@ public class Widget extends RemoteViewsService {
                 Pair<Integer, Integer> ids = getListViewId(collectionCounter);
                 layout.view_id = ids.first;
                 layout.container_id = ids.second;
-                Log.d("HAPY", "counter "+collectionCounter+" "+layout.view_id+" "+layout.container_id);
+                Log.d("APPY", "counter "+collectionCounter+" "+layout.view_id+" "+layout.container_id);
                 collectionCounter++;
             }
             else
@@ -498,7 +499,7 @@ public class Widget extends RemoteViewsService {
                 listintent.setData(Uri.parse(listintent.toUri(Intent.URI_INTENT_SCHEME)));
                 remoteView.setRemoteAdapter(layout.view_id, listintent);
 
-                Log.d("HAPY", "set remote adapter on " + layout.view_id+", "+layout.xml_id+" in dynamic "+layout.getId());
+                Log.d("APPY", "set remote adapter on " + layout.view_id+", "+layout.xml_id+" in dynamic "+layout.getId());
             }
             else if(!inCollection)
             {
@@ -576,7 +577,7 @@ public class Widget extends RemoteViewsService {
         View inflated = remote.apply(context, layout);
         layout.addView(inflated);
 
-        Log.d("HAPY", "widget " + inCollection + " "+widgetId+ " dimensions: "+widthLimit+", "+heightLimit);
+        Log.d("APPY", "widget " + inCollection + " "+widgetId+ " dimensions: "+widthLimit+", "+heightLimit);
 
         RelativeLayout.LayoutParams params = (RelativeLayout.LayoutParams)inflated.getLayoutParams();
         params.width = widthLimit;
@@ -593,7 +594,7 @@ public class Widget extends RemoteViewsService {
 
         ViewGroup supergroup = (ViewGroup)inflated;
 
-//        Log.d("HAPY", "child count: ");
+//        Log.d("APPY", "child count: ");
 //        printChildCount(supergroup, "  ");
 
         if(supergroup.getChildCount() > 2)
@@ -624,10 +625,10 @@ public class Widget extends RemoteViewsService {
             for (int i = 0; i < group.getChildCount(); i++)
             {
                 View view = ((ViewGroup) group.getChildAt(i)).getChildAt(0); //each leaf is inside RelativeLayout is inside elements or collections
-                Log.d("HAPY", "measuring "+view.getClass().getName());
+                Log.d("APPY", "measuring "+view.getClass().getName());
                 DynamicView dynamicView = find(dynamicList, Integer.parseInt(view.getContentDescription().toString()));
 
-                Log.d("HAPY", "measured " + dynamicView.getId()+" "+dynamicView.type + ": " + view.getMeasuredWidth() + ", " + view.getMeasuredHeight());
+                Log.d("APPY", "measured " + dynamicView.getId()+" "+dynamicView.type + ": " + view.getMeasuredWidth() + ", " + view.getMeasuredHeight());
 
                 dynamicView.attributes.attributes.get(Attributes.Type.LEFT).tryTrivialResolve(0);
                 dynamicView.attributes.attributes.get(Attributes.Type.TOP).tryTrivialResolve(0);
@@ -686,7 +687,7 @@ public class Widget extends RemoteViewsService {
 
                                 if (!referenceAttributes.attributes.get(reference.type).isResolved())
                                 {
-                                    Log.d("HAPY", reference.type + " cannot be resolved right now");
+                                    Log.d("APPY", reference.type + " cannot be resolved right now");
                                     canBeResolved = false;
                                 }
                                 else
@@ -752,12 +753,12 @@ public class Widget extends RemoteViewsService {
                 dynamicView.actualHeight = heightLimit - ver.second - ver.first;
             }
 
-            Log.d("HAPY", "resolved attributes: ");
+            Log.d("APPY", "resolved attributes: ");
             for(Map.Entry<Attributes.Type, Attributes.AttributeValue> entry : dynamicView.attributes.attributes.entrySet())
             {
-                Log.d("HAPY", entry.getKey().name()+": "+entry.getValue().resolvedValue);
+                Log.d("APPY", entry.getKey().name()+": "+entry.getValue().resolvedValue);
             }
-            Log.d("HAPY", "selected pad for "+dynamicView.getId()+" "+dynamicView.type+": "+hor.first+", "+hor.second+", "+ver.first+", "+ver.second);
+            Log.d("APPY", "selected pad for "+dynamicView.getId()+" "+dynamicView.type+": "+hor.first+", "+hor.second+", "+ver.first+", "+ver.second);
 
             dynamicView.methodCalls.add(new RemoteMethodCall("setViewPadding", true, "setViewPadding",
                     hor.first,
@@ -771,7 +772,7 @@ public class Widget extends RemoteViewsService {
 
     public String handle(int widgetId, String widgetJson, int collectionId, int itemId, int collectionPosition)
     {
-        Log.d("HAPY", "handling "+itemId+" in collection "+collectionId);
+        Log.d("APPY", "handling "+itemId+" in collection "+collectionId);
 
         //boolean callOnClick = true;
 
@@ -787,17 +788,17 @@ public class Widget extends RemoteViewsService {
 
         if(collectionId != 0)
         {
-            Log.d("HAPY", "calling listener onItemClick");
+            Log.d("APPY", "calling listener onItemClick");
             String ret = updateListener.onItemClick(widgetId, widgetJson, collectionId, collectionPosition);
             //TODO cannot change layout and not suppress click
             if(ret != null || itemId == 0)
             {
-                Log.d("HAPY", "suppressing click on "+itemId);
+                Log.d("APPY", "suppressing click on "+itemId);
                 return ret;
             }
         }
 
-        Log.d("HAPY", "calling listener onClick");
+        Log.d("APPY", "calling listener onClick");
         return updateListener.onClick(widgetId, widgetJson, itemId);
     }
 
@@ -865,14 +866,14 @@ public class Widget extends RemoteViewsService {
                 @Override
                 public String onItemClick(int widgetId, String views, int collectionId, int position)
                 {
-                    Log.d("HAPY", "on item click: "+collectionId+" "+position);
+                    Log.d("APPY", "on item click: "+collectionId+" "+position);
                     return null;
                 }
 
                 @Override
                 public String onClick(int widgetId, String views, int id)
                 {
-                    Log.d("HAPY", "on click: "+id);
+                    Log.d("APPY", "on click: "+id);
                     return null;
                 }
             });
@@ -884,7 +885,7 @@ public class Widget extends RemoteViewsService {
         int widgetId = intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, -1);
         int xmlId = intent.getIntExtra(XML_ID_EXTRA, 0);
         int viewId = intent.getIntExtra(VIEW_ID_EXTRA, 0);
-        Log.d("HAPY", "onGetViewFactory: "+xmlId+", "+ viewId);
+        Log.d("APPY", "onGetViewFactory: "+xmlId+", "+ viewId);
         String list = intent.getStringExtra(LIST_SERIALIZED_EXTRA);
         return getFactory(this, widgetId, xmlId, viewId, list);
     }
@@ -911,6 +912,20 @@ public class Widget extends RemoteViewsService {
         System.exit(0);
     }
 
+    public void saveState(String state)
+    {
+        SharedPreferences sharedPref = getSharedPreferences("appy", Context.MODE_PRIVATE);
+        SharedPreferences.Editor editor = sharedPref.edit();
+        editor.putString("state", state);
+        editor.apply();
+    }
+
+    public String getState()
+    {
+        SharedPreferences sharedPref = getSharedPreferences("appy", Context.MODE_PRIVATE);
+        return sharedPref.getString("state", "");
+    }
+
     @Override
     public int onStartCommand(Intent intent, int flags, int startId)
     {
@@ -931,7 +946,7 @@ public class Widget extends RemoteViewsService {
             //java_widget();
         }
 
-        Log.d("HAPY", "startCommand");
+        Log.d("APPY", "startCommand");
         if(intent != null)
         {
             if(intent.getBooleanExtra("restart", false))
@@ -950,7 +965,7 @@ public class Widget extends RemoteViewsService {
 
                 int eventWidgetId = widgetIntent.getIntArrayExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS)[0];
                 int dynamicId = widgetIntent.getIntExtra(ITEM_ID_EXTRA, 0);
-                Log.d("HAPY", "got intent: " + eventWidgetId + " " + dynamicId + " (" + widgetIntent.getIntArrayExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS).length + ")");
+                Log.d("APPY", "got intent: " + eventWidgetId + " " + dynamicId + " (" + widgetIntent.getIntArrayExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS).length + ")");
 
                 String eventWidget = widgets.get(eventWidgetId);
                 if (eventWidget != null)
@@ -962,32 +977,32 @@ public class Widget extends RemoteViewsService {
                     }
                     catch (Exception e)
                     {
-                        Log.d("HAPY", "error in handle");
+                        Log.d("APPY", "error in handle");
                     }
                 }
 
                 for (int widgetId : allWidgetIds)
                 {
-                    Log.d("HAPY", "update: " + widgetId);
+                    Log.d("APPY", "update: " + widgetId);
 
                     String widget = widgets.get(widgetId);
                     if (widget == null)
                     {
                         if (updateListener != null)
                         {
-                            Log.d("HAPY", "calling listener onCreate");
+                            Log.d("APPY", "calling listener onCreate");
                             try
                             {
                                 widget = updateListener.onCreate(widgetId);
                             }
                             catch (Exception e)
                             {
-                                Log.e("HAPY", "error in listener onCreate", e);
+                                Log.e("APPY", "error in listener onCreate", e);
                             }
                         }
                         if (widget == null)
                         {
-                            Log.d("HAPY", "doing default onCreate");
+                            Log.d("APPY", "doing default onCreate");
                             widget = "        [{" +
                                     "            \"type\": \"TextView\"," +
                                     "            \"methodCalls\":" +
@@ -1010,7 +1025,7 @@ public class Widget extends RemoteViewsService {
 
                     if (updateListener != null)
                     {
-                        Log.d("HAPY", "calling listener onUpdate");
+                        Log.d("APPY", "calling listener onUpdate");
                         try
                         {
                             String newwidget = updateListener.onUpdate(widgetId, widget);
@@ -1022,7 +1037,7 @@ public class Widget extends RemoteViewsService {
                         }
                         catch (Exception e)
                         {
-                            Log.e("HAPY", "error in listener onUpdate", e);
+                            Log.e("APPY", "error in listener onUpdate", e);
                         }
                     }
 
@@ -1052,7 +1067,7 @@ public class Widget extends RemoteViewsService {
     public static void printFnames(File sDir){
         File[] faFiles = sDir.listFiles();
         for(File file: faFiles){
-            Log.d("HAPY", file.getAbsolutePath());
+            Log.d("APPY", file.getAbsolutePath());
             if(file.isDirectory()){
                 printFnames(file);
             }
@@ -1068,13 +1083,13 @@ public class Widget extends RemoteViewsService {
             String line;
             while ((line = bufferedReader.readLine()) != null)
             {
-                Log.e("HAPY", line);
+                Log.e("APPY", line);
             }
             fileReader.close();
         }
         catch(IOException e)
         {
-            Log.e("HAPY", "exception", e);
+            Log.e("APPY", "exception", e);
         }
     }
 
@@ -1087,7 +1102,7 @@ public class Widget extends RemoteViewsService {
         {
             while ( (line = br.readLine()) != null)
             {
-                Log.d("HAPY", line);
+                Log.d("APPY", line);
             }
         }
         catch (IOException e)
@@ -1106,7 +1121,7 @@ public class Widget extends RemoteViewsService {
         }
         catch (IOException|InterruptedException e)
         {
-            Log.e("HAPY", "exception", e);
+            Log.e("APPY", "exception", e);
         }
     }
 
@@ -1114,16 +1129,16 @@ public class Widget extends RemoteViewsService {
     {
         if(!new File(pythonHome, "lib/libpython3.so").exists())
         {
-            Log.d("HAPY", "unpacking python");
+            Log.d("APPY", "unpacking python");
 
             runProcess(new String[]{"sh", "-c", "tar -xf /sdcard/python.tar -C " + pythonHome + " 2>&1"});
 
             //printFnames(pythonHome);
-            Log.d("HAPY", "done unpacking python");
+            Log.d("APPY", "done unpacking python");
         }
         else
         {
-            Log.d("HAPY", "not unpacking python");
+            Log.d("APPY", "not unpacking python");
         }
     }
 

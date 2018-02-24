@@ -1,4 +1,4 @@
-import native_hapy
+import native_appy
 import sys
 
 __buffer__ = []
@@ -26,7 +26,7 @@ class LogcatWriter:
                 break
             b = self.buf[:i]
             __buffer__.append(b)
-            native_hapy.logcat_write(self.lvl, b'HAPY', b)
+            native_appy.logcat_write(self.lvl, b'APPY', b)
             self.buf = self.buf[i + 1:]
 
     @property
