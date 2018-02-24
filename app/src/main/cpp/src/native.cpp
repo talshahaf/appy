@@ -15,7 +15,7 @@
 #include <vector>
 #include "native.h"
 
-#define LOG(fmt, ...) __android_log_print(ANDROID_LOG_DEBUG, "HAPY", fmt, ##__VA_ARGS__)
+#define LOG(fmt, ...) __android_log_print(ANDROID_LOG_DEBUG, "APPY", fmt, ##__VA_ARGS__)
 #define PYTHON_CALL
 
 JavaVM * vm = NULL;
@@ -409,13 +409,13 @@ static void find_types(JNIEnv * env)
     }
     if(reflection_class == NULL)
     {
-        jclass local_reflection = env->FindClass("com/happy/Reflection");
+        jclass local_reflection = env->FindClass("com/appy/Reflection");
         CHECK_JAVA_EXC(env);
         reflection_class = (jclass)make_global_ref(env, (jobject)local_reflection);
     }
     if(python_exception_class == NULL)
     {
-        jclass local_python_exception = env->FindClass("com/happy/PythonException");
+        jclass local_python_exception = env->FindClass("com/appy/PythonException");
         CHECK_JAVA_EXC(env);
         python_exception_class = (jclass)make_global_ref(env, (jobject)local_python_exception);
     }
@@ -1899,7 +1899,7 @@ static PyObject * castable(PyObject *self, PyObject *args)
     return NULL;
 }
 
-extern "C" JNIEXPORT jobject JNICALL Java_com_happy_Widget_pythonCall(JNIEnv * env, jclass clazz, jobjectArray args)
+extern "C" JNIEXPORT jobject JNICALL Java_com_appy_Widget_pythonCall(JNIEnv * env, jclass clazz, jobjectArray args)
 {
     try
     {
@@ -1991,7 +1991,7 @@ static PyObject * logcat_write(PyObject *self, PyObject *args)
     }
 }
 
-extern "C" JNIEXPORT jint JNICALL Java_com_happy_Widget_pythonRun(JNIEnv * env, jclass clazz, jstring script, jobject arg)
+extern "C" JNIEXPORT jint JNICALL Java_com_appy_Widget_pythonRun(JNIEnv * env, jclass clazz, jstring script, jobject arg)
 {
     try
     {
@@ -2040,7 +2040,7 @@ extern "C" JNIEXPORT jint JNICALL Java_com_happy_Widget_pythonRun(JNIEnv * env, 
     return 0;
 }
 
-static PyMethodDef native_hapy_methods[] = {
+static PyMethodDef native_appy_methods[] = {
         {"act",  act, METH_VARARGS, "Interacts with java"},
         {"get_method",  get_method, METH_VARARGS, "Finds a java method"},
         {"get_field",  get_field, METH_VARARGS, "Finds a java field"},
@@ -2065,24 +2065,24 @@ static PyMethodDef native_hapy_methods[] = {
         {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
-static struct PyModuleDef native_hapymodule = {
+static struct PyModuleDef native_appymodule = {
         PyModuleDef_HEAD_INIT,
-        "native_hapy",   /* name of module */
+        "native_appy",   /* name of module */
         NULL, /* module documentation, may be NULL */
         -1,       /* size of per-interpreter state of the module,
                  or -1 if the module keeps state in global variables. */
-        native_hapy_methods
+        native_appy_methods
 };
 
-PyMODINIT_FUNC PyInit_native_hapy(void)
+PyMODINIT_FUNC PyInit_native_appy(void)
 {
-    return PyModule_Create(&native_hapymodule);
+    return PyModule_Create(&native_appymodule);
 }
 
 extern "C" void android_get_LD_LIBRARY_PATH(char*, size_t);
 extern "C" void android_update_LD_LIBRARY_PATH(const char*);
 
-extern "C" JNIEXPORT jint JNICALL Java_com_happy_Widget_pythonInit(JNIEnv * env, jclass clazz, jstring j_pythonhome, jstring j_tmppath, jstring j_pythonlib)
+extern "C" JNIEXPORT jint JNICALL Java_com_appy_Widget_pythonInit(JNIEnv * env, jclass clazz, jstring j_pythonhome, jstring j_tmppath, jstring j_pythonlib)
 {
     try
     {
@@ -2114,7 +2114,7 @@ extern "C" JNIEXPORT jint JNICALL Java_com_happy_Widget_pythonInit(JNIEnv * env,
         ((decltype(&android_update_LD_LIBRARY_PATH))dlsym(RTLD_DEFAULT, "android_update_LD_LIBRARY_PATH"))(library_path.c_str());
         //--------------------
 
-        ret = PyImport_AppendInittab("native_hapy", PyInit_native_hapy);
+        ret = PyImport_AppendInittab("native_appy", PyInit_native_appy);
         if(ret == -1)
         {
             LOG("PyImport_AppendInittab failed");

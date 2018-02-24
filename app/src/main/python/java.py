@@ -255,9 +255,9 @@ def get_java_arg():
 #====================================
 def tests():
     def test1():
-        Test = clazz.com.happy.Test()
-        test = new.com.happy.Test()
-        Inner = clazz.com.happy.Test.Inner()
+        Test = clazz.com.appy.Test()
+        test = new.com.appy.Test()
+        Inner = clazz.com.appy.Test.Inner()
         test2 = Test()
         print(type(test2))
         print(test, test2)
@@ -285,9 +285,9 @@ def tests():
         print(arr)
         print(arr.length)
         print('===')
-        print(new.com.happy.Test[()])
-        print(new.com.happy.Test[()]([new.com.happy.Test(), new.com.happy.Test()]))
-        print(new.com.happy.Test[()][()]([new.com.happy.Test[()]([new.com.happy.Test(), new.com.happy.Test()])]))
+        print(new.com.appy.Test[()])
+        print(new.com.appy.Test[()]([new.com.appy.Test(), new.com.appy.Test()]))
+        print(new.com.appy.Test[()][()]([new.com.appy.Test[()]([new.com.appy.Test(), new.com.appy.Test()])]))
         print(jlong(13))
         print(jlong[()](3))
         print(jlong[()]([jlong(1), jlong(2), jlong(3)]))
@@ -309,8 +309,8 @@ def tests():
             def onReceive(self, context, intent):
                 print('action ', intent.getAction())
 
-        iface = create_interface(Receiver(), clazz.com.happy.BroadcastInterface())
-        receiver = new.com.happy.Reflection.BroadcastInterfaceBridge(iface)
+        iface = create_interface(Receiver(), clazz.com.appy.BroadcastInterface())
+        receiver = new.com.appy.Reflection.BroadcastInterfaceBridge(iface)
 
         start_time = time.time()
         for _ in range(1):
@@ -327,7 +327,7 @@ def tests():
         obj_cast = clazz.java.lang.CharSequence() << obj
         obj_cast2 = clazz.java.lang.CharSequence() << 'tes2t'
         print(obj, obj_cast, obj_cast2)
-        Test = clazz.com.happy.Test()
+        Test = clazz.com.appy.Test()
         print(Test.cast_test(obj), Test.cast_test(obj_cast))
 
     bridge.tests()

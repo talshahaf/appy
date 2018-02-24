@@ -1,4 +1,4 @@
-package com.happy;
+package com.appy;
 
 import android.util.Log;
 
@@ -6,11 +6,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.lang.reflect.Array;
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -111,7 +107,7 @@ public class DynamicView
 
         DynamicView view = new DynamicView(id, obj.getString("type"), view_id, container_id, xml_id);
 
-        Log.d("HAPY", "building "+view.id+" "+view.type);
+        Log.d("APPY", "building "+view.id+" "+view.type);
 
         if(obj.has("tag"))
         {
@@ -136,7 +132,7 @@ public class DynamicView
         if(obj.has("methodCalls"))
         {
             JSONArray callsarr = obj.getJSONArray("methodCalls");
-            Log.d("HAPY", callsarr.length() + " calls");
+            Log.d("APPY", callsarr.length() + " calls");
             for (int i = 0; i < callsarr.length(); i++)
             {
                 view.methodCalls.add(RemoteMethodCall.fromJSON(callsarr.getJSONObject(i)));
@@ -145,7 +141,7 @@ public class DynamicView
         if(obj.has("children"))
         {
             JSONArray childarr = obj.getJSONArray("children");
-            Log.d("HAPY", childarr.length() + " children");
+            Log.d("APPY", childarr.length() + " children");
             for (int i = 0; i < childarr.length(); i++)
             {
                 view.children.add(DynamicView.fromJSONArray(childarr.getJSONArray(i)));

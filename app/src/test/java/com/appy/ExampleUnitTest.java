@@ -1,4 +1,4 @@
-package com.happy;
+package com.appy;
 
 import org.junit.Test;
 

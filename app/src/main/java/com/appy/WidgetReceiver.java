@@ -1,4 +1,4 @@
-package com.happy;
+package com.appy;
 
 import android.appwidget.AppWidgetManager;
 import android.appwidget.AppWidgetProvider;
@@ -25,7 +25,7 @@ public class WidgetReceiver extends AppWidgetProvider
     public void onUpdate(Context context, AppWidgetManager appWidgetManager,
                          int[] appWidgetIds) {
 
-        Log.d("HAPY", "onUpdate");
+        Log.d("APPY", "onUpdate");
         Intent serviceIntent = new Intent(context, Widget.class);
         serviceIntent.putExtra(Widget.WIDGET_INTENT, lastIntent);
         context.startService(serviceIntent);

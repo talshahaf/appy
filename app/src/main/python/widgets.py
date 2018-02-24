@@ -42,12 +42,12 @@ def cap(s):
 
 @functools.lru_cache(maxsize=128, typed=True)
 def validate_type(type):
-    return java.clazz.com.happy.Widget().typeToClass.containsKey(type)
+    return java.clazz.com.appy.Widget().typeToClass.containsKey(type)
 
 @functools.lru_cache(maxsize=128, typed=True)
 def get_param_setter(type, attr):
     method = f'set{cap(attr)}'
-    setter = java.clazz.com.happy.Widget().getSetterMethod(type, method)
+    setter = java.clazz.com.appy.Widget().getSetterMethod(type, method)
     return setter if setter != java.Null else None, method
 
 class Reference:
@@ -232,7 +232,7 @@ def widget_manager_update(widget_id, views):
 
 class Handler:
     def __init__(self):
-        self.iface = java.create_interface(self, java.clazz.com.happy.WidgetUpdateListener())
+        self.iface = java.create_interface(self, java.clazz.com.appy.WidgetUpdateListener())
 
     def export(self, views):
         if not views:
