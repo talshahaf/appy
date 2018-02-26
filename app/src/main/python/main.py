@@ -28,6 +28,7 @@ def example2_on_create(widget_id):
 
 @simplydefined
 def logcat_on_create(widget_id):
+    print(f'logcat on create {widget_id}')
     return ListView(children=[TextView(text='ready...', textViewTextSize=(clazz.android.util.TypedValue().COMPLEX_UNIT_SP, 15), click=void)])
 
 i = 1
@@ -35,6 +36,7 @@ i = 1
 @simplydefined
 def logcat_on_update(widget_id, views):
     global i
+    print(f'logcat on update {widget_id}')
     btn = Button(text='ref', textViewTextSize=(clazz.android.util.TypedValue().COMPLEX_UNIT_SP, 30), click=void)
     lst = ListView(children=[TextView(text=str(random.randint(300, 400)), textViewTextSize=(clazz.android.util.TypedValue().COMPLEX_UNIT_SP, 15), click=void) for _ in range(i)])
 

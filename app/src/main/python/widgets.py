@@ -198,6 +198,7 @@ def assert_usable(*args):
 
 @simplydefined
 def choose_widget(*args, widget_id, name):
+    print(f'choosing widget: {widget_id} -> {name}')
     chosen_widgets[widget_id] = (name, False)
 
 def widget_manager_create(widget_id):

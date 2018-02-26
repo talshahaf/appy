@@ -6,9 +6,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.lang.annotation.Annotation;
+import java.lang.reflect.Array;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -54,12 +56,13 @@ import android.widget.ViewFlipper;
 
 public class Widget extends RemoteViewsService {
     private static final String ITEM_ID_EXTRA = "ITEM_ID";
-    public static final String WIDGET_INTENT = "WIDGET_INTENT";
+    public  static final String WIDGET_INTENT = "WIDGET_INTENT";
     private static final String COLLECTION_ITEM_ID_EXTRA = "COLLECTION_ITEM_ID_EXTRA";
     private static final String COLLECTION_POSITION_EXTRA = "COLLECTION_POSITION_EXTRA";
     private static final String LIST_SERIALIZED_EXTRA = "LIST_SERIALIZED_EXTRA";
     private static final String XML_ID_EXTRA = "XML_ID_EXTRA";
     private static final String VIEW_ID_EXTRA = "VIEW_ID_EXTRA";
+    private static final String WIDGET_ID_EXTRA = "WIDGET_ID_EXTRA";
 
     public static HashMap<String, Class<?>> typeToClass = new HashMap<>();
     public static HashMap<String, HashMap<String, String>> typeToRemotableMethod = new HashMap<>();
@@ -366,10 +369,10 @@ public class Widget extends RemoteViewsService {
         return TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, dipValue, metrics);
     }
 
-    public int[] getWidgetDimensions(int widgetId) //TODO optimize
+    public int[] getWidgetDimensions(int androidWidgetId) //TODO optimize
     {
         AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(this);
-        Bundle bundle = appWidgetManager.getAppWidgetOptions(widgetId);
+        Bundle bundle = appWidgetManager.getAppWidgetOptions(androidWidgetId);
         return new int[]{(int)dipToPixels(this, bundle.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH)),
                          (int)dipToPixels(this, bundle.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT))};
     }
@@ -481,7 +484,7 @@ public class Widget extends RemoteViewsService {
 
             Intent clickIntent = new Intent(context, WidgetReceiver.class);
             clickIntent.setAction(AppWidgetManager.ACTION_APPWIDGET_UPDATE);
-            clickIntent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, new int[]{widgetId});
+            clickIntent.putExtra(WIDGET_ID_EXTRA, widgetId);
 
             if(isCollection(layout.type))
             {
@@ -492,7 +495,7 @@ public class Widget extends RemoteViewsService {
                 getFactory(context, widgetId, layout.xml_id, layout.view_id, layout.toJSON());
 
                 Intent listintent = new Intent(context, Widget.class);
-                listintent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId);
+                listintent.putExtra(WIDGET_ID_EXTRA, widgetId);
                 listintent.putExtra(LIST_SERIALIZED_EXTRA, layout.toJSON());
                 listintent.putExtra(XML_ID_EXTRA, layout.xml_id);
                 listintent.putExtra(VIEW_ID_EXTRA, layout.view_id);
@@ -882,7 +885,7 @@ public class Widget extends RemoteViewsService {
     @Override
     public RemoteViewsFactory onGetViewFactory(Intent intent)
     {
-        int widgetId = intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, -1);
+        int widgetId = intent.getIntExtra(WIDGET_ID_EXTRA, -1);
         int xmlId = intent.getIntExtra(XML_ID_EXTRA, 0);
         int viewId = intent.getIntExtra(VIEW_ID_EXTRA, 0);
         Log.d("APPY", "onGetViewFactory: "+xmlId+", "+ viewId);
@@ -897,6 +900,75 @@ public class Widget extends RemoteViewsService {
 
     boolean started = false;
     Handler handler;
+
+    HashMap<Integer, Integer> androidToWidget = new HashMap<>();
+    HashMap<Integer, Integer> widgetToAndroid = new HashMap<>();
+
+    public int newWidgetId()
+    {
+        int counter = 1;
+        while(true)
+        {
+            if(!widgetToAndroid.containsKey(counter))
+            {
+                break;
+            }
+            counter++;
+        }
+        return counter;
+    }
+
+    public Integer getAndroidWidget(int widget)
+    {
+        return widgetToAndroid.get(widget);
+    }
+
+    public Integer fromAndroidWidget(int androidWidget, boolean create)
+    {
+        Integer widget = androidToWidget.get(androidWidget);
+        if(widget == null && create)
+        {
+            return addWidget(androidWidget);
+        }
+        return widget;
+    }
+
+    public int addWidget(int androidWidget)
+    {
+        if(androidToWidget.containsKey(androidWidget))
+        {
+            throw new IllegalArgumentException("already know this widget id");
+        }
+
+        int widget = newWidgetId();
+
+        androidToWidget.put(androidWidget, widget);
+        widgetToAndroid.put(widget, androidWidget);
+        return widget;
+    }
+
+    public void updateAndroidWidget(int oldAndroidWidget, int newAndroidWidget)
+    {
+        Integer widget = fromAndroidWidget(oldAndroidWidget, false);
+        if(widget == null)
+        {
+            throw new IllegalArgumentException("widget does not exists");
+        }
+        androidToWidget.remove(oldAndroidWidget);
+        widgetToAndroid.put(widget, newAndroidWidget);
+        androidToWidget.put(newAndroidWidget, widget);
+    }
+
+    public void deleteAndroidWidget(int androidWidget)
+    {
+        Integer widget = fromAndroidWidget(androidWidget, false);
+        if(widget == null)
+        {
+            throw new IllegalArgumentException("widget does not exists");
+        }
+        widgetToAndroid.remove(widget);
+        androidToWidget.remove(androidWidget);
+    }
 
     public void putWidget(int widgetId, String json)
     {
@@ -929,6 +1001,12 @@ public class Widget extends RemoteViewsService {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId)
     {
+        handleStartCommand(intent);
+        return super.onStartCommand(intent, flags, startId);
+    }
+
+    public void handleStartCommand(Intent intent)
+    {
         if(!started)
         {
             started = true;
@@ -947,25 +1025,74 @@ public class Widget extends RemoteViewsService {
         }
 
         Log.d("APPY", "startCommand");
-        if(intent != null)
+        if(intent == null)
         {
-            if(intent.getBooleanExtra("restart", false))
+            return;
+        }
+        if(intent.getBooleanExtra("restart", false))
+        {
+            restart();
+            return; //not really reachable
+        }
+
+        Intent widgetIntent = intent.getParcelableExtra(WIDGET_INTENT);
+        if (widgetIntent == null)
+        {
+            return;
+        }
+
+        if (AppWidgetManager.ACTION_APPWIDGET_RESTORED.equals(widgetIntent.getAction()))
+        {
+            int[] oldWidgets = widgetIntent.getIntArrayExtra(AppWidgetManager.EXTRA_APPWIDGET_OLD_IDS);
+            int[] newWidgets = widgetIntent.getIntArrayExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS);
+            for(int i = 0; i < oldWidgets.length; i++)
             {
-                restart();
-                return super.onStartCommand(intent, flags, startId); //not really reachable
+                updateAndroidWidget(oldWidgets[i], newWidgets[i]);
+            }
+        }
+        if (AppWidgetManager.ACTION_APPWIDGET_DELETED.equals(widgetIntent.getAction()))
+        {
+            if(widgetIntent.hasExtra(AppWidgetManager.EXTRA_APPWIDGET_ID))
+            {
+                int deletedWidget = widgetIntent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, -1);
+                Integer widget = fromAndroidWidget(deletedWidget, false);
+                if(widget != null)
+                {
+                    widgets.remove(widget);
+                }
+                deleteAndroidWidget(deletedWidget);
             }
 
-            Intent widgetIntent = intent.getParcelableExtra(WIDGET_INTENT);
-            if (widgetIntent != null && AppWidgetManager.ACTION_APPWIDGET_UPDATE.equals(widgetIntent.getAction()))
-            {
-                AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(this);
-                // Get all ids
-                ComponentName thisWidget = new ComponentName(this, WidgetReceiver.class);
-                int[] allWidgetIds = appWidgetManager.getAppWidgetIds(thisWidget);
+        }
 
-                int eventWidgetId = widgetIntent.getIntArrayExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS)[0];
+        if (AppWidgetManager.ACTION_APPWIDGET_UPDATE.equals(widgetIntent.getAction()))
+        {
+            int[] ids = widgetIntent.getIntArrayExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS);
+            int len = ids == null ? 0 : ids.length;
+
+            int[] updatedAndroidWidgets;
+            Integer eventWidgetId = null;
+
+            if(widgetIntent.hasExtra(WIDGET_ID_EXTRA))
+            {
+                eventWidgetId = widgetIntent.getIntExtra(WIDGET_ID_EXTRA, -1);
+                updatedAndroidWidgets = new int[len + 1];
+                updatedAndroidWidgets[len] = getAndroidWidget(eventWidgetId);
+            }
+            else
+            {
+                updatedAndroidWidgets = new int[len];
+            }
+
+            if(len != 0)
+            {
+                System.arraycopy(ids, 0, updatedAndroidWidgets, 0, len);
+            }
+
+            if(eventWidgetId != null)
+            {
                 int dynamicId = widgetIntent.getIntExtra(ITEM_ID_EXTRA, 0);
-                Log.d("APPY", "got intent: " + eventWidgetId + " " + dynamicId + " (" + widgetIntent.getIntArrayExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS).length + ")");
+                Log.d("APPY", "got intent: " + eventWidgetId + " " + dynamicId);
 
                 String eventWidget = widgets.get(eventWidgetId);
                 if (eventWidget != null)
@@ -980,86 +1107,87 @@ public class Widget extends RemoteViewsService {
                         Log.d("APPY", "error in handle");
                     }
                 }
+            }
 
-                for (int widgetId : allWidgetIds)
+            AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(this);
+
+            for(int androidWidgetId : updatedAndroidWidgets)
+            {
+                int widgetId = fromAndroidWidget(androidWidgetId, true);
+                Log.d("APPY", "update: " + androidWidgetId + " ("+widgetId+")");
+
+                String widget = widgets.get(widgetId);
+                if (widget == null)
                 {
-                    Log.d("APPY", "update: " + widgetId);
-
-                    String widget = widgets.get(widgetId);
-                    if (widget == null)
-                    {
-                        if (updateListener != null)
-                        {
-                            Log.d("APPY", "calling listener onCreate");
-                            try
-                            {
-                                widget = updateListener.onCreate(widgetId);
-                            }
-                            catch (Exception e)
-                            {
-                                Log.e("APPY", "error in listener onCreate", e);
-                            }
-                        }
-                        if (widget == null)
-                        {
-                            Log.d("APPY", "doing default onCreate");
-                            widget = "        [{" +
-                                    "            \"type\": \"TextView\"," +
-                                    "            \"methodCalls\":" +
-                                    "            [" +
-                                    "                {" +
-                                    "                    \"identifier\": \"setText\"," +
-                                    "                    \"parentCall\": false," +
-                                    "                    \"method\": \"setCharSequence\"," +
-                                    "                    \"arguments\":" +
-                                    "                    [" +
-                                    "                        \"setText\"," +
-                                    "                        \"Error\"" +
-                                    "                    ]" +
-                                    "                }" +
-                                    "            ]" +
-                                    "        }]";
-                        }
-                        putWidget(widgetId, widget);
-                    }
-
                     if (updateListener != null)
                     {
-                        Log.d("APPY", "calling listener onUpdate");
+                        Log.d("APPY", "calling listener onCreate");
                         try
                         {
-                            String newwidget = updateListener.onUpdate(widgetId, widget);
-                            if (newwidget != null)
-                            {
-                                widget = newwidget;
-                                putWidget(widgetId, widget);
-                            }
+                            widget = updateListener.onCreate(widgetId);
                         }
                         catch (Exception e)
                         {
-                            Log.e("APPY", "error in listener onUpdate", e);
+                            Log.e("APPY", "error in listener onCreate", e);
                         }
                     }
+                    if (widget == null)
+                    {
+                        Log.d("APPY", "doing default onCreate");
+                        widget = "        [{" +
+                                "            \"type\": \"TextView\"," +
+                                "            \"methodCalls\":" +
+                                "            [" +
+                                "                {" +
+                                "                    \"identifier\": \"setText\"," +
+                                "                    \"parentCall\": false," +
+                                "                    \"method\": \"setCharSequence\"," +
+                                "                    \"arguments\":" +
+                                "                    [" +
+                                "                        \"setText\"," +
+                                "                        \"Error\"" +
+                                "                    ]" +
+                                "                }" +
+                                "            ]" +
+                                "        }]";
+                    }
+                    putWidget(widgetId, widget);
+                }
 
+                if (updateListener != null)
+                {
+                    Log.d("APPY", "calling listener onUpdate");
                     try
                     {
-                        int[] widgetDimensions = getWidgetDimensions(widgetId);
-                        int widthLimit = (int)(widgetDimensions[0] * 1.1); //found empirically
-                        int heightLimit = (int)(widgetDimensions[1] * 1.5); //found empirically
-
-                        RemoteViews view = resolveDimensions(this, widgetId, DynamicView.fromJSONArray(widgets.get(widgetId)), false, widthLimit, heightLimit);
-                        //appWidgetManager.notifyAppWidgetViewDataChanged(widgetId, R.id.root);
-                        appWidgetManager.updateAppWidget(widgetId, view);
+                        String newwidget = updateListener.onUpdate(widgetId, widget);
+                        if (newwidget != null)
+                        {
+                            widget = newwidget;
+                            putWidget(widgetId, widget);
+                        }
                     }
-                    catch (InvocationTargetException | IllegalAccessException e)
+                    catch (Exception e)
                     {
-                        e.printStackTrace();
+                        Log.e("APPY", "error in listener onUpdate", e);
                     }
+                }
+
+                try
+                {
+                    int[] widgetDimensions = getWidgetDimensions(androidWidgetId);
+                    int widthLimit = (int)(widgetDimensions[0] * 1.1); //found empirically
+                    int heightLimit = (int)(widgetDimensions[1] * 1.5); //found empirically
+
+                    RemoteViews view = resolveDimensions(this, widgetId, DynamicView.fromJSONArray(widgets.get(widgetId)), false, widthLimit, heightLimit);
+                    //appWidgetManager.notifyAppWidgetViewDataChanged(androidWidgetId, R.id.root);
+                    appWidgetManager.updateAppWidget(androidWidgetId, view);
+                }
+                catch (InvocationTargetException | IllegalAccessException e)
+                {
+                    e.printStackTrace();
                 }
             }
         }
-
-        return super.onStartCommand(intent, flags, startId);
     }
 
     //-----------------------------------python--------------------------------------------------------------

@@ -12,22 +12,12 @@ import android.util.Log;
 
 public class WidgetReceiver extends AppWidgetProvider
 {
-    Intent lastIntent;
-
     @Override
     public void onReceive(Context context, Intent intent) {
-
-        lastIntent = intent;
-        super.onReceive(context, intent);
-    }
-
-    @Override
-    public void onUpdate(Context context, AppWidgetManager appWidgetManager,
-                         int[] appWidgetIds) {
-
-        Log.d("APPY", "onUpdate");
+        Log.d("APPY", "onReceive intent");
         Intent serviceIntent = new Intent(context, Widget.class);
-        serviceIntent.putExtra(Widget.WIDGET_INTENT, lastIntent);
+        serviceIntent.putExtra(Widget.WIDGET_INTENT, intent);
         context.startService(serviceIntent);
+        super.onReceive(context, intent);
     }
 }
