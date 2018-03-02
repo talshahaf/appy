@@ -7,7 +7,7 @@ import traceback
 import inspect
 import java
 from utils import AttrDict, dumps, loads, cap, get_args
-from state import State, clean_local_state
+import state
 
 id_counter = 1
 def get_id():
@@ -189,20 +189,53 @@ def assert_usable(*args):
     for f in args:
         get_usable_function(f)
 
+class Widget:
+    def __init__(self, widget_id, widget_name):
+        self.widget_id = widget_id
+        if widget_name is not None:
+            self.name = widget_name
+            self.state = state.State(widget_name, widget_id)
+        self.widget_dims = widget_dims
+
+    def locals(self, *attrs):
+        self.state.locals(*attrs)
+
+    def widget(self, *attrs):
+        self.state.widget(*attrs)
+
+    def globals(self, *attrs):
+        self.state.globals(*attrs)
+
+    def clean_local(self):
+        state.clean_local_state(self.widget_id)
+
+    def clean_widget(self):
+        state.clean_widget_state(self.name)
+
+def create_manager_state():
+    manager_state = state.State(None, -1) #special own scope
+    manager_state.locals('chosen')
+    manager_state.setdefault('chosen', {})
+    return manager_state
+
+def create_widget(widget_id):
+    manager_state = create_manager_state()
+    widget = Widget(widget_id, manager_state.chosen.get(widget_id, AttrDict(name=None)).name)
+    return widget, manager_state
+
 @simplydefined
-def choose_widget(widget_id, name):
-    print(f'choosing widget: {widget_id} -> {name}')
-    state = State(None, widget_id) #special own scope
-    state.name = name
-    state.inited = False
+def choose_widget(widget, name):
+    print(f'choosing widget: {widget.widget_id} -> {name}')
+    manager_state = create_manager_state()
+    manager_state.chosen[widget.widget_id] = AttrDict(name=name, inited=False)
 
 @simplydefined
 def restart():
     restart_app()
 
-def widget_manager_create(widget_id):
-    state = State(None, widget_id) #special own scope
-    state.name = None
+def widget_manager_create(widget, manager_state):
+    manager_state.chosen[widget.widget_id] = AttrDict(name=None, inited=False)
+
     #clear state
     btn = Button(text="restart", click=restart, width=widget_dims.width)
 
@@ -210,22 +243,22 @@ def widget_manager_create(widget_id):
                                                                 click=(choose_widget, dict(name=name))) for name in available_widgets])
     return [btn, lst]
 
-def widget_manager_update(widget_id, views, state):
+def widget_manager_update(widget, manager_state, views):
     try:
-        manager_state = State(None, widget_id) #special own scope
-        if manager_state.get('name') is not None:
-            on_create, on_update = available_widgets[manager_state.name]
-            if not state.inited:
-                manager_state.inited = True
+        if widget.widget_id in manager_state.chosen:
+            chosen = manager_state.chosen[widget.widget_id]
+            on_create, on_update = available_widgets[chosen.name]
+            if not chosen.inited:
+                chosen.inited = True
                 if on_create:
-                    return on_create(widget_id, state)
+                    return on_create(widget)
             else:
                 if on_update:
-                    return on_update(widget_id, views, state)
+                    return on_update(widget, views)
             return None #doesn't update views
     except Exception:
         print(traceback.format_exc())
-        return widget_manager_create(widget_id) #maybe present error widget
+        return widget_manager_create(widget, manager_state) #maybe present error widget
 
 class Handler:
     def __init__(self):
@@ -255,18 +288,19 @@ class Handler:
     @java.interface
     def onCreate(self, widget_id):
         print(f'python got onCreate')
-        return self.export(widget_manager_create(widget_id))
+        widget, manager_state = create_widget(widget_id)
+        return self.export(widget_manager_create(widget, manager_state))
 
     @java.interface
     def onUpdate(self, widget_id, views):
         print(f'python got onUpdate')
-        state = State(State(None, widget_id).get('name'), widget_id)
-        return self.export(widget_manager_update(widget_id, self.import_(views), state))
+        widget, manager_state = create_widget(widget_id)
+        return self.export(widget_manager_update(widget, manager_state, self.import_(views)))
 
     @java.interface
     def onDelete(self, widget_id):
         print(f'python got onDelete')
-        clean_local_state(widget_id)
+        state.clean_local_state(widget_id)
 
     @java.interface
     def onItemClick(self, widget_id, views, collection_id, position):
@@ -274,8 +308,8 @@ class Handler:
         #print(f'{views}')
         views = self.import_(views)
         v = self.find(views, collection_id)
-        state = State(State(None, widget_id).get('name'), widget_id)
-        handled = v.__event__('itemclick', widget_id=widget_id, views=views, view=v, position=position, state=state)
+        widget, manager_state = create_widget(widget_id)
+        handled = v.__event__('itemclick', widget=widget, views=views, view=v, position=position, state=state)
         if not handled:
             return None #TODO fix not flushing root in this case
         return self.export(views)
@@ -286,8 +320,8 @@ class Handler:
         #print(f'{views}')
         views = self.import_(views)
         v = self.find(views, view_id)
-        state = State(State(None, widget_id).get('name'), widget_id)
-        v.__event__('click', widget_id=widget_id, views=views, view=v, state=state)
+        widget, manager_state = create_widget(widget_id)
+        v.__event__('click', widget=widget, views=views, view=v, state=state)
         return self.export(views)
         
 def register_widget(name, on_create, on_update=None):
