@@ -33,14 +33,17 @@ class State:
     def __act__(self, f, scope_name, scope_key, attr, *args):
         return f(self.__getscope__(scope_name, scope_key), attr, *args)
         
-    def widget(self, key):
-        self.__info__.scopes[key] = 'widget'
+    def widget(self, *attrs):
+        for attr in attrs:
+            self.__info__.scopes[attr] = 'widget'
         
-    def globals(self, key):
-        self.__info__.scopes[key] = 'globals'
+    def globals(self, *attrs):
+        for attr in attrs:
+            self.__info__.scopes[attr] = 'globals'
         
-    def locals(self, key):
-        self.__info__.scopes[key] = 'locals'
+    def locals(self, *attrs):
+        for attr in attrs:
+            self.__info__.scopes[attr] = 'locals'
             
     def __getattr__(self, attr):
         scope = self.__info__.scopes.get(attr, 'locals')
