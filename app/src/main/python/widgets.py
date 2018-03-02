@@ -4,31 +4,10 @@ import json
 import functools
 import copy
 import traceback
+import inspect
 import java
-import pickle
-import base64
-
-class AttrDict(dict):
-    def __getattr__(self, item):
-        try:
-            return self.__getitem__(item)
-        except KeyError:
-            raise AttributeError()
-
-    def __setattr__(self, key, value):
-        try:
-            return self.__setitem__(key, value)
-        except KeyError:
-            raise AttributeError()
-
-    @classmethod
-    def make(cls, d):
-        if isinstance(d, dict):
-            return AttrDict({k: cls.make(v) for k,v in d.items()})
-        elif isinstance(d, (list, tuple, set)):
-            return type(d)(cls.make(v) for v in d)
-        else:
-            return d
+from utils import AttrDict, dumps, loads, cap, get_args
+from state import State, clean_local_state
 
 id_counter = 1
 def get_id():
@@ -36,9 +15,6 @@ def get_id():
     c = id_counter
     id_counter += 1
     return c
-
-def cap(s):
-    return s[0].upper() + s[1:]
 
 @functools.lru_cache(maxsize=128, typed=True)
 def validate_type(type):
@@ -86,6 +62,12 @@ class AttributeValue:
         return dict(function='IDENTITY', arguments=[dict(amount=amount, references=refs)])
 
 attrs = dict(left='LEFT', top='TOP', right='RIGHT', bottom='BOTTOM', width='WIDTH', height='HEIGHT')
+class WidgetAttribute:
+    def __getattr__(self, item):
+        if item in attrs:
+            return AttributeValue(Reference(-1, attrs[item], 1))
+        raise AttributeError()
+
 class Element:
     def __init__(self, d):
         self.__dict__['d'] = AttrDict.make(d)
@@ -94,17 +76,22 @@ class Element:
         if 'children' in self.d:
             self.d.children = [[c if isinstance(c, Element) else Element(c) for c in arr] for arr in self.d.children]
 
-    def __event__(self, key, *args):
+    def __event__(self, key, **kwargs):
         if 'tag' in self.d and key in self.d.tag:
             f, captures = self.d.tag[key]
-            captures = pickle.loads(base64.b64decode(captures.encode()))
-            usable_functions[f](*args, **captures)
+            captures = loads(captures)
+            func = usable_functions[f]
+            pass_args = captures
+            pass_args.update(kwargs) #kwargs priority
+
+            args, kwargs, has_vargs, has_vkwargs = get_args(func)
+            func(**{k:v for k,v in pass_args.items() if k in args or k in kwargs or has_vkwargs})
 
     def set_handler(self, key, f, **captures):
-        assert_usable(f)
+        func_id, f = get_usable_function(f)
         if 'tag' not in self.d:
             self.d.tag = {}
-        self.d.tag[key] = (id(f), base64.b64encode(pickle.dumps(captures, protocol=pickle.HIGHEST_PROTOCOL)).decode())
+        self.d.tag[key] = (func_id, dumps(captures))
 
     def click(self, f, **captures):
         self.set_handler('click', f, **captures)
@@ -168,12 +155,12 @@ class Element:
 
     #TODO write to children
 
+widget_dims = WidgetAttribute()
 Button = lambda *args, **kwargs: Element.create('Button', *args, **kwargs)
 TextView = lambda *args, **kwargs: Element.create('TextView', *args, **kwargs)
 ListView = lambda *args, **kwargs: Element.create('ListView', *args, **kwargs)
 
 available_widgets = {}
-chosen_widgets = {}
 
 usable_functions = {}
 __simpledefined_locked = False
@@ -182,54 +169,63 @@ def lock_simplydefined():
     global __simpledefined_locked
     __simpledefined_locked = True
 
+def unique_function_id(f):
+    return f'{inspect.getsourcefile(f)}:{f.__name__}'
+
 def simplydefined(f):
     if __simpledefined_locked:
         raise ValueError('function is not simply defined')
-    usable_functions[id(f)] = f
+    usable_functions[unique_function_id(f)] = f
     return f
 
-def is_usable_function(f):
-    return id(f) in usable_functions
+def get_usable_function(f):
+    try:
+        i = unique_function_id(f)
+        return i, usable_functions[i]
+    except KeyError:
+        raise KeyError(f'function {f.__name__} is not decorated with @simplydefined')
 
 def assert_usable(*args):
     for f in args:
-        if not is_usable_function(f):
-            raise ValueError(f'function {f.__name__} is not decorated with @simplydefined')
+        get_usable_function(f)
 
 @simplydefined
-def choose_widget(*args, widget_id, name):
+def choose_widget(widget_id, name):
     print(f'choosing widget: {widget_id} -> {name}')
-    chosen_widgets[widget_id] = (name, False)
+    state = State(None, widget_id) #special own scope
+    state.name = name
+    state.inited = False
+
+@simplydefined
+def restart():
+    restart_app()
 
 def widget_manager_create(widget_id):
-    chosen_widgets.pop(widget_id, None)
-    return ListView(children=[TextView(text=name, textViewTextSize=(java.clazz.android.util.TypedValue().COMPLEX_UNIT_SP, 30),
-                                       click=(choose_widget, dict(widget_id=widget_id, name=name)))
-                              for name in available_widgets])
+    state = State(None, widget_id) #special own scope
+    state.name = None
+    #clear state
+    btn = Button(text="restart", click=restart, width=widget_dims.width)
 
-def widget_manager_update(widget_id, views):
+    lst = ListView(top=btn.height+20, children=[TextView(text=name, textViewTextSize=(java.clazz.android.util.TypedValue().COMPLEX_UNIT_SP, 30),
+                                                                click=(choose_widget, dict(name=name))) for name in available_widgets])
+    return [btn, lst]
+
+def widget_manager_update(widget_id, views, state):
     try:
-        if widget_id in chosen_widgets:
-            name, inited = chosen_widgets[widget_id]
-            on_create, on_update = available_widgets[name]
-            if not inited:
-                chosen_widgets[widget_id] = (name, True)
+        manager_state = State(None, widget_id) #special own scope
+        if manager_state.get('name') is not None:
+            on_create, on_update = available_widgets[manager_state.name]
+            if not state.inited:
+                manager_state.inited = True
                 if on_create:
-                    return on_create(widget_id)
+                    return on_create(widget_id, state)
             else:
                 if on_update:
-                    return on_update(widget_id, views)
-            return None #doesn't update the root
-    except Exception as e:
+                    return on_update(widget_id, views, state)
+            return None #doesn't update views
+    except Exception:
         print(traceback.format_exc())
         return widget_manager_create(widget_id) #maybe present error widget
-
-# class State:
-#     def __init__(self, widget_id):
-#         self.widget_id = widget_id
-#
-#     def __getitem__(self, item):
-
 
 class Handler:
     def __init__(self):
@@ -264,7 +260,13 @@ class Handler:
     @java.interface
     def onUpdate(self, widget_id, views):
         print(f'python got onUpdate')
-        return self.export(widget_manager_update(widget_id, self.import_(views)))
+        state = State(State(None, widget_id).get('name'), widget_id)
+        return self.export(widget_manager_update(widget_id, self.import_(views), state))
+
+    @java.interface
+    def onDelete(self, widget_id):
+        print(f'python got onDelete')
+        clean_local_state(widget_id)
 
     @java.interface
     def onItemClick(self, widget_id, views, collection_id, position):
@@ -272,7 +274,8 @@ class Handler:
         #print(f'{views}')
         views = self.import_(views)
         v = self.find(views, collection_id)
-        handled = v.__event__('itemclick', v, position)
+        state = State(State(None, widget_id).get('name'), widget_id)
+        handled = v.__event__('itemclick', widget_id=widget_id, views=views, view=v, position=position, state=state)
         if not handled:
             return None #TODO fix not flushing root in this case
         return self.export(views)
@@ -283,7 +286,8 @@ class Handler:
         #print(f'{views}')
         views = self.import_(views)
         v = self.find(views, view_id)
-        v.__event__('click', v)
+        state = State(State(None, widget_id).get('name'), widget_id)
+        v.__event__('click', widget_id=widget_id, views=views, view=v, state=state)
         return self.export(views)
         
 def register_widget(name, on_create, on_update=None):
@@ -303,6 +307,10 @@ def init():
     java_widget_manager = context
     print('init')
     context.registerOnWidgetUpdate(Handler().iface)
+
+def restart_app():
+    print('restarting')
+    java_widget_manager.restart()
 
 def pip_install(package):
     import pip

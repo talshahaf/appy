@@ -66,7 +66,7 @@ public class RemoteMethodCall
 
     public void call(RemoteViews view, int id) throws InvocationTargetException, IllegalAccessException
     {
-        Log.d("APPY", "calling " + id + " " + method.getName());
+        //Log.d("APPY", "calling " + id + " " + method.getName());
         switch (arguments.length)
         {
             case 0:
