@@ -1991,10 +1991,12 @@ static PyObject * logcat_write(PyObject *self, PyObject *args)
     }
 }
 
-extern "C" JNIEXPORT jint JNICALL Java_com_appy_Widget_pythonRun(JNIEnv * env, jclass clazz, jstring script, jobject arg)
+extern "C" JNIEXPORT void JNICALL Java_com_appy_Widget_pythonRun(JNIEnv * env, jclass clazz, jstring script, jobject arg)
 {
     try
     {
+        find_types(env);
+
         auto path = get_string(env, script);
 
         if(arg != NULL)
@@ -2005,39 +2007,39 @@ extern "C" JNIEXPORT jint JNICALL Java_com_appy_Widget_pythonRun(JNIEnv * env, j
             }
             if(g_java_arg == NULL)
             {
-                LOG("NewGlobalRef failed");
-                return -1;
+                env->ThrowNew(python_exception_class, "NewGlobalRef failed");
+                return;
             }
         }
 
         FILE * fh = fopen(path.c_str(), "r");
         if(fh == NULL)
         {
-            LOG("fopen failed");
-            return -2;
+            env->ThrowNew(python_exception_class, "fopen failed");
+            return;
         }
 
         wchar_t *program = Py_DecodeLocale(path.c_str(), NULL);
         if(program == NULL)
         {
-            LOG("Py_DecodeLocale failed");
-            return -3;
+            env->ThrowNew(python_exception_class, "Py_DecodeLocale failed");
+            return;
         }
 
         PySys_SetArgv(1, &program);
         int ret = PyRun_SimpleFileExFlags(fh, path.c_str(), 1, NULL);
         if(ret == -1)
         {
-            LOG("PyRun_SimpleFileExFlags failed");
-            return -4;
+            env->ThrowNew(python_exception_class, "PyRun_SimpleFileExFlags failed");
+            return;
         }
     }
     catch(...)
     {
-        LOG("exception was thrown from pythonRun");
-        return -5;
+        env->ThrowNew(python_exception_class, "exception was thrown from pythonRun");
+        return;
     }
-    return 0;
+    return;
 }
 
 static PyMethodDef native_appy_methods[] = {
@@ -2082,17 +2084,19 @@ PyMODINIT_FUNC PyInit_native_appy(void)
 extern "C" void android_get_LD_LIBRARY_PATH(char*, size_t);
 extern "C" void android_update_LD_LIBRARY_PATH(const char*);
 
-extern "C" JNIEXPORT jint JNICALL Java_com_appy_Widget_pythonInit(JNIEnv * env, jclass clazz, jstring j_pythonhome, jstring j_tmppath, jstring j_pythonlib)
+extern "C" JNIEXPORT void JNICALL Java_com_appy_Widget_pythonInit(JNIEnv * env, jclass clazz, jstring j_pythonhome, jstring j_tmppath, jstring j_pythonlib)
 {
     try
     {
         LOG("python init");
 
+        find_types(env);
+
         int ret = env->GetJavaVM(&vm);
         if(ret != 0)
         {
-            LOG("GetJavaVM failed");
-            return -1;
+            env->ThrowNew(python_exception_class, "GetJavaVM failed");
+            return;
         }
 
         auto pythonhome = get_string(env, j_pythonhome);
@@ -2117,25 +2121,25 @@ extern "C" JNIEXPORT jint JNICALL Java_com_appy_Widget_pythonInit(JNIEnv * env, 
         ret = PyImport_AppendInittab("native_appy", PyInit_native_appy);
         if(ret == -1)
         {
-            LOG("PyImport_AppendInittab failed");
-            return -2;
+            env->ThrowNew(python_exception_class, "PyImport_AppendInittab failed");
+            return;
         }
 
         wchar_t * pythonlib_w = Py_DecodeLocale(pythonlib.c_str(), NULL);
         if(pythonlib_w == NULL)
         {
-            LOG("Py_DecodeLocale failed");
-            return -4;
+            env->ThrowNew(python_exception_class, "Py_DecodeLocale failed");
+            return;
         }
 
         Py_SetProgramName(pythonlib_w);
         Py_InitializeEx(0);
-        return 0;
+        return;
     }
     catch(...)
     {
-        LOG("exception was thrown from pythonInit");
-        return -5;
+        env->ThrowNew(python_exception_class, "exception was thrown from pythonInit");
+        return;
     }
 }
 
