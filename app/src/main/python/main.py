@@ -48,16 +48,27 @@ def logcat_on_update(widget, views):
     return [btn, lst]
 
 @simplydefined
-def newwidget_on_create(widget):
-    return None
+def inc(widget):
+    widget.state.i += 1
+    print(widget.state.i)
+    widget.invalidate()
 
 @simplydefined
-def newwidget_on_update(widget, views):
-    print(views)
+def timer_on_create(widget):
+    widget.state.locals('i')
+    widget.state.setdefault('i', 0)
+    widget.set_interval(1000, inc)
+    return TextView(text='ready...', textViewTextSize=(clazz.android.util.TypedValue().COMPLEX_UNIT_SP, 15), width=widget_dims.width, height=widget_dims.height)
+
+@simplydefined
+def timer_on_update(widget, views):
+    views[0].text = str(widget.state.i)
+    return views
 
 #register_widget('example', example_on_create, None)
 #register_widget('example2', example2_on_create, None)
-register_widget('logcat', logcat_on_create, logcat_on_update)
+#register_widget('logcat', logcat_on_create, logcat_on_update)
+register_widget('timer', timer_on_create, timer_on_update)
 
 #TODO fix bytes serialization
 if __name__ == '__main__':

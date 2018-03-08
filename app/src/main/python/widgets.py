@@ -68,6 +68,17 @@ class WidgetAttribute:
             return AttributeValue(Reference(-1, attrs[item], 1))
         raise AttributeError()
 
+def call_function(func_id, captures, **kwargs):
+    func = usable_functions[func_id]
+    pass_args = copy.deepcopy(captures)
+    pass_args.update(kwargs) #kwargs priority
+
+    args, kwargs, has_vargs, has_vkwargs = get_args(func)
+    try:
+        func(**{k:v for k,v in pass_args.items() if k in args or k in kwargs or has_vkwargs})
+    except:
+        print(traceback.format_exc())
+
 class Element:
     def __init__(self, d):
         self.__dict__['d'] = AttrDict.make(d)
@@ -78,14 +89,8 @@ class Element:
 
     def __event__(self, key, **kwargs):
         if 'tag' in self.d and key in self.d.tag:
-            f, captures = self.d.tag[key]
-            captures = loads(captures)
-            func = usable_functions[f]
-            pass_args = captures
-            pass_args.update(kwargs) #kwargs priority
-
-            args, kwargs, has_vargs, has_vkwargs = get_args(func)
-            func(**{k:v for k,v in pass_args.items() if k in args or k in kwargs or has_vkwargs})
+            func_id, captures = self.d.tag[key]
+            call_function(func_id, loads(captures), **kwargs)
 
     def set_handler(self, key, f, **captures):
         func_id, f = get_usable_function(f)
@@ -129,7 +134,7 @@ class Element:
 
             if 'methodCalls' not in self.d:
                 self.d.methodCalls = []
-            self.d.methodCalls = [c for c in self.d.methodCalls if c.identifier != method] + [AttrDict(identifier=identifier, method=method, arguments=arguments)]
+            self.d.methodCalls = [c for c in self.d.methodCalls if c.identifier != identifier] + [AttrDict(identifier=identifier, method=method, arguments=arguments)]
 
     @classmethod
     def create(cls, type, children=None, **kwargs):
@@ -152,6 +157,9 @@ class Element:
 
     def duplicate(self):
         return Element(self.dict(without_id=True))
+
+    def __repr__(self):
+        return repr(self.dict())
 
     #TODO write to children
 
@@ -212,6 +220,26 @@ class Widget:
     def clean_widget(self):
         state.clean_widget_state(self.name)
 
+    def set_absolute_timer(self, millis, f, **captures):
+        return self.set_timer(millis, java.clazz.com.appy.Widget().TIMER_ABSOLUTE, f, **captures)
+
+    def set_timeout(self, millis, f, **captures):
+        return self.set_timer(millis, java.clazz.com.appy.Widget().TIMER_RELATIVE, f, **captures)
+
+    def set_interval(self, millis, f, **captures):
+        return self.set_timer(millis, java.clazz.com.appy.Widget().TIMER_REPEATING, f, **captures)
+
+    def set_timer(self, millis, t, f, **captures):
+        func_id, f = get_usable_function(f)
+        return java_widget_manager.setTimer(millis, t, False, self.widget_id, dumps(AttrDict(func_id=func_id, captures=captures)))
+
+    def cancel_timer(self, timer_id):
+        return java_widget_manager.cancelTimer(timer_id)
+
+    def invalidate(self):
+        java_widget_manager.update(self.widget_id)
+
+
 def create_manager_state():
     manager_state = state.State(None, -1) #special own scope
     manager_state.locals('chosen')
@@ -245,8 +273,8 @@ def widget_manager_create(widget, manager_state):
 
 def widget_manager_update(widget, manager_state, views):
     try:
-        if widget.widget_id in manager_state.chosen:
-            chosen = manager_state.chosen[widget.widget_id]
+        chosen = manager_state.chosen[widget.widget_id]
+        if chosen.name is not None:
             on_create, on_update = available_widgets[chosen.name]
             if not chosen.inited:
                 chosen.inited = True
@@ -323,7 +351,15 @@ class Handler:
         widget, manager_state = create_widget(widget_id)
         v.__event__('click', widget=widget, views=views, view=v, state=state)
         return self.export(views)
-        
+
+    @java.interface
+    def onTimer(self, timer_id, widget_id, data):
+        print('timer called')
+        data = loads(data)
+        widget, manager_state = create_widget(widget_id)
+        call_function(data.func_id, data.captures, timer_id=timer_id, widget=widget)
+
+
 def register_widget(name, on_create, on_update=None):
     if name in available_widgets:
         raise ValueError(f'name {name} exists')
