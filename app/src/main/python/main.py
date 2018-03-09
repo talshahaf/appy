@@ -34,6 +34,8 @@ def logcat_on_create(widget):
 
 @simplydefined
 def logcat_on_update(widget, views):
+    widget.local_token(1)
+
     widget.state.locals('i')
     widget.state.setdefault('i', 0)
     widget.state.i += 1
@@ -49,6 +51,8 @@ def logcat_on_update(widget, views):
 
 @simplydefined
 def inc(widget):
+    widget.state.locals('i')
+    widget.state.setdefault('i', 0)
     widget.state.i += 1
     print(widget.state.i)
     widget.invalidate()
@@ -62,6 +66,9 @@ def timer_on_create(widget):
 
 @simplydefined
 def timer_on_update(widget, views):
+    widget.local_token(1)
+    widget.state.locals('i')
+    widget.state.setdefault('i', 0)
     views[0].text = str(widget.state.i)
     return views
 

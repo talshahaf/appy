@@ -214,11 +214,33 @@ class Widget:
     def globals(self, *attrs):
         self.state.globals(*attrs)
 
+    def local_token(self, token):
+        return self.token(token, self.locals, self.clean_local)
+
+    def widget_token(self, token):
+        return self.token(token, self.widget, self.clean_widget)
+
+    def global_token(self, token):
+        return self.token(token, self.globals, self.wipe_global)
+
+    def token(self, token, scope, clean):
+        scope('__token__')
+        existing_token = getattr(self.state, '__token__', None)
+        if existing_token != token:
+            print(f'{existing_token} != {token} cleaning {scope.__name__}')
+            clean()
+            self.state.__token__ = token
+            return True
+        return False
+
     def clean_local(self):
         state.clean_local_state(self.widget_id)
 
     def clean_widget(self):
         state.clean_widget_state(self.name)
+
+    def wipe_global(self):
+        state.wipe_state()
 
     def set_absolute_timer(self, millis, f, **captures):
         return self.set_timer(millis, java.clazz.com.appy.Widget().TIMER_ABSOLUTE, f, **captures)
@@ -231,7 +253,7 @@ class Widget:
 
     def set_timer(self, millis, t, f, **captures):
         func_id, f = get_usable_function(f)
-        return java_widget_manager.setTimer(millis, t, False, self.widget_id, dumps(AttrDict(func_id=func_id, captures=captures)))
+        return java_widget_manager.setTimer(millis, t, self.widget_id, dumps(AttrDict(func_id=func_id, captures=captures)))
 
     def cancel_timer(self, timer_id):
         return java_widget_manager.cancelTimer(timer_id)
@@ -239,10 +261,20 @@ class Widget:
     def invalidate(self):
         java_widget_manager.update(self.widget_id)
 
+    def cancel_all_timers(self):
+        return java_widget_manager.cancelWidgetTimers(self.widget_id)
+
 
 def create_manager_state():
     manager_state = state.State(None, -1) #special own scope
+    manager_state.locals('__token__')
     manager_state.locals('chosen')
+    token = 1
+    if getattr(manager_state, '__token__', None) != token:
+        if hasattr(manager_state, 'chosen'):
+            del manager_state.chosen
+        manager_state.__token__ = token
+
     manager_state.setdefault('chosen', {})
     return manager_state
 
@@ -262,7 +294,11 @@ def restart():
     restart_app()
 
 def widget_manager_create(widget, manager_state):
-    manager_state.chosen[widget.widget_id] = AttrDict(name=None, inited=False)
+    print('widget_manager_create')
+    widget.cancel_all_timers()
+    if widget.widget_id in manager_state.chosen:
+        del manager_state.chosen[widget.widget_id]
+        manager_state.__save__()
 
     #clear state
     btn = Button(text="restart", click=restart, width=widget_dims.width)
@@ -273,17 +309,18 @@ def widget_manager_create(widget, manager_state):
 
 def widget_manager_update(widget, manager_state, views):
     try:
-        chosen = manager_state.chosen[widget.widget_id]
-        if chosen.name is not None:
-            on_create, on_update = available_widgets[chosen.name]
-            if not chosen.inited:
-                chosen.inited = True
-                if on_create:
-                    return on_create(widget)
-            else:
-                if on_update:
-                    return on_update(widget, views)
-            return None #doesn't update views
+        if widget.widget_id in manager_state.chosen:
+            chosen = manager_state.chosen[widget.widget_id]
+            if chosen.name is not None:
+                on_create, on_update = available_widgets[chosen.name]
+                if not chosen.inited:
+                    chosen.inited = True
+                    if on_create:
+                        return on_create(widget)
+                else:
+                    if on_update:
+                        return on_update(widget, views)
+                return None #doesn't update views
     except Exception:
         print(traceback.format_exc())
         return widget_manager_create(widget, manager_state) #maybe present error widget

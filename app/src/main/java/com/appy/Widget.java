@@ -16,6 +16,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.IllegalFormatException;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.Map;
@@ -984,31 +985,38 @@ public class Widget extends RemoteViewsService {
 
     public void loadWidgets()
     {
-        SharedPreferences sharedPref = getSharedPreferences("appy", Context.MODE_PRIVATE);
-        String widgetsString = sharedPref.getString("widgets", null);
-        if(widgetsString != null)
+        try
         {
-            widgets = new MapSerialize<Integer, String>().deserialize(widgetsString, new MapSerialize.IntConverter(), new MapSerialize.StringConverter());
-        }
-        String widgetToAndroidString = sharedPref.getString("widgetToAndroid", null);
-        if(widgetToAndroidString != null)
-        {
-            widgetToAndroid = new MapSerialize<Integer, Integer>().deserialize(widgetToAndroidString, new MapSerialize.IntConverter(), new MapSerialize.IntConverter());
-            androidToWidget = new HashMap<>();
-            for(Map.Entry<Integer, Integer> entry : widgetToAndroid.entrySet())
+            SharedPreferences sharedPref = getSharedPreferences("appy", Context.MODE_PRIVATE);
+            String widgetsString = sharedPref.getString("widgets", null);
+            if (widgetsString != null)
             {
-                androidToWidget.put(entry.getValue(), entry.getKey());
+                widgets = new MapSerialize<Integer, String>().deserialize(widgetsString, new MapSerialize.IntKey(), new MapSerialize.StringValue());
             }
+            String widgetToAndroidString = sharedPref.getString("widgetToAndroid", null);
+            if (widgetToAndroidString != null)
+            {
+                widgetToAndroid = new MapSerialize<Integer, Integer>().deserialize(widgetToAndroidString, new MapSerialize.IntKey(), new MapSerialize.IntValue());
+                androidToWidget = new HashMap<>();
+                for (Map.Entry<Integer, Integer> entry : widgetToAndroid.entrySet())
+                {
+                    androidToWidget.put(entry.getValue(), entry.getKey());
+                }
+            }
+            //TODO maybe clean
         }
-        //TODO maybe clean
+        catch(Exception e)
+        {
+            e.printStackTrace();
+        }
     }
 
     public void saveWidgets()
     {
         SharedPreferences sharedPref = getSharedPreferences("appy", Context.MODE_PRIVATE);
         SharedPreferences.Editor editor = sharedPref.edit();
-        editor.putString("widgets", new MapSerialize<Integer, String>().serialize(widgets));
-        editor.putString("widgetToAndroid", new MapSerialize<Integer, Integer>().serialize(widgetToAndroid));
+        editor.putString("widgets", new MapSerialize<Integer, String>().serialize(widgets, new MapSerialize.IntKey(), new MapSerialize.StringValue()));
+        editor.putString("widgetToAndroid", new MapSerialize<Integer, Integer>().serialize(widgetToAndroid, new MapSerialize.IntKey(), new MapSerialize.IntValue()));
         editor.apply();
     }
 
@@ -1023,17 +1031,77 @@ public class Widget extends RemoteViewsService {
         return newId;
     }
 
-    HashMap<Integer, ArrayList<Integer>> widgetTimers = new HashMap<>();
-    HashMap<Integer, Pair<Integer, PendingIntent>> activeTimers = new HashMap<>();
+    static class Timer
+    {
+        public Timer(int widgetId, long millis, int type, String data)
+        {
+            this.widgetId = widgetId;
+            this.millis = millis;
+            this.type = type;
+            this.data = data;
+        }
+
+        @Override
+        public String toString()
+        {
+            return widgetId+", "+millis+", "+type+", "+data;
+        }
+
+        int widgetId;
+        long millis;
+        int type;
+        String data;
+    }
+
+    static class TimerValue implements MapSerialize.Converter<Timer, Object>
+    {
+
+        @Override
+        public Object convert(Timer timer)
+        {
+            JSONObject obj = new JSONObject();
+            try
+            {
+                obj.put("widgetId", timer.widgetId);
+                obj.put("millis", timer.millis);
+                obj.put("type", timer.type);
+                obj.put("data", timer.data);
+                return obj;
+            }
+            catch (JSONException e)
+            {
+                throw new IllegalArgumentException();
+            }
+        }
+
+        @Override
+        public Timer invert(Object o)
+        {
+            JSONObject obj = (JSONObject)o;
+            try
+            {
+                return new Timer(obj.getInt("widgetId"),
+                        obj.getInt("millis"),
+                        obj.getInt("type"),
+                        obj.getString("data"));
+            }
+            catch (JSONException e)
+            {
+                throw new IllegalArgumentException();
+            }
+        }
+    }
+    HashMap<Integer, Timer> activeTimers = new HashMap<>();
+    HashMap<Integer, PendingIntent> activeTimersIntents = new HashMap<>();
 
     public void timerCall(int timerId, int widgetId, String data)
     {
-        Pair<Integer, PendingIntent> timer = activeTimers.get(timerId);
+        Timer timer = activeTimers.get(timerId);
         if(timer == null)
         {
             return;
         }
-        if(timer.first != TIMER_REPEATING)
+        if(timer.type != TIMER_REPEATING)
         {
             cancelTimer(timerId);
         }
@@ -1044,30 +1112,30 @@ public class Widget extends RemoteViewsService {
         }
     }
 
-    public boolean cancelTimer(int timerId)
+    public void cancelTimer(int timerId)
     {
-        PendingIntent pendingIntent = activeTimers.remove(timerId).second;
+        activeTimers.remove(timerId);
+        PendingIntent pendingIntent = activeTimersIntents.remove(timerId);
         if(pendingIntent != null)
         {
             AlarmManager mgr = (AlarmManager)getSystemService(Context.ALARM_SERVICE);
             mgr.cancel(pendingIntent);
-            return true;
         }
-        return false;
+        saveTimers();
     }
 
     public void cancelWidgetTimers(int widgetId)
     {
-        if(!widgetTimers.containsKey(widgetId))
+        for(Map.Entry<Integer, Timer> timer : activeTimers.entrySet())
         {
-            return;
+            if(timer.getValue().widgetId != widgetId)
+            {
+                continue;
+            }
+
+            cancelTimer(timer.getKey());
         }
-        ArrayList<Integer> timers = widgetTimers.get(widgetId);
-        widgetTimers.remove(widgetId);
-        for(int timer : timers)
-        {
-            cancelTimer(timer);
-        }
+
     }
 
     public static final int TIMER_RELATIVE = 1;
@@ -1084,27 +1152,35 @@ public class Widget extends RemoteViewsService {
         public abstract void run();
     }
 
-    public int setTimer(long millis, int type, boolean persistant, int widgetId, String data)
+    public int setTimer(long millis, int type, int widgetId, String data)
+    {
+        return setTimer(millis, type, widgetId, data, -1);
+    }
+
+    public int setTimer(long millis, int type, int widgetId, String data, int timerId)
     {
         if(type == TIMER_RELATIVE)
         {
             millis += System.currentTimeMillis();
+            type = TIMER_ABSOLUTE;
         }
 
-        int timer = generateTimerId();
+        if(timerId == -1)
+        {
+            timerId = generateTimerId();
+        }
         Intent timerIntent = new Intent(Widget.this, getClass());
+        timerIntent.setAction("timer"+timerId); //make it unique for cancel
         timerIntent.putExtra("widgetId", widgetId);
-        timerIntent.putExtra("timer", timer);
+        timerIntent.putExtra("timer", timerId);
         timerIntent.putExtra("timerData", data);
 
-        AlarmManager mgr = (AlarmManager)getSystemService(Context.ALARM_SERVICE);
-        PendingIntent pendingIntent = PendingIntent.getService(Widget.this, 1, timerIntent, PendingIntent.FLAG_CANCEL_CURRENT);
-        if(type == TIMER_REPEATING)
+        PendingIntent pendingIntent = null;
+
+        if(type == TIMER_REPEATING && millis <= 10 * 60 * 1000)
         {
-            if(millis <= 10 * 60 * 1000)
-            {
                 Log.d("APPY", "setting short time timer");
-                handler.post(new ArgRunnable(timerIntent, millis, timer)
+                handler.post(new ArgRunnable(timerIntent, millis, timerId)
                 {
                     boolean first = true;
 
@@ -1125,26 +1201,60 @@ public class Widget extends RemoteViewsService {
                         }
                     }
                 });
-            }
-            else
+        }
+        else
+        {
+            AlarmManager mgr = (AlarmManager)getSystemService(Context.ALARM_SERVICE);
+            pendingIntent = PendingIntent.getService(Widget.this, 1, timerIntent, PendingIntent.FLAG_CANCEL_CURRENT);
+            //clear previous alarm (if we crashed but no reboot)
+            mgr.cancel(pendingIntent);
+
+            if(type == TIMER_REPEATING)
             {
                 Log.d("APPY", "setting long time timer: "+millis);
                 mgr.setRepeating(AlarmManager.RTC, System.currentTimeMillis() + millis, millis, pendingIntent);
             }
-        }
-        else
-        {
-            Log.d("APPY", "setting one time timer");
-            mgr.set(AlarmManager.RTC, millis, pendingIntent);
+            else
+            {
+                Log.d("APPY", "setting one time timer");
+                mgr.set(AlarmManager.RTC, millis, pendingIntent);
+            }
         }
 
-        if(widgetTimers.get(widgetId) == null)
+        activeTimers.put(timerId, new Timer(widgetId, millis, type, data));
+        activeTimersIntents.put(timerId, pendingIntent);
+        saveTimers();
+        return timerId;
+    }
+
+    public void loadTimers()
+    {
+        try
         {
-            widgetTimers.put(widgetId, new ArrayList<Integer>());
+            SharedPreferences sharedPref = getSharedPreferences("appy", Context.MODE_PRIVATE);
+            String timersString = sharedPref.getString("timers", null);
+            if(timersString != null)
+            {
+                HashMap<Integer, Timer> loaded = new MapSerialize<Integer, Timer>().deserialize(timersString, new MapSerialize.IntKey(), new TimerValue());
+                Log.d("APPY", "loaded "+loaded.size()+" timers");
+                for(Map.Entry<Integer, Timer> timer : loaded.entrySet())
+                {
+                    setTimer(timer.getValue().millis, timer.getValue().type, timer.getValue().widgetId, timer.getValue().data, timer.getKey());
+                }
+            }
         }
-        widgetTimers.get(widgetId).add(timer);
-        activeTimers.put(timer, new Pair<>(type, pendingIntent));
-        return timer;
+        catch(Exception e)
+        {
+            e.printStackTrace();
+        }
+    }
+
+    public void saveTimers()
+    {
+        SharedPreferences sharedPref = getSharedPreferences("appy", Context.MODE_PRIVATE);
+        SharedPreferences.Editor editor = sharedPref.edit();
+        editor.putString("timers", new MapSerialize<Integer, Timer>().serialize(activeTimers , new MapSerialize.IntKey(), new TimerValue()));
+        editor.apply();
     }
 
     public void update(int widgetId)
@@ -1283,8 +1393,10 @@ public class Widget extends RemoteViewsService {
         {
             started = true;
             firstStart = true;
-            loadWidgets();
             handler = new Handler();
+
+            loadWidgets();
+            loadTimers();
 
             String pythonHome = getFilesDir().getAbsolutePath();
             String pythonLib = new File(pythonHome, "/lib/libpython3.6m.so").getAbsolutePath(); //must be without
@@ -1408,6 +1520,7 @@ public class Widget extends RemoteViewsService {
 
                 if(eventWidgetId == SPECIAL_WIDGET_ID)
                 {
+                    saveWidgets();
                     restart();
                     return;
                 }

@@ -16,8 +16,11 @@ global_state = None
 def save():
     java_widget_manager.saveState(dumps(global_state))
 
-def setter(d, k, v):
-    d[k] = v
+def setter(d, k, value=None, delete=None):
+    if delete:
+        del d[k]
+    else:
+        d[k] = value
     save()
 
 def getter(d, k):
@@ -30,8 +33,8 @@ class State:
     def __getscope__(self, scope_name, scope_key):
         return global_state[scope_name].setdefault(scope_key, {}) if scope_key is not None else global_state[scope_name]
         
-    def __act__(self, f, scope_name, scope_key, attr, *args):
-        return f(self.__getscope__(scope_name, scope_key), attr, *args)
+    def __act__(self, f, scope_name, scope_key, attr, **kwargs):
+        return f(self.__getscope__(scope_name, scope_key), attr, **kwargs)
         
     def widget(self, *attrs):
         for attr in attrs:
@@ -44,7 +47,7 @@ class State:
     def locals(self, *attrs):
         for attr in attrs:
             self.__info__.scopes[attr] = 'locals'
-            
+
     def __getattr__(self, attr):
         scope = self.__info__.scopes.get(attr, 'locals')
         
@@ -61,13 +64,19 @@ class State:
             if found:
                 return v
         raise AttributeError()
+
+    def __changeattr__(self, attr, **kwargs):
+        if attr in self.__info__.scopes:
+            self.__act__(setter, self.__info__.scopes[attr], self.__info__.scope_keys[self.__info__.scopes[attr]], attr, **kwargs)
+        else:
+            self.__act__(setter, 'locals', self.__info__.scope_keys.locals, attr, **kwargs)
         
     def __setattr__(self, attr, value):
-        if attr in self.__info__.scopes:
-            self.__act__(setter, self.__info__.scopes[attr], self.__info__.scope_keys[self.__info__.scopes[attr]], attr, value)
-        else:
-            self.__act__(setter, 'locals', self.__info__.scope_keys.locals, attr, value)
-            
+        self.__changeattr__(attr, value=value)
+
+    def __delattr__(self, attr):
+        self.__changeattr__(attr, delete=True)
+
     def __dir__(self):
         return list(
                         set(self.__getscope__('locals', self.__info__.scope_keys.locals).keys()) |
@@ -87,6 +96,9 @@ class State:
         except AttributeError:
             setattr(self, attr, default)
             return default
+
+    def __save__(self):
+        save()
 
 def init():
     global java_widget_manager, global_state
