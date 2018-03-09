@@ -14,34 +14,64 @@ import java.util.Map;
 
 public class MapSerialize<T, S>
 {
-    interface IConverter<M>
+    interface Converter<M, N>
     {
-        M fromString(String str);
+        N convert(M m);
+        M invert(N n);
     }
 
-    static class IntConverter implements IConverter<Integer>
+    static class IntKey implements Converter<Integer, String>
     {
         @Override
-        public Integer fromString(String str)
+        public String convert(Integer integer)
         {
-            return Integer.parseInt(str);
+            return integer.toString();
+        }
+
+        @Override
+        public Integer invert(String s)
+        {
+            return Integer.parseInt(s);
         }
     }
 
-    static class StringConverter implements IConverter<String>
+    static class IntValue implements Converter<Integer, Object>
     {
+
         @Override
-        public String fromString(String str)
+        public Object convert(Integer integer)
         {
-            return str;
+            return integer;
+        }
+
+        @Override
+        public Integer invert(Object o)
+        {
+            return (Integer)o;
         }
     }
 
-    public String serialize(HashMap<T, S> map)
+    static class StringValue implements Converter<String, Object>
+    {
+
+        @Override
+        public Object convert(String s)
+        {
+            return s;
+        }
+
+        @Override
+        public String invert(Object o)
+        {
+            return o.toString();
+        }
+    }
+
+    public String serialize(HashMap<T, S> map, Converter<T, String> keySerializer, Converter<S, Object> valueSerializer)
     {
         try
         {
-            return toJson(map).toString();
+            return toJson(map, keySerializer, valueSerializer).toString();
         }
         catch (JSONException e)
         {
@@ -50,11 +80,11 @@ public class MapSerialize<T, S>
         }
     }
 
-    public HashMap<T, S> deserialize(String str, IConverter<T> toT, IConverter<S> toS)
+    public HashMap<T, S> deserialize(String str, Converter<T, String> keyDeserializer, Converter<S, Object> valueDeserializer)
     {
         try
         {
-            return fromJson(new JSONObject(str), toT, toS);
+            return fromJson(new JSONObject(str), keyDeserializer, valueDeserializer);
         }
         catch (JSONException e)
         {
@@ -63,24 +93,24 @@ public class MapSerialize<T, S>
         }
     }
 
-    public JSONObject toJson(HashMap<T, S> map) throws JSONException
+    public JSONObject toJson(HashMap<T, S> map, Converter<T, String> keySerializer, Converter<S, Object> valueSerializer) throws JSONException
     {
         JSONObject obj = new JSONObject();
         for(Map.Entry<T, S> entry : map.entrySet())
         {
-            obj.put(entry.getKey().toString(), entry.getValue().toString());
+            obj.put(keySerializer.convert(entry.getKey()), valueSerializer.convert(entry.getValue()));
         }
         return obj;
     }
 
-    public HashMap<T, S> fromJson(JSONObject obj, IConverter<T> toT, IConverter<S> toS) throws JSONException
+    public HashMap<T, S> fromJson(JSONObject obj, Converter<T, String> keyDeserializer, Converter<S, Object> valueDeserializer) throws JSONException
     {
         HashMap<T, S> map = new HashMap<>();
         Iterator<String> iter = obj.keys();
         while(iter.hasNext())
         {
             String key = iter.next();
-            map.put(toT.fromString(key), toS.fromString(obj.getString(key)));
+            map.put(keyDeserializer.invert(key), valueDeserializer.invert(obj.get(key)));
         }
         return map;
     }
