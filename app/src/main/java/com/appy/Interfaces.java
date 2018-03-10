@@ -25,5 +25,6 @@ interface WidgetUpdateListener
     String onItemClick(int widgetId, String views, int collectionId, int position);
     String onClick(int widgetId, String views, int id);
     void onTimer(int timerId, int widgetId, String data);
+    void wipeStateRequest();
 }
 

@@ -75,6 +75,9 @@ public class Widget extends RemoteViewsService {
     private static final String WIDGET_ID_EXTRA = "WIDGET_ID_EXTRA";
     private static final int SPECIAL_WIDGET_ID = -2;
 
+    public static final String ACTION_RESTART = "ACTION_RESTART";
+    public static final String ACTION_CLEAR = "ACTION_CLEAR";
+
     public static HashMap<String, Class<?>> typeToClass = new HashMap<>();
     public static HashMap<String, HashMap<String, String>> typeToRemotableMethod = new HashMap<>();
     public static HashMap<Class<?>, String> parameterToSetter = new HashMap<>();
@@ -202,34 +205,34 @@ public class Widget extends RemoteViewsService {
         Attributes.AttributeValue halfWidth = attributeParse("w(r)*0.5");
         Attributes.AttributeValue halfHeight = attributeParse("h(r)*0.5");
 
-        Log.d("APPY", "100: "+_100px+"     btnWidth: "+halfWidth+"      btnHeight: "+halfHeight);
+        //btn.attributes.attributes.put(Attributes.Type.WIDTH, halfWidth);
+        //btn.attributes.attributes.put(Attributes.Type.HEIGHT, attributeParse("151"));
 
-        btn.attributes.attributes.put(Attributes.Type.WIDTH, halfWidth);
-        //btn.attributes.attributes.put(Attributes.Type.HEIGHT, halfHeight);
-
-        DynamicView btn2 = new DynamicView("Button");
-        btn2.attributes.attributes.put(Attributes.Type.TOP, halfHeight);
-        btn2.attributes.attributes.put(Attributes.Type.WIDTH, attributeParse("w("+btn.getId()+")*0.5"));
-
-        views.add(btn2);
         views.add(btn);
 
+        //DynamicView btn2 = new DynamicView("Button");
+        //btn2.attributes.attributes.put(Attributes.Type.TOP, halfHeight);
+        //btn2.attributes.attributes.put(Attributes.Type.WIDTH, attributeParse("w("+btn.getId()+")*0.5"));
+
+        //views.add(btn2);
 
 
-        DynamicView lst = new DynamicView("ListView");
-        for(int i = 0; i < 10; i++)
-        {
-            DynamicView txt = new DynamicView("TextView");
-            txt.methodCalls.add(new RemoteMethodCall("setText", false, getSetterMethod(btn.type, "setText"), "setText", "text"+i));
-            ArrayList<DynamicView> listItem = new ArrayList<>();
-            listItem.add(txt);
-            lst.children.add(listItem);
-        }
 
-        lst.attributes.attributes.put(Attributes.Type.LEFT, halfWidth);
-        lst.attributes.attributes.put(Attributes.Type.HEIGHT, _100px);
 
-        views.add(lst);
+//        DynamicView lst = new DynamicView("ListView");
+//        for(int i = 0; i < 10; i++)
+//        {
+//            DynamicView txt = new DynamicView("TextView");
+//            txt.methodCalls.add(new RemoteMethodCall("setText", false, getSetterMethod(btn.type, "setText"), "setText", "text"+i));
+//            ArrayList<DynamicView> listItem = new ArrayList<>();
+//            listItem.add(txt);
+//            lst.children.add(listItem);
+//        }
+//
+//        lst.attributes.attributes.put(Attributes.Type.LEFT, halfWidth);
+//        lst.attributes.attributes.put(Attributes.Type.HEIGHT, _100px);
+//
+//        views.add(lst);
 
         return views;
     }
@@ -380,8 +383,10 @@ public class Widget extends RemoteViewsService {
     public int[] getWidgetDimensions(AppWidgetManager appWidgetManager, int androidWidgetId) //TODO optimize
     {
         Bundle bundle = appWidgetManager.getAppWidgetOptions(androidWidgetId);
+
+        //only works on portrait
         return new int[]{(int)dipToPixels(this, bundle.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH)),
-                         (int)dipToPixels(this, bundle.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT))};
+                         (int)dipToPixels(this, bundle.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT))};
     }
 
     public int selectRootView(int collections)
@@ -888,6 +893,12 @@ public class Widget extends RemoteViewsService {
                 public void onTimer(int timerId, int widgetId, String data)
                 {
                 }
+
+                @Override
+                public void wipeStateRequest()
+                {
+
+                }
             });
     }
 
@@ -1114,6 +1125,11 @@ public class Widget extends RemoteViewsService {
 
     public void cancelTimer(int timerId)
     {
+        cancelTimer(timerId, true);
+    }
+
+    public void cancelTimer(int timerId, boolean save)
+    {
         activeTimers.remove(timerId);
         PendingIntent pendingIntent = activeTimersIntents.remove(timerId);
         if(pendingIntent != null)
@@ -1121,21 +1137,42 @@ public class Widget extends RemoteViewsService {
             AlarmManager mgr = (AlarmManager)getSystemService(Context.ALARM_SERVICE);
             mgr.cancel(pendingIntent);
         }
-        saveTimers();
+
+        if(save)
+        {
+            saveTimers();
+        }
     }
 
     public void cancelWidgetTimers(int widgetId)
     {
+        HashSet<Integer> toCancel = new HashSet<>();
         for(Map.Entry<Integer, Timer> timer : activeTimers.entrySet())
         {
-            if(timer.getValue().widgetId != widgetId)
+            if(timer.getValue().widgetId == widgetId)
             {
-                continue;
+                toCancel.add(timer.getKey());
             }
-
-            cancelTimer(timer.getKey());
         }
 
+        for(int timer : toCancel)
+        {
+            cancelTimer(timer, false);
+        }
+        saveTimers();
+    }
+
+    public void cancelAllTimers()
+    {
+        Log.d("APPY", "cancelling all timers");
+        HashSet<Integer> toCancel = new HashSet<>();
+        toCancel.addAll(activeTimers.keySet());
+
+        for(int timer : toCancel)
+        {
+            cancelTimer(timer, false);
+        }
+        saveTimers();
     }
 
     public static final int TIMER_RELATIVE = 1;
@@ -1257,6 +1294,23 @@ public class Widget extends RemoteViewsService {
         editor.apply();
     }
 
+    public void clearWidgets()
+    {
+        Log.d("APPY", "clearing all widgets");
+        HashSet<Integer> widgetIds = new HashSet<>();
+        widgetIds.addAll(widgets.keySet());
+        widgets.clear();
+
+        for(int widgetId : widgetIds)
+        {
+            cancelWidgetTimers(widgetId);
+            if(updateListener != null)
+            {
+                updateListener.onDelete(widgetId);
+            }
+        }
+    }
+
     public void update(int widgetId)
     {
         Intent updateIntent = new Intent(Widget.this, getClass());
@@ -1266,6 +1320,7 @@ public class Widget extends RemoteViewsService {
 
     public void restart()
     {
+        Log.d("APPY", "restarting process");
         handler.post(new Runnable()
                      {
                          @Override
@@ -1341,15 +1396,8 @@ public class Widget extends RemoteViewsService {
         textView.methodCalls.add(new RemoteMethodCall("setText", false, getSetterMethod(textView.type, "setText"), "setText", "Error"));
         button.methodCalls.add(new RemoteMethodCall("setText", false, getSetterMethod(button.type, "setText"), "setText", "Restart"));
 
-        Attributes.AttributeValue wholeWidth = attributeParse("w(r)");
-        Attributes.AttributeValue halfHeight = attributeParse("h(r)*0.5");
-
-        textView.attributes.attributes.put(Attributes.Type.WIDTH, wholeWidth);
-        textView.attributes.attributes.put(Attributes.Type.HEIGHT, halfHeight);
-
-        button.attributes.attributes.put(Attributes.Type.WIDTH, wholeWidth);
-        button.attributes.attributes.put(Attributes.Type.HEIGHT, halfHeight);
-        button.attributes.attributes.put(Attributes.Type.TOP, halfHeight);
+        Attributes.AttributeValue afterText = attributeParse("h("+textView.getId()+")+10");
+        button.attributes.attributes.put(Attributes.Type.TOP, afterText);
 
         views.add(textView);
         views.add(button);
@@ -1435,27 +1483,48 @@ public class Widget extends RemoteViewsService {
         Integer updateWidgetId = null;
         if(intent != null)
         {
-            if (intent.getBooleanExtra("restart", false))
+            if(ACTION_RESTART.equals(intent.getAction()))
             {
                 restart();
                 return;
             }
-
-            if(intent.hasExtra("widgetId"))
+            else if(ACTION_CLEAR.equals(intent.getAction()))
             {
-                updateWidgetId = intent.getIntExtra("widgetId", -1);
+                if(intent.getBooleanExtra("widgets", false))
+                {
+                    updatedAndroidWidgets.addAll(widgets.keySet());
+                    clearWidgets();
+                }
+                if(intent.getBooleanExtra("timers", false))
+                {
+                    cancelAllTimers();
+                }
+                if(intent.getBooleanExtra("state", false))
+                {
+                    if(updateListener != null)
+                    {
+                        updateListener.wipeStateRequest();
+                    }
+                }
             }
-
-            if(intent.hasExtra("timer") && updateWidgetId != null)
+            else
             {
-                Log.d("APPY", "timer fire");
-                timerCall(intent.getIntExtra("timer", -1), updateWidgetId, intent.getStringExtra("timerData"));
+                if (intent.hasExtra("widgetId"))
+                {
+                    updateWidgetId = intent.getIntExtra("widgetId", -1);
+                }
+
+                if (intent.hasExtra("timer") && updateWidgetId != null)
+                {
+                    Log.d("APPY", "timer fire");
+                    timerCall(intent.getIntExtra("timer", -1), updateWidgetId, intent.getStringExtra("timerData"));
+                }
             }
 
             widgetIntent = intent.getParcelableExtra(WIDGET_INTENT);
         }
 
-        if (widgetIntent != null && AppWidgetManager.ACTION_APPWIDGET_RESTORED.equals(widgetIntent.getAction()))
+        if (widgetIntent != null && AppWidgetManager.ACTION_APPWIDGET_RESTORED.equals(widgetIntent.  getAction()))
         {
             int[] oldWidgets = widgetIntent.getIntArrayExtra(AppWidgetManager.EXTRA_APPWIDGET_OLD_IDS);
             int[] newWidgets = widgetIntent.getIntArrayExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS);
@@ -1472,8 +1541,8 @@ public class Widget extends RemoteViewsService {
                 Integer widget = fromAndroidWidget(deletedWidget, false);
                 if(widget != null)
                 {
-                    cancelWidgetTimers(widget);
                     widgets.remove(widget);
+                    cancelWidgetTimers(widget);
                     if(updateListener != null)
                     {
                         updateListener.onDelete(widget);
@@ -1620,8 +1689,8 @@ public class Widget extends RemoteViewsService {
                 try
                 {
                     int[] widgetDimensions = getWidgetDimensions(appWidgetManager, androidWidgetId);
-                    int widthLimit = (int)(widgetDimensions[0] * 1.1); //found empirically
-                    int heightLimit = (int)(widgetDimensions[1] * 1.5); //found empirically
+                    int widthLimit = widgetDimensions[0];
+                    int heightLimit = widgetDimensions[1];
 
                     RemoteViews view = resolveDimensions(this, widgetId, DynamicView.fromJSONArray(widgets.get(widgetId)), false, widthLimit, heightLimit);
                     //appWidgetManager.notifyAppWidgetViewDataChanged(androidWidgetId, R.id.root);

@@ -4,8 +4,8 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:id="@+id/listitem_root">
-    <RelativeLayout android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:id="@+id/listitem_elements">
+    <RelativeLayout android:id="@+id/listitem_elements"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent">
     </RelativeLayout>
 </RelativeLayout>

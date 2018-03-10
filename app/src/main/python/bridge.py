@@ -455,6 +455,9 @@ def callback(arg):
         args = upcast(jobject(jref(arg), 'callback arg'))
         key, cls, method, args = args
 
+        if args is None:
+            args = []
+
         if key not in interfaces:
             raise Exception(f'interface not registered: {key}')
 
@@ -463,7 +466,7 @@ def callback(arg):
         try:
             if hasattr(iface, method):
                 func = getattr(iface, method)
-            elif method in iface:
+            elif hasattr(iface, '__contains__') and method in iface:
                 func = iface[method]
             else:
                 raise Exception(f'no callback for method {method}')
