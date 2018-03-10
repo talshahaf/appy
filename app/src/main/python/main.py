@@ -62,7 +62,7 @@ def timer_on_create(widget):
     widget.state.locals('i')
     widget.state.setdefault('i', 0)
     widget.set_interval(1000, inc)
-    return TextView(text='ready...', textViewTextSize=(clazz.android.util.TypedValue().COMPLEX_UNIT_SP, 15), width=widget_dims.width, height=widget_dims.height)
+    return TextView(text='ready...', textViewTextSize=(clazz.android.util.TypedValue().COMPLEX_UNIT_SP, 15))
 
 @simplydefined
 def timer_on_update(widget, views):
@@ -80,3 +80,4 @@ register_widget('timer', timer_on_create, timer_on_update)
 #TODO fix bytes serialization
 if __name__ == '__main__':
     widgets.init()
+    

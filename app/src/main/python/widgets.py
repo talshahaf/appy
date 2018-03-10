@@ -323,7 +323,7 @@ def widget_manager_update(widget, manager_state, views):
                 return None #doesn't update views
     except Exception:
         print(traceback.format_exc())
-        return widget_manager_create(widget, manager_state) #maybe present error widget
+    return widget_manager_create(widget, manager_state) #maybe present error widget
 
 class Handler:
     def __init__(self):
@@ -395,6 +395,11 @@ class Handler:
         data = loads(data)
         widget, manager_state = create_widget(widget_id)
         call_function(data.func_id, data.captures, timer_id=timer_id, widget=widget)
+
+    @java.interface
+    def wipeStateRequest(self):
+        print('wipe state request called')
+        state.wipe_state()
 
 
 def register_widget(name, on_create, on_update=None):

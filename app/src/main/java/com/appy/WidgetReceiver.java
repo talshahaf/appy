@@ -1,6 +1,5 @@
 package com.appy;
 
-import android.appwidget.AppWidgetManager;
 import android.appwidget.AppWidgetProvider;
 import android.content.Context;
 import android.content.Intent;
@@ -14,7 +13,7 @@ public class WidgetReceiver extends AppWidgetProvider
 {
     @Override
     public void onReceive(Context context, Intent intent) {
-        Log.d("APPY", "onReceive intent");
+        Log.d("APPY", "onReceive intent: "+intent.getAction());
         Intent serviceIntent = new Intent(context, Widget.class);
         serviceIntent.putExtra(Widget.WIDGET_INTENT, intent);
         context.startService(serviceIntent);
