@@ -383,7 +383,6 @@ public class Widget extends RemoteViewsService {
     public int[] getWidgetDimensions(AppWidgetManager appWidgetManager, int androidWidgetId) //TODO optimize
     {
         Bundle bundle = appWidgetManager.getAppWidgetOptions(androidWidgetId);
-
         //only works on portrait
         return new int[]{(int)dipToPixels(this, bundle.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH)),
                          (int)dipToPixels(this, bundle.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT))};
@@ -593,6 +592,8 @@ public class Widget extends RemoteViewsService {
         params.width = widthLimit;
         params.height = heightLimit;
         inflated.setLayoutParams(params);
+
+        Log.d("APPY", "limits: "+widthLimit+", "+heightLimit);
 
         Attributes rootAttributes = new Attributes();
         rootAttributes.attributes.get(Attributes.Type.LEFT).tryTrivialResolve(0);
@@ -1356,8 +1357,8 @@ public class Widget extends RemoteViewsService {
         try
         {
             int[] widgetDimensions = getWidgetDimensions(appWidgetManager, androidWidgetId);
-            int widthLimit = (int) (widgetDimensions[0] * 1.1); //found empirically
-            int heightLimit = (int) (widgetDimensions[1] * 1.5); //found empirically
+            int widthLimit = widgetDimensions[0];
+            int heightLimit = widgetDimensions[1];
 
             RemoteViews view = resolveDimensions(this, SPECIAL_WIDGET_ID, views, false, widthLimit, heightLimit);
             //appWidgetManager.notifyAppWidgetViewDataChanged(androidWidgetId, R.id.root);
@@ -1643,47 +1644,47 @@ public class Widget extends RemoteViewsService {
                 Log.d("APPY", "update: " + androidWidgetId + " ("+widgetId+")");
 
                 String widget = widgets.get(widgetId);
-                if (widget == null)
+                if (updateListener == null)
                 {
-                    if (updateListener != null)
-                    {
-                        Log.d("APPY", "calling listener onCreate");
-                        try
-                        {
-                            widget = updateListener.onCreate(widgetId);
-                        }
-                        catch (Exception e)
-                        {
-                            Log.e("APPY", "error in listener onCreate", e);
-                        }
-                        if(widget != null)
-                        {
-                            putWidget(widgetId, widget);
-                        }
-                        else
-                        {
-                            setSpecificErrorWidget(appWidgetManager, androidWidgetId);
-                            continue;
-                        }
-                    }
+                    setSpecificErrorWidget(appWidgetManager, androidWidgetId);
+                    continue;
                 }
 
-                if (updateListener != null)
+                if (widget == null)
                 {
-                    Log.d("APPY", "calling listener onUpdate");
+                    Log.d("APPY", "calling listener onCreate");
                     try
                     {
-                        String newwidget = updateListener.onUpdate(widgetId, widget);
-                        if (newwidget != null)
-                        {
-                            widget = newwidget;
-                            putWidget(widgetId, widget);
-                        }
+                        widget = updateListener.onCreate(widgetId);
                     }
                     catch (Exception e)
                     {
-                        Log.e("APPY", "error in listener onUpdate", e);
+                        Log.e("APPY", "error in listener onCreate", e);
                     }
+                    if(widget != null)
+                    {
+                        putWidget(widgetId, widget);
+                    }
+                    else
+                    {
+                        setSpecificErrorWidget(appWidgetManager, androidWidgetId);
+                        continue;
+                    }
+                }
+
+                Log.d("APPY", "calling listener onUpdate");
+                try
+                {
+                    String newwidget = updateListener.onUpdate(widgetId, widget);
+                    if (newwidget != null)
+                    {
+                        widget = newwidget;
+                        putWidget(widgetId, widget);
+                    }
+                }
+                catch (Exception e)
+                {
+                    Log.e("APPY", "error in listener onUpdate", e);
                 }
 
                 try
