@@ -1,83 +1,67 @@
-import random
+import faulthandler
+faulthandler.enable()
 
-from widgets import Button, TextView, ListView, register_widget, pip_install, simplydefined, widget_dims
-import widgets
-from java import clazz
-from state import print_state
+import logcat
+import subprocess
+import os
+import sys
+import traceback
+import time
 
-#=========================================================================
+def execute(command):
+    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
-@simplydefined
-def void(*args, **kwargs):
-    return None
+    killed = False
+    # Poll process for new output until finished
+    while True:
+        nextline = process.stdout.readline()
+        if nextline == '' and process.poll() is not None:
+            break
+        sys.stdout.write(nextline)
+        sys.stdout.flush()
 
-@simplydefined
-def example_on_create(widget):
-    txt = TextView(text='zxc', textViewTextSize=(clazz.android.util.TypedValue().COMPLEX_UNIT_SP, 30), click=lambda e: setattr(e, 'text', str(random.randint(50, 60))))
-    lst = ListView(children=[
-        txt,
-        txt.duplicate()
-    ])
-    return lst
+        #XXX until next version of pip
+        if b'Successfully installed' in nextline:
+            time.sleep(10)
+            process.kill()
+            killed = True
+            break
 
-@simplydefined
-def example2_on_create(widget):
-    return [
-            Button(text='ref', textViewTextSize=(clazz.android.util.TypedValue().COMPLEX_UNIT_SP, 30), click=void),
-            TextView(text='bbb', textViewTextSize=(clazz.android.util.TypedValue().COMPLEX_UNIT_SP, 30))
-        ]
+    output = process.communicate()[0]
+    exitCode = process.returncode
 
-@simplydefined
-def logcat_on_create(widget):
-    print(f'logcat on create {widget.widget_id}')
-    return ListView(children=[TextView(text='ready...', textViewTextSize=(clazz.android.util.TypedValue().COMPLEX_UNIT_SP, 15), click=void)])
+    if exitCode == 0 or killed:
+        return output
+    else:
+        raise subprocess.CalledProcessError(command, exitCode)
 
-@simplydefined
-def logcat_on_update(widget, views):
-    widget.local_token(1)
 
-    widget.state.locals('i')
-    widget.state.setdefault('i', 0)
-    widget.state.i += 1
-    print_state()
-    print(f'logcat on update {widget.widget_id}')
-    btn = Button(text='ref', textViewTextSize=(clazz.android.util.TypedValue().COMPLEX_UNIT_SP, 30), click=void)
-    lst = ListView(children=[TextView(text=str(random.randint(300, 400)), textViewTextSize=(clazz.android.util.TypedValue().COMPLEX_UNIT_SP, 15), click=void) for _ in range(widget.state.i)])
+try:
+    import pip
+except ImportError:
+    import ensurepip
+    ensurepip._main()
+    import pip
 
-    btn.top = 400
-    lst.top = btn.top / 2
+exe = os.path.join(os.environ['PYTHONHOME'], 'bin', 'python3.6m')
 
-    return [btn, lst]
+try:
+    import requests
+except ImportError:
+    print('installing requests setuptools wheel')
+    execute([exe, '-m', 'pip', 'install', '--upgrade', 'pip', 'setuptools', 'wheel', 'requests'])
+    import requests
 
-@simplydefined
-def inc(widget):
-    widget.state.locals('i')
-    widget.state.setdefault('i', 0)
-    widget.state.i += 1
-    print(widget.state.i)
-    widget.invalidate()
+try:
+    import appy
+except ImportError as e:
+    print('error importing appy: ', traceback.format_exc())
+    print('installing appy')
+    execute([exe, '-m', 'pip', 'install', '/sdcard/appy-1.0.tar.gz'])
+    import appy
 
-@simplydefined
-def timer_on_create(widget):
-    widget.state.locals('i')
-    widget.state.setdefault('i', 0)
-    widget.set_interval(1000, inc)
-    return TextView(text='ready...', textViewTextSize=(clazz.android.util.TypedValue().COMPLEX_UNIT_SP, 15))
-
-@simplydefined
-def timer_on_update(widget, views):
-    widget.local_token(1)
-    widget.state.locals('i')
-    widget.state.setdefault('i', 0)
-    views[0].text = str(widget.state.i)
-    return views
-
-#register_widget('example', example_on_create, None)
-#register_widget('example2', example2_on_create, None)
-#register_widget('logcat', logcat_on_create, logcat_on_update)
-register_widget('timer', timer_on_create, timer_on_update)
-
-#TODO fix bytes serialization
-if __name__ == '__main__':
-    widgets.init()
-    
+appy.widgets.unlock_simplydefined()
+try:
+    import user
+finally:
+    appy.widgets.lock_simplydefined()

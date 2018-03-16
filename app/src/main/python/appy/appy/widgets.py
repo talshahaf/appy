@@ -1,13 +1,10 @@
-import logcat
-import faulthandler
 import json
 import functools
 import copy
 import traceback
 import inspect
-import java
-from utils import AttrDict, dumps, loads, cap, get_args
-import state
+from .utils import AttrDict, dumps, loads, cap, get_args
+from . import java, state
 
 id_counter = 1
 def get_id():
@@ -176,6 +173,10 @@ __simpledefined_locked = False
 def lock_simplydefined():
     global __simpledefined_locked
     __simpledefined_locked = True
+
+def unlock_simplydefined():
+    global __simpledefined_locked
+    __simpledefined_locked = False
 
 def unique_function_id(f):
     return f'{inspect.getsourcefile(f)}:{f.__name__}'
@@ -413,7 +414,6 @@ java_widget_manager = None
 
 def init():
     global java_widget_manager
-    faulthandler.enable()
     lock_simplydefined()
     context = java.get_java_arg()
     java_widget_manager = context
@@ -423,13 +423,3 @@ def init():
 def restart_app():
     print('restarting')
     java_widget_manager.restart()
-
-def pip_install(package):
-    import pip
-    pip.main(['install', package])
-
-def ensurepip():
-    import ensurepip
-    ensurepip._main()
-
-

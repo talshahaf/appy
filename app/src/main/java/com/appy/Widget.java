@@ -1462,8 +1462,7 @@ public class Widget extends RemoteViewsService {
             }
             catch(Exception e)
             {
-                e.printStackTrace();
-                Log.d("APPY", "cannot init python");
+                Log.e("APPY", "exception", e);
                 handler.post(new Runnable()
                 {
                     @Override

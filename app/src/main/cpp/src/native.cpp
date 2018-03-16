@@ -2108,6 +2108,17 @@ extern "C" JNIEXPORT void JNICALL Java_com_appy_Widget_pythonInit(JNIEnv * env, 
         setenv("SHELL", "/system/bin/sh", 1);
         setenv("TMP", tmppath.c_str(), 1);
 
+        std::string ld_library_path;
+        char * prev_library_path = getenv("LD_LIBRARY_PATH");
+        if(prev_library_path != NULL)
+        {
+            ld_library_path = prev_library_path;
+            ld_library_path += ":";
+        }
+
+        ld_library_path += pythonhome + "/lib";
+        setenv("LD_LIBRARY_PATH", ld_library_path.c_str(), 1);
+
         //LD_LIBRARY_PATH hack
         char buffer[1024] = {};
         ((decltype(&android_get_LD_LIBRARY_PATH))dlsym(RTLD_DEFAULT, "android_get_LD_LIBRARY_PATH"))(buffer, sizeof(buffer) - 1);
@@ -2134,6 +2145,11 @@ extern "C" JNIEXPORT void JNICALL Java_com_appy_Widget_pythonInit(JNIEnv * env, 
 
         Py_SetProgramName(pythonlib_w);
         Py_InitializeEx(0);
+        return;
+    }
+    catch(std::exception & e)
+    {
+        env->ThrowNew(python_exception_class, e.what());
         return;
     }
     catch(...)

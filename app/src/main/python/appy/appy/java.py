@@ -1,4 +1,4 @@
-import bridge
+from . import bridge
 import time
 
 primitive_wraps = {}
