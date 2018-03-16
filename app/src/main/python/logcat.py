@@ -37,6 +37,9 @@ class LogcatWriter:
 
     def isatty(self):
         return False
+
+    def flush(self):
+        self.write('\n')
             
 sys.stdout = LogcatWriter(LogcatWriter.INFO)
 sys.stderr = LogcatWriter(LogcatWriter.ERROR)

@@ -6,6 +6,8 @@ known_classes = {}
 known_methods = {}
 known_fields = {}
 
+#TODO fix bytes serialization
+
 class jref:
     _slots__ = []
     def __init__(self, handle):

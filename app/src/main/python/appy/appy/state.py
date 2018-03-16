@@ -1,6 +1,6 @@
 import pprint
-import java
-from utils import AttrDict, dumps, loads
+from . import java
+from .utils import AttrDict, dumps, loads
 
 java_widget_manager = None
 
