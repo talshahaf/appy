@@ -11,10 +11,12 @@
         android:id="@+id/clear_widgets"
         android:layout_width="153dp"
         android:layout_height="45dp"
-        android:layout_marginEnd="8dp"
-        android:layout_marginStart="8dp" android:text="Clear Widgets"
-        app:layout_constraintEnd_toEndOf="parent" app:layout_constraintStart_toStartOf="parent"
-        tools:layout_editor_absoluteY="140dp"/>
+        android:layout_marginBottom="8dp"
+        android:layout_marginEnd="8dp" android:layout_marginStart="8dp"
+        android:layout_marginTop="8dp" android:text="Clear Widgets"
+        app:layout_constraintBottom_toBottomOf="parent" app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.502" app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" app:layout_constraintVertical_bias="0.277"/>
     <Button
         android:id="@+id/clear_timers"
         android:layout_width="153dp"
@@ -51,4 +53,13 @@
         app:layout_constraintHorizontal_bias="0.489"
         app:layout_constraintStart_toStartOf="@+id/clear_state"
         app:layout_constraintTop_toBottomOf="@+id/clear_state"/>
+    <TextView
+        android:id="@+id/logcat_view"
+        android:layout_width="0dp"
+        android:layout_height="0dp" android:layout_marginBottom="8dp"
+        android:layout_marginEnd="8dp" android:layout_marginStart="8dp"
+        android:layout_marginTop="8dp" android:background="@color/terminal_bg"
+        android:text="TextView" android:textColor="@android:color/white"
+        app:layout_constraintBottom_toBottomOf="parent" app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent" app:layout_constraintTop_toTopOf="parent"/>
 </android.support.constraint.ConstraintLayout>

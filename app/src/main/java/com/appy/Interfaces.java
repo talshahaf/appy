@@ -28,3 +28,8 @@ interface WidgetUpdateListener
     void wipeStateRequest();
 }
 
+interface LogcatLines
+{
+    void onLine(String line);
+}
+
