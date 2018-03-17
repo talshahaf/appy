@@ -2031,7 +2031,7 @@ PyMODINIT_FUNC PyInit_native_appy(void)
 extern "C" void android_get_LD_LIBRARY_PATH(char*, size_t);
 extern "C" void android_update_LD_LIBRARY_PATH(const char*);
 
-extern "C" JNIEXPORT void JNICALL Java_com_appy_Widget_pythonInit(JNIEnv * env, jclass clazz, jstring j_pythonhome, jstring j_tmppath, jstring j_pythonlib, jstring j_scriptpath, jobject j_arg)
+extern "C" JNIEXPORT void JNICALL Java_com_appy_Widget_pythonInit(JNIEnv * env, jclass clazz, jstring j_pythonhome, jstring j_cachepath, jstring j_pythonlib, jstring j_scriptpath, jobject j_arg)
 {
     try
     {
@@ -2047,14 +2047,14 @@ extern "C" JNIEXPORT void JNICALL Java_com_appy_Widget_pythonInit(JNIEnv * env, 
         }
 
         auto pythonhome = get_string(env, j_pythonhome);
-        auto tmppath = get_string(env, j_tmppath);
+        auto cachepath = get_string(env, j_cachepath);
         auto pythonlib = get_string(env, j_pythonlib);
         auto scriptpath = get_string(env, j_scriptpath);
 
         setenv("PYTHONHOME", pythonhome.c_str(), 1);
         setenv("HOME", pythonhome.c_str(), 1);
         setenv("SHELL", "/system/bin/sh", 1);
-        setenv("TMP", tmppath.c_str(), 1);
+        setenv("TMP", cachepath.c_str(), 1);
 
         std::string ld_library_path;
         char * prev_library_path = getenv("LD_LIBRARY_PATH");

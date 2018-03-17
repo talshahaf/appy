@@ -57,7 +57,7 @@ try:
 except ImportError as e:
     print('error importing appy: ', traceback.format_exc())
     print('installing appy')
-    execute([exe, '-m', 'pip', 'install', '/sdcard/appy-1.0.tar.gz'])
+    execute([exe, '-m', 'pip', 'install', os.path.join(os.environ['TMP'], 'appy.tar.gz')])
     import appy
 
 appy.widgets.unlock_simplydefined()
