@@ -25,7 +25,7 @@ public class MainActivity extends AppCompatActivity implements LogcatLines
     Handler handler;
 
     final ArrayDeque<String> logcatLines = new ArrayDeque<>();
-    public static final int LOGCAT_LINES = 30;
+    public static final int LOGCAT_LINES = 50;
 
     Logcat logcat = null;
 

@@ -3,6 +3,7 @@ import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
@@ -1446,12 +1447,13 @@ public class Widget extends RemoteViewsService {
         protected Void doInBackground(Widget... param)
         {
             error = false;
-            String pythonHome = Widget.this.getFilesDir().getAbsolutePath();
+            String pythonHome = new File(getFilesDir(), "python").getAbsolutePath();
             String pythonLib = new File(pythonHome, "/lib/libpython3.6m.so").getAbsolutePath(); //must be without
-            String cacheDir = Widget.this.getCacheDir().getAbsolutePath();
+            String cacheDir = getCacheDir().getAbsolutePath();
             try
             {
-                unpackPython(Widget.this.getAssets().open("python.targz"), pythonHome);
+                unpackPython(getAssets().open("python.targz"), pythonHome);
+                copyAsset(getAssets().open("appy.targz"), new File(cacheDir, "appy.tar.gz"));
                 System.load(pythonLib);
                 System.loadLibrary("native");
                 pythonInit(pythonHome, cacheDir, pythonLib, "/sdcard/appy/main.py", Widget.this);
@@ -1816,6 +1818,21 @@ public class Widget extends RemoteViewsService {
         {
             e.printStackTrace();
         }
+    }
+
+    public static void copyAsset(InputStream asset, File file) throws IOException
+    {
+        FileOutputStream fos = new FileOutputStream(file);
+        BufferedOutputStream out = new BufferedOutputStream(fos);
+
+        byte[] buffer = new byte[1024];
+        int read;
+        while((read = asset.read(buffer)) != -1)
+        {
+            out.write(buffer, 0, read);
+        }
+        out.flush();
+        out.close();
     }
 
     public static void unpackPython(InputStream pythontar, String pythonHome)
