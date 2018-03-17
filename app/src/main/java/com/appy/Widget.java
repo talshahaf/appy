@@ -1,27 +1,24 @@
 package com.appy;
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
-import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.ObjectOutputStream;
 import java.lang.annotation.Annotation;
-import java.lang.reflect.Array;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.IllegalFormatException;
-import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Random;
-import java.util.SortedSet;
+import java.util.zip.GZIPInputStream;
 
 import android.app.AlarmManager;
 import android.app.PendingIntent;
@@ -33,9 +30,12 @@ import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.drawable.Icon;
 import android.net.Uri;
+import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
+import android.system.ErrnoException;
+import android.system.Os;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.util.Pair;
@@ -63,6 +63,9 @@ import android.widget.ViewFlipper;
 
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.kamranzafar.jtar.TarEntry;
+import org.kamranzafar.jtar.TarHeader;
+import org.kamranzafar.jtar.TarInputStream;
 
 public class Widget extends RemoteViewsService {
     private static final String ITEM_ID_EXTRA = "ITEM_ID";
@@ -972,7 +975,8 @@ public class Widget extends RemoteViewsService {
         Integer widget = fromAndroidWidget(oldAndroidWidget, false);
         if(widget == null)
         {
-            throw new IllegalArgumentException("widget does not exists");
+            //throw new IllegalArgumentException("widget does not exists");
+            return;
         }
         androidToWidget.remove(oldAndroidWidget);
         widgetToAndroid.put(widget, newAndroidWidget);
@@ -984,7 +988,8 @@ public class Widget extends RemoteViewsService {
         Integer widget = fromAndroidWidget(androidWidget, false);
         if(widget == null)
         {
-            throw new IllegalArgumentException("widget does not exists");
+            //throw new IllegalArgumentException("widget does not exists");
+            return;
         }
         widgetToAndroid.remove(widget);
         androidToWidget.remove(androidWidget);
@@ -1428,6 +1433,59 @@ public class Widget extends RemoteViewsService {
         }
     }
 
+    private class PythonSetup extends AsyncTask<Widget, Void, Void>
+    {
+        private boolean error = false;
+
+        public boolean hadError()
+        {
+            return error;
+        }
+
+        @Override
+        protected Void doInBackground(Widget... param)
+        {
+            error = false;
+            String pythonHome = Widget.this.getFilesDir().getAbsolutePath();
+            String pythonLib = new File(pythonHome, "/lib/libpython3.6m.so").getAbsolutePath(); //must be without
+            String cacheDir = Widget.this.getCacheDir().getAbsolutePath();
+            try
+            {
+                unpackPython(Widget.this.getAssets().open("python.targz"), pythonHome);
+                System.load(pythonLib);
+                System.loadLibrary("native");
+                pythonInit(pythonHome, cacheDir, pythonLib, "/sdcard/appy/main.py", Widget.this);
+                //java_widget();
+            }
+            catch(Exception e)
+            {
+                Log.e("APPY", "exception", e);
+                error = true;
+            }
+            return null;
+        }
+
+        @Override
+        protected void onPostExecute(Void result) {
+            handler.post(new Runnable()
+            {
+                @Override
+                public void run()
+                {
+                    startService(new Intent(Widget.this, Widget.class));
+                }
+            });
+        }
+
+        @Override
+        protected void onPreExecute() {
+        }
+
+        @Override
+        protected void onProgressUpdate(Void... values) {
+        }
+    }
+
     @Override
     public int onStartCommand(Intent intent, int flags, int startId)
     {
@@ -1435,44 +1493,47 @@ public class Widget extends RemoteViewsService {
         return super.onStartCommand(intent, flags, startId);
     }
 
+    boolean startedAfterTask = false;
+    PythonSetup pythonSetup = new PythonSetup();
     public void handleStartCommand(Intent intent)
     {
-        boolean firstStart = false;
-        if(!started)
+        if(!startedAfterTask && pythonSetup.getStatus() == AsyncTask.Status.PENDING)
         {
-            started = true;
-            firstStart = true;
             handler = new Handler();
 
             loadWidgets();
             loadTimers();
 
-            String pythonHome = getFilesDir().getAbsolutePath();
-            String pythonLib = new File(pythonHome, "/lib/libpython3.6m.so").getAbsolutePath(); //must be without
-            String cacheDir = getCacheDir().getAbsolutePath();
+            pythonSetup.execute(this);
 
-            try
+            setAllWidgets(false);
+            return;
+        }
+
+        if(pythonSetup.getStatus() == AsyncTask.Status.RUNNING)
+        {
+            setAllWidgets(false);
+            return;
+        }
+
+        if(pythonSetup.getStatus() == AsyncTask.Status.FINISHED && pythonSetup.hadError())
+        {
+            handler.post(new Runnable()
             {
-                unpackPython(pythonHome);
-                System.load(pythonLib);
-                System.loadLibrary("native");
-                pythonInit(pythonHome, cacheDir, pythonLib);
-                pythonRun("/sdcard/appy/main.py", Widget.this);
-                //java_widget();
-            }
-            catch(Exception e)
-            {
-                Log.e("APPY", "exception", e);
-                handler.post(new Runnable()
+                @Override
+                public void run()
                 {
-                    @Override
-                    public void run()
-                    {
-                        setAllWidgets(true);
-                    }
-                });
-                return;
-            }
+                    setAllWidgets(true);
+                }
+            });
+            return;
+        }
+
+        boolean firstStart = false;
+        if(!startedAfterTask)
+        {
+            firstStart = true;
+            startedAfterTask = true;
         }
 
         Log.d("APPY", "startCommand");
@@ -1587,7 +1648,7 @@ public class Widget extends RemoteViewsService {
             {
                 eventWidgetId = widgetIntent.getIntExtra(WIDGET_ID_EXTRA, -1);
 
-                if(eventWidgetId == SPECIAL_WIDGET_ID)
+                if(eventWidgetId == SPECIAL_WIDGET_ID) //TODO
                 {
                     saveWidgets();
                     restart();
@@ -1655,6 +1716,7 @@ public class Widget extends RemoteViewsService {
                     try
                     {
                         widget = updateListener.onCreate(widgetId);
+                        Log.d("APPY", "called listener onCreate");
                     }
                     catch (Exception e)
                     {
@@ -1675,6 +1737,7 @@ public class Widget extends RemoteViewsService {
                 try
                 {
                     String newwidget = updateListener.onUpdate(widgetId, widget);
+                    Log.d("APPY", "called listener onUpdate");
                     if (newwidget != null)
                     {
                         widget = newwidget;
@@ -1755,27 +1818,21 @@ public class Widget extends RemoteViewsService {
         }
     }
 
-    public static void runProcess(String[] command)
+    public static void unpackPython(InputStream pythontar, String pythonHome)
     {
-        try
-        {
-            Process process = Runtime.getRuntime().exec(command);
-            printAll(process.getInputStream());
-            process.waitFor();
-        }
-        catch (IOException|InterruptedException e)
-        {
-            Log.e("APPY", "exception", e);
-        }
-    }
-
-    public void unpackPython(String pythonHome)
-    {
-        if(!new File(pythonHome, "lib/libpython3.so").exists())
+        if(!new File(pythonHome, "lib/libpython3.6m.so").exists())
         {
             Log.d("APPY", "unpacking python");
 
-            runProcess(new String[]{"sh", "-c", "tar -xf /sdcard/python.tar -C " + pythonHome + " 2>&1"});
+            try
+            {
+                untar(pythontar, pythonHome);
+            }
+            catch(IOException e){
+                e.printStackTrace();
+                Log.e("APPY", "tar exception: "+e);
+            }
+            //runProcess(new String[]{"sh", "-c", "tar -xf /sdcard/python.tar -C " + pythonHome + " 2>&1"});
 
             //printFnames(pythonHome);
             Log.d("APPY", "done unpacking python");
@@ -1786,7 +1843,100 @@ public class Widget extends RemoteViewsService {
         }
     }
 
-    protected static native void pythonInit(String pythonHome, String tmpPath, String pythonLibPath);
-    protected static native void pythonRun(String script, Object obj);
+    public static int READ_PERM = 0444;
+    public static int WRITE_PERM = 0222;
+    public static int EXEC_PERM = 0111;
+
+    public static void process(TarInputStream tis, TarEntry entry, String dest) throws IOException
+    {
+        Log.d("APPY", "Extracting: " + entry.getName());
+        int count;
+        byte data[] = new byte[2048];
+        File file = new File(dest, entry.getName());
+
+        String canonicalDest = new File(dest).getCanonicalPath();
+
+        if(!file.getCanonicalPath().startsWith(canonicalDest))
+        {
+            throw new IOException("traversal");
+        }
+
+        if(entry.isDirectory())
+        {
+            file.mkdirs();
+        }
+        else
+        {
+            file.getParentFile().mkdirs();
+
+            if(entry.getHeader().linkFlag == TarHeader.LF_SYMLINK || entry.getHeader().linkFlag == TarHeader.LF_LINK)
+            {
+                File target = new File(file.getParentFile(), entry.getHeader().linkName.toString());
+                if(!target.getCanonicalPath().startsWith(canonicalDest))
+                {
+                    throw new IOException("traversal");
+                }
+                try
+                {
+                    Log.d("APPY", "creating link: "+entry.getHeader().linkName.toString()+" as "+ file.getAbsolutePath());
+                    if(entry.getHeader().linkFlag == TarHeader.LF_SYMLINK)
+                    {
+                        Os.symlink(entry.getHeader().linkName.toString(), file.getAbsolutePath());
+                    }
+                    else
+                    {
+                        Os.link(entry.getHeader().linkName.toString(), file.getAbsolutePath());
+                    }
+                }
+                catch(ErrnoException e)
+                {
+                    throw new IOException(e.getMessage());
+                }
+            }
+            else if(entry.getHeader().linkFlag == TarHeader.LF_NORMAL)
+            {
+                FileOutputStream fos = new FileOutputStream(file);
+                BufferedOutputStream out = new BufferedOutputStream(fos);
+                while ((count = tis.read(data)) != -1)
+                {
+                    out.write(data, 0, count);
+                }
+
+                out.flush();
+                out.close();
+            }
+            else
+            {
+                Log.d("APPY", "cannot create type "+entry.getHeader().linkFlag);
+            }
+        }
+
+        file.setReadable((entry.getHeader().mode & READ_PERM) != 0, false);
+        file.setWritable((entry.getHeader().mode & WRITE_PERM) != 0, false);
+        file.setExecutable((entry.getHeader().mode & EXEC_PERM) != 0, false);
+        file.setLastModified(entry.getModTime().getTime());
+    }
+
+    public static void untar(InputStream tar, String dest) throws IOException
+    {
+        // Create a TarInputStream
+        TarInputStream tis = new TarInputStream(new GZIPInputStream(new BufferedInputStream(tar)));
+        TarEntry entry;
+
+        while((entry = tis.getNextEntry()) != null) {
+            try
+            {
+                process(tis, entry, dest);
+            }
+            catch(IOException e)
+            {
+                Log.w("APPY", "exception in tar file: ", e);
+            }
+        }
+
+        tis.close();
+    }
+
+    protected static native void pythonInit(String pythonHome, String tmpPath, String pythonLibPath, String script, Object arg);
     protected static native Object pythonCall(Object... args) throws Throwable;
 }

@@ -838,6 +838,7 @@ static PyObject * act(PyObject *self, PyObject *args)
     {
         static_assert(sizeof(jvalue) == sizeof(unsigned long long));
 
+        jvalue * jvalues = NULL;
         scope_guards onexit;
 
         unsigned long self = 0;
@@ -849,8 +850,6 @@ static PyObject * act(PyObject *self, PyObject *args)
         if (!PyArg_ParseTuple(args, "kkOii", &self, &method, &values, &return_type, &op)) {
             return NULL;
         }
-
-        jvalue * jvalues = NULL;
 
         if(values != Py_None)
         {
@@ -1429,6 +1428,7 @@ static PyObject * array(PyObject *self, PyObject *args)
     {
         static_assert(sizeof(jvalue) == sizeof(unsigned long long));
 
+        Optional * jvalues = NULL;
         scope_guards onexit;
 
         unsigned long obj = 0;
@@ -1441,8 +1441,6 @@ static PyObject * array(PyObject *self, PyObject *args)
         if (!PyArg_ParseTuple(args, "kOiiik", &obj, &values, &start, &type, &op, &objclass)) {
             return NULL;
         }
-
-        Optional * jvalues = NULL;
 
         Py_ssize_t value_num = 0;
         if(values != Py_None)
@@ -1903,8 +1901,6 @@ extern "C" JNIEXPORT jobject JNICALL Java_com_appy_Widget_pythonCall(JNIEnv * en
 {
     try
     {
-        scope_guards guards;
-
         find_types(env);
 
         if(callback == NULL)
@@ -1915,6 +1911,8 @@ extern "C" JNIEXPORT jobject JNICALL Java_com_appy_Widget_pythonCall(JNIEnv * en
 
         PyGILState_STATE gstate;
         gstate = PyGILState_Ensure();
+
+        scope_guards guards;
         guards += [&gstate] {PyGILState_Release(gstate);};
 
         PyObject * arg = Py_BuildValue("(k)", (unsigned long)make_global_ref(env, args));
@@ -1991,57 +1989,6 @@ static PyObject * logcat_write(PyObject *self, PyObject *args)
     }
 }
 
-extern "C" JNIEXPORT void JNICALL Java_com_appy_Widget_pythonRun(JNIEnv * env, jclass clazz, jstring script, jobject arg)
-{
-    try
-    {
-        find_types(env);
-
-        auto path = get_string(env, script);
-
-        if(arg != NULL)
-        {
-            if(g_java_arg == NULL)
-            {
-                g_java_arg = env->NewGlobalRef(arg);
-            }
-            if(g_java_arg == NULL)
-            {
-                env->ThrowNew(python_exception_class, "NewGlobalRef failed");
-                return;
-            }
-        }
-
-        FILE * fh = fopen(path.c_str(), "r");
-        if(fh == NULL)
-        {
-            env->ThrowNew(python_exception_class, "fopen failed");
-            return;
-        }
-
-        wchar_t *program = Py_DecodeLocale(path.c_str(), NULL);
-        if(program == NULL)
-        {
-            env->ThrowNew(python_exception_class, "Py_DecodeLocale failed");
-            return;
-        }
-
-        PySys_SetArgv(1, &program);
-        int ret = PyRun_SimpleFileExFlags(fh, path.c_str(), 1, NULL);
-        if(ret == -1)
-        {
-            env->ThrowNew(python_exception_class, "PyRun_SimpleFileExFlags failed");
-            return;
-        }
-    }
-    catch(...)
-    {
-        env->ThrowNew(python_exception_class, "exception was thrown from pythonRun");
-        return;
-    }
-    return;
-}
-
 static PyMethodDef native_appy_methods[] = {
         {"act",  act, METH_VARARGS, "Interacts with java"},
         {"get_method",  get_method, METH_VARARGS, "Finds a java method"},
@@ -2084,7 +2031,7 @@ PyMODINIT_FUNC PyInit_native_appy(void)
 extern "C" void android_get_LD_LIBRARY_PATH(char*, size_t);
 extern "C" void android_update_LD_LIBRARY_PATH(const char*);
 
-extern "C" JNIEXPORT void JNICALL Java_com_appy_Widget_pythonInit(JNIEnv * env, jclass clazz, jstring j_pythonhome, jstring j_tmppath, jstring j_pythonlib)
+extern "C" JNIEXPORT void JNICALL Java_com_appy_Widget_pythonInit(JNIEnv * env, jclass clazz, jstring j_pythonhome, jstring j_tmppath, jstring j_pythonlib, jstring j_scriptpath, jobject j_arg)
 {
     try
     {
@@ -2102,6 +2049,7 @@ extern "C" JNIEXPORT void JNICALL Java_com_appy_Widget_pythonInit(JNIEnv * env, 
         auto pythonhome = get_string(env, j_pythonhome);
         auto tmppath = get_string(env, j_tmppath);
         auto pythonlib = get_string(env, j_pythonlib);
+        auto scriptpath = get_string(env, j_scriptpath);
 
         setenv("PYTHONHOME", pythonhome.c_str(), 1);
         setenv("HOME", pythonhome.c_str(), 1);
@@ -2145,6 +2093,49 @@ extern "C" JNIEXPORT void JNICALL Java_com_appy_Widget_pythonInit(JNIEnv * env, 
 
         Py_SetProgramName(pythonlib_w);
         Py_InitializeEx(0);
+
+        if(j_arg != NULL)
+        {
+            if(g_java_arg == NULL)
+            {
+                g_java_arg = env->NewGlobalRef(j_arg);
+            }
+            if(g_java_arg == NULL)
+            {
+                env->ThrowNew(python_exception_class, "NewGlobalRef failed");
+                return;
+            }
+        }
+
+        FILE * fh = fopen(scriptpath.c_str(), "r");
+        if(fh == NULL)
+        {
+            env->ThrowNew(python_exception_class, "fopen failed");
+            return;
+        }
+
+        wchar_t *program = Py_DecodeLocale(scriptpath.c_str(), NULL);
+        if(program == NULL)
+        {
+            env->ThrowNew(python_exception_class, "Py_DecodeLocale failed");
+            return;
+        }
+
+        PySys_SetArgv(1, &program);
+
+        ret = PyRun_SimpleFileExFlags(fh, scriptpath.c_str(), 1, NULL);
+
+        PyEval_InitThreads();
+
+        //TODO not sure if this is ok
+        PyThreadState* mainPyThread = PyEval_SaveThread();
+
+        if(ret == -1)
+        {
+            env->ThrowNew(python_exception_class, "PyRun_SimpleFileExFlags failed");
+            return;
+        }
+
         return;
     }
     catch(std::exception & e)

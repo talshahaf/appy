@@ -22,7 +22,7 @@ def execute(command):
 
         #XXX until next version of pip
         if b'Successfully installed' in nextline:
-            time.sleep(10)
+            time.sleep(2)
             process.kill()
             killed = True
             break
