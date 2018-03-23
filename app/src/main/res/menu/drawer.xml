@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <group android:checkableBehavior="single">
+        <item
+            android:id="@+id/navigation_control"
+            android:checked="true"
+            android:title="Control"/>
+        <item
+            android:id="@+id/navigation_logcat"
+            android:title="Logcat"
+            />
+        <item
+            android:id="@+id/navigation_pip"
+            android:title="pip"
+        />
+        <item
+            android:id="@+id/navigation_files"
+            android:title="Files"
+        />
+    </group>
+</menu>

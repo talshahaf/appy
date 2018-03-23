@@ -28,8 +28,9 @@ interface WidgetUpdateListener
     void wipeStateRequest();
 }
 
-interface LogcatLines
+interface RunnerListener
 {
     void onLine(String line);
+    void onExited(Integer code);
 }
 
