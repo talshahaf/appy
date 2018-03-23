@@ -2031,6 +2031,20 @@ PyMODINIT_FUNC PyInit_native_appy(void)
 extern "C" void android_get_LD_LIBRARY_PATH(char*, size_t);
 extern "C" void android_update_LD_LIBRARY_PATH(const char*);
 
+static void append_to_env(const char * env, const std::string & what)
+{
+    std::string newenv;
+    char * prev_env = getenv(env);
+    if(prev_env != NULL)
+    {
+        newenv = prev_env;
+        newenv += ":";
+    }
+
+    newenv += what;
+    setenv(env, newenv.c_str(), 1);
+}
+
 extern "C" JNIEXPORT void JNICALL Java_com_appy_Widget_pythonInit(JNIEnv * env, jclass clazz, jstring j_pythonhome, jstring j_cachepath, jstring j_pythonlib, jstring j_scriptpath, jobject j_arg)
 {
     try
@@ -2056,23 +2070,19 @@ extern "C" JNIEXPORT void JNICALL Java_com_appy_Widget_pythonInit(JNIEnv * env, 
         setenv("SHELL", "/system/bin/sh", 1);
         setenv("TMP", cachepath.c_str(), 1);
 
-        std::string ld_library_path;
-        char * prev_library_path = getenv("LD_LIBRARY_PATH");
-        if(prev_library_path != NULL)
-        {
-            ld_library_path = prev_library_path;
-            ld_library_path += ":";
-        }
-
-        ld_library_path += pythonhome + "/lib";
-        setenv("LD_LIBRARY_PATH", ld_library_path.c_str(), 1);
+        append_to_env("LD_LIBRARY_PATH", pythonhome + "/lib");
+        append_to_env("PATH", pythonhome + "/bin");
 
         //LD_LIBRARY_PATH hack
         char buffer[1024] = {};
         ((decltype(&android_get_LD_LIBRARY_PATH))dlsym(RTLD_DEFAULT, "android_get_LD_LIBRARY_PATH"))(buffer, sizeof(buffer) - 1);
 
         std::string library_path(buffer);
-        library_path = library_path + ":" + pythonhome + "/lib";
+        if(!library_path.empty())
+        {
+            library_path += ":";
+        }
+        library_path += pythonhome + "/lib";
 
         ((decltype(&android_update_LD_LIBRARY_PATH))dlsym(RTLD_DEFAULT, "android_update_LD_LIBRARY_PATH"))(library_path.c_str());
         //--------------------
