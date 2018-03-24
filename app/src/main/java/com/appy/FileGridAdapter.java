@@ -2,6 +2,7 @@ package com.appy;
 
 import android.content.Context;
 import android.media.Image;
+import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -9,6 +10,7 @@ import android.widget.BaseAdapter;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.CompoundButton;
+import android.widget.GridView;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -69,6 +71,9 @@ public class FileGridAdapter extends BaseAdapter
         {
             LayoutInflater m_inflater = LayoutInflater.from(context);
             view = m_inflater.inflate(R.layout.filegrid_item, null);
+            view.setLayoutParams(new GridView.LayoutParams((int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP,120, context.getResources().getDisplayMetrics()),
+                                                           (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP,120, context.getResources().getDisplayMetrics())));
+
             viewHolder = new ViewHolder();
             viewHolder.layout = view.findViewById(R.id.filegrid_layout);
             viewHolder.name = view.findViewById(R.id.filegrid_name);

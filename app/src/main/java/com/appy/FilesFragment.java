@@ -1,8 +1,10 @@
 package com.appy;
 
 import android.app.Activity;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
+import android.support.v7.app.AlertDialog;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -66,12 +68,22 @@ public class FilesFragment extends MyFragment implements FileGridAdapter.ItemAct
     }
 
     @Override
-    public void onDelete(PythonFile file)
+    public void onDelete(final PythonFile file)
     {
-        Log.d("APPY", "on delete");
-        ((MainActivity)getActivity()).widgetService.removePythonFile(file);
-        adapter.setItems(((MainActivity)getActivity()).widgetService.getPythonFiles());
-        adapter.notifyDataSetChanged();
+        new AlertDialog.Builder(getActivity())
+                .setTitle("Confirm Delete")
+                .setMessage("Are you sure?")
+                .setIcon(android.R.drawable.ic_dialog_alert)
+                .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener()
+                {
+                    public void onClick(DialogInterface dialog, int whichButton)
+                    {
+                        Log.d("APPY", "on delete");
+                        ((MainActivity)getActivity()).widgetService.removePythonFile(file);
+                        adapter.setItems(((MainActivity)getActivity()).widgetService.getPythonFiles());
+                        adapter.notifyDataSetChanged();
+                    }
+                }).setNegativeButton(android.R.string.no, null).show();
     }
 
     @Override
