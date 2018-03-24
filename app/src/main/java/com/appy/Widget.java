@@ -3,21 +3,18 @@ import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.lang.annotation.Annotation;
-import java.lang.reflect.Array;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
@@ -41,7 +38,6 @@ import android.os.Handler;
 import android.os.IBinder;
 import android.system.ErrnoException;
 import android.system.Os;
-import android.util.ArraySet;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.util.Pair;
@@ -67,14 +63,11 @@ import android.widget.StackView;
 import android.widget.TextView;
 import android.widget.ViewFlipper;
 
-import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.kamranzafar.jtar.TarEntry;
 import org.kamranzafar.jtar.TarHeader;
 import org.kamranzafar.jtar.TarInputStream;
-
-import static android.os.AsyncTask.THREAD_POOL_EXECUTOR;
 
 public class Widget extends RemoteViewsService {
     private static final String ITEM_ID_EXTRA = "ITEM_ID";
@@ -413,20 +406,22 @@ public class Widget extends RemoteViewsService {
                          (int)dipToPixels(this, bundle.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT))};
     }
 
-    public int selectRootView(int collections)
+    public int selectRootView(ArrayList<String> collections)
     {
-        switch(collections)
+        //TODO types
+        switch(collections.size())
         {
             case 0:
-                return R.layout.simple_0_root;
+                return R.layout.widget_0_root;
             case 1:
-                return R.layout.simple_1_root;
+                return R.layout.widget_1_root;
         }
         throw new IllegalArgumentException(collections + " collections are not supported");
     }
 
-    public Pair<Integer, Integer> getListViewId(int n)
+    public Pair<Integer, Integer> getListViewId(String type, int n)
     {
+        //TODO types
         switch(n)
         {
             case 0:
@@ -441,26 +436,36 @@ public class Widget extends RemoteViewsService {
     {
         switch(type)
         {
+            case "AnalogClock":
+                return R.layout.widget_analogclock;
             case "Button":
-                return R.layout.simple_button;
+                return R.layout.widget_button;
+            case "Chronometer":
+                return R.layout.widget_chronometer;
+            case "ImageButton":
+                return R.layout.widget_imagebutton;
+            case "ImageView":
+                return R.layout.widget_imageview;
+            case "ProgressBar":
+                return R.layout.widget_progressbar;
             case "TextView":
-                return R.layout.simple_textview;
+                return R.layout.widget_textview;
         }
         throw new IllegalArgumentException("unknown type " + type);
     }
 
     public RemoteViews generate(Context context, int widgetId, ArrayList<DynamicView> dynamicList, boolean keepDescription, boolean inCollection) throws InvocationTargetException, IllegalAccessException
     {
-        int collections = 0;
+        ArrayList<String> collections = new ArrayList<>();
         for(DynamicView layout : dynamicList)
         {
             if(isCollection(layout.type))
             {
-                collections++;
+                collections.add(layout.type);
             }
         }
 
-        if(collections > 0 && inCollection)
+        if(collections.size() > 0 && inCollection)
         {
             throw new IllegalArgumentException("cannot have collections in collection");
         }
@@ -472,7 +477,7 @@ public class Widget extends RemoteViewsService {
         {
             //can only be collections == 0
             //this fixes a bug when using the same id? i think it's in removeAllViews or in addView
-            root_xml = R.layout.simple_0_item;
+            root_xml = R.layout.widget_0_item;
             elements_id = R.id.listitem_elements;
         }
 
@@ -488,7 +493,7 @@ public class Widget extends RemoteViewsService {
             {
                 remoteView = rootView;
                 layout.xml_id = root_xml;
-                Pair<Integer, Integer> ids = getListViewId(collectionCounter);
+                Pair<Integer, Integer> ids = getListViewId(layout.type, collectionCounter);
                 layout.view_id = ids.first;
                 layout.container_id = ids.second;
                 collectionCounter++;
@@ -507,6 +512,7 @@ public class Widget extends RemoteViewsService {
 
             for(RemoteMethodCall methodCall : layout.methodCalls)
             {
+//                Log.d("APPY", "calling method "+methodCall.toString());
                 methodCall.call(remoteView, methodCall.isParentCall() ? layout.container_id : layout.view_id);
             }
 
@@ -788,12 +794,12 @@ public class Widget extends RemoteViewsService {
                 dynamicView.actualHeight = heightLimit - ver.second - ver.first;
             }
 
-            Log.d("APPY", "resolved attributes: ");
-            for(Map.Entry<Attributes.Type, Attributes.AttributeValue> entry : dynamicView.attributes.attributes.entrySet())
-            {
-                Log.d("APPY", entry.getKey().name()+": "+entry.getValue().resolvedValue);
-            }
-            Log.d("APPY", "selected pad for "+dynamicView.getId()+" "+dynamicView.type+": "+hor.first+", "+hor.second+", "+ver.first+", "+ver.second);
+//            Log.d("APPY", "resolved attributes: ");
+//            for(Map.Entry<Attributes.Type, Attributes.AttributeValue> entry : dynamicView.attributes.attributes.entrySet())
+//            {
+//                Log.d("APPY", entry.getKey().name()+": "+entry.getValue().resolvedValue);
+//            }
+//            Log.d("APPY", "selected pad for "+dynamicView.getId()+" "+dynamicView.type+": "+hor.first+", "+hor.second+", "+ver.first+", "+ver.second);
 
             dynamicView.methodCalls.add(new RemoteMethodCall("setViewPadding", true, "setViewPadding",
                     hor.first,
