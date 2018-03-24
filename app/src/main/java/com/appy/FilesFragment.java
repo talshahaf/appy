@@ -57,7 +57,7 @@ public class FilesFragment extends MyFragment implements FileGridAdapter.ItemAct
             ArrayList<PythonFile> pythonFiles = new ArrayList<>();
             for(String file : files)
             {
-                pythonFiles.add(new PythonFile(file, file, PythonFile.State.IDLE));
+                pythonFiles.add(new PythonFile(file, ""));
             }
             ((MainActivity)getActivity()).widgetService.addPythonFiles(pythonFiles);
             adapter.setItems(((MainActivity)getActivity()).widgetService.getPythonFiles());

@@ -1,8 +1,4 @@
-import json
-import functools
-import copy
-import traceback
-import inspect
+import json, functools, copy, traceback, inspect, threading, os, collections, importlib
 from .utils import AttrDict, dumps, loads, cap, get_args
 from . import java, state
 
@@ -66,7 +62,7 @@ class WidgetAttribute:
         raise AttributeError()
 
 def call_function(func_id, captures, **kwargs):
-    func = usable_functions[func_id]
+    func = get_usable_function_from_id(func_id)
     pass_args = copy.deepcopy(captures)
     pass_args.update(kwargs) #kwargs priority
 
@@ -168,35 +164,68 @@ ListView = lambda *args, **kwargs: Element.create('ListView', *args, **kwargs)
 available_widgets = {}
 
 usable_functions = {}
-__simpledefined_locked = False
+__simplydefined_module = threading.local()
 
-def lock_simplydefined():
-    global __simpledefined_locked
-    __simpledefined_locked = True
+def __set_simplydefined_module(path):
+    __simplydefined_module.path = path
 
-def unlock_simplydefined():
-    global __simpledefined_locked
-    __simpledefined_locked = False
+def __clear_simplydefined_module():
+    __simplydefined_module.path = None
 
-def unique_function_id(f):
-    return f'{inspect.getsourcefile(f)}:{f.__name__}'
+FunctionId = collections.namedtuple('FunctionId', 'pythonfile,module,name')
+
+def make_function_id(f):
+    return FunctionId(pythonfile=__simplydefined_module.path, module=inspect.getsourcefile(f), name=f.__name__)
 
 def simplydefined(f):
-    if __simpledefined_locked:
+    if getattr(__simplydefined_module, 'path', None) is None:
         raise ValueError('function is not simply defined')
-    usable_functions[unique_function_id(f)] = f
+    usable_functions[make_function_id(f)] = f
     return f
 
 def get_usable_function(f):
     try:
-        i = unique_function_id(f)
-        return i, usable_functions[i]
-    except KeyError:
+        i = [k for k,v in usable_functions.items() if f == v][0]
+        return json.dumps(i._asdict()), f
+    except Exception:
         raise KeyError(f'function {f.__name__} is not decorated with @simplydefined')
 
-def assert_usable(*args):
-    for f in args:
-        get_usable_function(f)
+def get_usable_function_from_id(func_id):
+    try:
+        return usable_functions[FunctionId(**json.loads(func_id))]
+    except Exception:
+        raise KeyError(f'unknown function {func_id}')
+
+def clear_module(path):
+    global usable_functions, available_widgets
+    usable_functions = {k:v for k,v in usable_functions.items() if k.pythonfile != path}
+    available_widgets = {k:v for k,v in available_widgets.items() if v['pythonfile'] != path}
+    loaded_modules.pop(path, None)
+
+def register_widget(name, on_create, on_update=None):
+    path = getattr(__simplydefined_module, 'path', None)
+    if path is None:
+        raise ValueError('register_widget can only be called on import')
+
+    if name in available_widgets and available_widgets[name]['pythonfile'] != path:
+        raise ValueError(f'name {name} exists')
+
+    get_usable_function(on_create)
+    get_usable_function(on_update)
+
+    available_widgets[name] = dict(pythonfile=path, create=on_create, update=on_update)
+
+loaded_modules = {}
+
+def load_module(path):
+    __set_simplydefined_module(path)
+    clear_module(path)
+    try:
+        spec = importlib.util.spec_from_file_location(os.path.splitext(os.path.basename(path))[0], path)
+        loaded_modules[path] = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(loaded_modules[path])
+    finally:
+        __clear_simplydefined_module()
 
 class Widget:
     def __init__(self, widget_id, widget_name):
@@ -284,6 +313,9 @@ def create_widget(widget_id):
     widget = Widget(widget_id, manager_state.chosen.get(widget_id, AttrDict(name=None)).name)
     return widget, manager_state
 
+__set_simplydefined_module(os.path.abspath(__file__))
+clear_module(os.path.abspath(__file__))
+
 @simplydefined
 def choose_widget(widget, name):
     print(f'choosing widget: {widget.widget_id} -> {name}')
@@ -294,6 +326,8 @@ def choose_widget(widget, name):
 def restart():
     restart_app()
 
+__clear_simplydefined_module()
+
 def widget_manager_create(widget, manager_state):
     print('widget_manager_create')
     widget.cancel_all_timers()
@@ -302,18 +336,20 @@ def widget_manager_create(widget, manager_state):
         manager_state.__save__()
 
     #clear state
-    btn = Button(text="restart", click=restart, width=widget_dims.width)
+    restart_btn = Button(text="restart", click=restart, width=widget_dims.width * 0.8)
+    refresh_btn = Button(text="ref", right=0, width=widget_dims.width * 0.2)
 
-    lst = ListView(top=btn.height+20, children=[TextView(text=name, textViewTextSize=(java.clazz.android.util.TypedValue().COMPLEX_UNIT_SP, 30),
+    lst = ListView(top=restart_btn.height+20, children=[TextView(text=name, textViewTextSize=(java.clazz.android.util.TypedValue().COMPLEX_UNIT_SP, 30),
                                                                 click=(choose_widget, dict(name=name))) for name in available_widgets])
-    return [btn, lst]
+    return [restart_btn, refresh_btn, lst]
 
 def widget_manager_update(widget, manager_state, views):
     try:
         if widget.widget_id in manager_state.chosen:
             chosen = manager_state.chosen[widget.widget_id]
             if chosen.name is not None:
-                on_create, on_update = available_widgets[chosen.name]
+                available_widget = available_widgets[chosen.name]
+                on_create, on_update = available_widget['create'], available_widget['update']
                 if not chosen.inited:
                     chosen.inited = True
                     if on_create:
@@ -405,20 +441,16 @@ class Handler:
     @java.interface
     def importFile(self, path):
         print(f'import file request called on {path}')
+        load_module(path)
 
-
-def register_widget(name, on_create, on_update=None):
-    if name in available_widgets:
-        raise ValueError(f'name {name} exists')
-
-    assert_usable(on_create, on_update)
-    available_widgets[name] = (on_create, on_update)
+    @java.interface
+    def deimportFile(self, path):
+        clear_module(path)
 
 java_widget_manager = None
 
 def init():
     global java_widget_manager
-    lock_simplydefined()
     context = java.get_java_arg()
     java_widget_manager = context
     print('init')

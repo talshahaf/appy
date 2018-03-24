@@ -35,6 +35,8 @@ def execute(command):
     else:
         raise subprocess.CalledProcessError(command, exitCode)
 
+exe_dir = os.path.join(os.environ['PYTHONHOME'], 'bin')
+exe = os.path.join(exe_dir, 'python3.6m')
 
 try:
     import pip
@@ -42,8 +44,6 @@ except ImportError:
     import ensurepip
     ensurepip._main()
     import pip
-
-exe = os.path.join(os.environ['PYTHONHOME'], 'bin', 'python3.6m')
 
 try:
     import requests
@@ -59,9 +59,3 @@ except ImportError as e:
     print('installing appy')
     execute([exe, '-m', 'pip', 'install', os.path.join(os.environ['TMP'], 'appy.tar.gz')])
     import appy
-
-appy.widgets.unlock_simplydefined()
-try:
-    import user
-finally:
-    appy.widgets.lock_simplydefined()

@@ -27,6 +27,7 @@ interface WidgetUpdateListener
     void onTimer(int timerId, int widgetId, String data);
     void wipeStateRequest();
     void importFile(String path);
+    void deimportFile(String path);
 }
 
 interface RunnerListener

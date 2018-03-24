@@ -934,6 +934,12 @@ public class Widget extends RemoteViewsService {
                 {
 
                 }
+
+                @Override
+                public void deimportFile(String path)
+                {
+
+                }
             });
     }
 
@@ -1464,6 +1470,11 @@ public class Widget extends RemoteViewsService {
         {
             pythonFiles.remove(file);
         }
+        if(updateListener != null)
+        {
+            //ok to be called on main thread
+            updateListener.deimportFile(file.path);
+        }
         savePythonFiles();
     }
 
@@ -1647,10 +1658,12 @@ public class Widget extends RemoteViewsService {
             try
             {
                 unpackPython(getAssets().open("python.targz"), pythonHome);
+                copyAsset(getAssets().open("main.py"), new File(cacheDir, "main.py"));
+                copyAsset(getAssets().open("logcat.py"), new File(cacheDir, "logcat.py"));
                 copyAsset(getAssets().open("appy.targz"), new File(cacheDir, "appy.tar.gz"));
                 System.load(pythonLib);
                 System.loadLibrary("native");
-                pythonInit(pythonHome, cacheDir, pythonLib, "/sdcard/appy/main.py", Widget.this);
+                pythonInit(pythonHome, cacheDir, pythonLib, new File(cacheDir, "main.py").getAbsolutePath(), Widget.this);
                 //java_widget();
             }
             catch(Exception e)

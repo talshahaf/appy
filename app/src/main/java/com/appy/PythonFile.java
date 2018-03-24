@@ -23,11 +23,11 @@ public class PythonFile
         FAILED,
     }
 
-    public PythonFile(String path, String info, State state)
+    public PythonFile(String path, String info)
     {
         this.path = path;
         this.info = info;
-        this.state = state;
+        this.state = State.IDLE;
     }
 
     public String path;
@@ -48,7 +48,6 @@ public class PythonFile
             throw new IllegalArgumentException("can't encode info");
         }
         obj.put("info", Base64.encodeToString(data, Base64.DEFAULT));
-        obj.put("state", state.name());
         return obj;
     }
 
@@ -63,7 +62,7 @@ public class PythonFile
         {
             throw new IllegalArgumentException("can't encode info");
         }
-        return new PythonFile(obj.getString("path"), text, State.valueOf(obj.getString("state")));
+        return new PythonFile(obj.getString("path"), text);
     }
 
     public static ArrayList<PythonFile> deserializeArray(String json)
