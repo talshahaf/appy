@@ -33,6 +33,14 @@ android {
                 into 'src/main/assets'
                 rename 'appy.*\\.tar\\.gz', 'appy.targz'
             }
+            copy {
+                from '/src/main/python/logcat.py'
+                into 'src/main/assets'
+            }
+            copy {
+                from '/src/main/python/main.py'
+                into 'src/main/assets'
+            }
         }
     }
 
