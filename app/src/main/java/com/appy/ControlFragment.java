@@ -40,7 +40,8 @@ public class ControlFragment extends MyFragment
             @Override
             public void onClick(View v)
             {
-                clickHandler(v, Widget.ACTION_CLEAR, "widgets");
+                ((MainActivity)getActivity()).widgetService.resetWidgets();
+                debounce(v);
             }
         });
 
@@ -49,7 +50,8 @@ public class ControlFragment extends MyFragment
             @Override
             public void onClick(View v)
             {
-                clickHandler(v, Widget.ACTION_CLEAR, "timers");
+                ((MainActivity)getActivity()).widgetService.cancelAllTimers();
+                debounce(v);
             }
         });
 
@@ -58,20 +60,35 @@ public class ControlFragment extends MyFragment
             @Override
             public void onClick(View v)
             {
-                clickHandler(v, Widget.ACTION_CLEAR, "state");
+                ((MainActivity)getActivity()).widgetService.resetState();
+                debounce(v);
             }
         });
 
         restart.setOnClickListener(new View.OnClickListener()
         {
             @Override
-            public void onClick(View v)
+            public void onClick(final View v)
             {
-                clickHandler(v, Widget.ACTION_RESTART, null);
+                ((MainActivity)getActivity()).widgetService.restart();
+                debounce(v);
             }
         });
 
         return layout;
+    }
+
+    public void debounce(final View v)
+    {
+        v.setEnabled(false);
+        handler.postDelayed(new Runnable()
+        {
+            @Override
+            public void run()
+            {
+                v.setEnabled(true);
+            }
+        }, 1000);
     }
 
     public void clickHandler(final View v, String action, String flag)
@@ -83,14 +100,6 @@ public class ControlFragment extends MyFragment
             intent.putExtra(flag, true);
         }
         getActivity().startService(intent);
-        v.setEnabled(false);
-        handler.postDelayed(new Runnable()
-        {
-            @Override
-            public void run()
-            {
-                v.setEnabled(true);
-            }
-        }, 1000);
+        debounce(v);
     }
 }

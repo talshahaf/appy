@@ -75,4 +75,3 @@ def timer_on_update(widget, views):
 #register_widget('example2', example2_on_create, None)
 #register_widget('logcat', logcat_on_create, logcat_on_update)
 register_widget('timer', timer_on_create, timer_on_update)
-

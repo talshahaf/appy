@@ -22,6 +22,8 @@
             </intent-filter>
         </activity>
 
+        <activity android:name="com.appy.FileBrowserActivity"/>
+
         <receiver
             android:icon="@mipmap/ic_launcher"
             android:label="Appy"

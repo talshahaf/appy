@@ -1,5 +1,9 @@
 package com.appy;
 
+import android.content.ComponentName;
+import android.content.Context;
+import android.content.ServiceConnection;
+import android.os.IBinder;
 import android.support.v4.app.FragmentTransaction;
 import android.support.annotation.NonNull;
 import android.support.v4.app.Fragment;
@@ -37,7 +41,7 @@ public class MainActivity extends AppCompatActivity
         fragments.put(R.id.navigation_control, new Pair<Class<?>, MyFragment>(ControlFragment.class, null));
         fragments.put(R.id.navigation_logcat, new Pair<Class<?>, MyFragment>(LogcatFragment.class, null));
         fragments.put(R.id.navigation_pip, new Pair<Class<?>, MyFragment>(PipFragment.class, null));
-        //fragments.put(R.id.navigation_files, new Pair<Class<?>, MyFragment>(FilesFragment.class, null));
+        fragments.put(R.id.navigation_files, new Pair<Class<?>, MyFragment>(FilesFragment.class, null));
 
         // Set a Toolbar to replace the ActionBar.
         toolbar = findViewById(R.id.toolbar);
@@ -73,6 +77,7 @@ public class MainActivity extends AppCompatActivity
         });
 
         startService(new Intent(this, Widget.class));
+        doBindService();
 
         selectDrawerItem(navView.getMenu().getItem(0));
     }
@@ -87,6 +92,11 @@ public class MainActivity extends AppCompatActivity
         }
 
         return super.onOptionsItemSelected(item);
+    }
+
+    @Override
+    public void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
     }
 
     public void selectDrawerItem(@NonNull MenuItem menuItem)
@@ -154,5 +164,34 @@ public class MainActivity extends AppCompatActivity
         drawer.closeDrawers();
     }
 
+    public Widget widgetService = null;
 
+    private ServiceConnection mConnection = new ServiceConnection() {
+        public void onServiceConnected(ComponentName className, IBinder service) {
+            widgetService = ((Widget.LocalBinder)service).getService();
+        }
+
+        public void onServiceDisconnected(ComponentName className) {
+            widgetService = null;
+        }
+    };
+
+    void doBindService() {
+        Intent bindIntent = new Intent(this, Widget.class);
+        bindIntent.putExtra(Widget.LOCAL_BIND_EXTRA, true);
+        bindService(bindIntent, mConnection, Context.BIND_AUTO_CREATE);
+    }
+
+    void doUnbindService() {
+        if (widgetService != null) {
+            unbindService(mConnection);
+            widgetService = null;
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        doUnbindService();
+    }
 }
