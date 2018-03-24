@@ -117,7 +117,7 @@ class Element:
             param_setter, method = get_param_setter(self.d.type, key)
             if param_setter is not None:
                 identifier = method
-                arguments = [method, value]
+                arguments = [method, getattr(value, '__raw__', lambda: value)()]
                 method = param_setter
             else:
                 identifier = method
@@ -157,9 +157,18 @@ class Element:
     #TODO write to children
 
 widget_dims = WidgetAttribute()
-Button = lambda *args, **kwargs: Element.create('Button', *args, **kwargs)
-TextView = lambda *args, **kwargs: Element.create('TextView', *args, **kwargs)
-ListView = lambda *args, **kwargs: Element.create('ListView', *args, **kwargs)
+AnalogClock = lambda *args, **kwargs: Element.create('AnalogClock', *args, **kwargs)
+Button      = lambda *args, **kwargs: Element.create('Button',      *args, **kwargs)
+Chronometer = lambda *args, **kwargs: Element.create('Chronometer', *args, **kwargs)
+ImageButton = lambda *args, **kwargs: Element.create('ImageButton', *args, **kwargs)
+ImageView   = lambda *args, **kwargs: Element.create('ImageView',   *args, **kwargs)
+ProgressBar = lambda *args, **kwargs: Element.create('ProgressBar', *args, **kwargs)
+TextView    = lambda *args, **kwargs: Element.create('TextView',    *args, **kwargs)
+
+ListView           = lambda *args, **kwargs: Element.create('ListView',           *args, **kwargs)
+GridView           = lambda *args, **kwargs: Element.create('GridView',           *args, **kwargs)
+StackView          = lambda *args, **kwargs: Element.create('StackView',          *args, **kwargs)
+AdapterViewFlipper = lambda *args, **kwargs: Element.create('AdapterViewFlipper', *args, **kwargs)
 
 available_widgets = {}
 
@@ -337,7 +346,7 @@ def widget_manager_create(widget, manager_state):
 
     #clear state
     restart_btn = Button(text="restart", click=restart, width=widget_dims.width * 0.8)
-    refresh_btn = Button(text="ref", right=0, width=widget_dims.width * 0.2)
+    refresh_btn = ImageView(imageResource=java.clazz.android.R.drawable().ic_popup_sync, right=0, width=widget_dims.width * 0.2)
 
     lst = ListView(top=restart_btn.height+20, children=[TextView(text=name, textViewTextSize=(java.clazz.android.util.TypedValue().COMPLEX_UNIT_SP, 30),
                                                                 click=(choose_widget, dict(name=name))) for name in available_widgets])

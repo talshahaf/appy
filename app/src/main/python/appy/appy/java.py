@@ -25,7 +25,7 @@ def unwrap(obj):
     if isinstance(obj, (Object, Class, Array)):
         return obj.bridge
     if isinstance(obj, UnknownField):
-        raise ValueError('field does not exists')
+        raise RuntimeError('field does not exists')
     return obj
 
 def unwrap_args(args):
@@ -35,7 +35,7 @@ def find_class_with_inner(path):
     while True:
         try:
             return bridge.find_class(path)
-        except ValueError:
+        except RuntimeError:
             if '.' not in path:
                 raise
             start, sep, end = path.rpartition('.')
@@ -60,11 +60,11 @@ class Path:
         cls = find_class_with_inner(self.path)
         if self.array_dim == 0:
             if self.cls_func is None:
-                raise ValueError('operation not supported')
+                raise RuntimeError('operation not supported')
             return self.cls_func(Class(cls), *args)
         else:
             if self.arr_func is None:
-                raise ValueError('operation not supported')
+                raise RuntimeError('operation not supported')
             element_cls = cls
             for _ in range(self.array_dim - 1):
                 element_cls = bridge.array_of_class(element_cls)

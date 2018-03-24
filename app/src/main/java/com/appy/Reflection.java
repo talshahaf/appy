@@ -51,7 +51,19 @@ public class Reflection
     public static Object[] getField(Class<?> clazz, String field) throws NoSuchFieldException {
         Field f = clazz.getField(field);
         Integer type = enumTypes.get(f.getType());
-        return new Object[]{f, new int[]{type == null ? OBJECT_TYPE : type, unboxClassToEnum(f.getType())}, Modifier.isStatic(f.getModifiers()) ? 1 : 0};
+        boolean isStatic = Modifier.isStatic(f.getModifiers());
+        if(isStatic)
+        {
+            try
+            {
+                f.get(null);
+            }
+            catch (IllegalAccessException e)
+            {
+
+            }
+        }
+        return new Object[]{f, new int[]{type == null ? OBJECT_TYPE : type, unboxClassToEnum(f.getType())}, isStatic ? 1 : 0};
     }
 
     public static void printFunc(Class<?> clazz, String method, Class<?>[] parameterTypes)

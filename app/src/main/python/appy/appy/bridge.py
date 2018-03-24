@@ -280,7 +280,7 @@ def convert_arg(arg):
         elif isinstance(arg, float):
             arg = jdouble(arg)
         elif not isinstance(arg, jprimitive):
-            raise ValueError(f'cannot pass {type(arg)} to java')
+            raise ValueError(f'cannot pass {type(arg)} to java: {arg}')
         return arg, arg.wrapper_class, arg.code
 
 def _get_method(clazz, name, arg_codes):
