@@ -879,8 +879,15 @@ static PyObject * act(PyObject *self, PyObject *args)
                 }
             }
         }
+
+        jvalue ret;
         GET_ENV_WITHOUT_SCOPES();
-        jvalue ret = act_raw(env, (jobject)self, (void *)method, jvalues, return_type, op);
+
+        Py_BEGIN_ALLOW_THREADS
+
+        ret = act_raw(env, (jobject)self, (void *)method, jvalues, return_type, op);
+
+        Py_END_ALLOW_THREADS
 
         if(op == SET_FIELD || op == SET_STATIC_FIELD)
         {

@@ -402,6 +402,10 @@ class Handler:
         print('wipe state request called')
         state.wipe_state()
 
+    @java.interface
+    def importFile(self, path):
+        print(f'import file request called on {path}')
+
 
 def register_widget(name, on_create, on_update=None):
     if name in available_widgets:

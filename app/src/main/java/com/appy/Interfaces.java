@@ -26,6 +26,7 @@ interface WidgetUpdateListener
     String onClick(int widgetId, String views, int id);
     void onTimer(int timerId, int widgetId, String data);
     void wipeStateRequest();
+    void importFile(String path);
 }
 
 interface RunnerListener

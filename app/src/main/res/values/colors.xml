@@ -3,5 +3,9 @@
     <color name="colorPrimary">#3f51b5</color>
     <color name="colorPrimaryDark">#303F9F</color>
     <color name="colorAccent">#ff4081</color>
-    <color name="terminal_bg">#680b3c</color>
+    <color name="terminal_bg">#FF680b3c</color>
+    <color name="grid_green">#7c028100</color>
+    <color name="grid_yellow">#6ed3be00</color>
+    <color name="grid_red">#69b00003</color>
+    <color name="grid_grey">#69b0b0b0</color>
 </resources>
