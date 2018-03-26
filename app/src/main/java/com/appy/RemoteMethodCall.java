@@ -38,7 +38,7 @@ public class RemoteMethodCall
         this.method = remoteViewMethods.get(method);
         if(this.method == null)
         {
-            throw new IllegalArgumentException("no method "+method);
+            throw new IllegalArgumentException("no remotable method "+method);
         }
     }
 
