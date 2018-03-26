@@ -36,7 +36,8 @@ public class LogcatFragment extends MyFragment implements RunnerListener
     }
 
     final ArrayDeque<String> logcatLines = new ArrayDeque<>();
-    public static final int LOGCAT_LINES = 50;
+    public static final int INITIAL_LOGCAT_LINES = 200;
+    public static final int LOGCAT_LINES = 1000;
 
     Runner logcat = null;
 
@@ -62,7 +63,7 @@ public class LogcatFragment extends MyFragment implements RunnerListener
                         lines = join("\n", logcatLines);
                     }
                     logcatView.setText(lines);
-                    scroller.fullScroll(View.FOCUS_DOWN);
+                    //TODO scroll cleverly
                 }
             });
         }
@@ -97,7 +98,7 @@ public class LogcatFragment extends MyFragment implements RunnerListener
     public void startLogcat()
     {
         stopLogcat();
-        logcat = new Runner("logcat -b main -v time -T "+LOGCAT_LINES, null, this);
+        logcat = new Runner("logcat -b main -v time -T "+INITIAL_LOGCAT_LINES, null, this);
         logcat.start();
     }
 

@@ -19,6 +19,10 @@ def get_param_setter(type, attr):
     setter = java.clazz.com.appy.Widget().getSetterMethod(type, method)
     return setter if setter != java.Null else None, method
 
+@functools.lru_cache(maxsize=128, typed=True)
+def validate_remoteviews_method(method):
+    return java.clazz.com.appy.RemoteMethodCall().remoteViewMethods.containsKey(method)
+
 class Reference:
     def __init__(self, id, key, factor):
         self.id = id
@@ -100,6 +104,9 @@ class Element:
     def __getattr__(self, item):
         if item in attrs:
             return AttributeValue(Reference(self.d.id, attrs[item], 1))
+        if item in ['type', 'id']:
+            return getattr(self.d, item)
+
         raise AttributeError()
 
     def __setattr__(self, key, value):
@@ -120,6 +127,8 @@ class Element:
                 arguments = [method, getattr(value, '__raw__', lambda: value)()]
                 method = param_setter
             else:
+                if not validate_remoteviews_method(method):
+                    raise AttributeError(key)
                 identifier = method
                 if not isinstance(value, (list, tuple)):
                     value = [value]

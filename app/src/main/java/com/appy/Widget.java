@@ -15,6 +15,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
@@ -146,7 +147,55 @@ public class Widget extends RemoteViewsService {
     WidgetUpdateListener updateListener = null;
     Handler handler;
 
+    interface Runner<T>
+    {
+        void run(T... args);
+    }
+
+    class AsyncWrapper<T> extends AsyncTask<Object, Void, Void>
+    {
+        @Override
+        protected Void doInBackground(Object... objects)
+        {
+            try
+            {
+                ((Runner<T>)objects[1]).run((T[])objects[2]);
+            }
+            finally
+            {
+                doneExecuting((int)objects[0]);
+            }
+            return null;
+        }
+    }
+
+    class Task<T>
+    {
+        public Task(Runner<T> torun, T... args)
+        {
+            this.torun = torun;
+            params = args;
+        }
+
+        public void execute()
+        {
+            new AsyncWrapper<T>().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, widgetId, torun, params);
+        }
+
+        int widgetId;
+        T[] params;
+        Runner<T> torun;
+    }
+
+    class TaskQueue
+    {
+        LinkedList<Task> queue = new LinkedList<>();
+        boolean executing = false;
+    }
+
     final Object lock = new Object();
+    HashMap<Integer, TaskQueue> widgetsTasks = new HashMap<>();
+
     HashMap<Integer, String> widgets = new HashMap<>();
     HashMap<Integer, Integer> androidToWidget = new HashMap<>();
     HashMap<Integer, Integer> widgetToAndroid = new HashMap<>();
@@ -154,6 +203,57 @@ public class Widget extends RemoteViewsService {
     HashMap<Integer, PendingIntent> activeTimersIntents = new HashMap<>();
     HashMap<Pair<Integer, Integer>, HashMap<Integer, ListFactory>> factories = new HashMap<>();
     ArrayList<PythonFile> pythonFiles = new ArrayList<>();
+
+    public void addTask(int widgetId, Task<?> task)
+    {
+        synchronized (lock)
+        {
+            TaskQueue queue = widgetsTasks.get(widgetId);
+            if(queue == null)
+            {
+                queue = new TaskQueue();
+                widgetsTasks.put(widgetId, queue);
+            }
+
+            task.widgetId = widgetId;
+            queue.queue.add(task);
+        }
+        executeReadyTasks();
+    }
+
+    public void executeReadyTasks()
+    {
+        ArrayList<Task> toExecute = new ArrayList<>();
+        synchronized (lock)
+        {
+            for(Map.Entry<Integer, TaskQueue> queue : widgetsTasks.entrySet())
+            {
+                if(!queue.getValue().executing && !queue.getValue().queue.isEmpty())
+                {
+                    toExecute.add(queue.getValue().queue.pop());
+                    queue.getValue().executing = true;
+                }
+            }
+        }
+
+        for(Task task : toExecute)
+        {
+            task.execute();
+        }
+    }
+
+    public void doneExecuting(int widgetId)
+    {
+        synchronized (lock)
+        {
+            TaskQueue queue = widgetsTasks.get(widgetId);
+            if(queue != null)
+            {
+                queue.executing = false;
+            }
+        }
+        executeReadyTasks();
+    }
 
     //only supports identity
     public Attributes.AttributeValue attributeParse(String attributeValue)
@@ -983,14 +1083,14 @@ public class Widget extends RemoteViewsService {
         return widgetToAndroid.get(widget);
     }
 
-    public Set<Integer> getAllAndroidWidgets()
+    public Set<Integer> getAllWidgets()
     {
-        Set<Integer> androidWidgets = new HashSet<>();
+        Set<Integer> widgets = new HashSet<>();
         synchronized (lock)
         {
-            androidWidgets.addAll(androidToWidget.keySet());
+            widgets.addAll(widgetToAndroid.keySet());
         }
-        return androidWidgets;
+        return widgets;
     }
 
     public Integer fromAndroidWidget(int androidWidget, boolean create)
@@ -1000,7 +1100,9 @@ public class Widget extends RemoteViewsService {
             Integer widget = androidToWidget.get(androidWidget);
             if (widget == null && create)
             {
-                return addWidget(androidWidget);
+                int ret = addWidget(androidWidget);
+                saveWidgetMapping();
+                return ret;
             }
             return widget;
         }
@@ -1430,7 +1532,8 @@ public class Widget extends RemoteViewsService {
 
     public void refreshPythonFile(PythonFile file)
     {
-        new CallImportTask().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, file);
+        //TODO -1?
+        addTask(-1, new Task<>(new CallImportTask(), file));
     }
 
     public void refreshAllPythonFiles()
@@ -1525,7 +1628,7 @@ public class Widget extends RemoteViewsService {
 
     public void update(int widgetId)
     {
-        new CallUpdateTask().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, getAndroidWidget(widgetId));
+        addTask(widgetId, new Task<>(new CallUpdateTask(), widgetId));
     }
 
     public void restart()
@@ -1701,42 +1804,39 @@ public class Widget extends RemoteViewsService {
         }
     }
 
-    private class CallEventTask extends AsyncTask<Object, Void, Void>
+    private class CallEventTask implements Runner<Integer>
     {
         @Override
-        protected Void doInBackground(Object... args)
+        public void run(Integer... args)
         {
-            callEventWidget((int)args[0], (int)args[1], (int)args[2], (int)args[3]);
-            return null;
+            callEventWidget(args[0], args[1], args[2], args[3]);
         }
     }
 
-    private class CallTimerTask extends AsyncTask<Object, Void, Void>
+    private class CallTimerTask implements Runner<Object>
     {
         @Override
-        protected Void doInBackground(Object... args)
+        public void run(Object... args)
         {
             callTimerWidget((int)args[0], (int)args[1], (String)args[2]);
-            return null;
         }
     }
 
-    private class CallUpdateTask extends AsyncTask<Object, Void, Void>
+    private class CallUpdateTask implements Runner<Integer>
     {
         @Override
-        protected Void doInBackground(Object... args)
+        public void run(Integer... args)
         {
-            updateWidget((int)args[0]);
-            return null;
+            updateWidget(args[0]);
         }
     }
 
-    private class CallImportTask extends AsyncTask<Object, Void, Void>
+    private class CallImportTask implements Runner<PythonFile>
     {
         @Override
-        protected Void doInBackground(Object... args)
+        public void run(PythonFile... args)
         {
-            PythonFile file = (PythonFile)args[0];
+            PythonFile file = args[0];
             file.state = PythonFile.State.RUNNING;
             try
             {
@@ -1755,7 +1855,6 @@ public class Widget extends RemoteViewsService {
             {
                 file.state = PythonFile.State.FAILED;
             }
-            return null;
         }
     }
 
@@ -1780,13 +1879,12 @@ public class Widget extends RemoteViewsService {
                 Log.d("APPY", "error in handle");
             }
         }
-        updateWidget(getAndroidWidget(eventWidgetId));
+        updateWidget(eventWidgetId);
     }
 
-    public void updateWidget(int androidWidgetId)
+    public void updateWidget(int widgetId)
     {
-        int widgetId = fromAndroidWidget(androidWidgetId, true);
-        saveWidgetMapping();
+        int androidWidgetId = getAndroidWidget(widgetId);
 
         Log.d("APPY", "update: " + androidWidgetId + " ("+widgetId+")");
 
@@ -1840,7 +1938,15 @@ public class Widget extends RemoteViewsService {
             Log.e("APPY", "error in listener onUpdate", e);
         }
 
-        setWidget(androidWidgetId, widgetId, DynamicView.fromJSONArray(widget));
+        try
+        {
+            setWidget(androidWidgetId, widgetId, DynamicView.fromJSONArray(widget));
+        }
+        catch(Exception e)
+        {
+            e.printStackTrace();
+            setSpecificErrorWidget(androidWidgetId);
+        }
     }
 
     @Override
@@ -1881,9 +1987,9 @@ public class Widget extends RemoteViewsService {
     {
         clearWidgets();
 
-        for(int androidWidget : getAllAndroidWidgets())
+        for(int widget : getAllWidgets())
         {
-            new CallUpdateTask().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, androidWidget);
+            addTask(widget, new Task<>(new CallUpdateTask(), widget));
         }
     }
 
@@ -1959,14 +2065,15 @@ public class Widget extends RemoteViewsService {
             {
                 for (int id : ids)
                 {
-                    new CallUpdateTask().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, id);
+                    int widgetId = fromAndroidWidget(id, true);
+                    addTask(widgetId, new Task<>(new CallUpdateTask(), widgetId));
                 }
             }
         }
         else if (intent != null && intent.hasExtra("widgetId") && intent.hasExtra("timer"))
         {
             Log.d("APPY", "timer fire");
-            new CallTimerTask().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, intent.getIntExtra("timer", -1), intent.getIntExtra("widgetId", -1), intent.getStringExtra("timerData"));
+            addTask(intent.getIntExtra("widgetId", -1), new Task<>(new CallTimerTask(), intent.getIntExtra("timer", -1), intent.getIntExtra("widgetId", -1), intent.getStringExtra("timerData")));
         }
         else if(widgetIntent != null)
         {
@@ -2002,15 +2109,17 @@ public class Widget extends RemoteViewsService {
             }
             else if(AppWidgetManager.ACTION_APPWIDGET_OPTIONS_CHANGED.equals(widgetIntent.getAction()) && widgetIntent.hasExtra(AppWidgetManager.EXTRA_APPWIDGET_ID))
             {
-                new CallUpdateTask().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, widgetIntent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, -1));
+                int widgetId = fromAndroidWidget(widgetIntent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, -1), true);
+                addTask(widgetId, new Task<>(new CallUpdateTask(), widgetId));
             }
             else if (AppWidgetManager.ACTION_APPWIDGET_UPDATE.equals(widgetIntent.getAction()))
             {
                 if(widgetIntent.hasExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS))
                 {
-                    for (int id : widgetIntent.getIntArrayExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS))
+                    for (int androidWidgetId : widgetIntent.getIntArrayExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS))
                     {
-                        new CallUpdateTask().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, id);
+                        int widgetId = fromAndroidWidget(androidWidgetId, true);
+                        addTask(widgetId, new Task<>(new CallUpdateTask(), widgetId));
                     }
                 }
                 else if(widgetIntent.hasExtra(WIDGET_ID_EXTRA))
@@ -2023,7 +2132,7 @@ public class Widget extends RemoteViewsService {
                     }
                     else
                     {
-                        new CallEventTask().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, eventWidgetId, widgetIntent.getIntExtra(ITEM_ID_EXTRA, 0), widgetIntent.getIntExtra(COLLECTION_ITEM_ID_EXTRA, 0), widgetIntent.getIntExtra(COLLECTION_POSITION_EXTRA, -1));
+                        addTask(eventWidgetId, new Task<>(new CallEventTask(), eventWidgetId, widgetIntent.getIntExtra(ITEM_ID_EXTRA, 0), widgetIntent.getIntExtra(COLLECTION_ITEM_ID_EXTRA, 0), widgetIntent.getIntExtra(COLLECTION_POSITION_EXTRA, -1)));
                     }
                 }
             }
