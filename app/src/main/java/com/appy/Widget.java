@@ -2,12 +2,16 @@ package com.appy;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -201,6 +205,11 @@ public class Widget extends RemoteViewsService {
         public void execute()
         {
             new AsyncWrapper<T>().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, widgetId, torun, params);
+        }
+
+        public void run()
+        {
+            torun.run(params);
         }
 
         int widgetId;
@@ -921,38 +930,6 @@ public class Widget extends RemoteViewsService {
         return generate(context, widgetId, dynamicList, true, inCollection);
     }
 
-    public String handle(int widgetId, String widgetJson, int itemId, int collectionId, int collectionPosition)
-    {
-        Log.d("APPY", "handling "+itemId+" in collection "+collectionId);
-
-        //boolean callOnClick = true;
-
-        if(updateListener == null)
-        {
-            return null;
-        }
-
-        if(itemId == 0 && collectionId == 0)
-        {
-            throw new IllegalArgumentException("handle without handle?");
-        }
-
-        if(collectionId != 0)
-        {
-            Log.d("APPY", "calling listener onItemClick");
-            String ret = updateListener.onItemClick(widgetId, widgetJson, collectionId, collectionPosition);
-            //TODO cannot change layout and not suppress click
-            if(ret != null || itemId == 0)
-            {
-                Log.d("APPY", "suppressing click on "+itemId);
-                return ret;
-            }
-        }
-
-        Log.d("APPY", "calling listener onClick");
-        return updateListener.onClick(widgetId, widgetJson, itemId);
-    }
-
     public static String getSetterMethod(String type, String method)
     {
         return typeToRemotableMethod.get(type).get(method);
@@ -1004,9 +981,9 @@ public class Widget extends RemoteViewsService {
                 }
 
                 @Override
-                public String onUpdate(int widgetId, String currentViews)
+                public String onUpdate(int widgetId, String views)
                 {
-                    ArrayList<DynamicView> out = updateTestWidget(widgetId, DynamicView.fromJSONArray(currentViews));
+                    ArrayList<DynamicView> out = updateTestWidget(widgetId, DynamicView.fromJSONArray(views));
                     if(out != null)
                     {
                         return DynamicView.toJSONString(out);
@@ -1021,10 +998,10 @@ public class Widget extends RemoteViewsService {
                 }
 
                 @Override
-                public String onItemClick(int widgetId, String views, int collectionId, int position)
+                public Object[] onItemClick(int widgetId, String views, int collectionId, int position)
                 {
                     Log.d("APPY", "on item click: "+collectionId+" "+position);
-                    return null;
+                    return new Object[]{false, null};
                 }
 
                 @Override
@@ -1035,8 +1012,9 @@ public class Widget extends RemoteViewsService {
                 }
 
                 @Override
-                public void onTimer(int timerId, int widgetId, String data)
+                public String onTimer(int timerId, int widgetId, String views, String data)
                 {
+                    return null;
                 }
 
                 @Override
@@ -1306,29 +1284,6 @@ public class Widget extends RemoteViewsService {
         }
     }
 
-    public void callTimerWidget(int timerId, int widgetId, String data)
-    {
-        Timer timer;
-        synchronized (lock)
-        {
-            timer = activeTimers.get(timerId);
-        }
-        if(timer == null)
-        {
-            return;
-        }
-        if(timer.type != TIMER_REPEATING)
-        {
-            cancelTimer(timerId);
-        }
-
-        if(updateListener != null)
-        {
-            updateListener.onTimer(timerId, widgetId, data);
-        }
-        updateWidget(widgetId);
-    }
-
     public void cancelTimer(int timerId)
     {
         cancelTimer(timerId, true);
@@ -1542,16 +1497,29 @@ public class Widget extends RemoteViewsService {
 
     public void refreshPythonFile(PythonFile file)
     {
-        //TODO -1?
-        addTask(-1, new Task<>(new CallImportTask(), file));
+        refreshPythonFile(file, true);
     }
 
-    public void refreshAllPythonFiles()
+    public void refreshPythonFile(PythonFile file, boolean usePool)
+    {
+        Task task = new Task<>(new CallImportTask(), file);
+        if(usePool)
+        {
+            //TODO -1?
+            addTask(-1, task);
+        }
+        else
+        {
+            task.run();
+        }
+    }
+
+    public void initAllPythonFiles()
     {
         ArrayList<PythonFile> files = getPythonFiles();
         for(PythonFile f : files)
         {
-            refreshPythonFile(f);
+            refreshPythonFile(f, false);
         }
     }
 
@@ -1616,6 +1584,24 @@ public class Widget extends RemoteViewsService {
         editor.apply();
     }
 
+    public void clearWidget(int widgetId)
+    {
+        synchronized (lock)
+        {
+            if (!widgets.containsKey(widgetId))
+            {
+                return;
+            }
+            widgets.remove(widgetId);
+        }
+        cancelWidgetTimers(widgetId);
+        if(updateListener != null)
+        {
+            updateListener.onDelete(widgetId);
+        }
+        update(widgetId);
+    }
+
     public void clearWidgets()
     {
         Log.d("APPY", "clearing all widgets");
@@ -1633,6 +1619,7 @@ public class Widget extends RemoteViewsService {
             {
                 updateListener.onDelete(widgetId);
             }
+            update(widgetId);
         }
     }
 
@@ -1676,7 +1663,7 @@ public class Widget extends RemoteViewsService {
         return sharedPref.getString("state", null);
     }
 
-    public void setWidget(final int androidWidgetId, final int widgetId, final ArrayList<DynamicView> views)
+    public void setWidget(final int androidWidgetId, final int widgetId, final ArrayList<DynamicView> views, final boolean errorOnFailure)
     {
         handler.post(new Runnable()
         {
@@ -1697,6 +1684,10 @@ public class Widget extends RemoteViewsService {
                 catch(Exception e)
                 {
                     e.printStackTrace();
+                    if(errorOnFailure)
+                    {
+                        setSpecificErrorWidget(androidWidgetId);
+                    }
                 }
             }
         });
@@ -1716,7 +1707,7 @@ public class Widget extends RemoteViewsService {
 
         views.add(textView);
 
-        setWidget(androidWidgetId, SPECIAL_WIDGET_ID, views);
+        setWidget(androidWidgetId, SPECIAL_WIDGET_ID, views, true);
     }
 
     public void setSpecificErrorWidget(int androidWidgetId)
@@ -1734,7 +1725,7 @@ public class Widget extends RemoteViewsService {
         views.add(textView);
         views.add(button);
 
-        setWidget(androidWidgetId, SPECIAL_WIDGET_ID, views);
+        setWidget(androidWidgetId, SPECIAL_WIDGET_ID, views, false);
     }
 
     public int[] requestAndroidWidgets()
@@ -1770,6 +1761,9 @@ public class Widget extends RemoteViewsService {
         @Override
         protected Void doInBackground(Void... param)
         {
+            startupState = StartupState.RUNNING;
+            callStatusChange(true);
+
             error = false;
             String pythonHome = new File(getFilesDir(), "python").getAbsolutePath();
             String pythonLib = new File(pythonHome, "/lib/libpython3.6m.so").getAbsolutePath(); //must be without
@@ -1784,6 +1778,7 @@ public class Widget extends RemoteViewsService {
                 System.loadLibrary("native");
                 pythonInit(pythonHome, cacheDir, pythonLib, new File(cacheDir, "main.py").getAbsolutePath(), Widget.this);
                 //java_widget();
+                initAllPythonFiles();
             }
             catch(Exception e)
             {
@@ -1837,7 +1832,7 @@ public class Widget extends RemoteViewsService {
         @Override
         public void run(Integer... args)
         {
-            updateWidget(args[0]);
+            callUpdateWidget(args[0]);
         }
     }
 
@@ -1860,6 +1855,7 @@ public class Widget extends RemoteViewsService {
             }
             catch(Exception e)
             {
+                file.info = getStacktrace(e);
                 e.printStackTrace();
             }
 
@@ -1868,98 +1864,172 @@ public class Widget extends RemoteViewsService {
                 file.state = PythonFile.State.FAILED;
             }
             callStatusChange(false);
+            savePythonFiles();
         }
     }
 
-    public void callEventWidget(int eventWidgetId, int itemId, int collectionItemId, int collectionPosition)
+    public void callTimerWidget(final int timerId, int widgetId, final String data)
     {
-        Log.d("APPY", "got intent: " + eventWidgetId + " " + itemId);
-
-        String eventWidget;
+        Timer timer;
         synchronized (lock)
         {
-            eventWidget = widgets.get(eventWidgetId);
+            timer = activeTimers.get(timerId);
         }
-        if (eventWidget != null)
+        if(timer == null)
         {
-            try
-            {
-                String newwidget = handle(eventWidgetId, eventWidget, itemId, collectionItemId, collectionPosition);
-                putWidget(eventWidgetId, newwidget);
-            }
-            catch (Exception e)
-            {
-                Log.d("APPY", "error in handle");
-            }
+            return;
         }
-        updateWidget(eventWidgetId);
+        if(timer.type != TIMER_REPEATING)
+        {
+            cancelTimer(timerId);
+        }
+
+        callWidgetChangingCallback(widgetId, new CallbackCaller()
+        {
+            @Override
+            public String call(int widgetId, String current)
+            {
+                return updateListener.onTimer(timerId, widgetId, current, data);
+            }
+        });
     }
 
-    public void updateWidget(int widgetId)
+    interface CallbackCaller
     {
+        String call(int widgetId, String current);
+    }
+
+    public boolean callWidgetChangingCallback(int widgetId, CallbackCaller caller)
+    {
+        if(updateListener == null)
+        {
+            return false;
+        }
+
         int androidWidgetId = getAndroidWidget(widgetId);
-
-        Log.d("APPY", "update: " + androidWidgetId + " ("+widgetId+")");
-
         String widget;
         synchronized (lock)
         {
             widget = widgets.get(widgetId);
         }
+
+        boolean updated = false;
+        try
+        {
+            widget = caller.call(widgetId, widget);
+            if(widget != null)
+            {
+                putWidget(widgetId, widget);
+                updated = true;
+            }
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+            Log.d("APPY", "error in caller");
+            setSpecificErrorWidget(androidWidgetId);
+        }
+
+        if(updated)
+        {
+            setWidget(androidWidgetId, widgetId, DynamicView.fromJSONArray(widget), true);
+        }
+        return updated;
+    }
+
+    public void callEventWidget(int eventWidgetId, final int itemId, final int collectionItemId, final int collectionPosition)
+    {
+        Log.d("APPY", "got intent: " + eventWidgetId + " " + itemId);
+
+        callWidgetChangingCallback(eventWidgetId, new CallbackCaller()
+        {
+            @Override
+            public String call(int widgetId, String current)
+            {
+                Log.d("APPY", "handling "+itemId+" in collection "+collectionItemId);
+
+                if(itemId == 0 && collectionItemId == 0)
+                {
+                    throw new IllegalArgumentException("handle without handle?");
+                }
+
+                if(collectionItemId != 0)
+                {
+                    Log.d("APPY", "calling listener onItemClick");
+                    Object[] ret = updateListener.onItemClick(widgetId, current, collectionItemId, collectionPosition);
+                    boolean handled = (boolean)ret[0];
+                    String widget = (String)ret[1];
+                    if(handled || itemId == 0)
+                    {
+                        Log.d("APPY", "suppressing click on "+itemId);
+                        return widget;
+                    }
+
+                    if(widget != null)
+                    {
+                        current = widget; //for onClick
+                    }
+                }
+
+                Log.d("APPY", "calling listener onClick");
+                String newwidget = updateListener.onClick(widgetId, current, itemId);
+                if(newwidget != null)
+                {
+                    return newwidget;
+                }
+                else
+                {
+                    return current; //use onItemClick
+                }
+            }
+        });
+    }
+
+    public void callUpdateWidget(int widgetId)
+    {
+        int androidWidgetId = getAndroidWidget(widgetId);
+
+        Log.d("APPY", "update: " + androidWidgetId + " ("+widgetId+")");
+
         if (updateListener == null)
         {
             setSpecificErrorWidget(androidWidgetId);
             return;
         }
 
-        if (widget == null)
+        boolean hasWidget;
+        synchronized (lock)
         {
-            Log.d("APPY", "calling listener onCreate");
-            try
+            hasWidget = widgets.containsKey(widgetId);
+        }
+
+        Log.d("APPY", "calling listener onUpdate");
+
+        if(!hasWidget)
+        {
+            boolean updated = callWidgetChangingCallback(widgetId, new CallbackCaller()
             {
-                widget = updateListener.onCreate(widgetId);
-                Log.d("APPY", "called listener onCreate");
-            }
-            catch (Exception e)
-            {
-                Log.e("APPY", "error in listener onCreate", e);
-            }
-            if(widget != null)
-            {
-                putWidget(widgetId, widget);
-            }
-            else
+                @Override
+                public String call(int widgetId, String current)
+                {
+                    return updateListener.onCreate(widgetId);
+                }
+            });
+            if(!updated)
             {
                 setSpecificErrorWidget(androidWidgetId);
                 return;
             }
         }
 
-        Log.d("APPY", "calling listener onUpdate");
-        try
+        callWidgetChangingCallback(widgetId, new CallbackCaller()
         {
-            String newwidget = updateListener.onUpdate(widgetId, widget);
-            Log.d("APPY", "called listener onUpdate");
-            if (newwidget != null)
+            @Override
+            public String call(int widgetId, String current)
             {
-                widget = newwidget;
-                putWidget(widgetId, widget);
+                return updateListener.onUpdate(widgetId, current);
             }
-        }
-        catch (Exception e)
-        {
-            Log.e("APPY", "error in listener onUpdate", e);
-        }
-
-        try
-        {
-            setWidget(androidWidgetId, widgetId, DynamicView.fromJSONArray(widget));
-        }
-        catch(Exception e)
-        {
-            e.printStackTrace();
-            setSpecificErrorWidget(androidWidgetId);
-        }
+        });
     }
 
     @Override
@@ -2049,18 +2119,17 @@ public class Widget extends RemoteViewsService {
             loadWidgets();
             loadTimers();
 
-            pythonSetupTask.execute();
-
             setAllWidgets(false);
             callStatusChange(true);
+
+            pythonSetupTask.execute();
+
             return false;
         }
 
         if(pythonSetupTask.getStatus() == AsyncTask.Status.RUNNING)
         {
-            startupState = StartupState.RUNNING;
             setAllWidgets(false);
-            callStatusChange(true);
             return false;
         }
 
@@ -2084,10 +2153,65 @@ public class Widget extends RemoteViewsService {
         return true;
     }
 
+    class CrashHandler implements Thread.UncaughtExceptionHandler
+    {
+        String path;
+        Thread.UncaughtExceptionHandler prev;
+        public CrashHandler(String path, Thread.UncaughtExceptionHandler prev)
+        {
+            this.path = path;
+            this.prev = prev;
+        }
+
+        @Override
+        public void uncaughtException(Thread t, Throwable e)
+        {
+            String trace = getStacktrace(e);
+
+            BufferedWriter bw = null;
+            try
+            {
+                bw = new BufferedWriter(new FileWriter(path, true));
+                bw.write(trace);
+                bw.flush();
+                bw.close();
+            }
+            catch (IOException e1)
+            {
+                e1.printStackTrace();
+            }
+            finally
+            {
+                if(bw != null)
+                {
+                    try
+                    {
+                        bw.close();
+                    }
+                    catch (IOException e1)
+                    {
+
+                    }
+                }
+            }
+
+            if(prev != null)
+            {
+                prev.uncaughtException(t, e);
+            }
+        }
+    }
     boolean startedAfterSetup = false;
     PythonSetupTask pythonSetupTask = new PythonSetupTask();
     public void handleStartCommand(Intent intent)
     {
+        Thread.UncaughtExceptionHandler handler = Thread.getDefaultUncaughtExceptionHandler();
+        if(handler == null || !(handler instanceof CrashHandler))
+        {
+            //not ours
+            Thread.setDefaultUncaughtExceptionHandler(new CrashHandler(new File(getCacheDir(), "javacrash.txt").getAbsolutePath(), handler));
+        }
+
         if(!pythonSetup())
         {
             return;
@@ -2111,7 +2235,6 @@ public class Widget extends RemoteViewsService {
 
         if(firstStart)
         {
-            refreshAllPythonFiles();
 
             int[] ids = requestAndroidWidgets();
             if(ids != null)
@@ -2373,6 +2496,14 @@ public class Widget extends RemoteViewsService {
         }
 
         tis.close();
+    }
+
+    public static String getStacktrace(Throwable e)
+    {
+        StringWriter sw = new StringWriter();
+        PrintWriter pw = new PrintWriter(sw);
+        e.printStackTrace(pw);
+        return sw.toString();
     }
 
     protected static native void pythonInit(String pythonHome, String tmpPath, String pythonLibPath, String script, Object arg);

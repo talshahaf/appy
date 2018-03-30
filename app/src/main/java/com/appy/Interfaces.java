@@ -20,11 +20,11 @@ interface BroadcastInterface
 interface WidgetUpdateListener
 {
     String onCreate(int widgetId);
-    String onUpdate(int widgetId, String currentViews);
+    String onUpdate(int widgetId, String views);
     void onDelete(int widgetId);
-    String onItemClick(int widgetId, String views, int collectionId, int position);
+    Object[] onItemClick(int widgetId, String views, int collectionId, int position);
     String onClick(int widgetId, String views, int id);
-    void onTimer(int timerId, int widgetId, String data);
+    String onTimer(int timerId, int widgetId, String views, String data);
     void wipeStateRequest();
     void importFile(String path);
     void deimportFile(String path);
