@@ -36,3 +36,8 @@ interface RunnerListener
     void onExited(Integer code);
 }
 
+interface StatusListener
+{
+    void onStartupStatusChange();
+    void onPythonFileStatusChange();
+}

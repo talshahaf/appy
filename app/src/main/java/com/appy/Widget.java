@@ -85,6 +85,14 @@ public class Widget extends RemoteViewsService {
     public static final int TIMER_ABSOLUTE = 2;
     public static final int TIMER_REPEATING = 3;
 
+    public enum StartupState
+    {
+        IDLE,
+        RUNNING,
+        ERROR,
+        COMPLETED,
+    }
+
     private final IBinder mBinder = new LocalBinder();
 
     public static HashMap<String, Class<?>> typeToClass = new HashMap<>();
@@ -145,7 +153,20 @@ public class Widget extends RemoteViewsService {
     }
 
     WidgetUpdateListener updateListener = null;
+    StatusListener statusListener = null;
     Handler handler;
+    StartupState startupState = StartupState.IDLE;
+
+    final Object lock = new Object();
+    HashMap<Integer, TaskQueue> widgetsTasks = new HashMap<>();
+
+    HashMap<Integer, String> widgets = new HashMap<>();
+    HashMap<Integer, Integer> androidToWidget = new HashMap<>();
+    HashMap<Integer, Integer> widgetToAndroid = new HashMap<>();
+    HashMap<Integer, Timer> activeTimers = new HashMap<>();
+    HashMap<Integer, PendingIntent> activeTimersIntents = new HashMap<>();
+    HashMap<Pair<Integer, Integer>, HashMap<Integer, ListFactory>> factories = new HashMap<>();
+    ArrayList<PythonFile> pythonFiles = new ArrayList<>();
 
     interface Runner<T>
     {
@@ -192,17 +213,6 @@ public class Widget extends RemoteViewsService {
         LinkedList<Task> queue = new LinkedList<>();
         boolean executing = false;
     }
-
-    final Object lock = new Object();
-    HashMap<Integer, TaskQueue> widgetsTasks = new HashMap<>();
-
-    HashMap<Integer, String> widgets = new HashMap<>();
-    HashMap<Integer, Integer> androidToWidget = new HashMap<>();
-    HashMap<Integer, Integer> widgetToAndroid = new HashMap<>();
-    HashMap<Integer, Timer> activeTimers = new HashMap<>();
-    HashMap<Integer, PendingIntent> activeTimersIntents = new HashMap<>();
-    HashMap<Pair<Integer, Integer>, HashMap<Integer, ListFactory>> factories = new HashMap<>();
-    ArrayList<PythonFile> pythonFiles = new ArrayList<>();
 
     public void addTask(int widgetId, Task<?> task)
     {
@@ -1838,6 +1848,8 @@ public class Widget extends RemoteViewsService {
         {
             PythonFile file = args[0];
             file.state = PythonFile.State.RUNNING;
+            callStatusChange(false);
+
             try
             {
                 if (updateListener != null)
@@ -1855,6 +1867,7 @@ public class Widget extends RemoteViewsService {
             {
                 file.state = PythonFile.State.FAILED;
             }
+            callStatusChange(false);
         }
     }
 
@@ -1975,6 +1988,38 @@ public class Widget extends RemoteViewsService {
         }
     }
 
+    public void setStatusListener(StatusListener listener)
+    {
+        statusListener = listener;
+    }
+
+    public StartupState getStartupState()
+    {
+        return startupState;
+    }
+
+    public void callStatusChange(final boolean startup)
+    {
+        handler.post(new Runnable()
+        {
+            @Override
+            public void run()
+            {
+                if(statusListener != null)
+                {
+                    if(startup)
+                    {
+                        statusListener.onStartupStatusChange();
+                    }
+                    else
+                    {
+                        statusListener.onPythonFileStatusChange();
+                    }
+                }
+            }
+        });
+    }
+
     public void resetState()
     {
         if(updateListener != null)
@@ -1997,6 +2042,7 @@ public class Widget extends RemoteViewsService {
     {
         if(!startedAfterSetup && pythonSetupTask.getStatus() == AsyncTask.Status.PENDING)
         {
+            startupState = StartupState.IDLE;
             handler = new Handler();
 
             loadPythonFiles();
@@ -2006,17 +2052,21 @@ public class Widget extends RemoteViewsService {
             pythonSetupTask.execute();
 
             setAllWidgets(false);
+            callStatusChange(true);
             return false;
         }
 
         if(pythonSetupTask.getStatus() == AsyncTask.Status.RUNNING)
         {
+            startupState = StartupState.RUNNING;
             setAllWidgets(false);
+            callStatusChange(true);
             return false;
         }
 
         if(pythonSetupTask.getStatus() == AsyncTask.Status.FINISHED && pythonSetupTask.hadError())
         {
+            startupState = StartupState.ERROR;
             handler.post(new Runnable()
             {
                 @Override
@@ -2025,9 +2075,12 @@ public class Widget extends RemoteViewsService {
                     setAllWidgets(true);
                 }
             });
+            callStatusChange(true);
             return false;
         }
 
+        startupState = StartupState.COMPLETED;
+        callStatusChange(true);
         return true;
     }
 

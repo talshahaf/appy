@@ -17,6 +17,16 @@ public abstract class MyFragment extends Fragment
 
     }
 
+    public void onBound()
+    {
+
+    }
+
+    public Widget getWidgetService()
+    {
+        return ((MainActivity)getActivity()).widgetService;
+    }
+
     private int menuId = -1;
     public void setMenuId(int id)
     {

@@ -24,7 +24,7 @@ import android.view.Gravity;
 import android.view.MenuItem;
 import java.util.HashMap;
 
-public class MainActivity extends AppCompatActivity
+public class MainActivity extends AppCompatActivity implements StatusListener
 {
     private DrawerLayout drawer;
     private Toolbar toolbar;
@@ -169,6 +169,14 @@ public class MainActivity extends AppCompatActivity
     private ServiceConnection mConnection = new ServiceConnection() {
         public void onServiceConnected(ComponentName className, IBinder service) {
             widgetService = ((Widget.LocalBinder)service).getService();
+            widgetService.setStatusListener(MainActivity.this);
+            for(Pair<Class<?>, MyFragment> frag : fragments.values())
+            {
+                if(frag.second != null)
+                {
+                    frag.second.onBound();
+                }
+            }
         }
 
         public void onServiceDisconnected(ComponentName className) {
@@ -184,6 +192,7 @@ public class MainActivity extends AppCompatActivity
 
     void doUnbindService() {
         if (widgetService != null) {
+            widgetService.setStatusListener(null);
             unbindService(mConnection);
             widgetService = null;
         }
@@ -193,5 +202,25 @@ public class MainActivity extends AppCompatActivity
     protected void onDestroy() {
         super.onDestroy();
         doUnbindService();
+    }
+
+    @Override
+    public void onStartupStatusChange()
+    {
+        MyFragment fragment = fragments.get(R.id.navigation_control).second;
+        if(fragment != null)
+        {
+            ((ControlFragment)fragment).onStartupStatusChange();
+        }
+    }
+
+    @Override
+    public void onPythonFileStatusChange()
+    {
+        MyFragment fragment = fragments.get(R.id.navigation_files).second;
+        if(fragment != null)
+        {
+            ((FilesFragment)fragment).onPythonFileStatusChange();
+        }
     }
 }

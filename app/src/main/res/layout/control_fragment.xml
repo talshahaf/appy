@@ -2,7 +2,7 @@
 <android.support.constraint.ConstraintLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:layout_width="match_parent"
+    xmlns:tools="http://schemas.android.com/tools" android:layout_width="match_parent"
     android:layout_height="match_parent">
     <Button
         android:id="@+id/clear_widgets"
@@ -45,4 +45,24 @@
         app:layout_constraintHorizontal_bias="0.489"
         app:layout_constraintStart_toStartOf="@+id/clear_state"
         app:layout_constraintTop_toBottomOf="@+id/clear_state"/>
+    <ProgressBar
+        android:id="@+id/startup_progress"
+        style="?android:attr/progressBarStyle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content" android:layout_marginEnd="8dp"
+        android:layout_marginStart="8dp" android:layout_marginTop="8dp"
+        android:visibility="invisible" app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent" app:layout_constraintTop_toTopOf="parent"/>
+    <ImageView
+        android:id="@+id/startup_status"
+        android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:layout_marginBottom="8dp" android:layout_marginEnd="8dp"
+        android:layout_marginStart="8dp"
+        android:layout_marginTop="8dp"
+        android:visibility="invisible"
+        app:layout_constraintBottom_toBottomOf="@+id/startup_progress"
+        app:layout_constraintEnd_toEndOf="@+id/startup_progress"
+        app:layout_constraintStart_toStartOf="@+id/startup_progress"
+        app:layout_constraintTop_toTopOf="@+id/startup_progress"
+        app:srcCompat="@android:drawable/presence_online"/>
 </android.support.constraint.ConstraintLayout>
