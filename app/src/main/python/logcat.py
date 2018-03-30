@@ -1,5 +1,5 @@
 import native_appy
-import sys
+import sys, os
 
 __buffer__ = []
 
@@ -32,7 +32,7 @@ class LogcatWriter:
     @property
     def fileno(self):
         if self.crash_handler is None:
-            self.crash_handler = open('/sdcard/crash.txt', 'wb')
+            self.crash_handler = open(os.path.join(os.environ['TMP'], 'pythoncrash.txt'), 'ab')
         return self.crash_handler.fileno
 
     def isatty(self):

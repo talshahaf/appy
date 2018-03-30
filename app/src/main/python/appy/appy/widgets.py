@@ -1,4 +1,4 @@
-import json, functools, copy, traceback, inspect, threading, os, collections, importlib
+import json, functools, copy, traceback, inspect, threading, os, collections, importlib, sys, hashlib
 from .utils import AttrDict, dumps, loads, cap, get_args
 from . import java, state
 
@@ -13,9 +13,12 @@ def get_id():
 def validate_type(type):
     return java.clazz.com.appy.Widget().typeToClass.containsKey(type)
 
+def method_from_attr(attr):
+    return f'set{cap(attr)}'
+
 @functools.lru_cache(maxsize=128, typed=True)
 def get_param_setter(type, attr):
-    method = f'set{cap(attr)}'
+    method = method_from_attr(attr)
     setter = java.clazz.com.appy.Widget().getSetterMethod(type, method)
     return setter if setter != java.Null else None, method
 
@@ -65,14 +68,13 @@ class WidgetAttribute:
             return AttributeValue(Reference(-1, attrs[item], 1))
         raise AttributeError()
 
-def call_function(func_id, captures, **kwargs):
-    func = get_usable_function_from_id(func_id)
+def call_function(func, captures, **kwargs):
     pass_args = copy.deepcopy(captures)
     pass_args.update(kwargs) #kwargs priority
 
     args, kwargs, has_vargs, has_vkwargs = get_args(func)
     try:
-        func(**{k:v for k,v in pass_args.items() if k in args or k in kwargs or has_vkwargs})
+        return func(**{k:v for k,v in pass_args.items() if k in args or k in kwargs or has_vkwargs})
     except:
         print(traceback.format_exc())
 
@@ -82,31 +84,33 @@ class Element:
         if 'id' not in self.d:
             self.d.id = get_id()
         if 'children' in self.d:
-            self.d.children = [[c if isinstance(c, Element) else Element(c) for c in arr] for arr in self.d.children]
+            self.d.children = elist([[c if isinstance(c, Element) else Element(c) for c in arr] for arr in self.d.children])
 
     def __event__(self, key, **kwargs):
         if 'tag' in self.d and key in self.d.tag:
-            func_id, captures = self.d.tag[key]
-            call_function(func_id, loads(captures), **kwargs)
+            func, captures = loads(self.d.tag[key])
+            return call_function(func, captures, **kwargs)
 
     def set_handler(self, key, f, **captures):
-        func_id, f = get_usable_function(f)
         if 'tag' not in self.d:
             self.d.tag = {}
-        self.d.tag[key] = (func_id, dumps(captures))
-
-    def click(self, f, **captures):
-        self.set_handler('click', f, **captures)
-
-    def itemclick(self, f, **captures):
-        self.set_handler('itemclick', f, **captures)
+        self.d.tag[key] = dumps((f, captures))
 
     def __getattr__(self, item):
         if item in attrs:
             return AttributeValue(Reference(self.d.id, attrs[item], 1))
-        if item in ['type', 'id']:
+        if item in ('type', 'id'):
             return getattr(self.d, item)
 
+        if 'tag' in self.d and item in self.d.tag:
+            attr = self.d.tag[item]
+            if item in ('click', 'itemclick'):
+                attr = loads(attr)
+            return attr
+
+        args = [c.arguments if c.identifier == c.method else c.arguments[1:] for c in self.d.methodCalls if c.identifier == method_from_attr(item)]
+        if args:
+            return args[0][0] if len(args[0]) == 1 else args[0]
         raise AttributeError()
 
     def __setattr__(self, key, value):
@@ -120,6 +124,10 @@ class Element:
             if not isinstance(value, (list, tuple)):
                 value = (value, {})
             self.set_handler(key, value[0], **value[1])
+        elif key in ('name',):
+            if 'tag' not in self.d:
+                self.d.tag = {}
+            self.d.tag[key] = value
         else:
             param_setter, method = get_param_setter(self.d.type, key)
             if param_setter is not None:
@@ -165,6 +173,15 @@ class Element:
 
     #TODO write to children
 
+class elist(list):
+    def find_element(self, name):
+        found = [e for e in self if e.name == name]
+        if len(found) == 0:
+            return None
+        elif len(found) == 1:
+            return found[0]
+        return found
+
 widget_dims = WidgetAttribute()
 AnalogClock = lambda *args, **kwargs: Element.create('AnalogClock', *args, **kwargs)
 Button      = lambda *args, **kwargs: Element.create('Button',      *args, **kwargs)
@@ -181,69 +198,49 @@ AdapterViewFlipper = lambda *args, **kwargs: Element.create('AdapterViewFlipper'
 
 available_widgets = {}
 
-usable_functions = {}
-__simplydefined_module = threading.local()
+__importing_module = threading.local()
 
-def __set_simplydefined_module(path):
-    __simplydefined_module.path = path
+def __set_importing_module(path):
+    __importing_module.path = path
 
-def __clear_simplydefined_module():
-    __simplydefined_module.path = None
-
-FunctionId = collections.namedtuple('FunctionId', 'pythonfile,module,name')
-
-def make_function_id(f):
-    return FunctionId(pythonfile=__simplydefined_module.path, module=inspect.getsourcefile(f), name=f.__name__)
-
-def simplydefined(f):
-    if getattr(__simplydefined_module, 'path', None) is None:
-        raise ValueError('function is not simply defined')
-    usable_functions[make_function_id(f)] = f
-    return f
-
-def get_usable_function(f):
-    try:
-        i = [k for k,v in usable_functions.items() if f == v][0]
-        return json.dumps(i._asdict()), f
-    except Exception:
-        raise KeyError(f'function {f.__name__} is not decorated with @simplydefined')
-
-def get_usable_function_from_id(func_id):
-    try:
-        return usable_functions[FunctionId(**json.loads(func_id))]
-    except Exception:
-        raise KeyError(f'unknown function {func_id}')
-
-def clear_module(path):
-    global usable_functions, available_widgets
-    usable_functions = {k:v for k,v in usable_functions.items() if k.pythonfile != path}
-    available_widgets = {k:v for k,v in available_widgets.items() if v['pythonfile'] != path}
-    loaded_modules.pop(path, None)
+def __clear_importing_module():
+    __importing_module.path = None
 
 def register_widget(name, on_create, on_update=None):
-    path = getattr(__simplydefined_module, 'path', None)
+    path = getattr(__importing_module, 'path', None)
     if path is None:
         raise ValueError('register_widget can only be called on import')
 
     if name in available_widgets and available_widgets[name]['pythonfile'] != path:
         raise ValueError(f'name {name} exists')
 
-    get_usable_function(on_create)
-    get_usable_function(on_update)
+    dumps(on_create)
+    dumps(on_update)
 
     available_widgets[name] = dict(pythonfile=path, create=on_create, update=on_update)
 
-loaded_modules = {}
+def module_name(path):
+    return f'{os.path.splitext(os.path.basename(path))[0]}_{int(hashlib.sha1(path.encode()).hexdigest(), 16) % (10 ** 8)}'
 
 def load_module(path):
-    __set_simplydefined_module(path)
+    __set_importing_module(path)
     clear_module(path)
+    name = module_name(path)
     try:
-        spec = importlib.util.spec_from_file_location(os.path.splitext(os.path.basename(path))[0], path)
-        loaded_modules[path] = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(loaded_modules[path])
+        spec = importlib.util.spec_from_file_location(name, path)
+        mod = importlib.util.module_from_spec(spec)
+        sys.modules[name] = mod #for pickle
+        spec.loader.exec_module(mod)
+    except:
+        sys.modules.pop(name, None)
+        raise
     finally:
-        __clear_simplydefined_module()
+        __clear_importing_module()
+
+def clear_module(path):
+    global available_widgets
+    available_widgets = {k:v for k,v in available_widgets.items() if v['pythonfile'] != path}
+    sys.modules.pop(module_name(path), None)
 
 class Widget:
     def __init__(self, widget_id, widget_name):
@@ -290,18 +287,17 @@ class Widget:
     def wipe_global(self):
         state.wipe_state()
 
-    def set_absolute_timer(self, millis, f, **captures):
-        return self.set_timer(millis, java.clazz.com.appy.Widget().TIMER_ABSOLUTE, f, **captures)
+    def set_absolute_timer(self, seconds, f, **captures):
+        return self.set_timer(seconds, java.clazz.com.appy.Widget().TIMER_ABSOLUTE, f, **captures)
 
-    def set_timeout(self, millis, f, **captures):
-        return self.set_timer(millis, java.clazz.com.appy.Widget().TIMER_RELATIVE, f, **captures)
+    def set_timeout(self, seconds, f, **captures):
+        return self.set_timer(seconds, java.clazz.com.appy.Widget().TIMER_RELATIVE, f, **captures)
 
-    def set_interval(self, millis, f, **captures):
-        return self.set_timer(millis, java.clazz.com.appy.Widget().TIMER_REPEATING, f, **captures)
+    def set_interval(self, seconds, f, **captures):
+        return self.set_timer(seconds, java.clazz.com.appy.Widget().TIMER_REPEATING, f, **captures)
 
-    def set_timer(self, millis, t, f, **captures):
-        func_id, f = get_usable_function(f)
-        return java_widget_manager.setTimer(millis, t, self.widget_id, dumps(AttrDict(func_id=func_id, captures=captures)))
+    def set_timer(self, seconds, t, f, **captures):
+        return java_widget_manager.setTimer(int(seconds * 1000), t, self.widget_id, dumps((f, captures)))
 
     def cancel_timer(self, timer_id):
         return java_widget_manager.cancelTimer(timer_id)
@@ -312,6 +308,12 @@ class Widget:
     def cancel_all_timers(self):
         return java_widget_manager.cancelWidgetTimers(self.widget_id)
 
+    @classmethod
+    def color(cls, r=0, g=0, b=0, a=255):
+        return ((a & 0xff) << 24) + \
+               ((r & 0xff) << 16) + \
+               ((g & 0xff) << 8) + \
+               ((b & 0xff))
 
 def create_manager_state():
     manager_state = state.State(None, -1) #special own scope
@@ -331,20 +333,17 @@ def create_widget(widget_id):
     widget = Widget(widget_id, manager_state.chosen.get(widget_id, AttrDict(name=None)).name)
     return widget, manager_state
 
-__set_simplydefined_module(os.path.abspath(__file__))
-clear_module(os.path.abspath(__file__))
-
-@simplydefined
 def choose_widget(widget, name):
     print(f'choosing widget: {widget.widget_id} -> {name}')
     manager_state = create_manager_state()
     manager_state.chosen[widget.widget_id] = AttrDict(name=name, inited=False)
+    widget.invalidate()
 
-@simplydefined
 def restart():
     restart_app()
 
-__clear_simplydefined_module()
+def invalidate_widget(widget):
+    widget.invalidate()
 
 def widget_manager_create(widget, manager_state):
     print('widget_manager_create')
@@ -355,7 +354,7 @@ def widget_manager_create(widget, manager_state):
 
     #clear state
     restart_btn = Button(text="restart", click=restart, width=widget_dims.width * 0.8)
-    refresh_btn = ImageView(imageResource=java.clazz.android.R.drawable().ic_popup_sync, right=0, width=widget_dims.width * 0.2)
+    refresh_btn = ImageView(click=invalidate_widget, imageResource=java.clazz.android.R.drawable().ic_popup_sync, right=0, width=widget_dims.width * 0.2)
 
     lst = ListView(top=restart_btn.height+20, children=[TextView(text=name, textViewTextSize=(java.clazz.android.util.TypedValue().COMPLEX_UNIT_SP, 30),
                                                                 click=(choose_widget, dict(name=name))) for name in available_widgets])
@@ -374,7 +373,8 @@ def widget_manager_update(widget, manager_state, views):
                         return on_create(widget)
                 else:
                     if on_update:
-                        return on_update(widget, views)
+                        on_update(widget, views)
+                        return views
                 return None #doesn't update views
     except Exception:
         print(traceback.format_exc())
@@ -384,15 +384,20 @@ class Handler:
     def __init__(self):
         self.iface = java.create_interface(self, java.clazz.com.appy.WidgetUpdateListener())
 
-    def export(self, views):
-        if not views:
+    def export(self, input, output):
+        if not output:
             return None
-        if not isinstance(views, (list, tuple)):
-            views = [views]
-        return json.dumps([e.dict() for e in views], indent=4)
+        if not isinstance(output, (list, tuple)):
+            output = [output]
+
+        out_json = [e.dict() for e in output]
+        if input is not None and json.loads(input) == out_json:
+            print('optimization')
+            return None
+        return json.dumps(out_json, indent=4)
 
     def import_(self, s):
-        return [Element(e) for e in json.loads(s)]
+        return elist([Element(e) for e in json.loads(s)])
 
     def find(self, views, id):
         for e in views:
@@ -409,13 +414,13 @@ class Handler:
     def onCreate(self, widget_id):
         print(f'python got onCreate')
         widget, manager_state = create_widget(widget_id)
-        return self.export(widget_manager_create(widget, manager_state))
+        return self.export(None, widget_manager_create(widget, manager_state))
 
     @java.interface
     def onUpdate(self, widget_id, views):
         print(f'python got onUpdate')
         widget, manager_state = create_widget(widget_id)
-        return self.export(widget_manager_update(widget, manager_state, self.import_(views)))
+        return self.export(views, widget_manager_update(widget, manager_state, self.import_(views)))
 
     @java.interface
     def onDelete(self, widget_id):
@@ -423,33 +428,34 @@ class Handler:
         state.clean_local_state(widget_id)
 
     @java.interface
-    def onItemClick(self, widget_id, views, collection_id, position):
+    def onItemClick(self, widget_id, views_str, collection_id, position):
         print(f'python got onitemclick {widget_id} {collection_id} {position}')
         #print(f'{views}')
-        views = self.import_(views)
+        views = self.import_(views_str)
         v = self.find(views, collection_id)
         widget, manager_state = create_widget(widget_id)
         handled = v.__event__('itemclick', widget=widget, views=views, view=v, position=position, state=state)
-        if not handled:
-            return None #TODO fix not flushing root in this case
-        return self.export(views)
+        handled = handled is True
+        return java.new.java.lang.Object[()]([handled, self.export(views_str, views)])
 
     @java.interface
-    def onClick(self, widget_id, views, view_id):
+    def onClick(self, widget_id, views_str, view_id):
         print(f'python got onclick {widget_id} {view_id}')
         #print(f'{views}')
-        views = self.import_(views)
+        views = self.import_(views_str)
         v = self.find(views, view_id)
         widget, manager_state = create_widget(widget_id)
         v.__event__('click', widget=widget, views=views, view=v, state=state)
-        return self.export(views)
+        return self.export(views_str, views)
 
     @java.interface
-    def onTimer(self, timer_id, widget_id, data):
+    def onTimer(self, timer_id, widget_id, views_str, data):
         print('timer called')
-        data = loads(data)
+        views = self.import_(views_str)
+        func, captures = loads(data)
         widget, manager_state = create_widget(widget_id)
-        call_function(data.func_id, data.captures, timer_id=timer_id, widget=widget)
+        call_function(func, captures, timer_id=timer_id, widget=widget, views=views)
+        return self.export(views_str, views)
 
     @java.interface
     def wipeStateRequest(self):

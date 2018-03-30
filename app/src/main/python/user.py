@@ -1,16 +1,14 @@
 import random
 
-from appy.widgets import Button, TextView, ListView, register_widget, simplydefined, widget_dims
+from appy.widgets import Button, TextView, ListView, register_widget, widget_dims
 from appy.java import clazz
 from appy.state import print_state
 
 #=========================================================================
 
-@simplydefined
 def void(*args, **kwargs):
     return None
 
-@simplydefined
 def example_on_create(widget):
     txt = TextView(text='zxc', textViewTextSize=(clazz.android.util.TypedValue().COMPLEX_UNIT_SP, 30), click=lambda e: setattr(e, 'text', str(random.randint(50, 60))))
     lst = ListView(children=[
@@ -19,19 +17,16 @@ def example_on_create(widget):
     ])
     return lst
 
-@simplydefined
 def example2_on_create(widget):
     return [
         Button(text='ref', textViewTextSize=(clazz.android.util.TypedValue().COMPLEX_UNIT_SP, 30), click=void),
         TextView(text='bbb', textViewTextSize=(clazz.android.util.TypedValue().COMPLEX_UNIT_SP, 30))
     ]
 
-@simplydefined
 def logcat_on_create(widget):
     print(f'logcat on create {widget.widget_id}')
     return ListView(children=[TextView(text='ready...', textViewTextSize=(clazz.android.util.TypedValue().COMPLEX_UNIT_SP, 15), click=void)])
 
-@simplydefined
 def logcat_on_update(widget, views):
     widget.local_token(1)
 
@@ -48,7 +43,6 @@ def logcat_on_update(widget, views):
 
     return [btn, lst]
 
-@simplydefined
 def inc(widget):
     widget.state.locals('i')
     widget.state.setdefault('i', 0)
@@ -56,14 +50,12 @@ def inc(widget):
     print(widget.state.i)
     widget.invalidate()
 
-@simplydefined
 def timer_on_create(widget):
     widget.state.locals('i')
     widget.state.setdefault('i', 0)
     widget.set_interval(1000, inc)
     return TextView(text='ready...', textViewTextSize=(clazz.android.util.TypedValue().COMPLEX_UNIT_SP, 15))
 
-@simplydefined
 def timer_on_update(widget, views):
     widget.local_token(1)
     widget.state.locals('i')

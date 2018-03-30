@@ -30,15 +30,89 @@ public class RemoteMethodCall
         }
     }
 
+    public static Object cast(Object obj, Class<?> required)
+    {
+        long lng;
+        double dbl;
+        Class cls = obj.getClass();
+
+        if(cls == Byte.class)
+        {
+            lng = (long)(Byte)obj;
+            dbl = (double)(Byte)obj;
+        }
+        else if(cls == Short.class)
+        {
+            lng = (long)(Short)obj;
+            dbl = (double)(Short)obj;
+        }
+        else if(cls == Integer.class)
+        {
+            lng = (long)(Integer)obj;
+            dbl = (double)(Integer)obj;
+        }
+        else if(cls == Long.class)
+        {
+            lng = (long)(Long)obj;
+            dbl = (double)(Long)obj;
+        }
+        else if(cls == Float.class)
+        {
+            lng = ((Float)obj).longValue();
+            dbl = (double)(Float)obj;
+        }
+        else if(cls == Double.class)
+        {
+            lng = ((Double)obj).longValue();
+            dbl = (double)(Double)obj;
+        }
+        else
+        {
+            return obj;
+        }
+
+        if(required == Byte.class)
+        {
+            return (byte)lng;
+        }
+        else if(required == Short.class)
+        {
+            return (short)lng;
+        }
+        else if(required == Integer.class)
+        {
+            return (int)lng;
+        }
+        else if(required == Long.class)
+        {
+            return lng;
+        }
+        else if(required == Float.class)
+        {
+            return (float)dbl;
+        }
+        else if(required == Double.class)
+        {
+            return dbl;
+        }
+        return (int)lng;
+    }
+
     public RemoteMethodCall(String identifier, boolean parentCall, String method, Object... args)
     {
         this.identifier = identifier;
         this.parentCall = parentCall;
-        arguments = args;
         this.method = remoteViewMethods.get(method);
         if(this.method == null)
         {
             throw new IllegalArgumentException("no remotable method "+method);
+        }
+
+        Class<?>[] types = this.method.getParameterTypes();
+        arguments = new Object[args.length];
+        for(int i = 0; i < args.length; i++)
+        {
+            arguments[i] = cast(args[i], types[i]);
         }
     }
 
