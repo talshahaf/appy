@@ -19,6 +19,7 @@ import java.io.File;
 import java.lang.reflect.Array;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 /**
@@ -28,6 +29,7 @@ import java.util.List;
 public class FileGridAdapter extends BaseAdapter
 {
     private ArrayList<PythonFile> files;
+    private HashMap<String, PythonFile.State> stateOverride = new HashMap<>();
     Context context;
     ItemActionListener listener;
 
@@ -45,6 +47,16 @@ public class FileGridAdapter extends BaseAdapter
     public FileGridAdapter(Context context, ItemActionListener listener) {
         this.context = context;
         this.listener = listener;
+    }
+
+    public void setStateOverride(PythonFile file, PythonFile.State state)
+    {
+        stateOverride.put(file.path, state);
+    }
+
+    public void clearStateOverride(PythonFile file)
+    {
+        stateOverride.remove(file.path);
     }
 
     @Override
@@ -92,7 +104,10 @@ public class FileGridAdapter extends BaseAdapter
         final PythonFile file = files.get(position);
 
         int color = R.color.grid_grey;
-        switch(file.state)
+        PythonFile.State state = file.state;
+        PythonFile.State override = stateOverride.get(file.path);
+
+        switch(override == null ? state : override)
         {
             case ACTIVE:
             {

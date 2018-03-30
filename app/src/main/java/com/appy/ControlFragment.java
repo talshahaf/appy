@@ -8,6 +8,8 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.ImageView;
+import android.widget.ProgressBar;
 
 /**
  * Created by Tal on 19/03/2018.
@@ -15,6 +17,8 @@ import android.widget.Button;
 
 public class ControlFragment extends MyFragment
 {
+    ProgressBar startupProgress;
+    ImageView startupStatus;
     Button clearWidgets;
     Button clearTimers;
     Button clearState;
@@ -28,6 +32,8 @@ public class ControlFragment extends MyFragment
 
         View layout = inflater.inflate(R.layout.control_fragment, container, false);
 
+        startupProgress = layout.findViewById(R.id.startup_progress);
+        startupStatus = layout.findViewById(R.id.startup_status);
         clearWidgets = layout.findViewById(R.id.clear_widgets);
         clearTimers = layout.findViewById(R.id.clear_timers);
         clearState = layout.findViewById(R.id.clear_state);
@@ -75,6 +81,8 @@ public class ControlFragment extends MyFragment
             }
         });
 
+        onStartupStatusChange();
+
         return layout;
     }
 
@@ -91,15 +99,38 @@ public class ControlFragment extends MyFragment
         }, 1000);
     }
 
-    public void clickHandler(final View v, String action, String flag)
+    public void onBound()
     {
-        Intent intent = new Intent(getActivity(), Widget.class);
-        intent.setAction(action);
-        if(flag != null)
+        onStartupStatusChange();
+    }
+
+    public void onStartupStatusChange()
+    {
+        if(getWidgetService() == null)
         {
-            intent.putExtra(flag, true);
+            return;
         }
-        getActivity().startService(intent);
-        debounce(v);
+        switch(getWidgetService().getStartupState())
+        {
+            case IDLE:
+                startupStatus.setImageResource(android.R.drawable.presence_invisible);
+                startupProgress.setVisibility(View.INVISIBLE);
+                startupStatus.setVisibility(View.VISIBLE);
+                break;
+            case RUNNING:
+                startupProgress.setVisibility(View.VISIBLE);
+                startupStatus.setVisibility(View.INVISIBLE);
+                break;
+            case ERROR:
+                startupStatus.setImageResource(android.R.drawable.presence_offline);
+                startupProgress.setVisibility(View.INVISIBLE);
+                startupStatus.setVisibility(View.VISIBLE);
+                break;
+            case COMPLETED:
+                startupStatus.setImageResource(android.R.drawable.presence_online);
+                startupProgress.setVisibility(View.INVISIBLE);
+                startupStatus.setVisibility(View.VISIBLE);
+                break;
+        }
     }
 }
