@@ -168,16 +168,23 @@ class Element:
     def __repr__(self):
         return repr(self.dict())
 
-    #TODO write to children
-
 class elist(list):
-    def find_element(self, name):
-        found = [e for e in self if e.name == name]
+    @classmethod
+    def _find_element(cls, lst, name):
+        found = set()
+        for e in lst:
+            if isinstance(e, list):
+                found.update(cls._find_element(e, name))
+            elif e.name == name:
+                found.add(e)
         if len(found) == 0:
             return None
         elif len(found) == 1:
             return found[0]
-        return found
+        return list(found)
+
+    def find_element(self, name):
+        return self._find_element(self, name)
 
 widget_dims = WidgetAttribute()
 AnalogClock = lambda *args, **kwargs: Element.create('AnalogClock', *args, **kwargs)
