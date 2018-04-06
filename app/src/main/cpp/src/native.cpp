@@ -1922,13 +1922,24 @@ extern "C" JNIEXPORT jobject JNICALL Java_com_appy_Widget_pythonCall(JNIEnv * en
         scope_guards guards;
         guards += [&gstate] {PyGILState_Release(gstate);};
 
-        PyObject * arg = Py_BuildValue("(k)", (unsigned long)make_global_ref(env, args));
+        jobject glob = NULL;
+        if(args != NULL)
+        {
+            glob = env->NewGlobalRef(args);
+            if(glob == NULL)
+            {
+                throw jni_exception("failed to create global ref");
+            }
+        }
+        PyObject * arg = Py_BuildValue("(k)", (unsigned long)glob);
+
         if(arg == NULL)
         {
             PyErr_Clear();
             env->ThrowNew(python_exception_class, "build value failed");
             return NULL;
         }
+
         PyObject * result = PyObject_CallObject(callback, arg);
         Py_XDECREF(arg);
         if (result == NULL)
@@ -1966,9 +1977,13 @@ extern "C" JNIEXPORT jobject JNICALL Java_com_appy_Widget_pythonCall(JNIEnv * en
             return local;
         }
     }
+    catch(std::exception & e)
+    {
+        env->ThrowNew(python_exception_class, e.what());
+    }
     catch(...)
     {
-        LOG("cpp exception");
+        env->ThrowNew(python_exception_class, "exception was thrown from pythonCall");
     }
     return NULL;
 }
