@@ -175,25 +175,26 @@ class elist(list):
         for e in lst:
             if isinstance(e, list):
                 found.update(cls._find_element(e, name))
-            elif e.name == name:
+            elif getattr(e, 'name', None) == name:
                 found.add(e)
-        if len(found) == 0:
+        if not found:
             return None
         elif len(found) == 1:
-            return found[0]
+            return found.pop()
         return list(found)
 
     def find_element(self, name):
         return self._find_element(self, name)
 
-widget_dims = WidgetAttribute()
-AnalogClock = lambda *args, **kwargs: Element.create('AnalogClock', *args, **kwargs)
-Button      = lambda *args, **kwargs: Element.create('Button',      *args, **kwargs)
-Chronometer = lambda *args, **kwargs: Element.create('Chronometer', *args, **kwargs)
-ImageButton = lambda *args, **kwargs: Element.create('ImageButton', *args, **kwargs)
-ImageView   = lambda *args, **kwargs: Element.create('ImageView',   *args, **kwargs)
-ProgressBar = lambda *args, **kwargs: Element.create('ProgressBar', *args, **kwargs)
-TextView    = lambda *args, **kwargs: Element.create('TextView',    *args, **kwargs)
+widget_dims    = WidgetAttribute()
+AnalogClock    = lambda *args, **kwargs: Element.create('AnalogClock',    *args, **kwargs)
+Button         = lambda *args, **kwargs: Element.create('Button',         *args, **kwargs)
+Chronometer    = lambda *args, **kwargs: Element.create('Chronometer',    *args, **kwargs)
+ImageButton    = lambda *args, **kwargs: Element.create('ImageButton',    *args, **kwargs)
+ImageView      = lambda *args, **kwargs: Element.create('ImageView',      *args, **kwargs)
+ProgressBar    = lambda *args, **kwargs: Element.create('ProgressBar',    *args, **kwargs)
+TextView       = lambda *args, **kwargs: Element.create('TextView',       *args, **kwargs)
+RelativeLayout = lambda *args, **kwargs: Element.create('RelativeLayout', *args, **kwargs)
 
 ListView           = lambda *args, **kwargs: Element.create('ListView',           *args, **kwargs)
 GridView           = lambda *args, **kwargs: Element.create('GridView',           *args, **kwargs)
@@ -253,6 +254,9 @@ class Widget:
             self.name = widget_name
             self.state = state.State(widget_name, widget_id)
         self.widget_dims = widget_dims
+
+    def __getattr__(self, item):
+        return getattr(self.widget_dims, item)
 
     def locals(self, *attrs):
         self.state.locals(*attrs)

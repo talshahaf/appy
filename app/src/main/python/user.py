@@ -1,6 +1,6 @@
 import random
 
-from appy.widgets import Button, TextView, ListView, register_widget, widget_dims
+from appy.widgets import Button, TextView, ListView, register_widget
 from appy.java import clazz
 from appy.state import print_state
 
