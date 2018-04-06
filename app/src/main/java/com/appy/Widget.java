@@ -95,6 +95,7 @@ public class Widget extends RemoteViewsService
     public static final int TIMER_RELATIVE = 1;
     public static final int TIMER_ABSOLUTE = 2;
     public static final int TIMER_REPEATING = 3;
+    public static final int IMPORT_TASK_QUEUE = -1;
 
     public enum StartupState
     {
@@ -436,9 +437,7 @@ public class Widget extends RemoteViewsService
 
         public void reload(String list)
         {
-            DynamicView view = DynamicView.fromJSON(list);
-            //Log.d("APPY", "reloadFactory: "+widgetId + " " + view.view_id + ", " + view.xml_id + " dynamic: " + view.getId());
-            this.list = view;
+            this.list = DynamicView.fromJSON(list);
         }
 
         @Override
@@ -462,14 +461,12 @@ public class Widget extends RemoteViewsService
         @Override
         public int getCount()
         {
-            //Log.d("APPY", "get list factory count: " + list.children.size());
             return list.children.size();
         }
 
         @Override
         public RemoteViews getViewAt(int position)
         {
-            //Log.d("APPY", "get view at "+position);
             try
             {
                 if (position < list.children.size())
@@ -524,7 +521,7 @@ public class Widget extends RemoteViewsService
         return TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, dipValue, metrics);
     }
 
-    public int[] getWidgetDimensions(AppWidgetManager appWidgetManager, int androidWidgetId) //TODO optimize
+    public int[] getWidgetDimensions(AppWidgetManager appWidgetManager, int androidWidgetId)
     {
         Bundle bundle = appWidgetManager.getAppWidgetOptions(androidWidgetId);
         //only works on portrait
@@ -594,7 +591,6 @@ public class Widget extends RemoteViewsService
 
     public Pair<Integer, Integer> getElementIds(int n)
     {
-        //TODO types
         switch (n)
         {
             case 0:
@@ -1241,7 +1237,6 @@ public class Widget extends RemoteViewsService
                     }
                 }
             }
-            //TODO maybe clean
         }
         catch (Exception e)
         {
@@ -1569,8 +1564,7 @@ public class Widget extends RemoteViewsService
         Task task = new Task<>(new CallImportTask(), file);
         if (usePool)
         {
-            //TODO -1?
-            addTask(-1, task);
+            addTask(IMPORT_TASK_QUEUE, task);
         }
         else
         {

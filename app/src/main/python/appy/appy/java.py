@@ -114,7 +114,7 @@ class Object:
                 obj.__parent__ = self
                 obj.__attrname__ = attr
             return obj
-        except Exception as e: #TODO specific
+        except RuntimeError:
             return UnknownField(self, attr)
 
     def __call__(self, *args):
