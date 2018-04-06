@@ -6,8 +6,6 @@ known_classes = {}
 known_methods = {}
 known_fields = {}
 
-#TODO fix bytes serialization
-
 class jref:
     _slots__ = []
     def __init__(self, handle):
@@ -50,7 +48,6 @@ class jobject(jobjectbase):
     def __init__(self, ref, info):
         self.ref = ref
         self.info = info
-        #print(f'created {self.info}')
         self._clazz = None
 
     def __repr__(self):
@@ -105,6 +102,8 @@ class jstring(jobjectbase):
 
     @classmethod
     def from_str(cls, v):
+        if isinstance(v, bytes):
+            v = v.decode()
         return jstring(jref(native_appy.make_string(str(v))))
 
 def find_class(path):
