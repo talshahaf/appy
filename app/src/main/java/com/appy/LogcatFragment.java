@@ -2,7 +2,9 @@ package com.appy;
 
 import android.os.Bundle;
 import android.os.Handler;
+import android.util.Log;
 import android.view.LayoutInflater;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ScrollView;
@@ -20,6 +22,7 @@ public class LogcatFragment extends MyFragment implements RunnerListener
     TextView logcatView;
     Handler handler;
     ScrollView scroller;
+    boolean atEnd = true;
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
@@ -30,7 +33,15 @@ public class LogcatFragment extends MyFragment implements RunnerListener
         handler = new Handler();
         logcatView = layout.findViewById(R.id.logcat_view);
         scroller = layout.findViewById(R.id.scroller);
-
+        scroller.setOnTouchListener(new View.OnTouchListener()
+        {
+            @Override
+            public boolean onTouch(View v, MotionEvent event)
+            {
+                atEnd = scroller.getScrollY() == (logcatView.getBottom() + scroller.getPaddingBottom() - scroller.getHeight());
+                return false;
+            }
+        });
         onShow();
         return layout;
     }
@@ -63,7 +74,17 @@ public class LogcatFragment extends MyFragment implements RunnerListener
                         lines = join("\n", logcatLines);
                     }
                     logcatView.setText(lines);
-                    //TODO scroll cleverly
+                    if(atEnd)
+                    {
+                        handler.post(new Runnable()
+                        {
+                            @Override
+                            public void run()
+                            {
+                                scroller.fullScroll(View.FOCUS_DOWN);
+                            }
+                        });
+                    }
                 }
             });
         }

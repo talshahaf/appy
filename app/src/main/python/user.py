@@ -53,7 +53,7 @@ def inc(widget):
 def timer_on_create(widget):
     widget.state.locals('i')
     widget.state.setdefault('i', 0)
-    widget.set_interval(1000, inc)
+    widget.set_interval(1, inc)
     return TextView(text='ready...', textViewTextSize=(clazz.android.util.TypedValue().COMPLEX_UNIT_SP, 15))
 
 def timer_on_update(widget, views):
