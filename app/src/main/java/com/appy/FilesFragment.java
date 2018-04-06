@@ -12,7 +12,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.GridView;
-import android.widget.Toast;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -32,7 +31,7 @@ public class FilesFragment extends MyFragment implements FileGridAdapter.ItemAct
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
 
-        View layout = inflater.inflate(R.layout.files_fragment, container, false);
+        View layout = inflater.inflate(R.layout.fragment_files, container, false);
 
         handler = new Handler();
 

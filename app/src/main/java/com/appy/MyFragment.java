@@ -1,6 +1,8 @@
 package com.appy;
 
+import android.content.Context;
 import android.support.v4.app.Fragment;
+import android.support.v4.app.FragmentActivity;
 
 /**
  * Created by Tal on 19/03/2018.
