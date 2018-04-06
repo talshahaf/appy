@@ -1945,7 +1945,7 @@ extern "C" JNIEXPORT jobject JNICALL Java_com_appy_Widget_pythonCall(JNIEnv * en
             Py_XDECREF(type);
             Py_XDECREF(value);
             Py_XDECREF(traceback);
-            env->ThrowNew(python_exception_class, cstr); //TODO
+            env->ThrowNew(python_exception_class, cstr);
             return NULL;
         }
 

@@ -1,8 +1,13 @@
 package com.appy;
 
+import android.Manifest;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.os.Environment;
+import android.support.annotation.NonNull;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.view.Menu;
@@ -25,6 +30,7 @@ import java.util.Arrays;
 public class FileBrowserActivity extends AppCompatActivity
 {
     public static final String RESULT_FILES = "RESULT_FILES";
+    public static final int REQUEST_PERMISSION_STORAGE = 101;
 
     FileBrowserAdapter adapter;
     ListView list;
@@ -38,7 +44,35 @@ public class FileBrowserActivity extends AppCompatActivity
         list = findViewById(R.id.filelist);
         setSupportActionBar((Toolbar)findViewById(R.id.toolbar));
 
-        getDirFromRoot(root);
+        // Here, thisActivity is the current activity
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED ||
+                ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED)
+        {
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE}, REQUEST_PERMISSION_STORAGE);
+        }
+        else
+        {
+            getDirFromRoot(root);
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode,
+                                           @NonNull String permissions[], @NonNull int[] grantResults) {
+        switch (requestCode) {
+            case REQUEST_PERMISSION_STORAGE: {
+                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED)
+                {
+                    getDirFromRoot(root);
+                }
+                else
+                {
+                    Toast.makeText(this, "Cannot open file browser", Toast.LENGTH_SHORT).show();
+                    finish();
+                }
+                break;
+            }
+        }
     }
 
     private String root = Environment.getExternalStorageDirectory().getPath();

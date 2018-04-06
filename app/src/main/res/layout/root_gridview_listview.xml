@@ -10,9 +10,17 @@
         <RelativeLayout android:layout_width="match_parent"
                         android:layout_height="match_parent"
                         android:id="@+id/l0">
-            <ListView android:layout_width="match_parent"
+            <GridView android:layout_width="match_parent"
                       android:layout_height="match_parent"
                       android:id="@+id/e0">
+            </GridView>
+        </RelativeLayout>
+        <RelativeLayout android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:id="@+id/l1">
+            <ListView android:layout_width="match_parent"
+                      android:layout_height="match_parent"
+                      android:id="@+id/e1">
             </ListView>
         </RelativeLayout>
     </RelativeLayout>
@@ -20,6 +28,4 @@
                     android:layout_height="match_parent"
                     android:id="@+id/elements">
     </RelativeLayout>
-
-
 </RelativeLayout>
