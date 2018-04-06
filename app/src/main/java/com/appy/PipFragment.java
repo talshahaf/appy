@@ -1,10 +1,7 @@
 package com.appy;
 
-import android.content.Intent;
-import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
-import android.util.Pair;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -37,7 +34,7 @@ public class PipFragment extends MyFragment implements RunnerListener
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
 
-        View layout = inflater.inflate(R.layout.pip_fragment, container, false);
+        View layout = inflater.inflate(R.layout.fragment_pip, container, false);
 
         command = layout.findViewById(R.id.command);
         run = layout.findViewById(R.id.run);

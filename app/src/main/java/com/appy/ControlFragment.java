@@ -1,7 +1,5 @@
 package com.appy;
 
-import android.support.v4.app.Fragment;
-import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.view.LayoutInflater;
@@ -30,7 +28,7 @@ public class ControlFragment extends MyFragment
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
 
-        View layout = inflater.inflate(R.layout.control_fragment, container, false);
+        View layout = inflater.inflate(R.layout.fragment_control, container, false);
 
         startupProgress = layout.findViewById(R.id.startup_progress);
         startupStatus = layout.findViewById(R.id.startup_status);
@@ -46,7 +44,7 @@ public class ControlFragment extends MyFragment
             @Override
             public void onClick(View v)
             {
-                ((MainActivity)getActivity()).widgetService.resetWidgets();
+                getWidgetService().resetWidgets();
                 debounce(v);
             }
         });
@@ -56,7 +54,7 @@ public class ControlFragment extends MyFragment
             @Override
             public void onClick(View v)
             {
-                ((MainActivity)getActivity()).widgetService.cancelAllTimers();
+                getWidgetService().cancelAllTimers();
                 debounce(v);
             }
         });
@@ -66,7 +64,7 @@ public class ControlFragment extends MyFragment
             @Override
             public void onClick(View v)
             {
-                ((MainActivity)getActivity()).widgetService.resetState();
+                getWidgetService().resetState();
                 debounce(v);
             }
         });
@@ -76,7 +74,7 @@ public class ControlFragment extends MyFragment
             @Override
             public void onClick(final View v)
             {
-                ((MainActivity)getActivity()).widgetService.restart();
+                getWidgetService().restart();
                 debounce(v);
             }
         });

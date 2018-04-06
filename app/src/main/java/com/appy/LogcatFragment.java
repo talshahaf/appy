@@ -2,7 +2,6 @@ package com.appy;
 
 import android.os.Bundle;
 import android.os.Handler;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
@@ -28,7 +27,7 @@ public class LogcatFragment extends MyFragment implements RunnerListener
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState)
     {
-        View layout = inflater.inflate(R.layout.logcat_fragment, container, false);
+        View layout = inflater.inflate(R.layout.fragment_logcat, container, false);
 
         handler = new Handler();
         logcatView = layout.findViewById(R.id.logcat_view);
@@ -63,30 +62,33 @@ public class LogcatFragment extends MyFragment implements RunnerListener
                 logcatLines.pop();
             }
 
-            handler.post(new Runnable()
+            if(handler != null)
             {
-                @Override
-                public void run()
+                handler.post(new Runnable()
                 {
-                    String lines;
-                    synchronized (logcatLines)
+                    @Override
+                    public void run()
                     {
-                        lines = join("\n", logcatLines);
-                    }
-                    logcatView.setText(lines);
-                    if(atEnd)
-                    {
-                        handler.post(new Runnable()
+                        String lines;
+                        synchronized (logcatLines)
                         {
-                            @Override
-                            public void run()
+                            lines = join("\n", logcatLines);
+                        }
+                        logcatView.setText(lines);
+                        if (atEnd)
+                        {
+                            handler.post(new Runnable()
                             {
-                                scroller.fullScroll(View.FOCUS_DOWN);
-                            }
-                        });
+                                @Override
+                                public void run()
+                                {
+                                    scroller.fullScroll(View.FOCUS_DOWN);
+                                }
+                            });
+                        }
                     }
-                }
-            });
+                });
+            }
         }
     }
 
