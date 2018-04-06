@@ -2040,33 +2040,30 @@ public class Widget extends RemoteViewsService
                     throw new IllegalArgumentException("handle without handle?");
                 }
 
+                String fromItemClick = null;
+
                 if(collectionItemId != 0)
                 {
                     Log.d("APPY", "calling listener onItemClick");
                     Object[] ret = updateListener.onItemClick(widgetId, current, collectionItemId, collectionPosition);
                     boolean handled = (boolean)ret[0];
-                    String widget = (String)ret[1];
+                    fromItemClick = (String)ret[1];
                     if(handled || itemId == 0)
                     {
                         Log.d("APPY", "suppressing click on "+itemId);
-                        return widget;
-                    }
-
-                    if(widget != null)
-                    {
-                        current = widget; //for onClick
+                        return fromItemClick;
                     }
                 }
 
                 Log.d("APPY", "calling listener onClick");
-                String newwidget = updateListener.onClick(widgetId, current, itemId);
+                String newwidget = updateListener.onClick(widgetId, fromItemClick != null ? fromItemClick : current, itemId);
                 if(newwidget != null)
                 {
                     return newwidget;
                 }
                 else
                 {
-                    return current; //use onItemClick
+                    return fromItemClick; //use onItemClick
                 }
             }
         });
