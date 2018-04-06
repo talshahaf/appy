@@ -619,6 +619,8 @@ public class Widget extends RemoteViewsService
                 return R.layout.element_progressbar;
             case "TextView":
                 return R.layout.element_textview;
+            case "RelativeLayout":
+                return R.layout.element_relativelayout;
         }
         throw new IllegalArgumentException("unknown type " + type);
     }
