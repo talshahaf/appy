@@ -898,7 +898,7 @@ static PyObject * act(PyObject *self, PyObject *args)
         {
             if(ret.l == NULL)
             {
-                Py_RETURN_NONE; //TODO think about this
+                Py_RETURN_NONE;
             }
         }
         return unpack_value(ret, return_type);
@@ -953,7 +953,7 @@ static PyObject * get_method(PyObject *self, PyObject *args)
                 return NULL;
             }
             env->SetObjectArrayElement(type_arr, i, (jobject)PyLong_AsUnsignedLong(type));
-            CHECK_JAVA_EXC(env); //TODO should?
+            CHECK_JAVA_EXC(env);
         }
 
         Parameter * out_types = new Parameter[type_num + 1];
