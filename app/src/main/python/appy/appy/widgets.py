@@ -73,10 +73,7 @@ def call_function(func, captures, **kwargs):
     pass_args.update(kwargs) #kwargs priority
 
     args, kwargs, has_vargs, has_vkwargs = get_args(func)
-    try:
-        return func(**{k:v for k,v in pass_args.items() if k in args or k in kwargs or has_vkwargs})
-    except:
-        print(traceback.format_exc())
+    return func(**{k:v for k,v in pass_args.items() if k in args or k in kwargs or has_vkwargs})
 
 class Element:
     def __init__(self, d):
@@ -321,8 +318,7 @@ def create_manager_state():
     manager_state.locals('chosen')
     token = 1
     if getattr(manager_state, '__token__', None) != token:
-        if hasattr(manager_state, 'chosen'):
-            del manager_state.chosen
+        manager_state.chosen = {}
         manager_state.__token__ = token
 
     manager_state.setdefault('chosen', {})
@@ -330,7 +326,11 @@ def create_manager_state():
 
 def create_widget(widget_id):
     manager_state = create_manager_state()
-    widget = Widget(widget_id, manager_state.chosen.get(widget_id, AttrDict(name=None)).name)
+    manager_state.chosen.setdefault(widget_id, None)
+    name = None
+    if manager_state.chosen[widget_id] is not None:
+        name = manager_state.chosen[widget_id].name
+    widget = Widget(widget_id, name)
     return widget, manager_state
 
 def choose_widget(widget, name):
@@ -342,28 +342,24 @@ def choose_widget(widget, name):
 def restart():
     restart_app()
 
-def invalidate_widget(widget):
-    widget.invalidate()
-
 def widget_manager_create(widget, manager_state):
     print('widget_manager_create')
     widget.cancel_all_timers()
-    if widget.widget_id in manager_state.chosen:
-        del manager_state.chosen[widget.widget_id]
-        manager_state.__save__()
+
+    manager_state.chosen[widget.widget_id] = None
 
     #clear state
     restart_btn = Button(text="restart", click=restart, width=widget_dims.width * 0.8)
-    refresh_btn = ImageView(click=invalidate_widget, imageResource=java.clazz.android.R.drawable().ic_popup_sync, right=0, width=widget_dims.width * 0.2)
 
     lst = ListView(top=restart_btn.height+20, children=[TextView(text=name, textViewTextSize=(java.clazz.android.util.TypedValue().COMPLEX_UNIT_SP, 30),
                                                                 click=(choose_widget, dict(name=name))) for name in available_widgets])
-    return [restart_btn, refresh_btn, lst]
+    return [restart_btn, lst]
 
 def widget_manager_update(widget, manager_state, views):
     try:
-        if widget.widget_id in manager_state.chosen:
-            chosen = manager_state.chosen[widget.widget_id]
+        manager_state.chosen.setdefault(widget.widget_id, None)
+        chosen = manager_state.chosen[widget.widget_id]
+        if chosen is not None:
             if chosen.name is not None:
                 available_widget = available_widgets[chosen.name]
                 on_create, on_update = available_widget['create'], available_widget['update']
@@ -380,11 +376,18 @@ def widget_manager_update(widget, manager_state, views):
         print(traceback.format_exc())
     return widget_manager_create(widget, manager_state) #maybe present error widget
 
+def refresh_managers():
+    manager_state = create_manager_state()
+    for widget_id, chosen in manager_state.chosen.items():
+        if chosen is None:
+            Widget(widget_id, None).invalidate()
+
 class Handler:
     def __init__(self):
         self.iface = java.create_interface(self, java.clazz.com.appy.WidgetUpdateListener())
 
     def export(self, input, output):
+        state.save() #flushing changes
         if not output:
             return None
         if not isinstance(output, (list, tuple)):
@@ -466,10 +469,12 @@ class Handler:
     def importFile(self, path):
         print(f'import file request called on {path}')
         load_module(path)
+        refresh_managers()
 
     @java.interface
     def deimportFile(self, path):
         clear_module(path)
+        refresh_managers()
 
 java_widget_manager = None
 

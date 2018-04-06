@@ -14,6 +14,7 @@ import android.widget.Button;
 import android.widget.GridView;
 import android.widget.Toast;
 
+import java.io.File;
 import java.util.ArrayList;
 
 /**
@@ -85,7 +86,7 @@ public class FilesFragment extends MyFragment implements FileGridAdapter.ItemAct
                     {
                         Log.d("APPY", "on delete");
                         getWidgetService().removePythonFile(file);
-                        adapter.setItems(((MainActivity)getActivity()).widgetService.getPythonFiles());
+                        adapter.setItems(getWidgetService().getPythonFiles());
                         adapter.notifyDataSetChanged();
                     }
                 }).setNegativeButton(android.R.string.no, null).show();
@@ -107,6 +108,18 @@ public class FilesFragment extends MyFragment implements FileGridAdapter.ItemAct
             }
         }, 500);
         adapter.notifyDataSetChanged();
+    }
+
+    @Override
+    public void onInfo(PythonFile file)
+    {
+        AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
+        builder.setTitle(new File(file.path).getName())
+                .setMessage(file.info)
+                .setNeutralButton("OK", null);
+
+        AlertDialog alert = builder.create();
+        alert.show();
     }
 
     public void onPythonFileStatusChange()

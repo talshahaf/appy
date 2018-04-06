@@ -438,11 +438,11 @@ def upcast(obj):
 
 interfaces = {}
 
-def make_interface(self, classes, throw):
+def make_interface(self, classes):
     key = id(self)
     if key in interfaces:
         raise ValueError('class already added')
-    interfaces[key] = (self, throw)
+    interfaces[key] = self
     classes = list(classes)
     arr = make_array(len(classes), CLASS_CLASS)
     arr[:] = classes
@@ -463,30 +463,22 @@ def callback(arg):
         if key not in interfaces:
             raise Exception(f'interface not registered: {key}')
 
-        iface, throw = interfaces[key]
+        iface = interfaces[key]
 
-        try:
-            if hasattr(iface, method):
-                func = getattr(iface, method)
-            elif hasattr(iface, '__contains__') and method in iface:
-                func = iface[method]
-            else:
-                raise Exception(f'no callback for method {method}')
+        if hasattr(iface, method):
+            func = getattr(iface, method)
+        elif hasattr(iface, '__contains__') and method in iface:
+            func = iface[method]
+        else:
+            raise Exception(f'no callback for method {method}')
 
-            if not hasattr(func, '__interface__'):
-                raise Exception(f'function not an interface: {method}')
+        if not hasattr(func, '__interface__'):
+            raise Exception(f'function not an interface: {method}')
 
-            ret = func(*args)
-            value, _, _ = convert_arg(ret)
-            _, ref = prepare_value(value, primitive_codes['object'], primitive_codes['object'])
-            return native_appy.new_global_ref(ref.ref.handle)
-        except:
-            trace = traceback.format_exc()
-            if throw:
-                raise Exception(trace)
-            else:
-                print(trace)
-        return JNULL
+        ret = func(*args)
+        value, _, _ = convert_arg(ret)
+        _, ref = prepare_value(value, primitive_codes['object'], primitive_codes['object'])
+        return native_appy.new_global_ref(ref.ref.handle)
     except Exception:
         raise Exception(traceback.format_exc())
 

@@ -37,6 +37,7 @@ public class FileGridAdapter extends BaseAdapter
     {
         void onDelete(PythonFile file);
         void onRefresh(PythonFile file);
+        void onInfo(PythonFile file);
     }
 
     public void setItems(ArrayList<PythonFile> files)
@@ -47,6 +48,7 @@ public class FileGridAdapter extends BaseAdapter
     public FileGridAdapter(Context context, ItemActionListener listener) {
         this.context = context;
         this.listener = listener;
+        this.files = new ArrayList<>();
     }
 
     public void setStateOverride(PythonFile file, PythonFile.State state)
@@ -134,7 +136,10 @@ public class FileGridAdapter extends BaseAdapter
             @Override
             public void onClick(View v)
             {
-                Toast.makeText(context, file.path+"\n"+file.info, Toast.LENGTH_SHORT).show();
+                if(listener != null)
+                {
+                    listener.onInfo(file);
+                }
             }
         });
         viewHolder.delete.setOnClickListener(new View.OnClickListener()

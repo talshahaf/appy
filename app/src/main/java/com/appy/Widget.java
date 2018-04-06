@@ -16,10 +16,13 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
@@ -76,6 +79,7 @@ import org.kamranzafar.jtar.TarInputStream;
 
 public class Widget extends RemoteViewsService {
     private static final String ITEM_ID_EXTRA = "ITEM_ID";
+    private static final String ITEM_TAG_EXTRA = "ITEM_TAG";
     public  static final String WIDGET_INTENT = "WIDGET_INTENT";
     private static final String COLLECTION_ITEM_ID_EXTRA = "COLLECTION_ITEM_ID_EXTRA";
     private static final String COLLECTION_POSITION_EXTRA = "COLLECTION_POSITION_EXTRA";
@@ -84,7 +88,9 @@ public class Widget extends RemoteViewsService {
     private static final String VIEW_ID_EXTRA = "VIEW_ID_EXTRA";
     private static final String WIDGET_ID_EXTRA = "WIDGET_ID_EXTRA";
     public static final String LOCAL_BIND_EXTRA = "LOCAL_BIND_EXTRA";
-    private static final int SPECIAL_WIDGET_ID = -2;
+    private static final int SPECIAL_WIDGET_ID = 100;
+    private static final int SPECIAL_WIDGET_RESTART = 1;
+    private static final int SPECIAL_WIDGET_CLEAR = 2;
     public static final int TIMER_RELATIVE = 1;
     public static final int TIMER_ABSOLUTE = 2;
     public static final int TIMER_REPEATING = 3;
@@ -476,7 +482,7 @@ public class Widget extends RemoteViewsService {
                         fillIntent.putExtra(ITEM_ID_EXTRA, list.children.get(position).get(0).getId());
                     }
                     fillIntent.putExtra(COLLECTION_POSITION_EXTRA, position);
-                    remoteView.setOnClickFillInIntent(R.id.listitem_root, fillIntent);
+                    remoteView.setOnClickFillInIntent(R.id.collection_root, fillIntent);
                     return remoteView;
                 }
             }
@@ -525,28 +531,72 @@ public class Widget extends RemoteViewsService {
                          (int)dipToPixels(this, bundle.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT))};
     }
 
-    public int selectRootView(ArrayList<String> collections)
+    static HashMap<List<String>, Integer> collection_map = new HashMap<>();
+    static
     {
-        //TODO types
-        switch(collections.size())
-        {
-            case 0:
-                return R.layout.widget_0_root;
-            case 1:
-                return R.layout.widget_1_root;
-        }
-        throw new IllegalArgumentException(collections + " collections are not supported");
+        collection_map.put(Arrays.asList("ListView"), R.layout.root_listview);
+        collection_map.put(Arrays.asList("GridView"), R.layout.root_gridview);
+        collection_map.put(Arrays.asList("StackView"), R.layout.root_stackview);
+        collection_map.put(Arrays.asList("AdapterViewFlipper"), R.layout.root_adapterviewflipper);
+        collection_map.put(Arrays.asList("AdapterViewFlipper", "AdapterViewFlipper"), R.layout.root_adapterviewflipper_adapterviewflipper);
+        collection_map.put(Arrays.asList("AdapterViewFlipper", "GridView"), R.layout.root_adapterviewflipper_gridview);
+        collection_map.put(Arrays.asList("AdapterViewFlipper", "ListView"), R.layout.root_adapterviewflipper_listview);
+        collection_map.put(Arrays.asList("AdapterViewFlipper", "StackView"), R.layout.root_adapterviewflipper_stackview);
+        collection_map.put(Arrays.asList("GridView", "GridView"), R.layout.root_gridview_gridview);
+        collection_map.put(Arrays.asList("GridView", "ListView"), R.layout.root_gridview_listview);
+        collection_map.put(Arrays.asList("GridView", "StackView"), R.layout.root_gridview_stackview);
+        collection_map.put(Arrays.asList("ListView", "ListView"), R.layout.root_listview_listview);
+        collection_map.put(Arrays.asList("ListView", "StackView"), R.layout.root_listview_stackview);
+        collection_map.put(Arrays.asList("StackView", "StackView"), R.layout.root_stackview_stackview);
     }
 
-    public Pair<Integer, Integer> getListViewId(String type, int n)
+    public Pair<Integer, HashMap<String, ArrayList<Integer>>> selectRootView(ArrayList<String> collections)
+    {
+        if(collections.size() > 2)
+        {
+            throw new IllegalArgumentException("more than 2 collections are not supported");
+        }
+
+        if(collections.isEmpty())
+        {
+            return new Pair<>(R.layout.root, new HashMap<String, ArrayList<Integer>>());
+        }
+
+        Collections.sort(collections, new Comparator<String>() {
+            @Override
+            public int compare(String s1, String s2) {
+                return s1.compareToIgnoreCase(s2);
+            }
+        });
+
+        Integer res = collection_map.get(collections);
+        if(res == null)
+        {
+            throw new IllegalArgumentException("collection types not supported");
+        }
+
+        HashMap<String, ArrayList<Integer>> ret = new HashMap<>();
+        for(int i = 0; i < collections.size(); i++)
+        {
+            if(!ret.containsKey(collections.get(i)))
+            {
+                ret.put(collections.get(i), new ArrayList<Integer>());
+            }
+            ret.get(collections.get(i)).add(i);
+        }
+
+        return new Pair<>(res, ret);
+    }
+
+    public Pair<Integer, Integer> getElementIds(int n)
     {
         //TODO types
         switch(n)
         {
             case 0:
                 return new Pair<>(R.id.e0, R.id.l0);
-//            case 1:
-//                return new Pair<>(R.id.e1, R.id.l1);
+            case 1:
+                return new Pair<>(R.id.e1, R.id.l1);
         }
         throw new IllegalArgumentException((n + 1) + " collections are not supported");
     }
@@ -556,19 +606,19 @@ public class Widget extends RemoteViewsService {
         switch(type)
         {
             case "AnalogClock":
-                return R.layout.widget_analogclock;
+                return R.layout.element_analogclock;
             case "Button":
-                return R.layout.widget_button;
+                return R.layout.element_button;
             case "Chronometer":
-                return R.layout.widget_chronometer;
+                return R.layout.element_chronometer;
             case "ImageButton":
-                return R.layout.widget_imagebutton;
+                return R.layout.element_imagebutton;
             case "ImageView":
-                return R.layout.widget_imageview;
+                return R.layout.element_imageview;
             case "ProgressBar":
-                return R.layout.widget_progressbar;
+                return R.layout.element_progressbar;
             case "TextView":
-                return R.layout.widget_textview;
+                return R.layout.element_textview;
         }
         throw new IllegalArgumentException("unknown type " + type);
     }
@@ -589,33 +639,37 @@ public class Widget extends RemoteViewsService {
             throw new IllegalArgumentException("cannot have collections in collection");
         }
 
-        int root_xml = selectRootView(collections);
+        Pair<Integer, HashMap<String, ArrayList<Integer>>> root = selectRootView(collections);
+        int root_xml = root.first;
         int elements_id = R.id.elements;
 
         if(inCollection)
         {
             //can only be collections == 0
             //this fixes a bug when using the same id? i think it's in removeAllViews or in addView
-            root_xml = R.layout.widget_0_item;
-            elements_id = R.id.listitem_elements;
+            root_xml = R.layout.collection_element;
+            elements_id = R.id.collection_elements;
         }
 
         RemoteViews rootView = new RemoteViews(context.getPackageName(), root_xml);
         rootView.removeAllViews(elements_id);
 
-        int collectionCounter = 0;
-
         for(DynamicView layout : dynamicList)
         {
             RemoteViews remoteView;
-            if(isCollection(layout.type))
+            ArrayList<Integer> indices = root.second.get(layout.type);
+            if(indices != null)
             {
+                if(indices.isEmpty())
+                {
+                    throw new IllegalArgumentException("out of collection indices");
+                }
+                int index = indices.remove(0);
                 remoteView = rootView;
                 layout.xml_id = root_xml;
-                Pair<Integer, Integer> ids = getListViewId(layout.type, collectionCounter);
+                Pair<Integer, Integer> ids = getElementIds(index);
                 layout.view_id = ids.first;
                 layout.container_id = ids.second;
-                collectionCounter++;
             }
             else
             {
@@ -649,7 +703,7 @@ public class Widget extends RemoteViewsService {
                 if(keepDescription)
                 {
                     clickIntent.putExtra(COLLECTION_ITEM_ID_EXTRA, layout.getId());
-                    remoteView.setPendingIntentTemplate(layout.view_id, PendingIntent.getBroadcast(context, widgetId + (layout.getId() << 8), clickIntent, PendingIntent.FLAG_UPDATE_CURRENT));
+                    remoteView.setPendingIntentTemplate(layout.view_id, PendingIntent.getBroadcast(context, widgetId + (layout.getId() << 16), clickIntent, PendingIntent.FLAG_UPDATE_CURRENT));
 
                     //prepare factory
                     getFactory(context, widgetId, layout.xml_id, layout.view_id, layout.toJSON());
@@ -668,7 +722,11 @@ public class Widget extends RemoteViewsService {
             else if(!inCollection)
             {
                 clickIntent.putExtra(ITEM_ID_EXTRA, layout.getId());
-                remoteView.setOnClickPendingIntent(layout.view_id, PendingIntent.getBroadcast(context, widgetId + (layout.getId() << 8), clickIntent, PendingIntent.FLAG_UPDATE_CURRENT));
+                if(layout.tag instanceof Integer)
+                {
+                    clickIntent.putExtra(ITEM_TAG_EXTRA, (Integer)layout.tag);
+                }
+                remoteView.setOnClickPendingIntent(layout.view_id, PendingIntent.getBroadcast(context, widgetId + (layout.getId() << 16), clickIntent, PendingIntent.FLAG_UPDATE_CURRENT));
             }
 
             if(remoteView != rootView)
@@ -1686,14 +1744,14 @@ public class Widget extends RemoteViewsService {
                     e.printStackTrace();
                     if(errorOnFailure)
                     {
-                        setSpecificErrorWidget(androidWidgetId);
+                        setSpecificErrorWidget(androidWidgetId, widgetId);
                     }
                 }
             }
         });
     }
 
-    public void setSpecificLoadingWidget(int androidWidgetId)
+    public void setSpecificLoadingWidget(int androidWidgetId, int widgetId)
     {
         ArrayList<DynamicView> views = new ArrayList<>();
 
@@ -1710,20 +1768,36 @@ public class Widget extends RemoteViewsService {
         setWidget(androidWidgetId, SPECIAL_WIDGET_ID, views, true);
     }
 
-    public void setSpecificErrorWidget(int androidWidgetId)
+    public void setSpecificErrorWidget(int androidWidgetId, int widgetId)
     {
         ArrayList<DynamicView> views = new ArrayList<>();
 
         DynamicView textView = new DynamicView("TextView");
-        DynamicView button = new DynamicView("Button");
+        DynamicView restart = new DynamicView("Button");
+
         textView.methodCalls.add(new RemoteMethodCall("setText", false, getSetterMethod(textView.type, "setText"), "setText", "Error"));
-        button.methodCalls.add(new RemoteMethodCall("setText", false, getSetterMethod(button.type, "setText"), "setText", "Restart"));
+        restart.methodCalls.add(new RemoteMethodCall("setText", false, getSetterMethod(restart.type, "setText"), "setText", "Restart"));
 
         Attributes.AttributeValue afterText = attributeParse("h("+textView.getId()+")+10");
-        button.attributes.attributes.put(Attributes.Type.TOP, afterText);
+        Attributes.AttributeValue halfWidth = attributeParse("w(r)*0.5");
+
+        restart.attributes.attributes.put(Attributes.Type.TOP, afterText);
+        restart.attributes.attributes.put(Attributes.Type.WIDTH, halfWidth);
+        restart.tag = SPECIAL_WIDGET_RESTART;
 
         views.add(textView);
-        views.add(button);
+        views.add(restart);
+
+        if(widgetId > 0)
+        {
+            DynamicView clear = new DynamicView("Button");
+            clear.methodCalls.add(new RemoteMethodCall("setText", false, getSetterMethod(clear.type, "setText"), "setText", "Clear"));
+            clear.attributes.attributes.put(Attributes.Type.TOP, afterText);
+            clear.attributes.attributes.put(Attributes.Type.WIDTH, halfWidth);
+            clear.attributes.attributes.put(Attributes.Type.LEFT, halfWidth);
+            clear.tag = widgetId + (SPECIAL_WIDGET_CLEAR << 16);
+            views.add(clear);
+        }
 
         setWidget(androidWidgetId, SPECIAL_WIDGET_ID, views, false);
     }
@@ -1740,11 +1814,11 @@ public class Widget extends RemoteViewsService {
         {
             if(error)
             {
-                setSpecificErrorWidget(id);
+                setSpecificErrorWidget(id, 0);
             }
             else
             {
-                setSpecificLoadingWidget(id);
+                setSpecificLoadingWidget(id, -1);
             }
         }
     }
@@ -1927,7 +2001,7 @@ public class Widget extends RemoteViewsService {
         {
             e.printStackTrace();
             Log.d("APPY", "error in caller");
-            setSpecificErrorWidget(androidWidgetId);
+            setSpecificErrorWidget(androidWidgetId, widgetId);
         }
 
         if(updated)
@@ -1993,7 +2067,7 @@ public class Widget extends RemoteViewsService {
 
         if (updateListener == null)
         {
-            setSpecificErrorWidget(androidWidgetId);
+            setSpecificErrorWidget(androidWidgetId, widgetId);
             return;
         }
 
@@ -2017,7 +2091,7 @@ public class Widget extends RemoteViewsService {
             });
             if(!updated)
             {
-                setSpecificErrorWidget(androidWidgetId);
+                setSpecificErrorWidget(androidWidgetId, widgetId);
                 return;
             }
         }
@@ -2304,7 +2378,20 @@ public class Widget extends RemoteViewsService {
 
                     if(eventWidgetId == SPECIAL_WIDGET_ID) //TODO
                     {
-                        restart();
+                        int tag = widgetIntent.getIntExtra(ITEM_TAG_EXTRA, 0);
+                        if(tag == SPECIAL_WIDGET_RESTART)
+                        {
+                            restart();
+                        }
+                        else if(((tag >> 16) & 0xffff) == SPECIAL_WIDGET_CLEAR)
+                        {
+                            int widgetId = tag & 0xffff;
+                            if(widgetId > 0)
+                            {
+                                Log.d("APPY", "clearing " + widgetId);
+                                clearWidget(widgetId);
+                            }
+                        }
                     }
                     else
                     {
