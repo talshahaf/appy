@@ -399,7 +399,6 @@ class Handler:
 
         out_json = [e.dict() for e in output]
         if input is not None and json.loads(input) == out_json:
-            print('optimization')
             return None
         return json.dumps(out_json, indent=4)
 
