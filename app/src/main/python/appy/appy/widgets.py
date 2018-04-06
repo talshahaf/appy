@@ -302,6 +302,9 @@ class Widget:
     def invalidate(self):
         java_widget_manager.update(self.widget_id)
 
+    def set_loading(self):
+        java_widget_manager.setLoadingWidget(self.widget_id)
+
     def cancel_all_timers(self):
         return java_widget_manager.cancelWidgetTimers(self.widget_id)
 
@@ -337,6 +340,7 @@ def choose_widget(widget, name):
     print(f'choosing widget: {widget.widget_id} -> {name}')
     manager_state = create_manager_state()
     manager_state.chosen[widget.widget_id] = AttrDict(name=name, inited=False)
+    widget.set_loading()
     widget.invalidate()
 
 def restart():
@@ -433,7 +437,6 @@ class Handler:
     @java.interface
     def onItemClick(self, widget_id, views_str, collection_id, position):
         print(f'python got onitemclick {widget_id} {collection_id} {position}')
-        #print(f'{views}')
         views = self.import_(views_str)
         v = self.find(views, collection_id)
         widget, manager_state = create_widget(widget_id)
@@ -444,7 +447,6 @@ class Handler:
     @java.interface
     def onClick(self, widget_id, views_str, view_id):
         print(f'python got onclick {widget_id} {view_id}')
-        #print(f'{views}')
         views = self.import_(views_str)
         v = self.find(views, view_id)
         widget, manager_state = create_widget(widget_id)

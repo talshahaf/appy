@@ -1,8 +1,6 @@
 import native_appy
 import sys, os
 
-__buffer__ = []
-
 class LogcatWriter:
     VERBOSE = 2
     DEBUG = 3
@@ -25,7 +23,6 @@ class LogcatWriter:
             if i == -1:
                 break
             b = self.buf[:i]
-            __buffer__.append(b)
             native_appy.logcat_write(self.lvl, b'APPY', b)
             self.buf = self.buf[i + 1:]
 
@@ -43,6 +40,3 @@ class LogcatWriter:
             
 sys.stdout = LogcatWriter(LogcatWriter.INFO)
 sys.stderr = LogcatWriter(LogcatWriter.ERROR)
-
-def buffer():
-    return __buffer__[:]
