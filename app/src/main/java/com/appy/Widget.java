@@ -1078,6 +1078,12 @@ public class Widget extends RemoteViewsService
             }
 
             @Override
+            public String onPost(int widgetId, String views, String data)
+            {
+                return null;
+            }
+
+            @Override
             public void wipeStateRequest()
             {
 
@@ -1416,6 +1422,11 @@ public class Widget extends RemoteViewsService
         }
 
         public abstract void run();
+    }
+
+    public void setPost(int widgetId, String data)
+    {
+        addTask(widgetId, new Task<>(new CallPostTask(), widgetId, data));
     }
 
     public int setTimer(long millis, int type, int widgetId, String data)
@@ -1949,6 +1960,27 @@ public class Widget extends RemoteViewsService
                 saveWidgets();
             }
         }
+    }
+
+    private class CallPostTask implements Runner<Object>
+    {
+        @Override
+        public void run(Object... args)
+        {
+            callPostWidget((int)args[0], (String)args[1]);
+        }
+    }
+
+    public void callPostWidget(int widgetId, final String data)
+    {
+        callWidgetChangingCallback(widgetId, new CallbackCaller()
+        {
+            @Override
+            public String call(int widgetId, String current)
+            {
+                return updateListener.onPost(widgetId, current, data);
+            }
+        });
     }
 
     public void callTimerWidget(final int timerId, int widgetId, final String data)

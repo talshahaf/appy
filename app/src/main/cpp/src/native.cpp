@@ -2000,15 +2000,7 @@ static PyObject * logcat_write(PyObject *self, PyObject *args)
         return NULL;
     }
     int ret = __android_log_write(level, tag, msg);
-    if(ret >= 0)
-    {
-        return Py_BuildValue("i", ret);
-    }
-    else
-    {
-        PyErr_SetString(PyExc_RuntimeError, "logcat write failed");
-        return NULL;
-    }
+    return Py_BuildValue("i", ret);
 }
 
 static PyMethodDef native_appy_methods[] = {

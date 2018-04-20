@@ -178,13 +178,19 @@ class elist(list):
             elif getattr(e, 'name', None) == name:
                 found.add(e)
         if not found:
-            return None
+            raise KeyError(name)
         elif len(found) == 1:
             return found.pop()
         return list(found)
 
     def find_element(self, name):
         return self._find_element(self, name)
+
+    def __getitem__(self, item):
+        try:
+            return super().__getitem__(item)
+        except TypeError:
+            return self.find_element(item)
 
 widget_dims    = WidgetAttribute()
 AnalogClock    = lambda *args, **kwargs: Element.create('AnalogClock',    *args, **kwargs)
@@ -318,6 +324,9 @@ class Widget:
 
     def cancel_all_timers(self):
         return java_widget_manager.cancelWidgetTimers(self.widget_id)
+
+    def post(self, f, **captures):
+        java_widget_manager.setPost(self.widget_id, dumps((f, captures)))
 
     @classmethod
     def color(cls, r=0, g=0, b=0, a=255):
@@ -470,6 +479,15 @@ class Handler:
         func, captures = loads(data)
         widget, manager_state = create_widget(widget_id)
         call_function(func, captures, timer_id=timer_id, widget=widget, views=views)
+        return self.export(views_str, views)
+
+    @java.interface
+    def onPost(self, widget_id, views_str, data):
+        print('post called')
+        views = self.import_(views_str)
+        func, captures = loads(data)
+        widget, manager_state = create_widget(widget_id)
+        call_function(func, captures, widget=widget, views=views)
         return self.export(views_str, views)
 
     @java.interface
