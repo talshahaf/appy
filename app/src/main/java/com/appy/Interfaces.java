@@ -25,6 +25,7 @@ interface WidgetUpdateListener
     Object[] onItemClick(int widgetId, String views, int collectionId, int position);
     String onClick(int widgetId, String views, int id);
     String onTimer(int timerId, int widgetId, String views, String data);
+    String onPost(int widgetId, String views, String data);
     void wipeStateRequest();
     void importFile(String path);
     void deimportFile(String path);
