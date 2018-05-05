@@ -25,6 +25,7 @@ public class DynamicView
     public Attributes attributes = new Attributes();
     public int actualWidth;
     public int actualHeight;
+    public String style;
 
     private static AtomicInteger id_counter = new AtomicInteger(1);
     private static int genId()
@@ -124,6 +125,11 @@ public class DynamicView
             view.actualHeight = obj.getInt("actualHeight");
         }
 
+        if(obj.has("style"))
+        {
+            view.style = obj.getString("style");
+        }
+
         if(obj.has("attributes"))
         {
             view.attributes = Attributes.fromJSON(obj.getJSONObject("attributes"));
@@ -160,6 +166,7 @@ public class DynamicView
         obj.put("containerId", container_id);
         obj.put("actualWidth", actualWidth);
         obj.put("actualHeight", actualHeight);
+        obj.put("style", style);
 
         if(tag != null)
         {

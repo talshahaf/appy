@@ -8,4 +8,233 @@
         <item name="colorAccent">@color/colorAccent</item>
     </style>
 
+    <style name="btn" parent="Base.Widget.AppCompat.Button.Borderless">
+        <item name="android:textStyle">normal</item>
+        <item name="android:gravity">center</item>
+        <item name="android:paddingTop">16sp</item>
+        <item name="android:paddingBottom">16sp</item>
+        <item name="android:paddingLeft">24sp</item>
+        <item name="android:paddingRight">24sp</item>
+        <item name="android:textSize">20sp</item>
+        <item name="android:minHeight">0dp</item>
+        <item name="android:minWidth">0dp</item>
+        <item name="android:textAllCaps">false</item>
+    </style>
+
+    <style name="btn_sml" parent="btn">
+        <item name="android:paddingTop">16sp</item>
+        <item name="android:paddingBottom">16sp</item>
+        <item name="android:paddingLeft">20sp</item>
+        <item name="android:paddingRight">20sp</item>
+        <item name="android:textSize">17sp</item>
+    </style>
+
+    <style name="btn_lg" parent="btn">
+        <item name="android:paddingTop">16sp</item>
+        <item name="android:paddingBottom">16sp</item>
+        <item name="android:paddingLeft">28sp</item>
+        <item name="android:paddingRight">28sp</item>
+        <item name="android:textSize">26sp</item>
+    </style>
+
+    <style name="primary_btn" parent="btn">
+        <item name="android:background">@drawable/drawable_primary_btn</item>
+        <item name="android:textColor">@color/color_primary_text</item>
+    </style>
+    <style name="outline_primary_btn" parent="btn">
+        <item name="android:background">@drawable/drawable_outline_primary_btn</item>
+        <item name="android:textColor">@color/color_outline_primary_text</item>
+    </style>
+    <style name="primary_btn_sml" parent="btn_sml">
+        <item name="android:background">@drawable/drawable_primary_btn</item>
+        <item name="android:textColor">@color/color_primary_text</item>
+    </style>
+    <style name="outline_primary_btn_sml" parent="btn_sml">
+        <item name="android:background">@drawable/drawable_outline_primary_btn</item>
+        <item name="android:textColor">@color/color_outline_primary_text</item>
+    </style>
+    <style name="primary_btn_lg" parent="btn_lg">
+        <item name="android:background">@drawable/drawable_primary_btn</item>
+        <item name="android:textColor">@color/color_primary_text</item>
+    </style>
+    <style name="outline_primary_btn_lg" parent="btn_lg">
+        <item name="android:background">@drawable/drawable_outline_primary_btn</item>
+        <item name="android:textColor">@color/color_outline_primary_text</item>
+    </style>
+
+    <style name="secondary_btn" parent="btn">
+        <item name="android:background">@drawable/drawable_secondary_btn</item>
+        <item name="android:textColor">@color/color_secondary_text</item>
+    </style>
+    <style name="outline_secondary_btn" parent="btn">
+        <item name="android:background">@drawable/drawable_outline_secondary_btn</item>
+        <item name="android:textColor">@color/color_outline_secondary_text</item>
+    </style>
+    <style name="secondary_btn_sml" parent="btn_sml">
+        <item name="android:background">@drawable/drawable_secondary_btn</item>
+        <item name="android:textColor">@color/color_secondary_text</item>
+    </style>
+    <style name="outline_secondary_btn_sml" parent="btn_sml">
+        <item name="android:background">@drawable/drawable_outline_secondary_btn</item>
+        <item name="android:textColor">@color/color_outline_secondary_text</item>
+    </style>
+    <style name="secondary_btn_lg" parent="btn_lg">
+        <item name="android:background">@drawable/drawable_secondary_btn</item>
+        <item name="android:textColor">@color/color_secondary_text</item>
+    </style>
+    <style name="outline_secondary_btn_lg" parent="btn_lg">
+        <item name="android:background">@drawable/drawable_outline_secondary_btn</item>
+        <item name="android:textColor">@color/color_outline_secondary_text</item>
+    </style>
+
+    <style name="success_btn" parent="btn">
+        <item name="android:background">@drawable/drawable_success_btn</item>
+        <item name="android:textColor">@color/color_success_text</item>
+    </style>
+    <style name="outline_success_btn" parent="btn">
+        <item name="android:background">@drawable/drawable_outline_success_btn</item>
+        <item name="android:textColor">@color/color_outline_success_text</item>
+    </style>
+    <style name="success_btn_sml" parent="btn_sml">
+        <item name="android:background">@drawable/drawable_success_btn</item>
+        <item name="android:textColor">@color/color_success_text</item>
+    </style>
+    <style name="outline_success_btn_sml" parent="btn_sml">
+        <item name="android:background">@drawable/drawable_outline_success_btn</item>
+        <item name="android:textColor">@color/color_outline_success_text</item>
+    </style>
+    <style name="success_btn_lg" parent="btn_lg">
+        <item name="android:background">@drawable/drawable_success_btn</item>
+        <item name="android:textColor">@color/color_success_text</item>
+    </style>
+    <style name="outline_success_btn_lg" parent="btn_lg">
+        <item name="android:background">@drawable/drawable_outline_success_btn</item>
+        <item name="android:textColor">@color/color_outline_success_text</item>
+    </style>
+
+    <style name="danger_btn" parent="btn">
+        <item name="android:background">@drawable/drawable_danger_btn</item>
+        <item name="android:textColor">@color/color_danger_text</item>
+    </style>
+    <style name="outline_danger_btn" parent="btn">
+        <item name="android:background">@drawable/drawable_outline_danger_btn</item>
+        <item name="android:textColor">@color/color_outline_danger_text</item>
+    </style>
+    <style name="danger_btn_sml" parent="btn_sml">
+        <item name="android:background">@drawable/drawable_danger_btn</item>
+        <item name="android:textColor">@color/color_danger_text</item>
+    </style>
+    <style name="outline_danger_btn_sml" parent="btn_sml">
+        <item name="android:background">@drawable/drawable_outline_danger_btn</item>
+        <item name="android:textColor">@color/color_outline_danger_text</item>
+    </style>
+    <style name="danger_btn_lg" parent="btn_lg">
+        <item name="android:background">@drawable/drawable_danger_btn</item>
+        <item name="android:textColor">@color/color_danger_text</item>
+    </style>
+    <style name="outline_danger_btn_lg" parent="btn_lg">
+        <item name="android:background">@drawable/drawable_outline_danger_btn</item>
+        <item name="android:textColor">@color/color_outline_danger_text</item>
+    </style>
+
+    <style name="warning_btn" parent="btn">
+        <item name="android:background">@drawable/drawable_warning_btn</item>
+        <item name="android:textColor">@color/color_warning_text</item>
+    </style>
+    <style name="outline_warning_btn" parent="btn">
+        <item name="android:background">@drawable/drawable_outline_warning_btn</item>
+        <item name="android:textColor">@color/color_outline_warning_text</item>
+    </style>
+    <style name="warning_btn_sml" parent="btn_sml">
+        <item name="android:background">@drawable/drawable_warning_btn</item>
+        <item name="android:textColor">@color/color_warning_text</item>
+    </style>
+    <style name="outline_warning_btn_sml" parent="btn_sml">
+        <item name="android:background">@drawable/drawable_outline_warning_btn</item>
+        <item name="android:textColor">@color/color_outline_warning_text</item>
+    </style>
+    <style name="warning_btn_lg" parent="btn_lg">
+        <item name="android:background">@drawable/drawable_warning_btn</item>
+        <item name="android:textColor">@color/color_warning_text</item>
+    </style>
+    <style name="outline_warning_btn_lg" parent="btn_lg">
+        <item name="android:background">@drawable/drawable_outline_warning_btn</item>
+        <item name="android:textColor">@color/color_outline_warning_text</item>
+    </style>
+
+    <style name="info_btn" parent="btn">
+        <item name="android:background">@drawable/drawable_info_btn</item>
+        <item name="android:textColor">@color/color_info_text</item>
+    </style>
+    <style name="outline_info_btn" parent="btn">
+        <item name="android:background">@drawable/drawable_outline_info_btn</item>
+        <item name="android:textColor">@color/color_outline_info_text</item>
+    </style>
+    <style name="info_btn_sml" parent="btn_sml">
+        <item name="android:background">@drawable/drawable_info_btn</item>
+        <item name="android:textColor">@color/color_info_text</item>
+    </style>
+    <style name="outline_info_btn_sml" parent="btn_sml">
+        <item name="android:background">@drawable/drawable_outline_info_btn</item>
+        <item name="android:textColor">@color/color_outline_info_text</item>
+    </style>
+    <style name="info_btn_lg" parent="btn_lg">
+        <item name="android:background">@drawable/drawable_info_btn</item>
+        <item name="android:textColor">@color/color_info_text</item>
+    </style>
+    <style name="outline_info_btn_lg" parent="btn_lg">
+        <item name="android:background">@drawable/drawable_outline_info_btn</item>
+        <item name="android:textColor">@color/color_outline_info_text</item>
+    </style>
+
+    <style name="light_btn" parent="btn">
+        <item name="android:background">@drawable/drawable_light_btn</item>
+        <item name="android:textColor">@color/color_light_text</item>
+    </style>
+    <style name="outline_light_btn" parent="btn">
+        <item name="android:background">@drawable/drawable_outline_light_btn</item>
+        <item name="android:textColor">@color/color_outline_light_text</item>
+    </style>
+    <style name="light_btn_sml" parent="btn_sml">
+        <item name="android:background">@drawable/drawable_light_btn</item>
+        <item name="android:textColor">@color/color_light_text</item>
+    </style>
+    <style name="outline_light_btn_sml" parent="btn_sml">
+        <item name="android:background">@drawable/drawable_outline_light_btn</item>
+        <item name="android:textColor">@color/color_outline_light_text</item>
+    </style>
+    <style name="light_btn_lg" parent="btn_lg">
+        <item name="android:background">@drawable/drawable_light_btn</item>
+        <item name="android:textColor">@color/color_light_text</item>
+    </style>
+    <style name="outline_light_btn_lg" parent="btn_lg">
+        <item name="android:background">@drawable/drawable_outline_light_btn</item>
+        <item name="android:textColor">@color/color_outline_light_text</item>
+    </style>
+
+    <style name="dark_btn" parent="btn">
+        <item name="android:background">@drawable/drawable_dark_btn</item>
+        <item name="android:textColor">@color/color_dark_text</item>
+    </style>
+    <style name="outline_dark_btn" parent="btn">
+        <item name="android:background">@drawable/drawable_outline_dark_btn</item>
+        <item name="android:textColor">@color/color_outline_dark_text</item>
+    </style>
+    <style name="dark_btn_sml" parent="btn_sml">
+        <item name="android:background">@drawable/drawable_dark_btn</item>
+        <item name="android:textColor">@color/color_dark_text</item>
+    </style>
+    <style name="outline_dark_btn_sml" parent="btn_sml">
+        <item name="android:background">@drawable/drawable_outline_dark_btn</item>
+        <item name="android:textColor">@color/color_outline_dark_text</item>
+    </style>
+    <style name="dark_btn_lg" parent="btn_lg">
+        <item name="android:background">@drawable/drawable_dark_btn</item>
+        <item name="android:textColor">@color/color_dark_text</item>
+    </style>
+    <style name="outline_dark_btn_lg" parent="btn_lg">
+        <item name="android:background">@drawable/drawable_outline_dark_btn</item>
+        <item name="android:textColor">@color/color_outline_dark_text</item>
+    </style>
+
 </resources>

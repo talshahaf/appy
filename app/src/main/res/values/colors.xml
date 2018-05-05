@@ -8,4 +8,36 @@
     <color name="grid_yellow">#6ed3be00</color>
     <color name="grid_red">#69b00003</color>
     <color name="grid_grey">#69b0b0b0</color>
+
+    <color name="color_primary_btn_bg_hover">#0069d9</color>
+    <color name="color_primary_btn_border_hover">#0062cc</color>
+    <color name="color_primary_btn_press_shadow">#7f007bff</color>
+
+    <color name="color_secondary_btn_bg_hover">#5a6268</color>
+    <color name="color_secondary_btn_border_hover">#545b62</color>
+    <color name="color_secondary_btn_press_shadow">#7f6c757d</color>
+
+    <color name="color_success_btn_bg_hover">#218838</color>
+    <color name="color_success_btn_border_hover">#1e7e34</color>
+    <color name="color_success_btn_press_shadow">#7f28a745</color>
+
+    <color name="color_danger_btn_bg_hover">#c82333</color>
+    <color name="color_danger_btn_border_hover">#bd2130</color>
+    <color name="color_danger_btn_press_shadow">#7fdc3545</color>
+
+    <color name="color_warning_btn_bg_hover">#e0a800</color>
+    <color name="color_warning_btn_border_hover">#d39e00</color>
+    <color name="color_warning_btn_press_shadow">#7fffc107</color>
+
+    <color name="color_info_btn_bg_hover">#138496</color>
+    <color name="color_info_btn_border_hover">#117a8b</color>
+    <color name="color_info_btn_press_shadow">#7f17a2b8</color>
+
+    <color name="color_light_btn_bg_hover">#e2e6ea</color>
+    <color name="color_light_btn_border_hover">#dae0e5</color>
+    <color name="color_light_btn_press_shadow">#7ff8f9fa</color>
+
+    <color name="color_dark_btn_bg_hover">#23272b</color>
+    <color name="color_dark_btn_border_hover">#1d2124</color>
+    <color name="color_dark_btn_press_shadow">#7f343a40</color>
 </resources>

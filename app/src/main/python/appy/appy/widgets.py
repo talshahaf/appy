@@ -1,4 +1,4 @@
-import json, functools, copy, traceback, inspect, threading, os, collections, importlib, sys, hashlib
+import json, functools, copy, traceback, inspect, threading, os, collections, importlib.util, sys, hashlib
 from .utils import AttrDict, dumps, loads, cap, get_args
 from . import java, state
 
@@ -96,7 +96,7 @@ class Element:
     def __getattr__(self, item):
         if item in attrs:
             return AttributeValue(Reference(self.d.id, attrs[item], 1))
-        if item in ('type', 'id'):
+        if item in ('type', 'id', 'style'):
             return getattr(self.d, item)
 
         if 'tag' in self.d and item in self.d.tag:
@@ -125,6 +125,8 @@ class Element:
             if 'tag' not in self.d:
                 self.d.tag = {}
             self.d.tag[key] = value
+        elif key in ('style',):
+            self.d[key] = value
         else:
             param_setter, method = get_param_setter(self.d.type, key)
             if param_setter is not None:
@@ -243,6 +245,7 @@ def load_module(path):
         sys.modules[name] = mod #for pickle
         spec.loader.exec_module(mod)
     except:
+        print('wawawawawa', dir(importlib))
         sys.modules.pop(name, None)
         raise
     finally:
