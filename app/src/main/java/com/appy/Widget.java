@@ -165,6 +165,143 @@ public class Widget extends RemoteViewsService
         }
     }
 
+    static HashMap<List<String>, Integer> collection_map = new HashMap<>();
+    static
+    {
+        collection_map.put(Arrays.asList("ListView"), R.layout.root_listview);
+        collection_map.put(Arrays.asList("GridView"), R.layout.root_gridview);
+        collection_map.put(Arrays.asList("StackView"), R.layout.root_stackview);
+        collection_map.put(Arrays.asList("AdapterViewFlipper"), R.layout.root_adapterviewflipper);
+        collection_map.put(Arrays.asList("AdapterViewFlipper", "AdapterViewFlipper"), R.layout.root_adapterviewflipper_adapterviewflipper);
+        collection_map.put(Arrays.asList("AdapterViewFlipper", "GridView"), R.layout.root_adapterviewflipper_gridview);
+        collection_map.put(Arrays.asList("AdapterViewFlipper", "ListView"), R.layout.root_adapterviewflipper_listview);
+        collection_map.put(Arrays.asList("AdapterViewFlipper", "StackView"), R.layout.root_adapterviewflipper_stackview);
+        collection_map.put(Arrays.asList("GridView", "GridView"), R.layout.root_gridview_gridview);
+        collection_map.put(Arrays.asList("GridView", "ListView"), R.layout.root_gridview_listview);
+        collection_map.put(Arrays.asList("GridView", "StackView"), R.layout.root_gridview_stackview);
+        collection_map.put(Arrays.asList("ListView", "ListView"), R.layout.root_listview_listview);
+        collection_map.put(Arrays.asList("ListView", "StackView"), R.layout.root_listview_stackview);
+        collection_map.put(Arrays.asList("StackView", "StackView"), R.layout.root_stackview_stackview);
+    }
+
+    static HashMap<String, HashMap<String, Integer>> element_map = new HashMap<>();
+    static
+    {
+        element_map.put("RelativeLayout", new HashMap<String, Integer>());
+        element_map.get("RelativeLayout").put("", R.layout.element_relativelayout);
+        element_map.put("AnalogClock", new HashMap<String, Integer>());
+        element_map.get("AnalogClock").put("", R.layout.element_analogclock);
+        element_map.put("Button", new HashMap<String, Integer>());
+        element_map.get("Button").put("", R.layout.element_button);
+        element_map.get("Button").put("primary_btn", R.layout.element_button_primary_btn);
+        element_map.get("Button").put("outline_primary_btn", R.layout.element_button_outline_primary_btn);
+        element_map.get("Button").put("primary_btn_sml", R.layout.element_button_primary_btn_sml);
+        element_map.get("Button").put("outline_primary_btn_sml", R.layout.element_button_outline_primary_btn_sml);
+        element_map.get("Button").put("primary_btn_lg", R.layout.element_button_primary_btn_lg);
+        element_map.get("Button").put("outline_primary_btn_lg", R.layout.element_button_outline_primary_btn_lg);
+        element_map.get("Button").put("secondary_btn", R.layout.element_button_secondary_btn);
+        element_map.get("Button").put("outline_secondary_btn", R.layout.element_button_outline_secondary_btn);
+        element_map.get("Button").put("secondary_btn_sml", R.layout.element_button_secondary_btn_sml);
+        element_map.get("Button").put("outline_secondary_btn_sml", R.layout.element_button_outline_secondary_btn_sml);
+        element_map.get("Button").put("secondary_btn_lg", R.layout.element_button_secondary_btn_lg);
+        element_map.get("Button").put("outline_secondary_btn_lg", R.layout.element_button_outline_secondary_btn_lg);
+        element_map.get("Button").put("success_btn", R.layout.element_button_success_btn);
+        element_map.get("Button").put("outline_success_btn", R.layout.element_button_outline_success_btn);
+        element_map.get("Button").put("success_btn_sml", R.layout.element_button_success_btn_sml);
+        element_map.get("Button").put("outline_success_btn_sml", R.layout.element_button_outline_success_btn_sml);
+        element_map.get("Button").put("success_btn_lg", R.layout.element_button_success_btn_lg);
+        element_map.get("Button").put("outline_success_btn_lg", R.layout.element_button_outline_success_btn_lg);
+        element_map.get("Button").put("danger_btn", R.layout.element_button_danger_btn);
+        element_map.get("Button").put("outline_danger_btn", R.layout.element_button_outline_danger_btn);
+        element_map.get("Button").put("danger_btn_sml", R.layout.element_button_danger_btn_sml);
+        element_map.get("Button").put("outline_danger_btn_sml", R.layout.element_button_outline_danger_btn_sml);
+        element_map.get("Button").put("danger_btn_lg", R.layout.element_button_danger_btn_lg);
+        element_map.get("Button").put("outline_danger_btn_lg", R.layout.element_button_outline_danger_btn_lg);
+        element_map.get("Button").put("warning_btn", R.layout.element_button_warning_btn);
+        element_map.get("Button").put("outline_warning_btn", R.layout.element_button_outline_warning_btn);
+        element_map.get("Button").put("warning_btn_sml", R.layout.element_button_warning_btn_sml);
+        element_map.get("Button").put("outline_warning_btn_sml", R.layout.element_button_outline_warning_btn_sml);
+        element_map.get("Button").put("warning_btn_lg", R.layout.element_button_warning_btn_lg);
+        element_map.get("Button").put("outline_warning_btn_lg", R.layout.element_button_outline_warning_btn_lg);
+        element_map.get("Button").put("info_btn", R.layout.element_button_info_btn);
+        element_map.get("Button").put("outline_info_btn", R.layout.element_button_outline_info_btn);
+        element_map.get("Button").put("info_btn_sml", R.layout.element_button_info_btn_sml);
+        element_map.get("Button").put("outline_info_btn_sml", R.layout.element_button_outline_info_btn_sml);
+        element_map.get("Button").put("info_btn_lg", R.layout.element_button_info_btn_lg);
+        element_map.get("Button").put("outline_info_btn_lg", R.layout.element_button_outline_info_btn_lg);
+        element_map.get("Button").put("light_btn", R.layout.element_button_light_btn);
+        element_map.get("Button").put("outline_light_btn", R.layout.element_button_outline_light_btn);
+        element_map.get("Button").put("light_btn_sml", R.layout.element_button_light_btn_sml);
+        element_map.get("Button").put("outline_light_btn_sml", R.layout.element_button_outline_light_btn_sml);
+        element_map.get("Button").put("light_btn_lg", R.layout.element_button_light_btn_lg);
+        element_map.get("Button").put("outline_light_btn_lg", R.layout.element_button_outline_light_btn_lg);
+        element_map.get("Button").put("dark_btn", R.layout.element_button_dark_btn);
+        element_map.get("Button").put("outline_dark_btn", R.layout.element_button_outline_dark_btn);
+        element_map.get("Button").put("dark_btn_sml", R.layout.element_button_dark_btn_sml);
+        element_map.get("Button").put("outline_dark_btn_sml", R.layout.element_button_outline_dark_btn_sml);
+        element_map.get("Button").put("dark_btn_lg", R.layout.element_button_dark_btn_lg);
+        element_map.get("Button").put("outline_dark_btn_lg", R.layout.element_button_outline_dark_btn_lg);
+        element_map.put("Chronometer", new HashMap<String, Integer>());
+        element_map.get("Chronometer").put("", R.layout.element_chronometer);
+        element_map.put("ImageButton", new HashMap<String, Integer>());
+        element_map.get("ImageButton").put("", R.layout.element_imagebutton);
+        element_map.get("ImageButton").put("primary_btn", R.layout.element_imagebutton_primary_btn);
+        element_map.get("ImageButton").put("outline_primary_btn", R.layout.element_imagebutton_outline_primary_btn);
+        element_map.get("ImageButton").put("primary_btn_sml", R.layout.element_imagebutton_primary_btn_sml);
+        element_map.get("ImageButton").put("outline_primary_btn_sml", R.layout.element_imagebutton_outline_primary_btn_sml);
+        element_map.get("ImageButton").put("primary_btn_lg", R.layout.element_imagebutton_primary_btn_lg);
+        element_map.get("ImageButton").put("outline_primary_btn_lg", R.layout.element_imagebutton_outline_primary_btn_lg);
+        element_map.get("ImageButton").put("secondary_btn", R.layout.element_imagebutton_secondary_btn);
+        element_map.get("ImageButton").put("outline_secondary_btn", R.layout.element_imagebutton_outline_secondary_btn);
+        element_map.get("ImageButton").put("secondary_btn_sml", R.layout.element_imagebutton_secondary_btn_sml);
+        element_map.get("ImageButton").put("outline_secondary_btn_sml", R.layout.element_imagebutton_outline_secondary_btn_sml);
+        element_map.get("ImageButton").put("secondary_btn_lg", R.layout.element_imagebutton_secondary_btn_lg);
+        element_map.get("ImageButton").put("outline_secondary_btn_lg", R.layout.element_imagebutton_outline_secondary_btn_lg);
+        element_map.get("ImageButton").put("success_btn", R.layout.element_imagebutton_success_btn);
+        element_map.get("ImageButton").put("outline_success_btn", R.layout.element_imagebutton_outline_success_btn);
+        element_map.get("ImageButton").put("success_btn_sml", R.layout.element_imagebutton_success_btn_sml);
+        element_map.get("ImageButton").put("outline_success_btn_sml", R.layout.element_imagebutton_outline_success_btn_sml);
+        element_map.get("ImageButton").put("success_btn_lg", R.layout.element_imagebutton_success_btn_lg);
+        element_map.get("ImageButton").put("outline_success_btn_lg", R.layout.element_imagebutton_outline_success_btn_lg);
+        element_map.get("ImageButton").put("danger_btn", R.layout.element_imagebutton_danger_btn);
+        element_map.get("ImageButton").put("outline_danger_btn", R.layout.element_imagebutton_outline_danger_btn);
+        element_map.get("ImageButton").put("danger_btn_sml", R.layout.element_imagebutton_danger_btn_sml);
+        element_map.get("ImageButton").put("outline_danger_btn_sml", R.layout.element_imagebutton_outline_danger_btn_sml);
+        element_map.get("ImageButton").put("danger_btn_lg", R.layout.element_imagebutton_danger_btn_lg);
+        element_map.get("ImageButton").put("outline_danger_btn_lg", R.layout.element_imagebutton_outline_danger_btn_lg);
+        element_map.get("ImageButton").put("warning_btn", R.layout.element_imagebutton_warning_btn);
+        element_map.get("ImageButton").put("outline_warning_btn", R.layout.element_imagebutton_outline_warning_btn);
+        element_map.get("ImageButton").put("warning_btn_sml", R.layout.element_imagebutton_warning_btn_sml);
+        element_map.get("ImageButton").put("outline_warning_btn_sml", R.layout.element_imagebutton_outline_warning_btn_sml);
+        element_map.get("ImageButton").put("warning_btn_lg", R.layout.element_imagebutton_warning_btn_lg);
+        element_map.get("ImageButton").put("outline_warning_btn_lg", R.layout.element_imagebutton_outline_warning_btn_lg);
+        element_map.get("ImageButton").put("info_btn", R.layout.element_imagebutton_info_btn);
+        element_map.get("ImageButton").put("outline_info_btn", R.layout.element_imagebutton_outline_info_btn);
+        element_map.get("ImageButton").put("info_btn_sml", R.layout.element_imagebutton_info_btn_sml);
+        element_map.get("ImageButton").put("outline_info_btn_sml", R.layout.element_imagebutton_outline_info_btn_sml);
+        element_map.get("ImageButton").put("info_btn_lg", R.layout.element_imagebutton_info_btn_lg);
+        element_map.get("ImageButton").put("outline_info_btn_lg", R.layout.element_imagebutton_outline_info_btn_lg);
+        element_map.get("ImageButton").put("light_btn", R.layout.element_imagebutton_light_btn);
+        element_map.get("ImageButton").put("outline_light_btn", R.layout.element_imagebutton_outline_light_btn);
+        element_map.get("ImageButton").put("light_btn_sml", R.layout.element_imagebutton_light_btn_sml);
+        element_map.get("ImageButton").put("outline_light_btn_sml", R.layout.element_imagebutton_outline_light_btn_sml);
+        element_map.get("ImageButton").put("light_btn_lg", R.layout.element_imagebutton_light_btn_lg);
+        element_map.get("ImageButton").put("outline_light_btn_lg", R.layout.element_imagebutton_outline_light_btn_lg);
+        element_map.get("ImageButton").put("dark_btn", R.layout.element_imagebutton_dark_btn);
+        element_map.get("ImageButton").put("outline_dark_btn", R.layout.element_imagebutton_outline_dark_btn);
+        element_map.get("ImageButton").put("dark_btn_sml", R.layout.element_imagebutton_dark_btn_sml);
+        element_map.get("ImageButton").put("outline_dark_btn_sml", R.layout.element_imagebutton_outline_dark_btn_sml);
+        element_map.get("ImageButton").put("dark_btn_lg", R.layout.element_imagebutton_dark_btn_lg);
+        element_map.get("ImageButton").put("outline_dark_btn_lg", R.layout.element_imagebutton_outline_dark_btn_lg);
+        element_map.put("ImageView", new HashMap<String, Integer>());
+        element_map.get("ImageView").put("", R.layout.element_imageview);
+        element_map.put("ProgressBar", new HashMap<String, Integer>());
+        element_map.get("ProgressBar").put("", R.layout.element_progressbar);
+        element_map.put("TextView", new HashMap<String, Integer>());
+        element_map.get("TextView").put("", R.layout.element_textview);
+    }
+
+
     WidgetUpdateListener updateListener = null;
     StatusListener statusListener = null;
     Handler handler;
@@ -529,26 +666,6 @@ public class Widget extends RemoteViewsService
                 (int) dipToPixels(this, bundle.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT))};
     }
 
-    static HashMap<List<String>, Integer> collection_map = new HashMap<>();
-
-    static
-    {
-        collection_map.put(Arrays.asList("ListView"), R.layout.root_listview);
-        collection_map.put(Arrays.asList("GridView"), R.layout.root_gridview);
-        collection_map.put(Arrays.asList("StackView"), R.layout.root_stackview);
-        collection_map.put(Arrays.asList("AdapterViewFlipper"), R.layout.root_adapterviewflipper);
-        collection_map.put(Arrays.asList("AdapterViewFlipper", "AdapterViewFlipper"), R.layout.root_adapterviewflipper_adapterviewflipper);
-        collection_map.put(Arrays.asList("AdapterViewFlipper", "GridView"), R.layout.root_adapterviewflipper_gridview);
-        collection_map.put(Arrays.asList("AdapterViewFlipper", "ListView"), R.layout.root_adapterviewflipper_listview);
-        collection_map.put(Arrays.asList("AdapterViewFlipper", "StackView"), R.layout.root_adapterviewflipper_stackview);
-        collection_map.put(Arrays.asList("GridView", "GridView"), R.layout.root_gridview_gridview);
-        collection_map.put(Arrays.asList("GridView", "ListView"), R.layout.root_gridview_listview);
-        collection_map.put(Arrays.asList("GridView", "StackView"), R.layout.root_gridview_stackview);
-        collection_map.put(Arrays.asList("ListView", "ListView"), R.layout.root_listview_listview);
-        collection_map.put(Arrays.asList("ListView", "StackView"), R.layout.root_listview_stackview);
-        collection_map.put(Arrays.asList("StackView", "StackView"), R.layout.root_stackview_stackview);
-    }
-
     public Pair<Integer, HashMap<String, ArrayList<Integer>>> selectRootView(ArrayList<String> collections)
     {
         if (collections.size() > 2)
@@ -601,28 +718,24 @@ public class Widget extends RemoteViewsService
         throw new IllegalArgumentException((n + 1) + " collections are not supported");
     }
 
-    public int typeToLayout(String type)
+    public int typeToLayout(String type, String style)
     {
-        switch (type)
+        if(style == null)
         {
-            case "AnalogClock":
-                return R.layout.element_analogclock;
-            case "Button":
-                return R.layout.element_button;
-            case "Chronometer":
-                return R.layout.element_chronometer;
-            case "ImageButton":
-                return R.layout.element_imagebutton;
-            case "ImageView":
-                return R.layout.element_imageview;
-            case "ProgressBar":
-                return R.layout.element_progressbar;
-            case "TextView":
-                return R.layout.element_textview;
-            case "RelativeLayout":
-                return R.layout.element_relativelayout;
+            style = "";
         }
-        throw new IllegalArgumentException("unknown type " + type);
+
+        if(!element_map.containsKey(type))
+        {
+            throw new IllegalArgumentException("unknown type " + type);
+        }
+
+        if(!element_map.get(type).containsKey(style))
+        {
+            throw new IllegalArgumentException("unknown style " + style + " for type " + type);
+        }
+
+        return element_map.get(type).get(style);
     }
 
     public RemoteViews generate(Context context, int widgetId, ArrayList<DynamicView> dynamicList, boolean keepDescription, boolean inCollection) throws InvocationTargetException, IllegalAccessException
@@ -679,7 +792,7 @@ public class Widget extends RemoteViewsService
                 {
                     throw new IllegalArgumentException("only collections can have children, not " + layout.type);
                 }
-                layout.xml_id = typeToLayout(layout.type);
+                layout.xml_id = typeToLayout(layout.type, layout.style);
                 layout.container_id = R.id.l0;
                 layout.view_id = R.id.e0;
                 remoteView = new RemoteViews(context.getPackageName(), layout.xml_id);
@@ -1711,6 +1824,20 @@ public class Widget extends RemoteViewsService
         return sharedPref.getString("state", null);
     }
 
+    public void setPythonUnpacked(boolean unpacked)
+    {
+        SharedPreferences sharedPref = getSharedPreferences("appy", Context.MODE_PRIVATE);
+        SharedPreferences.Editor editor = sharedPref.edit();
+        editor.putBoolean("unpacked", unpacked);
+        editor.apply();
+    }
+
+    public boolean getPythonUnpacked()
+    {
+        SharedPreferences sharedPref = getSharedPreferences("appy", Context.MODE_PRIVATE);
+        return sharedPref.getBoolean("unpacked", false);
+    }
+
     public void setWidget(final int androidWidgetId, final int widgetId, final ArrayList<DynamicView> views, final boolean errorOnFailure)
     {
         handler.post(new Runnable()
@@ -1839,7 +1966,15 @@ public class Widget extends RemoteViewsService
             String cacheDir = getCacheDir().getAbsolutePath();
             try
             {
-                unpackPython(getAssets().open("python.targz"), pythonHome);
+                if(!getPythonUnpacked())
+                {
+                    unpackPython(getAssets().open("python.targz"), pythonHome);
+                    setPythonUnpacked(true);
+                }
+                else
+                {
+                    Log.d("APPY", "python already unpacked");
+                }
                 copyAsset(getAssets().open("main.py"), new File(cacheDir, "main.py"));
                 copyAsset(getAssets().open("logcat.py"), new File(cacheDir, "logcat.py"));
                 copyAsset(getAssets().open("appy.targz"), new File(cacheDir, "appy.tar.gz"));
@@ -2500,27 +2635,16 @@ public class Widget extends RemoteViewsService
 
     public static void unpackPython(InputStream pythontar, String pythonHome)
     {
-        if(!new File(pythonHome, "lib/libpython3.6m.so").exists())
+        Log.d("APPY", "unpacking python");
+        try
         {
-            Log.d("APPY", "unpacking python");
-
-            try
-            {
-                untar(pythontar, pythonHome);
-            }
-            catch(IOException e){
-                e.printStackTrace();
-                Log.e("APPY", "tar exception: "+e);
-            }
-            //runProcess(new String[]{"sh", "-c", "tar -xf /sdcard/python.tar -C " + pythonHome + " 2>&1"});
-
-            //printFnames(pythonHome);
-            Log.d("APPY", "done unpacking python");
+            untar(pythontar, pythonHome);
         }
-        else
-        {
-            Log.d("APPY", "not unpacking python");
+        catch(IOException e){
+            e.printStackTrace();
+            Log.e("APPY", "tar exception: "+e);
         }
+        Log.d("APPY", "done unpacking python");
     }
 
     public static int READ_PERM = 0444;
