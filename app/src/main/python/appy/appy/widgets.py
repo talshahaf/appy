@@ -210,21 +210,24 @@ class Element:
 
 class elist(list):
     @classmethod
-    def _find_element(cls, lst, name):
+    def _find_element(cls, lst, pred):
         found = set()
         for e in lst:
             if isinstance(e, list):
-                found.update(cls._find_element(e, name))
-            elif getattr(e, 'name', None) == name:
+                found.update(cls._find_element(e, pred))
+            elif pred(e):
                 found.add(e)
         if not found:
-            raise KeyError(name)
+            raise KeyError('element not found')
         elif len(found) == 1:
             return found.pop()
         return list(found)
 
     def find_element(self, name):
-        return self._find_element(self, name)
+        return self._find_element(self, (lambda name: (lambda e: getattr(e, 'name', None) == name))(name)) #capture name
+
+    def find_id(self, id):
+        return self._find_element(self, (lambda id: (lambda e: getattr(e, 'id', None) == id))(id)) #capture id
 
     def __getitem__(self, item):
         try:

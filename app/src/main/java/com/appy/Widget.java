@@ -1001,7 +1001,6 @@ public class Widget extends RemoteViewsService
 
             if (!keepDescription)
             {
-                Log.d("APPY", "set description "+isCollection(layout.type)+" "+layout.view_id);
                 remoteView.setCharSequence(layout.view_id, "setContentDescription", layout.getId() + "");
             }
 
@@ -1115,7 +1114,7 @@ public class Widget extends RemoteViewsService
         params.height = heightLimit;
         inflated.setLayoutParams(params);
 
-        Log.d("APPY", "limits: " + widthLimit + ", " + heightLimit);
+        // Log.d("APPY", "limits: " + widthLimit + ", " + heightLimit);
 
         Attributes rootAttributes = new Attributes();
         rootAttributes.attributes.get(Attributes.Type.LEFT).tryTrivialResolve(0);
