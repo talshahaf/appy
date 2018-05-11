@@ -96,6 +96,10 @@ def updating_text_create(widget, initial_value, on_refresh, background_param, ad
         text = TextView(name='content', text='')
 
     btn = refresh_button((updating_text_refresh_action, dict(on_refresh=on_refresh, adapter=adapter)), name='refresh_btn', initial_refresh=initial_refresh, widget=widget)
+    del btn.bottom
+    del btn.left
+    btn.top = 0
+    btn.right = 0
 
     views = []
     if background_param is not None and background_param is not False:

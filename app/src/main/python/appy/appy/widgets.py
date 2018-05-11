@@ -129,6 +129,16 @@ class Element:
             self.d.tag = {}
         self.d.tag[key] = dumps((f, captures))
 
+    def __delattr__(self, key):
+        if key in attrs:
+            del self.d.attributes[attrs[key]]
+        elif key in ('style',):
+            del self.d[key]
+        elif 'tag' in self.d and key in self.d.tag:
+            del self.d.tag[key]
+        else:
+            self.d.methodCalls = [c for c in self.d.methodCalls if c.identifier != key]
+
     def __getattr__(self, item):
         if item in attrs:
             return AttributeValue(Reference(self.d.id, attrs[item], 1))
