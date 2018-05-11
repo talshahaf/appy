@@ -78,6 +78,10 @@ public class CrashFragment extends MyFragment
     @Override
     public void onShow()
     {
+        if(getActivity() == null)
+        {
+            return;
+        }
         if(javaView != null && pythonView != null)
         {
             javaView.setText(getCrash(new File(getActivity().getCacheDir(), "javacrash.txt")));

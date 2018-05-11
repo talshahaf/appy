@@ -269,7 +269,7 @@ public class Reflection
             return new Object[]{result.get(), result.isStatic() ? 1 : 0, args};
         }
 
-        Log.d("APPY", "no such func");
+        Log.d("APPY", "no such func "+method);
         return null;
     }
 

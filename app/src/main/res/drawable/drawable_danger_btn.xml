@@ -19,7 +19,8 @@
             </item>
             <item>
                 <shape android:shape="rectangle">
-                    <corners android:radius="4sp"/>
+                    <corners
+                        android:radius="4sp"/>
                     <solid android:color="@color/color_danger_btn_press_shadow" />
                 </shape>
             </item>

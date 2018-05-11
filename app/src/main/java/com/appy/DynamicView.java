@@ -75,7 +75,7 @@ public class DynamicView
         catch (JSONException e)
         {
             e.printStackTrace();
-            throw new IllegalArgumentException("json deserialization failed");
+            throw new IllegalArgumentException("json deserialization failed "+json);
         }
     }
     private static DynamicView fromJSON(JSONObject obj) throws JSONException

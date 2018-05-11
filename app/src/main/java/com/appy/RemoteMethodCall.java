@@ -1,6 +1,7 @@
 package com.appy;
 
 import android.util.Log;
+import android.util.Pair;
 import android.widget.RemoteViews;
 
 import org.json.JSONArray;
@@ -144,30 +145,37 @@ public class RemoteMethodCall
         switch (arguments.length)
         {
             case 0:
-            {
                 method.invoke(view, id);
                 break;
-            }
             case 1:
-            {
                 method.invoke(view, id, arguments[0]);
                 break;
-            }
             case 2:
-            {
                 method.invoke(view, id, arguments[0], arguments[1]);
                 break;
-            }
             case 3:
-            {
                 method.invoke(view, id, arguments[0], arguments[1], arguments[2]);
                 break;
-            }
             case 4:
-            {
                 method.invoke(view, id, arguments[0], arguments[1], arguments[2], arguments[3]);
                 break;
-            }
+            case 5:
+                method.invoke(view, id, arguments[0], arguments[1], arguments[2], arguments[3], arguments[4]);
+                break;
+            case 6:
+                method.invoke(view, id, arguments[0], arguments[1], arguments[2], arguments[3], arguments[4], arguments[5]);
+                break;
+            case 7:
+                method.invoke(view, id, arguments[0], arguments[1], arguments[2], arguments[3], arguments[4], arguments[5], arguments[6]);
+                break;
+            case 8:
+                method.invoke(view, id, arguments[0], arguments[1], arguments[2], arguments[3], arguments[4], arguments[5], arguments[6], arguments[7]);
+                break;
+            case 9:
+                method.invoke(view, id, arguments[0], arguments[1], arguments[2], arguments[3], arguments[4], arguments[5], arguments[6], arguments[7], arguments[8]);
+                break;
+            default:
+                throw new IllegalArgumentException("cannot call function with "+arguments.length+" arguments");
         }
     }
 
@@ -193,7 +201,7 @@ public class RemoteMethodCall
             args = new Object[jsonargs.length()];
             for (int i = 0; i < jsonargs.length(); i++)
             {
-                args[i] = jsonargs.get(i);
+                args[i] = Serializer.deserialize(jsonargs.getJSONObject(i));
             }
         }
 
@@ -216,7 +224,7 @@ public class RemoteMethodCall
             JSONArray jsonargs = new JSONArray();
             for (Object arg : arguments)
             {
-                jsonargs.put(arg);
+                jsonargs.put(Serializer.serialize(arg));
             }
             obj.put("arguments", jsonargs);
         }

@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<selector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:exitFadeDuration="@android:integer/config_mediumAnimTime">
+    <item android:state_pressed="true">
+        <layer-list>
+            <item android:left="5sp"
+                  android:right="5sp"
+                  android:top="5sp"
+                  android:bottom="5sp">
+                <shape android:shape="oval">
+                    <stroke
+                        android:width="1sp"
+                        android:color="@color/color_info_btn_border_hover"
+                    />
+                    <solid android:color="@color/color_info_btn_bg_hover" />
+                </shape>
+            </item>
+            <item>
+                <shape android:shape="oval">
+                    <solid android:color="@color/color_info_btn_press_shadow" />
+                </shape>
+            </item>
+        </layer-list>
+    </item>
+    <item>
+        <layer-list>
+            <item android:left="5sp"
+                  android:right="5sp"
+                  android:top="5sp"
+                  android:bottom="5sp">
+                <shape android:shape="oval">
+                    <stroke
+                        android:width="1sp"
+                        android:color="@color/color_info_btn_bg"
+                    />
+                    <solid android:color="@color/color_info_btn_bg" />
+                </shape>
+            </item>
+        </layer-list>
+    </item>
+</selector>

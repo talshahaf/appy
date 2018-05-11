@@ -92,6 +92,7 @@ public class Widget extends RemoteViewsService
     private static final int SPECIAL_WIDGET_ID = 100;
     private static final int SPECIAL_WIDGET_RESTART = 1;
     private static final int SPECIAL_WIDGET_CLEAR = 2;
+    private static final int SPECIAL_WIDGET_RELOAD = 3;
     public static final int TIMER_RELATIVE = 1;
     public static final int TIMER_ABSOLUTE = 2;
     public static final int TIMER_REPEATING = 3;
@@ -199,48 +200,128 @@ public class Widget extends RemoteViewsService
         element_map.get("Button").put("outline_primary_btn_sml", R.layout.element_button_outline_primary_btn_sml);
         element_map.get("Button").put("primary_btn_lg", R.layout.element_button_primary_btn_lg);
         element_map.get("Button").put("outline_primary_btn_lg", R.layout.element_button_outline_primary_btn_lg);
+        element_map.get("Button").put("primary_btn_nopad", R.layout.element_button_primary_btn_nopad);
+        element_map.get("Button").put("outline_primary_btn_nopad", R.layout.element_button_outline_primary_btn_nopad);
+        element_map.get("Button").put("primary_btn_oval", R.layout.element_button_primary_btn_oval);
+        element_map.get("Button").put("outline_primary_btn_oval", R.layout.element_button_outline_primary_btn_oval);
+        element_map.get("Button").put("primary_btn_oval_sml", R.layout.element_button_primary_btn_oval_sml);
+        element_map.get("Button").put("outline_primary_btn_oval_sml", R.layout.element_button_outline_primary_btn_oval_sml);
+        element_map.get("Button").put("primary_btn_oval_lg", R.layout.element_button_primary_btn_oval_lg);
+        element_map.get("Button").put("outline_primary_btn_oval_lg", R.layout.element_button_outline_primary_btn_oval_lg);
+        element_map.get("Button").put("primary_btn_oval_nopad", R.layout.element_button_primary_btn_oval_nopad);
+        element_map.get("Button").put("outline_primary_btn_oval_nopad", R.layout.element_button_outline_primary_btn_oval_nopad);
         element_map.get("Button").put("secondary_btn", R.layout.element_button_secondary_btn);
         element_map.get("Button").put("outline_secondary_btn", R.layout.element_button_outline_secondary_btn);
         element_map.get("Button").put("secondary_btn_sml", R.layout.element_button_secondary_btn_sml);
         element_map.get("Button").put("outline_secondary_btn_sml", R.layout.element_button_outline_secondary_btn_sml);
         element_map.get("Button").put("secondary_btn_lg", R.layout.element_button_secondary_btn_lg);
         element_map.get("Button").put("outline_secondary_btn_lg", R.layout.element_button_outline_secondary_btn_lg);
+        element_map.get("Button").put("secondary_btn_nopad", R.layout.element_button_secondary_btn_nopad);
+        element_map.get("Button").put("outline_secondary_btn_nopad", R.layout.element_button_outline_secondary_btn_nopad);
+        element_map.get("Button").put("secondary_btn_oval", R.layout.element_button_secondary_btn_oval);
+        element_map.get("Button").put("outline_secondary_btn_oval", R.layout.element_button_outline_secondary_btn_oval);
+        element_map.get("Button").put("secondary_btn_oval_sml", R.layout.element_button_secondary_btn_oval_sml);
+        element_map.get("Button").put("outline_secondary_btn_oval_sml", R.layout.element_button_outline_secondary_btn_oval_sml);
+        element_map.get("Button").put("secondary_btn_oval_lg", R.layout.element_button_secondary_btn_oval_lg);
+        element_map.get("Button").put("outline_secondary_btn_oval_lg", R.layout.element_button_outline_secondary_btn_oval_lg);
+        element_map.get("Button").put("secondary_btn_oval_nopad", R.layout.element_button_secondary_btn_oval_nopad);
+        element_map.get("Button").put("outline_secondary_btn_oval_nopad", R.layout.element_button_outline_secondary_btn_oval_nopad);
         element_map.get("Button").put("success_btn", R.layout.element_button_success_btn);
         element_map.get("Button").put("outline_success_btn", R.layout.element_button_outline_success_btn);
         element_map.get("Button").put("success_btn_sml", R.layout.element_button_success_btn_sml);
         element_map.get("Button").put("outline_success_btn_sml", R.layout.element_button_outline_success_btn_sml);
         element_map.get("Button").put("success_btn_lg", R.layout.element_button_success_btn_lg);
         element_map.get("Button").put("outline_success_btn_lg", R.layout.element_button_outline_success_btn_lg);
+        element_map.get("Button").put("success_btn_nopad", R.layout.element_button_success_btn_nopad);
+        element_map.get("Button").put("outline_success_btn_nopad", R.layout.element_button_outline_success_btn_nopad);
+        element_map.get("Button").put("success_btn_oval", R.layout.element_button_success_btn_oval);
+        element_map.get("Button").put("outline_success_btn_oval", R.layout.element_button_outline_success_btn_oval);
+        element_map.get("Button").put("success_btn_oval_sml", R.layout.element_button_success_btn_oval_sml);
+        element_map.get("Button").put("outline_success_btn_oval_sml", R.layout.element_button_outline_success_btn_oval_sml);
+        element_map.get("Button").put("success_btn_oval_lg", R.layout.element_button_success_btn_oval_lg);
+        element_map.get("Button").put("outline_success_btn_oval_lg", R.layout.element_button_outline_success_btn_oval_lg);
+        element_map.get("Button").put("success_btn_oval_nopad", R.layout.element_button_success_btn_oval_nopad);
+        element_map.get("Button").put("outline_success_btn_oval_nopad", R.layout.element_button_outline_success_btn_oval_nopad);
         element_map.get("Button").put("danger_btn", R.layout.element_button_danger_btn);
         element_map.get("Button").put("outline_danger_btn", R.layout.element_button_outline_danger_btn);
         element_map.get("Button").put("danger_btn_sml", R.layout.element_button_danger_btn_sml);
         element_map.get("Button").put("outline_danger_btn_sml", R.layout.element_button_outline_danger_btn_sml);
         element_map.get("Button").put("danger_btn_lg", R.layout.element_button_danger_btn_lg);
         element_map.get("Button").put("outline_danger_btn_lg", R.layout.element_button_outline_danger_btn_lg);
+        element_map.get("Button").put("danger_btn_nopad", R.layout.element_button_danger_btn_nopad);
+        element_map.get("Button").put("outline_danger_btn_nopad", R.layout.element_button_outline_danger_btn_nopad);
+        element_map.get("Button").put("danger_btn_oval", R.layout.element_button_danger_btn_oval);
+        element_map.get("Button").put("outline_danger_btn_oval", R.layout.element_button_outline_danger_btn_oval);
+        element_map.get("Button").put("danger_btn_oval_sml", R.layout.element_button_danger_btn_oval_sml);
+        element_map.get("Button").put("outline_danger_btn_oval_sml", R.layout.element_button_outline_danger_btn_oval_sml);
+        element_map.get("Button").put("danger_btn_oval_lg", R.layout.element_button_danger_btn_oval_lg);
+        element_map.get("Button").put("outline_danger_btn_oval_lg", R.layout.element_button_outline_danger_btn_oval_lg);
+        element_map.get("Button").put("danger_btn_oval_nopad", R.layout.element_button_danger_btn_oval_nopad);
+        element_map.get("Button").put("outline_danger_btn_oval_nopad", R.layout.element_button_outline_danger_btn_oval_nopad);
         element_map.get("Button").put("warning_btn", R.layout.element_button_warning_btn);
         element_map.get("Button").put("outline_warning_btn", R.layout.element_button_outline_warning_btn);
         element_map.get("Button").put("warning_btn_sml", R.layout.element_button_warning_btn_sml);
         element_map.get("Button").put("outline_warning_btn_sml", R.layout.element_button_outline_warning_btn_sml);
         element_map.get("Button").put("warning_btn_lg", R.layout.element_button_warning_btn_lg);
         element_map.get("Button").put("outline_warning_btn_lg", R.layout.element_button_outline_warning_btn_lg);
+        element_map.get("Button").put("warning_btn_nopad", R.layout.element_button_warning_btn_nopad);
+        element_map.get("Button").put("outline_warning_btn_nopad", R.layout.element_button_outline_warning_btn_nopad);
+        element_map.get("Button").put("warning_btn_oval", R.layout.element_button_warning_btn_oval);
+        element_map.get("Button").put("outline_warning_btn_oval", R.layout.element_button_outline_warning_btn_oval);
+        element_map.get("Button").put("warning_btn_oval_sml", R.layout.element_button_warning_btn_oval_sml);
+        element_map.get("Button").put("outline_warning_btn_oval_sml", R.layout.element_button_outline_warning_btn_oval_sml);
+        element_map.get("Button").put("warning_btn_oval_lg", R.layout.element_button_warning_btn_oval_lg);
+        element_map.get("Button").put("outline_warning_btn_oval_lg", R.layout.element_button_outline_warning_btn_oval_lg);
+        element_map.get("Button").put("warning_btn_oval_nopad", R.layout.element_button_warning_btn_oval_nopad);
+        element_map.get("Button").put("outline_warning_btn_oval_nopad", R.layout.element_button_outline_warning_btn_oval_nopad);
         element_map.get("Button").put("info_btn", R.layout.element_button_info_btn);
         element_map.get("Button").put("outline_info_btn", R.layout.element_button_outline_info_btn);
         element_map.get("Button").put("info_btn_sml", R.layout.element_button_info_btn_sml);
         element_map.get("Button").put("outline_info_btn_sml", R.layout.element_button_outline_info_btn_sml);
         element_map.get("Button").put("info_btn_lg", R.layout.element_button_info_btn_lg);
         element_map.get("Button").put("outline_info_btn_lg", R.layout.element_button_outline_info_btn_lg);
+        element_map.get("Button").put("info_btn_nopad", R.layout.element_button_info_btn_nopad);
+        element_map.get("Button").put("outline_info_btn_nopad", R.layout.element_button_outline_info_btn_nopad);
+        element_map.get("Button").put("info_btn_oval", R.layout.element_button_info_btn_oval);
+        element_map.get("Button").put("outline_info_btn_oval", R.layout.element_button_outline_info_btn_oval);
+        element_map.get("Button").put("info_btn_oval_sml", R.layout.element_button_info_btn_oval_sml);
+        element_map.get("Button").put("outline_info_btn_oval_sml", R.layout.element_button_outline_info_btn_oval_sml);
+        element_map.get("Button").put("info_btn_oval_lg", R.layout.element_button_info_btn_oval_lg);
+        element_map.get("Button").put("outline_info_btn_oval_lg", R.layout.element_button_outline_info_btn_oval_lg);
+        element_map.get("Button").put("info_btn_oval_nopad", R.layout.element_button_info_btn_oval_nopad);
+        element_map.get("Button").put("outline_info_btn_oval_nopad", R.layout.element_button_outline_info_btn_oval_nopad);
         element_map.get("Button").put("light_btn", R.layout.element_button_light_btn);
         element_map.get("Button").put("outline_light_btn", R.layout.element_button_outline_light_btn);
         element_map.get("Button").put("light_btn_sml", R.layout.element_button_light_btn_sml);
         element_map.get("Button").put("outline_light_btn_sml", R.layout.element_button_outline_light_btn_sml);
         element_map.get("Button").put("light_btn_lg", R.layout.element_button_light_btn_lg);
         element_map.get("Button").put("outline_light_btn_lg", R.layout.element_button_outline_light_btn_lg);
+        element_map.get("Button").put("light_btn_nopad", R.layout.element_button_light_btn_nopad);
+        element_map.get("Button").put("outline_light_btn_nopad", R.layout.element_button_outline_light_btn_nopad);
+        element_map.get("Button").put("light_btn_oval", R.layout.element_button_light_btn_oval);
+        element_map.get("Button").put("outline_light_btn_oval", R.layout.element_button_outline_light_btn_oval);
+        element_map.get("Button").put("light_btn_oval_sml", R.layout.element_button_light_btn_oval_sml);
+        element_map.get("Button").put("outline_light_btn_oval_sml", R.layout.element_button_outline_light_btn_oval_sml);
+        element_map.get("Button").put("light_btn_oval_lg", R.layout.element_button_light_btn_oval_lg);
+        element_map.get("Button").put("outline_light_btn_oval_lg", R.layout.element_button_outline_light_btn_oval_lg);
+        element_map.get("Button").put("light_btn_oval_nopad", R.layout.element_button_light_btn_oval_nopad);
+        element_map.get("Button").put("outline_light_btn_oval_nopad", R.layout.element_button_outline_light_btn_oval_nopad);
         element_map.get("Button").put("dark_btn", R.layout.element_button_dark_btn);
         element_map.get("Button").put("outline_dark_btn", R.layout.element_button_outline_dark_btn);
         element_map.get("Button").put("dark_btn_sml", R.layout.element_button_dark_btn_sml);
         element_map.get("Button").put("outline_dark_btn_sml", R.layout.element_button_outline_dark_btn_sml);
         element_map.get("Button").put("dark_btn_lg", R.layout.element_button_dark_btn_lg);
         element_map.get("Button").put("outline_dark_btn_lg", R.layout.element_button_outline_dark_btn_lg);
+        element_map.get("Button").put("dark_btn_nopad", R.layout.element_button_dark_btn_nopad);
+        element_map.get("Button").put("outline_dark_btn_nopad", R.layout.element_button_outline_dark_btn_nopad);
+        element_map.get("Button").put("dark_btn_oval", R.layout.element_button_dark_btn_oval);
+        element_map.get("Button").put("outline_dark_btn_oval", R.layout.element_button_outline_dark_btn_oval);
+        element_map.get("Button").put("dark_btn_oval_sml", R.layout.element_button_dark_btn_oval_sml);
+        element_map.get("Button").put("outline_dark_btn_oval_sml", R.layout.element_button_outline_dark_btn_oval_sml);
+        element_map.get("Button").put("dark_btn_oval_lg", R.layout.element_button_dark_btn_oval_lg);
+        element_map.get("Button").put("outline_dark_btn_oval_lg", R.layout.element_button_outline_dark_btn_oval_lg);
+        element_map.get("Button").put("dark_btn_oval_nopad", R.layout.element_button_dark_btn_oval_nopad);
+        element_map.get("Button").put("outline_dark_btn_oval_nopad", R.layout.element_button_outline_dark_btn_oval_nopad);
         element_map.put("Chronometer", new HashMap<String, Integer>());
         element_map.get("Chronometer").put("", R.layout.element_chronometer);
         element_map.put("ImageButton", new HashMap<String, Integer>());
@@ -251,48 +332,128 @@ public class Widget extends RemoteViewsService
         element_map.get("ImageButton").put("outline_primary_btn_sml", R.layout.element_imagebutton_outline_primary_btn_sml);
         element_map.get("ImageButton").put("primary_btn_lg", R.layout.element_imagebutton_primary_btn_lg);
         element_map.get("ImageButton").put("outline_primary_btn_lg", R.layout.element_imagebutton_outline_primary_btn_lg);
+        element_map.get("ImageButton").put("primary_btn_nopad", R.layout.element_imagebutton_primary_btn_nopad);
+        element_map.get("ImageButton").put("outline_primary_btn_nopad", R.layout.element_imagebutton_outline_primary_btn_nopad);
+        element_map.get("ImageButton").put("primary_btn_oval", R.layout.element_imagebutton_primary_btn_oval);
+        element_map.get("ImageButton").put("outline_primary_btn_oval", R.layout.element_imagebutton_outline_primary_btn_oval);
+        element_map.get("ImageButton").put("primary_btn_oval_sml", R.layout.element_imagebutton_primary_btn_oval_sml);
+        element_map.get("ImageButton").put("outline_primary_btn_oval_sml", R.layout.element_imagebutton_outline_primary_btn_oval_sml);
+        element_map.get("ImageButton").put("primary_btn_oval_lg", R.layout.element_imagebutton_primary_btn_oval_lg);
+        element_map.get("ImageButton").put("outline_primary_btn_oval_lg", R.layout.element_imagebutton_outline_primary_btn_oval_lg);
+        element_map.get("ImageButton").put("primary_btn_oval_nopad", R.layout.element_imagebutton_primary_btn_oval_nopad);
+        element_map.get("ImageButton").put("outline_primary_btn_oval_nopad", R.layout.element_imagebutton_outline_primary_btn_oval_nopad);
         element_map.get("ImageButton").put("secondary_btn", R.layout.element_imagebutton_secondary_btn);
         element_map.get("ImageButton").put("outline_secondary_btn", R.layout.element_imagebutton_outline_secondary_btn);
         element_map.get("ImageButton").put("secondary_btn_sml", R.layout.element_imagebutton_secondary_btn_sml);
         element_map.get("ImageButton").put("outline_secondary_btn_sml", R.layout.element_imagebutton_outline_secondary_btn_sml);
         element_map.get("ImageButton").put("secondary_btn_lg", R.layout.element_imagebutton_secondary_btn_lg);
         element_map.get("ImageButton").put("outline_secondary_btn_lg", R.layout.element_imagebutton_outline_secondary_btn_lg);
+        element_map.get("ImageButton").put("secondary_btn_nopad", R.layout.element_imagebutton_secondary_btn_nopad);
+        element_map.get("ImageButton").put("outline_secondary_btn_nopad", R.layout.element_imagebutton_outline_secondary_btn_nopad);
+        element_map.get("ImageButton").put("secondary_btn_oval", R.layout.element_imagebutton_secondary_btn_oval);
+        element_map.get("ImageButton").put("outline_secondary_btn_oval", R.layout.element_imagebutton_outline_secondary_btn_oval);
+        element_map.get("ImageButton").put("secondary_btn_oval_sml", R.layout.element_imagebutton_secondary_btn_oval_sml);
+        element_map.get("ImageButton").put("outline_secondary_btn_oval_sml", R.layout.element_imagebutton_outline_secondary_btn_oval_sml);
+        element_map.get("ImageButton").put("secondary_btn_oval_lg", R.layout.element_imagebutton_secondary_btn_oval_lg);
+        element_map.get("ImageButton").put("outline_secondary_btn_oval_lg", R.layout.element_imagebutton_outline_secondary_btn_oval_lg);
+        element_map.get("ImageButton").put("secondary_btn_oval_nopad", R.layout.element_imagebutton_secondary_btn_oval_nopad);
+        element_map.get("ImageButton").put("outline_secondary_btn_oval_nopad", R.layout.element_imagebutton_outline_secondary_btn_oval_nopad);
         element_map.get("ImageButton").put("success_btn", R.layout.element_imagebutton_success_btn);
         element_map.get("ImageButton").put("outline_success_btn", R.layout.element_imagebutton_outline_success_btn);
         element_map.get("ImageButton").put("success_btn_sml", R.layout.element_imagebutton_success_btn_sml);
         element_map.get("ImageButton").put("outline_success_btn_sml", R.layout.element_imagebutton_outline_success_btn_sml);
         element_map.get("ImageButton").put("success_btn_lg", R.layout.element_imagebutton_success_btn_lg);
         element_map.get("ImageButton").put("outline_success_btn_lg", R.layout.element_imagebutton_outline_success_btn_lg);
+        element_map.get("ImageButton").put("success_btn_nopad", R.layout.element_imagebutton_success_btn_nopad);
+        element_map.get("ImageButton").put("outline_success_btn_nopad", R.layout.element_imagebutton_outline_success_btn_nopad);
+        element_map.get("ImageButton").put("success_btn_oval", R.layout.element_imagebutton_success_btn_oval);
+        element_map.get("ImageButton").put("outline_success_btn_oval", R.layout.element_imagebutton_outline_success_btn_oval);
+        element_map.get("ImageButton").put("success_btn_oval_sml", R.layout.element_imagebutton_success_btn_oval_sml);
+        element_map.get("ImageButton").put("outline_success_btn_oval_sml", R.layout.element_imagebutton_outline_success_btn_oval_sml);
+        element_map.get("ImageButton").put("success_btn_oval_lg", R.layout.element_imagebutton_success_btn_oval_lg);
+        element_map.get("ImageButton").put("outline_success_btn_oval_lg", R.layout.element_imagebutton_outline_success_btn_oval_lg);
+        element_map.get("ImageButton").put("success_btn_oval_nopad", R.layout.element_imagebutton_success_btn_oval_nopad);
+        element_map.get("ImageButton").put("outline_success_btn_oval_nopad", R.layout.element_imagebutton_outline_success_btn_oval_nopad);
         element_map.get("ImageButton").put("danger_btn", R.layout.element_imagebutton_danger_btn);
         element_map.get("ImageButton").put("outline_danger_btn", R.layout.element_imagebutton_outline_danger_btn);
         element_map.get("ImageButton").put("danger_btn_sml", R.layout.element_imagebutton_danger_btn_sml);
         element_map.get("ImageButton").put("outline_danger_btn_sml", R.layout.element_imagebutton_outline_danger_btn_sml);
         element_map.get("ImageButton").put("danger_btn_lg", R.layout.element_imagebutton_danger_btn_lg);
         element_map.get("ImageButton").put("outline_danger_btn_lg", R.layout.element_imagebutton_outline_danger_btn_lg);
+        element_map.get("ImageButton").put("danger_btn_nopad", R.layout.element_imagebutton_danger_btn_nopad);
+        element_map.get("ImageButton").put("outline_danger_btn_nopad", R.layout.element_imagebutton_outline_danger_btn_nopad);
+        element_map.get("ImageButton").put("danger_btn_oval", R.layout.element_imagebutton_danger_btn_oval);
+        element_map.get("ImageButton").put("outline_danger_btn_oval", R.layout.element_imagebutton_outline_danger_btn_oval);
+        element_map.get("ImageButton").put("danger_btn_oval_sml", R.layout.element_imagebutton_danger_btn_oval_sml);
+        element_map.get("ImageButton").put("outline_danger_btn_oval_sml", R.layout.element_imagebutton_outline_danger_btn_oval_sml);
+        element_map.get("ImageButton").put("danger_btn_oval_lg", R.layout.element_imagebutton_danger_btn_oval_lg);
+        element_map.get("ImageButton").put("outline_danger_btn_oval_lg", R.layout.element_imagebutton_outline_danger_btn_oval_lg);
+        element_map.get("ImageButton").put("danger_btn_oval_nopad", R.layout.element_imagebutton_danger_btn_oval_nopad);
+        element_map.get("ImageButton").put("outline_danger_btn_oval_nopad", R.layout.element_imagebutton_outline_danger_btn_oval_nopad);
         element_map.get("ImageButton").put("warning_btn", R.layout.element_imagebutton_warning_btn);
         element_map.get("ImageButton").put("outline_warning_btn", R.layout.element_imagebutton_outline_warning_btn);
         element_map.get("ImageButton").put("warning_btn_sml", R.layout.element_imagebutton_warning_btn_sml);
         element_map.get("ImageButton").put("outline_warning_btn_sml", R.layout.element_imagebutton_outline_warning_btn_sml);
         element_map.get("ImageButton").put("warning_btn_lg", R.layout.element_imagebutton_warning_btn_lg);
         element_map.get("ImageButton").put("outline_warning_btn_lg", R.layout.element_imagebutton_outline_warning_btn_lg);
+        element_map.get("ImageButton").put("warning_btn_nopad", R.layout.element_imagebutton_warning_btn_nopad);
+        element_map.get("ImageButton").put("outline_warning_btn_nopad", R.layout.element_imagebutton_outline_warning_btn_nopad);
+        element_map.get("ImageButton").put("warning_btn_oval", R.layout.element_imagebutton_warning_btn_oval);
+        element_map.get("ImageButton").put("outline_warning_btn_oval", R.layout.element_imagebutton_outline_warning_btn_oval);
+        element_map.get("ImageButton").put("warning_btn_oval_sml", R.layout.element_imagebutton_warning_btn_oval_sml);
+        element_map.get("ImageButton").put("outline_warning_btn_oval_sml", R.layout.element_imagebutton_outline_warning_btn_oval_sml);
+        element_map.get("ImageButton").put("warning_btn_oval_lg", R.layout.element_imagebutton_warning_btn_oval_lg);
+        element_map.get("ImageButton").put("outline_warning_btn_oval_lg", R.layout.element_imagebutton_outline_warning_btn_oval_lg);
+        element_map.get("ImageButton").put("warning_btn_oval_nopad", R.layout.element_imagebutton_warning_btn_oval_nopad);
+        element_map.get("ImageButton").put("outline_warning_btn_oval_nopad", R.layout.element_imagebutton_outline_warning_btn_oval_nopad);
         element_map.get("ImageButton").put("info_btn", R.layout.element_imagebutton_info_btn);
         element_map.get("ImageButton").put("outline_info_btn", R.layout.element_imagebutton_outline_info_btn);
         element_map.get("ImageButton").put("info_btn_sml", R.layout.element_imagebutton_info_btn_sml);
         element_map.get("ImageButton").put("outline_info_btn_sml", R.layout.element_imagebutton_outline_info_btn_sml);
         element_map.get("ImageButton").put("info_btn_lg", R.layout.element_imagebutton_info_btn_lg);
         element_map.get("ImageButton").put("outline_info_btn_lg", R.layout.element_imagebutton_outline_info_btn_lg);
+        element_map.get("ImageButton").put("info_btn_nopad", R.layout.element_imagebutton_info_btn_nopad);
+        element_map.get("ImageButton").put("outline_info_btn_nopad", R.layout.element_imagebutton_outline_info_btn_nopad);
+        element_map.get("ImageButton").put("info_btn_oval", R.layout.element_imagebutton_info_btn_oval);
+        element_map.get("ImageButton").put("outline_info_btn_oval", R.layout.element_imagebutton_outline_info_btn_oval);
+        element_map.get("ImageButton").put("info_btn_oval_sml", R.layout.element_imagebutton_info_btn_oval_sml);
+        element_map.get("ImageButton").put("outline_info_btn_oval_sml", R.layout.element_imagebutton_outline_info_btn_oval_sml);
+        element_map.get("ImageButton").put("info_btn_oval_lg", R.layout.element_imagebutton_info_btn_oval_lg);
+        element_map.get("ImageButton").put("outline_info_btn_oval_lg", R.layout.element_imagebutton_outline_info_btn_oval_lg);
+        element_map.get("ImageButton").put("info_btn_oval_nopad", R.layout.element_imagebutton_info_btn_oval_nopad);
+        element_map.get("ImageButton").put("outline_info_btn_oval_nopad", R.layout.element_imagebutton_outline_info_btn_oval_nopad);
         element_map.get("ImageButton").put("light_btn", R.layout.element_imagebutton_light_btn);
         element_map.get("ImageButton").put("outline_light_btn", R.layout.element_imagebutton_outline_light_btn);
         element_map.get("ImageButton").put("light_btn_sml", R.layout.element_imagebutton_light_btn_sml);
         element_map.get("ImageButton").put("outline_light_btn_sml", R.layout.element_imagebutton_outline_light_btn_sml);
         element_map.get("ImageButton").put("light_btn_lg", R.layout.element_imagebutton_light_btn_lg);
         element_map.get("ImageButton").put("outline_light_btn_lg", R.layout.element_imagebutton_outline_light_btn_lg);
+        element_map.get("ImageButton").put("light_btn_nopad", R.layout.element_imagebutton_light_btn_nopad);
+        element_map.get("ImageButton").put("outline_light_btn_nopad", R.layout.element_imagebutton_outline_light_btn_nopad);
+        element_map.get("ImageButton").put("light_btn_oval", R.layout.element_imagebutton_light_btn_oval);
+        element_map.get("ImageButton").put("outline_light_btn_oval", R.layout.element_imagebutton_outline_light_btn_oval);
+        element_map.get("ImageButton").put("light_btn_oval_sml", R.layout.element_imagebutton_light_btn_oval_sml);
+        element_map.get("ImageButton").put("outline_light_btn_oval_sml", R.layout.element_imagebutton_outline_light_btn_oval_sml);
+        element_map.get("ImageButton").put("light_btn_oval_lg", R.layout.element_imagebutton_light_btn_oval_lg);
+        element_map.get("ImageButton").put("outline_light_btn_oval_lg", R.layout.element_imagebutton_outline_light_btn_oval_lg);
+        element_map.get("ImageButton").put("light_btn_oval_nopad", R.layout.element_imagebutton_light_btn_oval_nopad);
+        element_map.get("ImageButton").put("outline_light_btn_oval_nopad", R.layout.element_imagebutton_outline_light_btn_oval_nopad);
         element_map.get("ImageButton").put("dark_btn", R.layout.element_imagebutton_dark_btn);
         element_map.get("ImageButton").put("outline_dark_btn", R.layout.element_imagebutton_outline_dark_btn);
         element_map.get("ImageButton").put("dark_btn_sml", R.layout.element_imagebutton_dark_btn_sml);
         element_map.get("ImageButton").put("outline_dark_btn_sml", R.layout.element_imagebutton_outline_dark_btn_sml);
         element_map.get("ImageButton").put("dark_btn_lg", R.layout.element_imagebutton_dark_btn_lg);
         element_map.get("ImageButton").put("outline_dark_btn_lg", R.layout.element_imagebutton_outline_dark_btn_lg);
+        element_map.get("ImageButton").put("dark_btn_nopad", R.layout.element_imagebutton_dark_btn_nopad);
+        element_map.get("ImageButton").put("outline_dark_btn_nopad", R.layout.element_imagebutton_outline_dark_btn_nopad);
+        element_map.get("ImageButton").put("dark_btn_oval", R.layout.element_imagebutton_dark_btn_oval);
+        element_map.get("ImageButton").put("outline_dark_btn_oval", R.layout.element_imagebutton_outline_dark_btn_oval);
+        element_map.get("ImageButton").put("dark_btn_oval_sml", R.layout.element_imagebutton_dark_btn_oval_sml);
+        element_map.get("ImageButton").put("outline_dark_btn_oval_sml", R.layout.element_imagebutton_outline_dark_btn_oval_sml);
+        element_map.get("ImageButton").put("dark_btn_oval_lg", R.layout.element_imagebutton_dark_btn_oval_lg);
+        element_map.get("ImageButton").put("outline_dark_btn_oval_lg", R.layout.element_imagebutton_outline_dark_btn_oval_lg);
+        element_map.get("ImageButton").put("dark_btn_oval_nopad", R.layout.element_imagebutton_dark_btn_oval_nopad);
+        element_map.get("ImageButton").put("outline_dark_btn_oval_nopad", R.layout.element_imagebutton_outline_dark_btn_oval_nopad);
         element_map.put("ImageView", new HashMap<String, Integer>());
         element_map.get("ImageView").put("", R.layout.element_imageview);
         element_map.put("ProgressBar", new HashMap<String, Integer>());
@@ -317,6 +478,7 @@ public class Widget extends RemoteViewsService
     HashMap<Integer, PendingIntent> activeTimersIntents = new HashMap<>();
     HashMap<Pair<Integer, Integer>, HashMap<Integer, ListFactory>> factories = new HashMap<>();
     ArrayList<PythonFile> pythonFiles = new ArrayList<>();
+    HashSet<Integer> needUpdateWidgets = new HashSet<>();
 
     interface Runner<T>
     {
@@ -454,13 +616,13 @@ public class Widget extends RemoteViewsService
 
             if (arg.charAt(idx.first + 1) != '(')
             {
-                throw new IllegalArgumentException("expected '('");
+                throw new IllegalArgumentException("expected '(' in "+arg+" got "+arg.charAt(idx.first + 1));
             }
 
             Attributes.AttributeValue.Reference reference = new Attributes.AttributeValue.Reference();
             int parEnd = arg.indexOf(")", idx.first);
             String refId = arg.substring(idx.first + 2, parEnd);
-            reference.id = refId.equalsIgnoreCase("r") ? -1 : Integer.parseInt(refId);
+            reference.id = refId.equalsIgnoreCase("p") ? -1 : Integer.parseInt(refId);
             reference.type = idx.second;
             reference.factor = 1;
             reference.factor *= Double.parseDouble(idx.first > 0 ? arg.substring(0, idx.first) : "1");
@@ -484,8 +646,8 @@ public class Widget extends RemoteViewsService
         btn.methodCalls.add(new RemoteMethodCall("setText", false, getSetterMethod(btn.type, "setText"), "setText", "initial button"));
 
         Attributes.AttributeValue _100px = attributeParse("100");
-        Attributes.AttributeValue halfWidth = attributeParse("w(r)*0.5");
-        Attributes.AttributeValue halfHeight = attributeParse("h(r)*0.5");
+        Attributes.AttributeValue halfWidth = attributeParse("w(p)*0.5");
+        Attributes.AttributeValue halfHeight = attributeParse("h(p)*0.5");
 
         //btn.attributes.attributes.put(Attributes.Type.WIDTH, halfWidth);
         //btn.attributes.attributes.put(Attributes.Type.HEIGHT, attributeParse("151"));
@@ -1840,6 +2002,7 @@ public class Widget extends RemoteViewsService
 
     public void setWidget(final int androidWidgetId, final int widgetId, final ArrayList<DynamicView> views, final boolean errorOnFailure)
     {
+        needUpdateWidgets.remove(widgetId);
         handler.post(new Runnable()
         {
             @Override
@@ -1880,14 +2043,16 @@ public class Widget extends RemoteViewsService
         DynamicView textView = new DynamicView("TextView");
         textView.methodCalls.add(new RemoteMethodCall("setText", false, getSetterMethod(textView.type, "setText"), "setText", "Loading..."));
 
-        Attributes.AttributeValue wholeWidth = attributeParse("w(r)");
-        Attributes.AttributeValue wholeHeight = attributeParse("h(r)");
+        Attributes.AttributeValue wholeWidth = attributeParse("w(p)");
+        Attributes.AttributeValue wholeHeight = attributeParse("h(p)");
         textView.attributes.attributes.put(Attributes.Type.WIDTH, wholeWidth);
         textView.attributes.attributes.put(Attributes.Type.HEIGHT, wholeHeight);
 
         views.add(textView);
 
         setWidget(androidWidgetId, SPECIAL_WIDGET_ID, views, true);
+
+        needUpdateWidgets.add(widgetId);
     }
 
     public void setSpecificErrorWidget(int androidWidgetId, int widgetId)
@@ -1895,33 +2060,47 @@ public class Widget extends RemoteViewsService
         ArrayList<DynamicView> views = new ArrayList<>();
 
         DynamicView textView = new DynamicView("TextView");
-        DynamicView restart = new DynamicView("Button");
-
         textView.methodCalls.add(new RemoteMethodCall("setText", false, getSetterMethod(textView.type, "setText"), "setText", "Error"));
-        restart.methodCalls.add(new RemoteMethodCall("setText", false, getSetterMethod(restart.type, "setText"), "setText", "Restart"));
 
-        Attributes.AttributeValue afterText = attributeParse("h("+textView.getId()+")+10");
-        Attributes.AttributeValue halfWidth = attributeParse("w(r)*0.5");
-
-        restart.attributes.attributes.put(Attributes.Type.TOP, afterText);
-        restart.attributes.attributes.put(Attributes.Type.WIDTH, halfWidth);
-        restart.tag = SPECIAL_WIDGET_RESTART;
+        DynamicView restart = new DynamicView("ImageButton");
+        restart.style = "success_btn_oval_nopad";
+        restart.methodCalls.add(new RemoteMethodCall("setColorFilter", false, getSetterMethod(restart.type, "setColorFilter"), "setColorFilter", 0xffffffff));
+        restart.methodCalls.add(new RemoteMethodCall("setImageResource", false, getSetterMethod(restart.type, "setImageResource"), "setImageResource", android.R.drawable.ic_lock_power_off));
+        restart.methodCalls.add(new RemoteMethodCall("setDrawableParameters", false, "setDrawableParameters", true, -1, 0x7f000000, android.graphics.PorterDuff.Mode.SRC_OVER, -1));
+        restart.attributes.attributes.put(Attributes.Type.WIDTH, attributeParse("80"));
+        restart.attributes.attributes.put(Attributes.Type.HEIGHT, attributeParse("80"));
+        restart.attributes.attributes.put(Attributes.Type.RIGHT, attributeParse("0"));
+        restart.attributes.attributes.put(Attributes.Type.BOTTOM, attributeParse("0"));
+        restart.tag = SPECIAL_WIDGET_RESTART; //onclick
 
         views.add(textView);
         views.add(restart);
 
         if(widgetId > 0)
         {
+            Attributes.AttributeValue afterText = attributeParse("h("+textView.getId()+")+10");
+
             DynamicView clear = new DynamicView("Button");
             clear.methodCalls.add(new RemoteMethodCall("setText", false, getSetterMethod(clear.type, "setText"), "setText", "Clear"));
+            clear.style = "dark_btn_sml";
             clear.attributes.attributes.put(Attributes.Type.TOP, afterText);
-            clear.attributes.attributes.put(Attributes.Type.WIDTH, halfWidth);
-            clear.attributes.attributes.put(Attributes.Type.LEFT, halfWidth);
+            clear.attributes.attributes.put(Attributes.Type.LEFT, attributeParse("l(p)"));
             clear.tag = widgetId + (SPECIAL_WIDGET_CLEAR << 16);
+
+            DynamicView reload = new DynamicView("Button");
+            reload.methodCalls.add(new RemoteMethodCall("setText", false, getSetterMethod(reload.type, "setText"), "setText", "Reload"));
+            reload.style = "info_btn_sml";
+            reload.attributes.attributes.put(Attributes.Type.TOP, afterText);
+            reload.attributes.attributes.put(Attributes.Type.RIGHT, attributeParse("r(p)"));
+            reload.tag = widgetId + (SPECIAL_WIDGET_RELOAD << 16);
+
             views.add(clear);
+            views.add(reload);
         }
 
         setWidget(androidWidgetId, SPECIAL_WIDGET_ID, views, false);
+
+        needUpdateWidgets.add(widgetId);
     }
 
     public int[] requestAndroidWidgets()
@@ -2038,6 +2217,18 @@ public class Widget extends RemoteViewsService
         {
             callUpdateWidget(args[0]);
         }
+    }
+
+    public void setFileInfo(String path, String info)
+    {
+        for(PythonFile file : getPythonFiles())
+        {
+            if(file.path.equals(path))
+            {
+                file.info = info;
+            }
+        }
+        savePythonFiles();
     }
 
     private class CallImportTask implements Runner<PythonFile>
@@ -2166,11 +2357,19 @@ public class Widget extends RemoteViewsService
         boolean updated = false;
         try
         {
-            widget = caller.call(widgetId, widget);
-            if(widget != null)
+            String newwidget = caller.call(widgetId, widget);
+            if(newwidget != null)
             {
-                putWidget(widgetId, widget);
+                putWidget(widgetId, newwidget);
+                widget = newwidget;
                 updated = true;
+            }
+
+            //if we were loading we refresh anyways
+            if((updated || needUpdateWidgets.contains(widgetId)) && widget != null)
+            {
+                setWidget(androidWidgetId, widgetId, DynamicView.fromJSONArray(widget), true);
+                return true;
             }
         }
         catch (Exception e)
@@ -2178,13 +2377,10 @@ public class Widget extends RemoteViewsService
             e.printStackTrace();
             Log.d("APPY", "error in caller");
             setSpecificErrorWidget(androidWidgetId, widgetId);
+            return true;
         }
 
-        if(updated)
-        {
-            setWidget(androidWidgetId, widgetId, DynamicView.fromJSONArray(widget), true);
-        }
-        return updated;
+        return false;
     }
 
     public void callEventWidget(int eventWidgetId, final int itemId, final int collectionItemId, final int collectionPosition)
@@ -2488,6 +2684,7 @@ public class Widget extends RemoteViewsService
                 for (int id : ids)
                 {
                     int widgetId = fromAndroidWidget(id, true);
+                    needUpdateWidgets.add(widgetId);
                     addTask(widgetId, new Task<>(new CallUpdateTask(), widgetId));
                 }
             }
@@ -2557,6 +2754,15 @@ public class Widget extends RemoteViewsService
                             {
                                 Log.d("APPY", "clearing " + widgetId);
                                 clearWidget(widgetId);
+                            }
+                        }
+                        else if(((tag >> 16) & 0xffff) == SPECIAL_WIDGET_RELOAD)
+                        {
+                            int widgetId = tag & 0xffff;
+                            if(widgetId > 0)
+                            {
+                                Log.d("APPY", "reloading " + widgetId);
+                                update(widgetId);
                             }
                         }
                     }

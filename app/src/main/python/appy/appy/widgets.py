@@ -51,6 +51,12 @@ class AttributeValue:
     def __truediv__(self, other):
         return self * (1/other)
 
+    def __neg__(self):
+        return AttributeValue(*(Reference(e.id, e.key, -1.0 * e.factor) for e in self.pol))
+
+    def __sub__(self, other):
+        return self + (-other)
+
     def compile(self):
         amount = 0
         refs = []
@@ -73,7 +79,32 @@ def call_function(func, captures, **kwargs):
     pass_args.update(kwargs) #kwargs priority
 
     args, kwargs, has_vargs, has_vkwargs = get_args(func)
-    return func(**{k:v for k,v in pass_args.items() if k in args or k in kwargs or has_vkwargs})
+    try:
+        return func(**{k:v for k,v in pass_args.items() if k in args or k in kwargs or has_vkwargs})
+    except Exception:
+        set_module_error(inspect.getmodule(func), traceback.format_exc())
+        raise
+
+def deserialize_arg(arg):
+    if not isinstance(arg, dict):
+        return arg
+    if arg['type'] == 'trivial':
+        return arg['value']
+
+    #gotta go to java
+    return java.clazz.com.appy.Serializer().deserializeString(json.dumps(arg))
+
+def serialize_arg(arg):
+    #probably already serialized
+    if isinstance(arg, dict):
+        return arg
+
+    if not isinstance(arg, java.Object):
+        return AttrDict(type='trivial', value=arg)
+
+    #gotta go to java
+    return json.loads(java.clazz.com.appy.Serializer().serializeToString(arg))
+
 
 class Element:
     def __init__(self, d):
@@ -107,7 +138,7 @@ class Element:
 
         args = [c.arguments if c.identifier == c.method else c.arguments[1:] for c in self.d.methodCalls if c.identifier == method_from_attr(item)]
         if args:
-            return args[0][0] if len(args[0]) == 1 else args[0]
+            return deserialize_arg(args[0][0]) if len(args[0]) == 1 else [deserialize_arg(arg) for arg in args[0]]
         raise AttributeError()
 
     def __setattr__(self, key, value):
@@ -131,7 +162,7 @@ class Element:
             param_setter, method = get_param_setter(self.d.type, key)
             if param_setter is not None:
                 identifier = method
-                arguments = [method, getattr(value, '__raw__', lambda: value)()]
+                arguments = [method, value]
                 method = param_setter
             else:
                 if not validate_remoteviews_method(method):
@@ -139,10 +170,12 @@ class Element:
                 identifier = method
                 if not isinstance(value, (list, tuple)):
                     value = [value]
-                arguments = [getattr(v, '__raw__', lambda: v)() for v in value]
+                arguments = value
 
             if 'methodCalls' not in self.d:
                 self.d.methodCalls = []
+
+            arguments = [serialize_arg(arg.__raw__() if isinstance(arg, tuple(java.primitive_wraps.values())) else arg) for arg in arguments]
             self.d.methodCalls = [c for c in self.d.methodCalls if c.identifier != identifier] + [AttrDict(identifier=identifier, method=method, arguments=arguments)]
 
     @classmethod
@@ -235,6 +268,9 @@ def register_widget(name, on_create, on_update=None):
 def module_name(path):
     return f'{os.path.splitext(os.path.basename(path))[0]}_{int(hashlib.sha1(path.encode()).hexdigest(), 16) % (10 ** 8)}'
 
+def set_module_error(module, error):
+    java_widget_manager.setFileInfo(module.__file__, error)
+
 def load_module(path):
     __set_importing_module(path)
     clear_module(path)
@@ -245,7 +281,6 @@ def load_module(path):
         sys.modules[name] = mod #for pickle
         spec.loader.exec_module(mod)
     except:
-        print('wawawawawa', dir(importlib))
         sys.modules.pop(name, None)
         raise
     finally:
@@ -373,34 +408,31 @@ def widget_manager_create(widget, manager_state):
     print('widget_manager_create')
     widget.cancel_all_timers()
 
+    #clear state
     manager_state.chosen[widget.widget_id] = None
 
-    #clear state
-    restart_btn = Button(text="restart", click=restart, width=widget_dims.width * 0.8)
+    restart_btn = ImageButton(style='success_btn_oval_nopad', click=restart, colorFilter=0xffffffff, width=80, height=80, right=0, bottom=0, imageResource=java.clazz.android.R.drawable().ic_lock_power_off)
+    restart_btn.drawableParameters = (True, -1, 0x7f000000, java.clazz.android.graphics.PorterDuff.Mode().SRC_OVER, -1)
 
-    lst = ListView(top=restart_btn.height+20, children=[TextView(text=name, textViewTextSize=(java.clazz.android.util.TypedValue().COMPLEX_UNIT_SP, 30),
+    lst = ListView(children=[TextView(text=name, textViewTextSize=(java.clazz.android.util.TypedValue().COMPLEX_UNIT_SP, 30),
                                                                 click=(choose_widget, dict(name=name))) for name in available_widgets])
     return [restart_btn, lst]
 
 def widget_manager_update(widget, manager_state, views):
-    try:
-        manager_state.chosen.setdefault(widget.widget_id, None)
-        chosen = manager_state.chosen[widget.widget_id]
-        if chosen is not None:
-            if chosen.name is not None:
-                available_widget = available_widgets[chosen.name]
-                on_create, on_update = available_widget['create'], available_widget['update']
-                if not chosen.inited:
-                    chosen.inited = True
-                    if on_create:
-                        return on_create(widget)
-                else:
-                    if on_update:
-                        on_update(widget, views)
-                        return views
-                return None #doesn't update views
-    except Exception:
-        print(traceback.format_exc())
+    manager_state.chosen.setdefault(widget.widget_id, None)
+    chosen = manager_state.chosen[widget.widget_id]
+    if chosen is not None and chosen.name is not None:
+        available_widget = available_widgets[chosen.name]
+        on_create, on_update = available_widget['create'], available_widget['update']
+        if not chosen.inited:
+            chosen.inited = True
+            if on_create:
+                return call_function(on_create, captures={}, widget=widget)
+            return None
+        else:
+            if on_update:
+                return call_function(on_update, captures={}, widget=widget, views=views)
+            return views
     return widget_manager_create(widget, manager_state) #maybe present error widget
 
 def refresh_managers():
