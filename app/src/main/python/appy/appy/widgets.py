@@ -412,7 +412,7 @@ def widget_manager_create(widget, manager_state):
     manager_state.chosen[widget.widget_id] = None
 
     restart_btn = ImageButton(style='success_btn_oval_nopad', click=restart, colorFilter=0xffffffff, width=80, height=80, right=0, bottom=0, imageResource=java.clazz.android.R.drawable().ic_lock_power_off)
-    restart_btn.drawableParameters = (True, -1, 0x7f000000, java.clazz.android.graphics.PorterDuff.Mode().SRC_OVER, -1)
+    restart_btn.drawableParameters = (True, -1, 0x80000000, java.clazz.android.graphics.PorterDuff.Mode().SRC_ATOP, -1)
 
     lst = ListView(children=[TextView(text=name, textViewTextSize=(java.clazz.android.util.TypedValue().COMPLEX_UNIT_SP, 30),
                                                                 click=(choose_widget, dict(name=name))) for name in available_widgets])
