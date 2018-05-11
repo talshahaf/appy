@@ -85,6 +85,11 @@ def call_function(func, captures, **kwargs):
         set_module_error(inspect.getmodule(func), traceback.format_exc())
         raise
 
+def call_general_function(func, **kwargs):
+    if not isinstance(func, (list, tuple)):
+        func = (func, {})
+    return call_function(func[0], func[1], **kwargs)
+
 def deserialize_arg(arg):
     if not isinstance(arg, dict):
         return arg
@@ -414,9 +419,12 @@ def widget_manager_create(widget, manager_state):
     restart_btn = ImageButton(style='success_btn_oval_nopad', click=restart, colorFilter=0xffffffff, width=80, height=80, right=0, bottom=0, imageResource=java.clazz.android.R.drawable().ic_lock_power_off)
     restart_btn.drawableParameters = (True, -1, 0x80000000, java.clazz.android.graphics.PorterDuff.Mode().SRC_ATOP, -1)
 
-    lst = ListView(children=[TextView(text=name, textViewTextSize=(java.clazz.android.util.TypedValue().COMPLEX_UNIT_SP, 30),
+    if not available_widgets:
+        lst = TextView(text='No widgets')
+    else:
+        lst = ListView(children=[TextView(text=name, textViewTextSize=(java.clazz.android.util.TypedValue().COMPLEX_UNIT_SP, 30),
                                                                 click=(choose_widget, dict(name=name))) for name in available_widgets])
-    return [restart_btn, lst]
+    return [lst, restart_btn]
 
 def widget_manager_update(widget, manager_state, views):
     manager_state.chosen.setdefault(widget.widget_id, None)
@@ -427,11 +435,11 @@ def widget_manager_update(widget, manager_state, views):
         if not chosen.inited:
             chosen.inited = True
             if on_create:
-                return call_function(on_create, captures={}, widget=widget)
+                return call_general_function(on_create, widget=widget)
             return None
         else:
             if on_update:
-                return call_function(on_update, captures={}, widget=widget, views=views)
+                return call_general_function(on_update, widget=widget, views=views)
             return views
     return widget_manager_create(widget, manager_state) #maybe present error widget
 
