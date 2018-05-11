@@ -141,41 +141,49 @@ public class RemoteMethodCall
 
     public void call(RemoteViews view, int id) throws InvocationTargetException, IllegalAccessException
     {
-        //Log.d("APPY", "calling " + id + " " + method.getName());
-        switch (arguments.length)
+        try
         {
-            case 0:
-                method.invoke(view, id);
-                break;
-            case 1:
-                method.invoke(view, id, arguments[0]);
-                break;
-            case 2:
-                method.invoke(view, id, arguments[0], arguments[1]);
-                break;
-            case 3:
-                method.invoke(view, id, arguments[0], arguments[1], arguments[2]);
-                break;
-            case 4:
-                method.invoke(view, id, arguments[0], arguments[1], arguments[2], arguments[3]);
-                break;
-            case 5:
-                method.invoke(view, id, arguments[0], arguments[1], arguments[2], arguments[3], arguments[4]);
-                break;
-            case 6:
-                method.invoke(view, id, arguments[0], arguments[1], arguments[2], arguments[3], arguments[4], arguments[5]);
-                break;
-            case 7:
-                method.invoke(view, id, arguments[0], arguments[1], arguments[2], arguments[3], arguments[4], arguments[5], arguments[6]);
-                break;
-            case 8:
-                method.invoke(view, id, arguments[0], arguments[1], arguments[2], arguments[3], arguments[4], arguments[5], arguments[6], arguments[7]);
-                break;
-            case 9:
-                method.invoke(view, id, arguments[0], arguments[1], arguments[2], arguments[3], arguments[4], arguments[5], arguments[6], arguments[7], arguments[8]);
-                break;
-            default:
-                throw new IllegalArgumentException("cannot call function with "+arguments.length+" arguments");
+            //Log.d("APPY", "calling " + id + " " + method.getName());
+            switch (arguments.length)
+            {
+                case 0:
+                    method.invoke(view, id);
+                    break;
+                case 1:
+                    method.invoke(view, id, arguments[0]);
+                    break;
+                case 2:
+                    method.invoke(view, id, arguments[0], arguments[1]);
+                    break;
+                case 3:
+                    method.invoke(view, id, arguments[0], arguments[1], arguments[2]);
+                    break;
+                case 4:
+                    method.invoke(view, id, arguments[0], arguments[1], arguments[2], arguments[3]);
+                    break;
+                case 5:
+                    method.invoke(view, id, arguments[0], arguments[1], arguments[2], arguments[3], arguments[4]);
+                    break;
+                case 6:
+                    method.invoke(view, id, arguments[0], arguments[1], arguments[2], arguments[3], arguments[4], arguments[5]);
+                    break;
+                case 7:
+                    method.invoke(view, id, arguments[0], arguments[1], arguments[2], arguments[3], arguments[4], arguments[5], arguments[6]);
+                    break;
+                case 8:
+                    method.invoke(view, id, arguments[0], arguments[1], arguments[2], arguments[3], arguments[4], arguments[5], arguments[6], arguments[7]);
+                    break;
+                case 9:
+                    method.invoke(view, id, arguments[0], arguments[1], arguments[2], arguments[3], arguments[4], arguments[5], arguments[6], arguments[7], arguments[8]);
+                    break;
+                default:
+                    throw new IllegalArgumentException("cannot call function with " + arguments.length + " arguments");
+            }
+        }
+        catch(IllegalArgumentException e)
+        {
+            Log.e("APPY", "got illegal argument exception while calling "+identifier);
+            throw e;
         }
     }
 

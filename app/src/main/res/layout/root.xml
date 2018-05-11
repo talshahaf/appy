@@ -6,6 +6,6 @@
     android:id="@+id/root">
     <RelativeLayout android:layout_width="match_parent"
                     android:layout_height="match_parent"
-                    android:id="@+id/elements">
+                    android:id="@+id/elements0">
     </RelativeLayout>
 </RelativeLayout>

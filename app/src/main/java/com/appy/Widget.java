@@ -868,16 +868,31 @@ public class Widget extends RemoteViewsService
         return new Pair<>(res, ret);
     }
 
-    public Pair<Integer, Integer> getElementIds(int n)
+    public Pair<Integer, Integer> getCollectionElementIds(int n)
     {
         switch (n)
         {
             case 0:
-                return new Pair<>(R.id.e0, R.id.l0);
+                return new Pair<>(R.id.ce0, R.id.cl0);
             case 1:
-                return new Pair<>(R.id.e1, R.id.l1);
+                return new Pair<>(R.id.ce1, R.id.cl1);
         }
         throw new IllegalArgumentException((n + 1) + " collections are not supported");
+    }
+
+    public Integer advanceElementsId(int elements_id)
+    {
+        switch (elements_id)
+        {
+            case R.id.elements0:
+                return R.id.elements1;
+            case R.id.elements1:
+                return R.id.elements2;
+            case R.id.elements2:
+                return null;
+            default:
+                return elements_id; //for collection_element and others
+        }
     }
 
     public int typeToLayout(String type, String style)
@@ -918,7 +933,7 @@ public class Widget extends RemoteViewsService
 
         Pair<Integer, HashMap<String, ArrayList<Integer>>> root = selectRootView(collections);
         int root_xml = root.first;
-        int elements_id = R.id.elements;
+        int elements_id = -1;
 
         if (inCollection)
         {
@@ -929,7 +944,18 @@ public class Widget extends RemoteViewsService
         }
 
         RemoteViews rootView = new RemoteViews(context.getPackageName(), root_xml);
-        rootView.removeAllViews(elements_id);
+
+        if(!inCollection)
+        {
+            Integer elements_id_it = R.id.elements0;
+            while(elements_id_it != null)
+            {
+                rootView.removeAllViews(elements_id_it);
+                elements_id_it = advanceElementsId(elements_id_it);
+            }
+
+            elements_id = R.id.elements0;
+        }
 
         for (DynamicView layout : dynamicList)
         {
@@ -944,9 +970,16 @@ public class Widget extends RemoteViewsService
                 int index = indices.remove(0);
                 remoteView = rootView;
                 layout.xml_id = root_xml;
-                Pair<Integer, Integer> ids = getElementIds(index);
+                Pair<Integer, Integer> ids = getCollectionElementIds(index);
                 layout.view_id = ids.first;
                 layout.container_id = ids.second;
+
+                Integer elements_id_opt = advanceElementsId(elements_id);
+                if(elements_id_opt == null)
+                {
+                    throw new IllegalArgumentException("out of element containers");
+                }
+                elements_id = elements_id_opt;
             }
             else
             {
@@ -968,6 +1001,7 @@ public class Widget extends RemoteViewsService
 
             if (!keepDescription)
             {
+                Log.d("APPY", "set description "+isCollection(layout.type)+" "+layout.view_id);
                 remoteView.setCharSequence(layout.view_id, "setContentDescription", layout.getId() + "");
             }
 
@@ -1095,11 +1129,6 @@ public class Widget extends RemoteViewsService
 
 //        Log.d("APPY", "child count: ");
 //        printChildCount(supergroup, "  ");
-
-        if (supergroup.getChildCount() > 2)
-        {
-            throw new IllegalArgumentException("supergroup children count is larger than 2");
-        }
 
         //set all to WRAP_CONTENT to measure it's default size (all children are leaves of collections)
         for (int k = 0; k < supergroup.getChildCount(); k++)
@@ -1954,6 +1983,7 @@ public class Widget extends RemoteViewsService
     public void restart()
     {
         Log.d("APPY", "restarting process");
+        setAllWidgets(false);
         saveWidgets();
         saveWidgetMapping();
         handler.post(new Runnable()
@@ -1961,8 +1991,6 @@ public class Widget extends RemoteViewsService
                          @Override
                          public void run()
                          {
-                             setAllWidgets(false);
-
                              Intent intent = new Intent(Widget.this, getClass());
                              PendingIntent pendingIntent = PendingIntent.getService(Widget.this, 1, intent, PendingIntent.FLAG_CANCEL_CURRENT);
                              AlarmManager mgr = (AlarmManager)getSystemService(Context.ALARM_SERVICE);
