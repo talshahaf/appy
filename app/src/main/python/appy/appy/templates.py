@@ -8,14 +8,12 @@ def refresh_button_action(widget, views, on_click, id):
     views.find_id(id).visibility = clazz.android.view.View().VISIBLE
 
 def refresh_button_click(widget, views, on_click, id):
-    print(id, views)
     views.find_id(id).visibility = clazz.android.view.View().INVISIBLE
     widget.post(refresh_button_action, on_click=on_click, id=id)
 
 def refresh_button(on_click, name=None, initial_refresh=None, widget=None):
     btn = ImageButton(style='dark_btn_oval_nopad', colorFilter=0xffffffff, width=80, height=80, left=0, bottom=0, imageResource=clazz.android.R.drawable().ic_popup_sync)
     btn.click = (refresh_button_click, dict(on_click=on_click, id=btn.id))
-    print('id', btn.id)
     if name is not None:
         btn.name = name
     if initial_refresh:
@@ -44,28 +42,24 @@ def background(widget, name=None, color=None, drawable=None):
         bg.name = name
     return bg
 
-##############adapter#####################################
-def call_adapter(widget, adapter, value, pass_list, base_adapter, name=None, **kwargs):
-    view = base_adapter(widget)
+##############list template###############################
+def call_list_adapter(widget, adapter, value, name=None, **kwargs):
+    view = [TextView(textViewTextSize=(clazz.android.util.TypedValue().COMPLEX_UNIT_SP, 15))]
     if name is not None:
         view[0].name = name
     if adapter is not None:
-        call_general_function(adapter, widget=widget, view=view if pass_list else view[0], value=value, **kwargs)
+        call_general_function(adapter, widget=widget, view=view, value=value, **kwargs)
     else:
         view[0].text = str(value)
     return view
 
-##############list template###############################
-def base_list_adapter(widget):
-    return [TextView(textViewTextSize=(clazz.android.util.TypedValue().COMPLEX_UNIT_SP, 15))]
-
 def updating_list_refresh_action(widget, views, on_refresh, adapter):
     values = call_general_function(on_refresh, widget=widget, views=views)
-    views[views.index(views['list'])] = ListView(name='list', children=None if values is None else [call_adapter(widget, adapter, pass_list=True, base_adapter=base_list_adapter, value=v, index=i) for i, v in enumerate(values)])
+    views['list'].children = None if values is None else [call_list_adapter(widget, adapter, value=v, index=i) for i, v in enumerate(values)]
 
 def updating_list_create(widget, initial_values, on_refresh, background_param, adapter, initial_refresh):
     btn = refresh_button((updating_list_refresh_action, dict(on_refresh=on_refresh, adapter=adapter)), name='refresh_btn', initial_refresh=initial_refresh, widget=widget)
-    lst = ListView(name='list', children=None if initial_values is None else [call_adapter(widget, adapter, value=v, pass_list=True, base_adapter=base_list_adapter, index=i) for i, v in enumerate(initial_values)])
+    lst = ListView(name='list', children=None if initial_values is None else [call_list_adapter(widget, adapter, value=v, index=i) for i, v in enumerate(initial_values)])
 
     views = []
     if background_param is not None and background_param is not False:
@@ -79,21 +73,22 @@ def updating_list(name, initial_values=None, on_refresh=None, background=None, a
     register_widget(name, (updating_list_create, dict(initial_values=initial_values, on_refresh=on_refresh, background_param=background, adapter=adapter, initial_refresh=initial_refresh)), None)
 
 ##############text template############################
-def base_text_adapter(widget):
-    text = TextView(textViewTextSize=(clazz.android.util.TypedValue().COMPLEX_UNIT_SP, 30))
-    text.left = (widget.width  / 2) - (text.width  / 2)
-    text.top  = (widget.height / 2) - (text.height / 2)
-    return [text]
+def call_text_adapter(widget, adapter, value, view, **kwargs):
+    if adapter is not None:
+        call_general_function(adapter, widget=widget, view=view, value=value, **kwargs)
+    else:
+        view.text = str(value)
 
 def updating_text_refresh_action(widget, views, on_refresh, adapter):
     value = call_general_function(on_refresh, widget=widget, views=views)
-    views[views.index(views['content'])] = call_adapter(widget, adapter, value=value, pass_list=False, base_adapter=base_text_adapter, name='content')[0]
+    call_text_adapter(widget, adapter, value=value, view=views['content'])
 
 def updating_text_create(widget, initial_value, on_refresh, background_param, adapter, initial_refresh):
+    text = TextView(name='content', text='', textViewTextSize=(clazz.android.util.TypedValue().COMPLEX_UNIT_SP, 30))
+    text.left = (widget.width  / 2) - (text.width  / 2)
+    text.top  = (widget.height / 2) - (text.height / 2)
     if initial_value is not None:
-        text = call_adapter(widget, adapter, value=initial_value, pass_list=False, base_adapter=base_text_adapter, name='content')[0]
-    else:
-        text = TextView(name='content', text='')
+        call_text_adapter(widget, adapter, value=initial_value, view=text)
 
     btn = refresh_button((updating_text_refresh_action, dict(on_refresh=on_refresh, adapter=adapter)), name='refresh_btn', initial_refresh=initial_refresh, widget=widget)
     del btn.bottom
