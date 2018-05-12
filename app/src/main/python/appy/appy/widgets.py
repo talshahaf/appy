@@ -93,7 +93,7 @@ def call_general_function(func, **kwargs):
 def deserialize_arg(arg):
     if not isinstance(arg, dict):
         return arg
-    if arg['type'] == 'trivial':
+    if arg['type'] == 'primitive':
         return arg['value']
 
     #gotta go to java
@@ -105,7 +105,7 @@ def serialize_arg(arg):
         return arg
 
     if not isinstance(arg, java.Object):
-        return AttrDict(type='trivial', value=arg)
+        return AttrDict(type='primitive', value=arg)
 
     #gotta go to java
     return json.loads(java.clazz.com.appy.Serializer().serializeToString(arg))
@@ -117,7 +117,9 @@ class Element:
         if 'id' not in self.d:
             self.d.id = get_id()
         if 'children' in self.d:
-            self.d.children = elist([[c if isinstance(c, Element) else Element(c) for c in arr] for arr in self.d.children])
+            self.d.children = ChildrenList([[c if isinstance(c, Element) else Element(c) for c in arr] for arr in self.d.children])
+        else:
+            self.d.children = ChildrenList()
 
     def __event__(self, key, **kwargs):
         if 'tag' in self.d and key in self.d.tag:
@@ -134,6 +136,8 @@ class Element:
             del self.d.attributes[attrs[key]]
         elif key in ('style',):
             del self.d[key]
+        elif key in ('children',):
+            self.d[key].clear()
         elif 'tag' in self.d and key in self.d.tag:
             del self.d.tag[key]
         else:
@@ -142,7 +146,7 @@ class Element:
     def __getattr__(self, item):
         if item in attrs:
             return AttributeValue(Reference(self.d.id, attrs[item], 1))
-        if item in ('type', 'id', 'style'):
+        if item in ('type', 'id', 'style', 'children'):
             return getattr(self.d, item)
 
         if 'tag' in self.d and item in self.d.tag:
@@ -173,6 +177,12 @@ class Element:
             self.d.tag[key] = value
         elif key in ('style',):
             self.d[key] = value
+        elif key in ('children',):
+            if value is None:
+                value = []
+            if not isinstance(value, (list, tuple)):
+                value = [value]
+            self.d[key].set(value)
         else:
             param_setter, method = get_param_setter(self.d.type, key)
             if param_setter is not None:
@@ -194,22 +204,14 @@ class Element:
             self.d.methodCalls = [c for c in self.d.methodCalls if c.identifier != identifier] + [AttrDict(identifier=identifier, method=method, arguments=arguments)]
 
     @classmethod
-    def create(cls, type, children=None, **kwargs):
-        if children is None:
-            children = []
-        if not isinstance(children, (list, tuple)):
-            children = [children]
-        children = [c if isinstance(c, (list, tuple)) else [c] for c in children]
-
-        #children is now list of lists
-        e = cls(dict(type=type, children=children))
+    def create(cls, type, **kwargs):
+        e = cls(dict(type=type))
         [setattr(e, k, v) for k,v in kwargs.items()]
         return e
 
     def dict(self, without_id=None):
         d = AttrDict.make({k:copy.deepcopy(v) for k,v in self.d.items() if k != 'children' and (not without_id or k != 'id')})
-        if 'children' in self.d:
-            d.children = [[c.dict(without_id=without_id) if isinstance(c, Element) else c for c in arr] for arr in self.d.children]
+        d.children = [[c.dict(without_id=without_id) if isinstance(c, Element) else c for c in arr] for arr in self.children]
         return d
 
     def duplicate(self):
@@ -220,18 +222,25 @@ class Element:
 
 class elist(list):
     @classmethod
-    def _find_element(cls, lst, pred):
+    def _find_element_rec(cls, lst, pred):
         found = set()
         for e in lst:
             if isinstance(e, list):
-                found.update(cls._find_element(e, pred))
-            elif pred(e):
-                found.add(e)
+                found.update(cls._find_element_rec(e, pred))
+            else:
+                if pred(e):
+                    found.add(e)
+                found.update(cls._find_element_rec(e.children, pred))
+        return list(found)
+
+    @classmethod
+    def _find_element(cls, lst, pred):
+        found = cls._find_element_rec(lst, pred)
         if not found:
             raise KeyError('element not found')
         elif len(found) == 1:
             return found.pop()
-        return list(found)
+        return found
 
     def find_element(self, name):
         return self._find_element(self, (lambda name: (lambda e: getattr(e, 'name', None) == name))(name)) #capture name
@@ -244,6 +253,44 @@ class elist(list):
             return super().__getitem__(item)
         except TypeError:
             return self.find_element(item)
+
+#children is list of lists
+class ChildrenList(elist):
+    def adapt(self, item):
+        return item if isinstance(item, (list, tuple)) else [item]
+
+    def set(self, other):
+        i = -1
+        for i,e in enumerate(other):
+            if len(self) <= i:
+                self.append(e)
+            else:
+                self[i] = self.adapt(e)
+        del self[i + 1:]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.set(self)
+
+    def append(self, item):
+        super().append(self.adapt(item))
+
+    def extend(self, iterable):
+        super().extend(iterable)
+        self.set(self)
+
+    def remove(self, item):
+        super().remove(self.adapt(item))
+
+    def insert(self, i, item):
+        super().insert(i, self.adapt(item))
+
+    def index(self, item, *args, **kwargs):
+        return super().index(self.adapt(item), *args, **kwargs)
+
+    def count(self, item):
+        return super().count(self.adapt(item))
+
 
 widget_dims    = WidgetAttribute()
 AnalogClock    = lambda *args, **kwargs: Element.create('AnalogClock',    *args, **kwargs)
@@ -481,17 +528,6 @@ class Handler:
     def import_(self, s):
         return elist([Element(e) for e in json.loads(s)])
 
-    def find(self, views, id):
-        for e in views:
-            if e.d.id == id:
-                return e
-            if 'children' in e.d:
-                for c in e.d.children:
-                    r = self.find(c, id)
-                    if r is not None:
-                        return r
-        return None
-
     @java.interface
     def onCreate(self, widget_id):
         print(f'python got onCreate')
@@ -513,7 +549,7 @@ class Handler:
     def onItemClick(self, widget_id, views_str, collection_id, position):
         print(f'python got onitemclick {widget_id} {collection_id} {position}')
         views = self.import_(views_str)
-        v = self.find(views, collection_id)
+        v = views.find_id(collection_id)
         widget, manager_state = create_widget(widget_id)
         handled = v.__event__('itemclick', widget=widget, views=views, view=v, position=position, state=state)
         handled = handled is True
@@ -523,7 +559,7 @@ class Handler:
     def onClick(self, widget_id, views_str, view_id):
         print(f'python got onclick {widget_id} {view_id}')
         views = self.import_(views_str)
-        v = self.find(views, view_id)
+        v = views.find_id(view_id)
         widget, manager_state = create_widget(widget_id)
         v.__event__('click', widget=widget, views=views, view=v, state=state)
         return self.export(views_str, views)

@@ -19,7 +19,7 @@ public class Serializer
         if(obj instanceof Boolean || obj instanceof Byte || obj instanceof Character || obj instanceof Short || obj instanceof Integer || obj instanceof Long || obj instanceof Float || obj instanceof Double
                 || obj instanceof String || obj instanceof CharSequence || obj instanceof JSONArray || obj instanceof JSONObject)
         {
-            jsonobj.put("type", "trivial");
+            jsonobj.put("type", "primitive");
             jsonobj.put("value", obj);
             return jsonobj;
         }
@@ -45,7 +45,7 @@ public class Serializer
 
     public static Object deserialize(JSONObject value) throws JSONException
     {
-        if(value.getString("type").equals("trivial"))
+        if(value.getString("type").equals("primitive"))
         {
             return value.get("value");
         }
