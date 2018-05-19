@@ -45,17 +45,26 @@ class AttributeValue:
         else:
             return AttributeValue(*self.pol, other)
 
-    def __mul__(self, other):
-        return AttributeValue(*(Reference(e.id, e.key, e.factor * other) for e in self.pol))
-
-    def __truediv__(self, other):
-        return self * (1/other)
-
-    def __neg__(self):
-        return AttributeValue(*(Reference(e.id, e.key, -1.0 * e.factor) for e in self.pol))
-
     def __sub__(self, other):
         return self + (-other)
+
+    def __mul__(self, other):
+        return AttributeValue(*(Reference(e.id, e.key, e.factor * other) if isinstance(e, Reference) else e * other for e in self.pol))
+
+    def __truediv__(self, other):
+        return self * (1 / other)
+
+    def __neg__(self):
+        return self.__mul__(-1.0)
+
+    def __radd__(self, other):
+        return self.__add__(other)
+    def __rsub__(self, other):
+        return self.__sub__(other)
+    def __rmul__(self, other):
+        return self.__mul__(other)
+    def __rtruediv__(self, other):
+        return self.__truediv__(other)
 
     def compile(self):
         amount = 0
@@ -126,7 +135,7 @@ class Element:
             func, captures = loads(self.d.tag[key])
             return call_function(func, captures, **kwargs)
 
-    def set_handler(self, key, f, **captures):
+    def set_handler(self, key, f, captures):
         if 'tag' not in self.d:
             self.d.tag = {}
         self.d.tag[key] = dumps((f, captures))
@@ -170,7 +179,7 @@ class Element:
         elif key in ('click', 'itemclick'):
             if not isinstance(value, (list, tuple)):
                 value = (value, {})
-            self.set_handler(key, value[0], **value[1])
+            self.set_handler(key, value[0], value[1])
         elif key in ('name',):
             if 'tag' not in self.d:
                 self.d.tag = {}
@@ -405,15 +414,15 @@ class Widget:
         state.wipe_state()
 
     def set_absolute_timer(self, seconds, f, **captures):
-        return self.set_timer(seconds, java.clazz.com.appy.Widget().TIMER_ABSOLUTE, f, **captures)
+        return self.set_timer(seconds, java.clazz.com.appy.Widget().TIMER_ABSOLUTE, f, captures)
 
     def set_timeout(self, seconds, f, **captures):
-        return self.set_timer(seconds, java.clazz.com.appy.Widget().TIMER_RELATIVE, f, **captures)
+        return self.set_timer(seconds, java.clazz.com.appy.Widget().TIMER_RELATIVE, f, captures)
 
     def set_interval(self, seconds, f, **captures):
-        return self.set_timer(seconds, java.clazz.com.appy.Widget().TIMER_REPEATING, f, **captures)
+        return self.set_timer(seconds, java.clazz.com.appy.Widget().TIMER_REPEATING, f, captures)
 
-    def set_timer(self, seconds, t, f, **captures):
+    def set_timer(self, seconds, t, f, captures):
         return java_widget_manager.setTimer(int(seconds * 1000), t, self.widget_id, dumps((f, captures)))
 
     def cancel_timer(self, timer_id):
@@ -431,12 +440,43 @@ class Widget:
     def post(self, f, **captures):
         java_widget_manager.setPost(self.widget_id, dumps((f, captures)))
 
+    def size(self):
+        size_arr = java_widget_manager.getWidgetDimensions(self.widget_id)
+        return int(size_arr[0]), int(size_arr[1])
+
+    @staticmethod
+    def invoker(element_id, views, key, **kwargs):
+        views.find_id(element_id).__event__(key, views=views, **kwargs)
+
+    @staticmethod
+    def click_invoker(element_id, views, **kwargs):
+        views.find_id(element_id).__event__('click', views=views, **kwargs)
+
+    @staticmethod
+    def itemclick_invoker(element_id, views, **kwargs):
+        views.find_id(element_id).__event__('itemclick', views=views, **kwargs)
+
+    def invoke_click(self, element):
+        self.post(self.click_invoker, element_id=element.id)
+
+    def invoke_item_click(self, element, position):
+        self.post(self.itemclick_invoker, element_id=element.id, position=position)
+
     @classmethod
     def color(cls, r=0, g=0, b=0, a=255):
         return ((a & 0xff) << 24) + \
                ((r & 0xff) << 16) + \
                ((g & 0xff) << 8) + \
                ((b & 0xff))
+
+    UNIT_PX = int(java.clazz.android.util.TypedValue().COMPLEX_UNIT_PX)
+    UNIT_DP = int(java.clazz.android.util.TypedValue().COMPLEX_UNIT_DIP)
+    UNIT_SP = int(java.clazz.android.util.TypedValue().COMPLEX_UNIT_SP)
+
+    @classmethod
+    def convert_unit(cls, value, fro, to):
+        return float(java_widget_manager.convertUnit(value, fro, to))
+
 
 def create_manager_state():
     manager_state = state.State(None, -1) #special own scope
@@ -476,7 +516,7 @@ def widget_manager_create(widget, manager_state):
     #clear state
     manager_state.chosen[widget.widget_id] = None
 
-    restart_btn = ImageButton(style='success_btn_oval_nopad', click=restart, colorFilter=0xffffffff, width=80, height=80, right=0, bottom=0, imageResource=java.clazz.android.R.drawable().ic_lock_power_off)
+    restart_btn = ImageButton(style='success_btn_oval_nopad', click=restart, colorFilter=0xffffffff, width=140, height=140, right=0, bottom=0, imageResource=java.clazz.android.R.drawable().ic_lock_power_off)
     restart_btn.drawableParameters = (True, -1, 0x80000000, java.clazz.android.graphics.PorterDuff.Mode().SRC_ATOP, -1)
 
     if not available_widgets:
@@ -551,7 +591,7 @@ class Handler:
         views = self.import_(views_str)
         v = views.find_id(collection_id)
         widget, manager_state = create_widget(widget_id)
-        handled = v.__event__('itemclick', widget=widget, views=views, view=v, position=position, state=state)
+        handled = v.__event__('itemclick', widget=widget, views=views, view=v, position=position)
         handled = handled is True
         return java.new.java.lang.Object[()]([handled, self.export(views_str, views)])
 
@@ -561,7 +601,7 @@ class Handler:
         views = self.import_(views_str)
         v = views.find_id(view_id)
         widget, manager_state = create_widget(widget_id)
-        v.__event__('click', widget=widget, views=views, view=v, state=state)
+        v.__event__('click', widget=widget, views=views, view=v)
         return self.export(views_str, views)
 
     @java.interface
