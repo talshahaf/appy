@@ -32,7 +32,14 @@ public class Serializer
             return jsonobj;
         }
 
-//        if(obj instanceof Uri || obj instanceof Bitmap || obj instanceof Icon) // || obj instanceof Bundle || obj instanceof Intent
+        if(obj instanceof Uri)
+        {
+            jsonobj.put("type", "complicated");
+            jsonobj.put("class", obj.getClass().getName());
+            jsonobj.put("value", obj.toString());
+        }
+
+//        if(obj instanceof Bitmap || obj instanceof Icon) // || obj instanceof Bundle || obj instanceof Intent
 //        {
 //            jsonobj.put("type", "complicated");
 //            jsonobj.put("class", obj.getClass().getName());
@@ -56,6 +63,13 @@ public class Serializer
             if(value.getString("type").equals("enum"))
             {
                 return Enum.valueOf(clazz, value.getString("value"));
+            }
+            if(value.getString("type").equals("complicated"))
+            {
+                if(clazz.equals(Uri.class))
+                {
+                    return Uri.parse(value.getString("value"));
+                }
             }
         }
         catch (ClassNotFoundException e)

@@ -21,5 +21,9 @@
             android:id="@+id/navigation_crash"
             android:title="Crashes"
         />
+        <item
+            android:id="@+id/navigation_settings"
+            android:title="Settings"
+        />
     </group>
 </menu>

@@ -44,6 +44,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
+import android.support.v7.preference.PreferenceManager;
 import android.system.ErrnoException;
 import android.system.Os;
 import android.util.DisplayMetrics;
@@ -479,6 +480,8 @@ public class Widget extends RemoteViewsService
     HashMap<Pair<Integer, Integer>, HashMap<Integer, ListFactory>> factories = new HashMap<>();
     ArrayList<PythonFile> pythonFiles = new ArrayList<>();
     HashSet<Integer> needUpdateWidgets = new HashSet<>();
+    float widthCorrectionFactor = 1.0f;
+    float heightCorrectionFactor = 1.0f;
 
     interface Runner<T>
     {
@@ -814,18 +817,31 @@ public class Widget extends RemoteViewsService
         }
     }
 
-    public static float dipToPixels(Context context, float dipValue)
+    public static float convertUnit(Context context, float value, int from, int to)
     {
         DisplayMetrics metrics = context.getResources().getDisplayMetrics();
-        return TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, dipValue, metrics);
+        //applyDimension takes the "from" unit
+        return value * TypedValue.applyDimension(from, 1.0f, metrics) / TypedValue.applyDimension(to, 1.0f, metrics);
+    }
+
+    public float convertUnit(float value, int from, int to)
+    {
+        return convertUnit(this, value, from, to);
+    }
+
+    public int[] getWidgetDimensions(int widgetId)
+    {
+        return getWidgetDimensions(AppWidgetManager.getInstance(this), getAndroidWidget(widgetId));
     }
 
     public int[] getWidgetDimensions(AppWidgetManager appWidgetManager, int androidWidgetId)
     {
         Bundle bundle = appWidgetManager.getAppWidgetOptions(androidWidgetId);
         //only works on portrait
-        return new int[]{(int) dipToPixels(this, bundle.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH)),
-                (int) dipToPixels(this, bundle.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT))};
+        return new int[]{
+                (int) (widthCorrectionFactor * convertUnit(bundle.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH),  TypedValue.COMPLEX_UNIT_DIP, TypedValue.COMPLEX_UNIT_PX)),
+                (int) (heightCorrectionFactor * convertUnit(bundle.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT), TypedValue.COMPLEX_UNIT_DIP, TypedValue.COMPLEX_UNIT_PX))
+        };
     }
 
     public Pair<Integer, HashMap<String, ArrayList<Integer>>> selectRootView(ArrayList<String> collections)
@@ -1114,7 +1130,7 @@ public class Widget extends RemoteViewsService
         params.height = heightLimit;
         inflated.setLayoutParams(params);
 
-        // Log.d("APPY", "limits: " + widthLimit + ", " + heightLimit);
+//        Log.d("APPY", "limits: " + widthLimit + ", " + heightLimit);
 
         Attributes rootAttributes = new Attributes();
         rootAttributes.attributes.get(Attributes.Type.LEFT).tryTrivialResolve(0);
@@ -1575,6 +1591,27 @@ public class Widget extends RemoteViewsService
             editor.putString("widgets", new MapSerialize<Integer, String>().serialize(widgets, new MapSerialize.IntKey(), new MapSerialize.StringValue()));
         }
         editor.apply();
+    }
+
+    public void loadCorrectionFactors()
+    {
+        SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
+        float widthCorrection = Float.parseFloat(sharedPref.getString("width_correction", "1"));
+        float heightCorrection = Float.parseFloat(sharedPref.getString("height_correction", "1"));
+
+        if(widthCorrection <= 0 || widthCorrection > 3)
+        {
+            widthCorrection = 1;
+        }
+        if(heightCorrection <= 0 || heightCorrection > 3)
+        {
+            heightCorrection = 1;
+        }
+
+        widthCorrectionFactor = widthCorrection;
+        heightCorrectionFactor = heightCorrection;
+
+        Log.d("APPY", "new correction factors: " + widthCorrectionFactor + ", " + heightCorrectionFactor);
     }
 
     public int generateTimerId()
@@ -2094,8 +2131,8 @@ public class Widget extends RemoteViewsService
         restart.methodCalls.add(new RemoteMethodCall("setColorFilter", false, getSetterMethod(restart.type, "setColorFilter"), "setColorFilter", 0xffffffff));
         restart.methodCalls.add(new RemoteMethodCall("setImageResource", false, getSetterMethod(restart.type, "setImageResource"), "setImageResource", android.R.drawable.ic_lock_power_off));
         restart.methodCalls.add(new RemoteMethodCall("setDrawableParameters", false, "setDrawableParameters", true, -1, 0x80000000, android.graphics.PorterDuff.Mode.SRC_ATOP, -1));
-        restart.attributes.attributes.put(Attributes.Type.WIDTH, attributeParse("80"));
-        restart.attributes.attributes.put(Attributes.Type.HEIGHT, attributeParse("80"));
+        restart.attributes.attributes.put(Attributes.Type.WIDTH, attributeParse("140"));
+        restart.attributes.attributes.put(Attributes.Type.HEIGHT, attributeParse("140"));
         restart.attributes.attributes.put(Attributes.Type.RIGHT, attributeParse("0"));
         restart.attributes.attributes.put(Attributes.Type.BOTTOM, attributeParse("0"));
         restart.tag = SPECIAL_WIDGET_RESTART; //onclick
@@ -2585,6 +2622,7 @@ public class Widget extends RemoteViewsService
             handler = new Handler();
 
             loadPythonFiles();
+            loadCorrectionFactors();
             loadWidgets();
             loadTimers();
 

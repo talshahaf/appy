@@ -29,7 +29,7 @@ public class MainActivity extends AppCompatActivity implements StatusListener
     private DrawerLayout drawer;
     private Toolbar toolbar;
     private NavigationView navView;
-    private HashMap<Integer, Pair<Class<?>, MyFragment>> fragments = new HashMap<>();
+    private HashMap<Integer, Pair<Class<?>, Fragment>> fragments = new HashMap<>();
     public static final String FRAGMENT_TAG = "FRAGMENT";
 
     @Override
@@ -38,11 +38,12 @@ public class MainActivity extends AppCompatActivity implements StatusListener
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        fragments.put(R.id.navigation_control, new Pair<Class<?>, MyFragment>(ControlFragment.class, null));
-        fragments.put(R.id.navigation_logcat, new Pair<Class<?>, MyFragment>(LogcatFragment.class, null));
-        fragments.put(R.id.navigation_pip, new Pair<Class<?>, MyFragment>(PipFragment.class, null));
-        fragments.put(R.id.navigation_files, new Pair<Class<?>, MyFragment>(FilesFragment.class, null));
-        fragments.put(R.id.navigation_crash, new Pair<Class<?>, MyFragment>(CrashFragment.class, null));
+        fragments.put(R.id.navigation_control, new Pair<Class<?>, Fragment>(ControlFragment.class, null));
+        fragments.put(R.id.navigation_logcat, new Pair<Class<?>, Fragment>(LogcatFragment.class, null));
+        fragments.put(R.id.navigation_pip, new Pair<Class<?>, Fragment>(PipFragment.class, null));
+        fragments.put(R.id.navigation_files, new Pair<Class<?>, Fragment>(FilesFragment.class, null));
+        fragments.put(R.id.navigation_crash, new Pair<Class<?>, Fragment>(CrashFragment.class, null));
+        fragments.put(R.id.navigation_settings, new Pair<Class<?>, Fragment>(SettingsFragment.class, null));
 
         // Set a Toolbar to replace the ActionBar.
         toolbar = findViewById(R.id.toolbar);
@@ -70,10 +71,13 @@ public class MainActivity extends AppCompatActivity implements StatusListener
             @Override
             public void onBackStackChanged()
             {
-                MyFragment fragment = (MyFragment)getSupportFragmentManager().findFragmentByTag(FRAGMENT_TAG);
+                MyFragmentInterface fragment = (MyFragmentInterface)getSupportFragmentManager().findFragmentByTag(FRAGMENT_TAG);
                 MenuItem menuItem = navView.getMenu().findItem(fragment.getMenuId());
-                menuItem.setChecked(true);
-                setTitle(menuItem.getTitle());
+                if(menuItem != null)
+                {
+                    menuItem.setChecked(true);
+                    setTitle(menuItem.getTitle());
+                }
             }
         });
 
@@ -105,19 +109,19 @@ public class MainActivity extends AppCompatActivity implements StatusListener
         // Create a new fragment and specify the fragment to show based on nav item clicked
         int itemId = menuItem.getItemId();
 
-        Pair<Class<?>, MyFragment> cls = fragments.get(itemId);
+        Pair<Class<?>, Fragment> cls = fragments.get(itemId);
         if (cls == null)
         {
             itemId = R.id.navigation_control;
             cls = fragments.get(itemId);
         }
 
-        MyFragment fragment = cls.second;
+        MyFragmentInterface fragment = (MyFragmentInterface)cls.second;
         if (fragment == null)
         {
             try
             {
-                fragment = (MyFragment) cls.first.newInstance();
+                fragment = (MyFragmentInterface)cls.first.newInstance();
                 fragment.setMenuId(itemId);
             }
             catch (Exception e)
@@ -125,7 +129,7 @@ public class MainActivity extends AppCompatActivity implements StatusListener
                 e.printStackTrace();
             }
 
-            fragments.put(itemId, new Pair<Class<?>, MyFragment>(cls.first, fragment));
+            fragments.put(itemId, new Pair<Class<?>, Fragment>(cls.first, (Fragment)fragment));
         }
 
         if (fragment == null)
@@ -133,7 +137,7 @@ public class MainActivity extends AppCompatActivity implements StatusListener
             return;
         }
 
-        MyFragment prev = (MyFragment) getSupportFragmentManager().findFragmentByTag(FRAGMENT_TAG);
+        MyFragmentInterface prev = (MyFragmentInterface) getSupportFragmentManager().findFragmentByTag(FRAGMENT_TAG);
 
         if (prev != fragment)
         {
@@ -148,7 +152,7 @@ public class MainActivity extends AppCompatActivity implements StatusListener
                     R.animator.slide_in_from_right, R.animator.slide_out_to_left,
                     R.animator.slide_in_from_left, R.animator.slide_out_to_right);
 
-            transaction.replace(R.id.container, fragment, FRAGMENT_TAG);
+            transaction.replace(R.id.container, (Fragment)fragment, FRAGMENT_TAG);
             if(prev != null)
             {
                 transaction.addToBackStack(null);
@@ -171,11 +175,11 @@ public class MainActivity extends AppCompatActivity implements StatusListener
         public void onServiceConnected(ComponentName className, IBinder service) {
             widgetService = ((Widget.LocalBinder)service).getService();
             widgetService.setStatusListener(MainActivity.this);
-            for(Pair<Class<?>, MyFragment> frag : fragments.values())
+            for(Pair<Class<?>, Fragment> frag : fragments.values())
             {
                 if(frag.second != null)
                 {
-                    frag.second.onBound();
+                    ((MyFragmentInterface)frag.second).onBound();
                 }
             }
         }
@@ -208,7 +212,7 @@ public class MainActivity extends AppCompatActivity implements StatusListener
     @Override
     public void onStartupStatusChange()
     {
-        MyFragment fragment = fragments.get(R.id.navigation_control).second;
+        Fragment fragment = fragments.get(R.id.navigation_control).second;
         if(fragment != null)
         {
             ((ControlFragment)fragment).onStartupStatusChange();
@@ -218,7 +222,7 @@ public class MainActivity extends AppCompatActivity implements StatusListener
     @Override
     public void onPythonFileStatusChange()
     {
-        MyFragment fragment = fragments.get(R.id.navigation_files).second;
+        Fragment fragment = fragments.get(R.id.navigation_files).second;
         if(fragment != null)
         {
             ((FilesFragment)fragment).onPythonFileStatusChange();
