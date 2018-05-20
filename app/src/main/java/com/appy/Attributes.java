@@ -34,6 +34,12 @@ public class Attributes
             public int id;
             public Type type;
             public double factor;
+            public Reference(int id, Type type, double factor)
+            {
+                this.id = id;
+                this.type = type;
+                this.factor = factor;
+            }
         }
 
         enum Function
@@ -46,20 +52,15 @@ public class Attributes
         public Function function = Function.IDENTITY;
         public ArrayList<Pair<ArrayList<Reference>, Double>> arguments = new ArrayList<>();
         public Double resolvedValue;
-        public boolean triviallyResolved = false;
 
         public boolean isResolved()
         {
             return resolvedValue != null;
         }
 
-        public void tryTrivialResolve(double value)
+        public boolean hasConstraints()
         {
-            if(arguments.isEmpty() && resolvedValue == null)
-            {
-                resolvedValue = value;
-                triviallyResolved = true;
-            }
+            return !arguments.isEmpty() ;
         }
 
         public static AttributeValue fromJSON(JSONObject obj) throws JSONException
@@ -79,10 +80,7 @@ public class Attributes
                 {
                     JSONObject referenceObj = referenceArray.getJSONObject(j);
 
-                    Reference ref = new Reference();
-                    ref.id = referenceObj.getInt("id");
-                    ref.type = Type.valueOf(referenceObj.getString("type"));
-                    ref.factor = referenceObj.getDouble("factor");
+                    Reference ref = new Reference(referenceObj.getInt("id"), Type.valueOf(referenceObj.getString("type")), referenceObj.getDouble("factor"));
                     references.add(ref);
                 }
 
@@ -115,7 +113,6 @@ public class Attributes
                 argArray.put(argObj);
             }
             obj.put("arguments", argArray);
-            obj.put("triviallyResolved", triviallyResolved);
             if(resolvedValue != null)
             {
                 obj.put("resolvedValue", resolvedValue);

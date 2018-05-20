@@ -622,12 +622,9 @@ public class Widget extends RemoteViewsService
                 throw new IllegalArgumentException("expected '(' in "+arg+" got "+arg.charAt(idx.first + 1));
             }
 
-            Attributes.AttributeValue.Reference reference = new Attributes.AttributeValue.Reference();
             int parEnd = arg.indexOf(")", idx.first);
             String refId = arg.substring(idx.first + 2, parEnd);
-            reference.id = refId.equalsIgnoreCase("p") ? -1 : Integer.parseInt(refId);
-            reference.type = idx.second;
-            reference.factor = 1;
+            Attributes.AttributeValue.Reference reference = new Attributes.AttributeValue.Reference(refId.equalsIgnoreCase("p") ? -1 : Integer.parseInt(refId), idx.second, 1);
             reference.factor *= Double.parseDouble(idx.first > 0 ? arg.substring(0, idx.first) : "1");
             reference.factor *= Double.parseDouble(parEnd + 1 < arg.length() ? arg.substring(parEnd + 1) : "1");
             references.add(reference);
@@ -1094,28 +1091,110 @@ public class Widget extends RemoteViewsService
         throw new IllegalArgumentException("unknown function " + function);
     }
 
-    public Pair<Integer, Integer> resolveAxis(int lenLimit, Attributes.AttributeValue start, Attributes.AttributeValue end, Attributes.AttributeValue len)
+    public void resolveAxis(DynamicView view, Attributes.Type startType, Attributes.Type sizeType, Attributes.Type endType, double defaultStart, double defaultSize)
     {
-        int padStart;
-        int padEnd;
+        Attributes.AttributeValue start = view.attributes.attributes.get(startType);
+        Attributes.AttributeValue size = view.attributes.attributes.get(sizeType);
+        Attributes.AttributeValue end = view.attributes.attributes.get(endType);
 
-        if (len.triviallyResolved && !start.triviallyResolved && !end.triviallyResolved)
+        Attributes.AttributeValue third;
+        Attributes.Type[] others = new Attributes.Type[2];
+
+        //if 0 constrained
+        if (!start.hasConstraints() &&
+            !size.hasConstraints() &&
+            !end.hasConstraints())
         {
-            padStart = start.resolvedValue.intValue();
-            padEnd = end.resolvedValue.intValue();
+            //no constaints at all, set left and width to measured,
+            start.resolvedValue = defaultStart;
+            size.resolvedValue = defaultSize;
+
+            third = end;
+            others[0] = startType;
+            others[1] = sizeType;
         }
-        else if (start.triviallyResolved && !end.triviallyResolved)
+        //if 3 constrained
+        else if(start.hasConstraints() &&
+                size.hasConstraints() &&
+                end.hasConstraints())
         {
-            padEnd = end.resolvedValue.intValue();
-            padStart = lenLimit - len.resolvedValue.intValue() - padEnd;
+            //ignore right
+            third = end;
+            others[0] = startType;
+            others[1] = sizeType;
+        }
+        //if 1 constrained
+        else if( start.hasConstraints() &&
+                !size.hasConstraints() &&
+                !end.hasConstraints())
+        {
+            //if only left, set width
+            size.resolvedValue = defaultSize;
+
+            third = end;
+            others[0] = startType;
+            others[1] = sizeType;
+        }
+        else if(!start.hasConstraints() &&
+                 size.hasConstraints() &&
+                !end.hasConstraints())
+        {
+            //if only width, set left
+            start.resolvedValue = defaultStart;
+
+            third = end;
+            others[0] = startType;
+            others[1] = sizeType;
+        }
+        else if(!start.hasConstraints() &&
+                !size.hasConstraints() &&
+                 end.hasConstraints())
+        {
+            //if only right, set width
+            size.resolvedValue = defaultSize;
+
+            third = start;
+            others[0] = endType;
+            others[1] = sizeType;
+        }
+        //if 2 constrained
+        else if(!start.hasConstraints() &&
+                 size.hasConstraints() &&
+                 end.hasConstraints())
+        {
+            third = start;
+            others[0] = endType;
+            others[1] = sizeType;
+        }
+        else if( start.hasConstraints() &&
+                !size.hasConstraints() &&
+                 end.hasConstraints())
+        {
+            third = size;
+            others[0] = startType;
+            others[1] = endType;
+        }
+        else if( start.hasConstraints() &&
+                 size.hasConstraints() &&
+                !end.hasConstraints())
+        {
+            third = end;
+            others[0] = startType;
+            others[1] = sizeType;
         }
         else
         {
-            padStart = start.resolvedValue.intValue();
-            padEnd = lenLimit - len.resolvedValue.intValue() - padStart;
+            throw new IllegalStateException("shouldn't happen");
         }
 
-        return new Pair<>(padStart >= 0 ? padStart : 0, padEnd >= 0 ? padEnd : 0);
+        //here we have 2 out of 3 set, create the reference for the third - third = widget.size - others
+        third.function = Attributes.AttributeValue.Function.IDENTITY;
+        third.arguments = new ArrayList<>();
+        ArrayList<Attributes.AttributeValue.Reference> refs = new ArrayList<>();
+        refs.add(new Attributes.AttributeValue.Reference(-1, sizeType, 1));
+        refs.add(new Attributes.AttributeValue.Reference(view.getId(), others[0], -1));
+        refs.add(new Attributes.AttributeValue.Reference(view.getId(), others[1], -1));
+        third.arguments.add(new Pair<>(refs, (double)0));
     }
 
     public RemoteViews resolveDimensions(Context context, int widgetId, ArrayList<DynamicView> dynamicList, boolean inCollection, int widthLimit, int heightLimit) throws InvocationTargetException, IllegalAccessException
@@ -1133,12 +1212,12 @@ public class Widget extends RemoteViewsService
 //        Log.d("APPY", "limits: " + widthLimit + ", " + heightLimit);
 
         Attributes rootAttributes = new Attributes();
-        rootAttributes.attributes.get(Attributes.Type.LEFT).tryTrivialResolve(0);
-        rootAttributes.attributes.get(Attributes.Type.TOP).tryTrivialResolve(0);
-        rootAttributes.attributes.get(Attributes.Type.RIGHT).tryTrivialResolve(0);
-        rootAttributes.attributes.get(Attributes.Type.BOTTOM).tryTrivialResolve(0);
-        rootAttributes.attributes.get(Attributes.Type.WIDTH).tryTrivialResolve(widthLimit);
-        rootAttributes.attributes.get(Attributes.Type.HEIGHT).tryTrivialResolve(heightLimit);
+        rootAttributes.attributes.get(Attributes.Type.LEFT).resolvedValue = 0.0;
+        rootAttributes.attributes.get(Attributes.Type.TOP).resolvedValue = 0.0;
+        rootAttributes.attributes.get(Attributes.Type.RIGHT).resolvedValue = 0.0;
+        rootAttributes.attributes.get(Attributes.Type.BOTTOM).resolvedValue = 0.0;
+        rootAttributes.attributes.get(Attributes.Type.WIDTH).resolvedValue = (double)widthLimit;
+        rootAttributes.attributes.get(Attributes.Type.HEIGHT).resolvedValue = (double)heightLimit;
 
         ViewGroup supergroup = (ViewGroup) inflated;
 
@@ -1170,21 +1249,18 @@ public class Widget extends RemoteViewsService
                 View view = ((ViewGroup) group.getChildAt(i)).getChildAt(0); //each leaf is inside RelativeLayout is inside elements or collections
                 DynamicView dynamicView = find(dynamicList, Integer.parseInt(view.getContentDescription().toString()));
 
-                dynamicView.attributes.attributes.get(Attributes.Type.LEFT).tryTrivialResolve(0);
-                dynamicView.attributes.attributes.get(Attributes.Type.TOP).tryTrivialResolve(0);
-                dynamicView.attributes.attributes.get(Attributes.Type.RIGHT).tryTrivialResolve(0);
-                dynamicView.attributes.attributes.get(Attributes.Type.BOTTOM).tryTrivialResolve(0);
+                double viewWidth = view.getMeasuredWidth();
+                double viewHeight = view.getMeasuredHeight();
 
                 if (isCollection(dynamicView.type))
                 {
-                    dynamicView.attributes.attributes.get(Attributes.Type.WIDTH).tryTrivialResolve(widthLimit);
-                    dynamicView.attributes.attributes.get(Attributes.Type.HEIGHT).tryTrivialResolve(heightLimit);
+                    viewWidth = widthLimit;
+                    viewHeight = heightLimit;
                 }
-                else
-                {
-                    dynamicView.attributes.attributes.get(Attributes.Type.WIDTH).tryTrivialResolve(view.getMeasuredWidth());
-                    dynamicView.attributes.attributes.get(Attributes.Type.HEIGHT).tryTrivialResolve(view.getMeasuredHeight());
-                }
+
+                resolveAxis(dynamicView, Attributes.Type.LEFT, Attributes.Type.WIDTH, Attributes.Type.RIGHT, 0, viewWidth);
+
+                resolveAxis(dynamicView, Attributes.Type.TOP, Attributes.Type.HEIGHT, Attributes.Type.BOTTOM, 0, viewHeight);
 
                 params = (RelativeLayout.LayoutParams) view.getLayoutParams();
                 params.width = RelativeLayout.LayoutParams.MATCH_PARENT;
@@ -1192,6 +1268,8 @@ public class Widget extends RemoteViewsService
                 view.setLayoutParams(params);
             }
         }
+
+        // Log.d("APPY", "Attributes "+DynamicView.toJSONString(dynamicList));
 
         //one iteration
         while (true)
@@ -1264,32 +1342,24 @@ public class Widget extends RemoteViewsService
         //apply
         for (DynamicView dynamicView : dynamicList)
         {
-            //pick 2 out of 3 with this priority
-            Attributes.AttributeValue width = dynamicView.attributes.attributes.get(Attributes.Type.WIDTH);
-            Attributes.AttributeValue left = dynamicView.attributes.attributes.get(Attributes.Type.LEFT);
-            Attributes.AttributeValue right = dynamicView.attributes.attributes.get(Attributes.Type.RIGHT);
-
-            //pick 2 out of 3 with this priority
-            Attributes.AttributeValue top = dynamicView.attributes.attributes.get(Attributes.Type.TOP);
-            Attributes.AttributeValue bottom = dynamicView.attributes.attributes.get(Attributes.Type.BOTTOM);
-            Attributes.AttributeValue height = dynamicView.attributes.attributes.get(Attributes.Type.HEIGHT);
-
             Pair<Integer, Integer> hor;
             Pair<Integer, Integer> ver;
             if (inCollection)
             {
                 //in list, we have no size limit, so no real width, height, right or bottom
-                hor = new Pair<>(left.resolvedValue.intValue(), 0);
-                ver = new Pair<>(top.resolvedValue.intValue(), 0);
+                hor = new Pair<>(dynamicView.attributes.attributes.get(Attributes.Type.LEFT).resolvedValue.intValue(), 0);
+                ver = new Pair<>(dynamicView.attributes.attributes.get(Attributes.Type.TOP).resolvedValue.intValue(), 0);
             }
             else
             {
-                hor = resolveAxis(widthLimit, left, right, width);
-                ver = resolveAxis(heightLimit, top, bottom, height);
+                hor = new Pair<>(dynamicView.attributes.attributes.get(Attributes.Type.LEFT).resolvedValue.intValue(),
+                                 dynamicView.attributes.attributes.get(Attributes.Type.RIGHT).resolvedValue.intValue());
+                ver = new Pair<>(dynamicView.attributes.attributes.get(Attributes.Type.TOP).resolvedValue.intValue(),
+                                 dynamicView.attributes.attributes.get(Attributes.Type.BOTTOM).resolvedValue.intValue());
 
                 //for collection children
-                dynamicView.actualWidth = widthLimit - hor.second - hor.first;
-                dynamicView.actualHeight = heightLimit - ver.second - ver.first;
+                dynamicView.actualWidth = dynamicView.attributes.attributes.get(Attributes.Type.WIDTH).resolvedValue.intValue();
+                dynamicView.actualHeight = dynamicView.attributes.attributes.get(Attributes.Type.HEIGHT).resolvedValue.intValue();
             }
 
 //            Log.d("APPY", "resolved attributes: ");
