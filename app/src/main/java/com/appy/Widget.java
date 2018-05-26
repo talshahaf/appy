@@ -723,6 +723,7 @@ public class Widget extends RemoteViewsService
 
     class ListFactory implements RemoteViewsFactory
     {
+        final Object lock = new Object();
         int widgetId;
         Context context;
         DynamicView list;
@@ -736,7 +737,10 @@ public class Widget extends RemoteViewsService
 
         public void reload(String list)
         {
-            this.list = DynamicView.fromJSON(list);
+            synchronized (lock)
+            {
+                this.list = DynamicView.fromJSON(list);
+            }
         }
 
         @Override
@@ -768,18 +772,21 @@ public class Widget extends RemoteViewsService
         {
             try
             {
-                if (position < list.children.size())
+                synchronized (lock)
                 {
-                    ArrayList<DynamicView> dynamicViewCopy = DynamicView.fromJSONArray(DynamicView.toJSONString(list.children.get(position)));
-                    RemoteViews remoteView = resolveDimensions(context, widgetId, dynamicViewCopy, true, list.actualWidth, list.actualHeight);
-                    Intent fillIntent = new Intent(context, WidgetReceiver.class);
-                    if (list.children.get(position).size() == 1)
+                    if (position < list.children.size())
                     {
-                        fillIntent.putExtra(ITEM_ID_EXTRA, list.children.get(position).get(0).getId());
+                        ArrayList<DynamicView> dynamicViewCopy = DynamicView.fromJSONArray(DynamicView.toJSONString(list.children.get(position)));
+                        RemoteViews remoteView = resolveDimensions(context, widgetId, dynamicViewCopy, true, list.actualWidth, list.actualHeight);
+                        Intent fillIntent = new Intent(context, WidgetReceiver.class);
+                        if (list.children.get(position).size() == 1)
+                        {
+                            fillIntent.putExtra(ITEM_ID_EXTRA, list.children.get(position).get(0).getId());
+                        }
+                        fillIntent.putExtra(COLLECTION_POSITION_EXTRA, position);
+                        remoteView.setOnClickFillInIntent(R.id.collection_root, fillIntent);
+                        return remoteView;
                     }
-                    fillIntent.putExtra(COLLECTION_POSITION_EXTRA, position);
-                    remoteView.setOnClickFillInIntent(R.id.collection_root, fillIntent);
-                    return remoteView;
                 }
             }
             catch (InvocationTargetException | IllegalAccessException e)
