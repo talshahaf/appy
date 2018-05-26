@@ -15,8 +15,8 @@ def get_args(f):
     args, varargs, varkw, defaults = inspect.getargspec(f)
     kwargs = []
     if defaults:
-        args = args[:-len(defaults)]
         kwargs = args[-len(defaults):]
+        args = args[:-len(defaults)]
     return args, kwargs, varargs is not None, varkw is not None
 
 class AttrDict(dict):
