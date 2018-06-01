@@ -1,12 +1,12 @@
 package com.appy;
 
-import android.util.Log;
-
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -25,7 +25,7 @@ public class DynamicView
     public Attributes attributes = new Attributes();
     public int actualWidth;
     public int actualHeight;
-    public String style;
+    public HashMap<String, String> selectors = new HashMap<>();
 
     private static AtomicInteger id_counter = new AtomicInteger(1);
     private static int genId()
@@ -125,9 +125,15 @@ public class DynamicView
             view.actualHeight = obj.getInt("actualHeight");
         }
 
-        if(obj.has("style"))
+        if(obj.has("selectors"))
         {
-            view.style = obj.getString("style");
+            JSONObject selectors = obj.getJSONObject("selectors");
+            Iterator<String> it = selectors.keys();
+            while(it.hasNext())
+            {
+                String key = it.next();
+                view.selectors.put(key, selectors.getString(key));
+            }
         }
 
         if(obj.has("attributes"))
@@ -166,7 +172,16 @@ public class DynamicView
         obj.put("containerId", container_id);
         obj.put("actualWidth", actualWidth);
         obj.put("actualHeight", actualHeight);
-        obj.put("style", style);
+
+        if(!selectors.isEmpty())
+        {
+            JSONObject selectorsObj = new JSONObject();
+            for (String key : selectors.keySet())
+            {
+                selectorsObj.put(key, selectors.get(key));
+            }
+            obj.put("selectors", selectorsObj);
+        }
 
         if(tag != null)
         {
