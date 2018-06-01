@@ -143,8 +143,8 @@ class Element:
     def __delattr__(self, key):
         if key in attrs:
             del self.d.attributes[attrs[key]]
-        elif key in ('style',):
-            del self.d[key]
+        elif 'selectors' in self.d and key in ('style', 'alignment'):
+            del self.d.selectors[key]
         elif key in ('children',):
             self.d[key].clear()
         elif 'tag' in self.d and key in self.d.tag:
@@ -155,8 +155,10 @@ class Element:
     def __getattr__(self, item):
         if item in attrs:
             return AttributeValue(Reference(self.d.id, attrs[item], 1))
-        if item in ('type', 'id', 'style', 'children'):
+        if item in ('type', 'id', 'children'):
             return getattr(self.d, item)
+        if item in ('style', 'alignment'):
+            return getattr(self.d.selectors, item)
 
         if 'tag' in self.d and item in self.d.tag:
             attr = self.d.tag[item]
@@ -184,8 +186,10 @@ class Element:
             if 'tag' not in self.d:
                 self.d.tag = {}
             self.d.tag[key] = value
-        elif key in ('style',):
-            self.d[key] = value
+        elif key in ('style', 'alignment'):
+            if 'selectors' not in self.d:
+                self.d.selectors = {}
+            self.d.selectors[key] = value
         elif key in ('children',):
             if value is None:
                 value = []
