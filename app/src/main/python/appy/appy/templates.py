@@ -63,10 +63,8 @@ def background(widget, name=None, color=None, drawable=None):
     return bg
 
 ##############list template###############################
-def call_list_adapter(widget, adapter, value, name=None, **kwargs):
+def call_list_adapter(widget, adapter, value, **kwargs):
     view = [TextView(textViewTextSize=(clazz.android.util.TypedValue().COMPLEX_UNIT_SP, 15))]
-    if name is not None:
-        view[0].name = name
     if adapter is not None:
         call_general_function(adapter, widget=widget, view=view, value=value, **kwargs)
     else:
