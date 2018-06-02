@@ -1047,7 +1047,6 @@ public class Widget extends RemoteViewsService
             elements_id = R.id.collection_elements;
         }
 
-        Log.d("APPY", "res: "+root_xml);
         RemoteViews rootView = new RemoteViews(context.getPackageName(), root_xml);
 
         if(!inCollection)
@@ -1095,7 +1094,6 @@ public class Widget extends RemoteViewsService
                 layout.xml_id = typeToLayout(layout.type, layout.selectors);
                 layout.container_id = R.id.l0;
                 layout.view_id = R.id.e0;
-                Log.d("APPY", "res2: "+layout.xml_id);
                 remoteView = new RemoteViews(context.getPackageName(), layout.xml_id);
             }
 
