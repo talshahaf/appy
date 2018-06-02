@@ -107,6 +107,15 @@ public class Widget extends RemoteViewsService
         COMPLETED,
     }
 
+    public enum CollectionLayout
+    {
+        NOT_COLLECTION,
+        UNCONSTRAINED,
+        VERTICAL,
+        HORIZONTAL,
+        BOTH,
+    }
+
     private final IBinder mBinder = new LocalBinder();
 
     public static HashMap<String, Class<?>> typeToClass = new HashMap<>();
@@ -165,6 +174,15 @@ public class Widget extends RemoteViewsService
         {
             typeToRemotableMethod.put(type, getRemotableMethods(type));
         }
+    }
+
+    static HashMap<String, CollectionLayout> collection_layout_type = new HashMap<>();
+    static
+    {
+        collection_layout_type.put("ListView", CollectionLayout.VERTICAL);
+        collection_layout_type.put("GridView", CollectionLayout.BOTH);
+        collection_layout_type.put("StackView", CollectionLayout.UNCONSTRAINED);
+        collection_layout_type.put("AdapterViewFlipper", CollectionLayout.UNCONSTRAINED);
     }
 
     static HashMap<List<String>, Integer> collection_map = new HashMap<>();
@@ -837,7 +855,7 @@ public class Widget extends RemoteViewsService
                     if (position < list.children.size())
                     {
                         ArrayList<DynamicView> dynamicViewCopy = DynamicView.fromJSONArray(DynamicView.toJSONString(list.children.get(position)));
-                        RemoteViews remoteView = resolveDimensions(context, widgetId, dynamicViewCopy, true, list.actualWidth, list.actualHeight);
+                        RemoteViews remoteView = resolveDimensions(context, widgetId, dynamicViewCopy, collection_layout_type.get(list.type), list.actualWidth, list.actualHeight);
                         Intent fillIntent = new Intent(context, WidgetReceiver.class);
                         if (list.children.get(position).size() == 1)
                         {
@@ -1029,6 +1047,7 @@ public class Widget extends RemoteViewsService
             elements_id = R.id.collection_elements;
         }
 
+        Log.d("APPY", "res: "+root_xml);
         RemoteViews rootView = new RemoteViews(context.getPackageName(), root_xml);
 
         if(!inCollection)
@@ -1076,6 +1095,7 @@ public class Widget extends RemoteViewsService
                 layout.xml_id = typeToLayout(layout.type, layout.selectors);
                 layout.container_id = R.id.l0;
                 layout.view_id = R.id.e0;
+                Log.d("APPY", "res2: "+layout.xml_id);
                 remoteView = new RemoteViews(context.getPackageName(), layout.xml_id);
             }
 
@@ -1270,9 +1290,9 @@ public class Widget extends RemoteViewsService
         third.arguments.add(new Pair<>(refs, (double)0));
     }
 
-    public RemoteViews resolveDimensions(Context context, int widgetId, ArrayList<DynamicView> dynamicList, boolean inCollection, int widthLimit, int heightLimit) throws InvocationTargetException, IllegalAccessException
+    public RemoteViews resolveDimensions(Context context, int widgetId, ArrayList<DynamicView> dynamicList, CollectionLayout collectionLayout, int widthLimit, int heightLimit) throws InvocationTargetException, IllegalAccessException
     {
-        RemoteViews remote = generate(context, widgetId, dynamicList, false, inCollection);
+        RemoteViews remote = generate(context, widgetId, dynamicList, false, collectionLayout != CollectionLayout.NOT_COLLECTION);
         RelativeLayout layout = new RelativeLayout(this);
         View inflated = remote.apply(context, layout);
         layout.addView(inflated);
@@ -1415,22 +1435,25 @@ public class Widget extends RemoteViewsService
         //apply
         for (DynamicView dynamicView : dynamicList)
         {
-            Pair<Integer, Integer> hor;
-            Pair<Integer, Integer> ver;
-            if (inCollection)
+            Pair<Integer, Integer> hor = new Pair<>(dynamicView.attributes.attributes.get(Attributes.Type.LEFT).resolvedValue.intValue(),
+                    dynamicView.attributes.attributes.get(Attributes.Type.RIGHT).resolvedValue.intValue());
+            Pair<Integer, Integer> ver = new Pair<>(dynamicView.attributes.attributes.get(Attributes.Type.TOP).resolvedValue.intValue(),
+                    dynamicView.attributes.attributes.get(Attributes.Type.BOTTOM).resolvedValue.intValue());
+
+            if (collectionLayout == CollectionLayout.HORIZONTAL || collectionLayout == CollectionLayout.BOTH)
             {
-                //in list, we have no size limit, so no real width, height, right or bottom
+                //collection is aligned horizontally, we cant do width
                 hor = new Pair<>(dynamicView.attributes.attributes.get(Attributes.Type.LEFT).resolvedValue.intValue(), 0);
+            }
+            if (collectionLayout == CollectionLayout.VERTICAL || collectionLayout == CollectionLayout.BOTH)
+            {
+                //collection is aligned vertically, we cant do height
                 ver = new Pair<>(dynamicView.attributes.attributes.get(Attributes.Type.TOP).resolvedValue.intValue(), 0);
             }
-            else
-            {
-                hor = new Pair<>(dynamicView.attributes.attributes.get(Attributes.Type.LEFT).resolvedValue.intValue(),
-                                 dynamicView.attributes.attributes.get(Attributes.Type.RIGHT).resolvedValue.intValue());
-                ver = new Pair<>(dynamicView.attributes.attributes.get(Attributes.Type.TOP).resolvedValue.intValue(),
-                                 dynamicView.attributes.attributes.get(Attributes.Type.BOTTOM).resolvedValue.intValue());
 
-                //for collection children
+            //assigning to collection for its children
+            if(collectionLayout == CollectionLayout.NOT_COLLECTION)
+            {
                 dynamicView.actualWidth = dynamicView.attributes.attributes.get(Attributes.Type.WIDTH).resolvedValue.intValue();
                 dynamicView.actualHeight = dynamicView.attributes.attributes.get(Attributes.Type.HEIGHT).resolvedValue.intValue();
             }
@@ -1449,7 +1472,7 @@ public class Widget extends RemoteViewsService
                     ver.second));
         }
 
-        return generate(context, widgetId, dynamicList, true, inCollection);
+        return generate(context, widgetId, dynamicList, true, collectionLayout != CollectionLayout.NOT_COLLECTION);
     }
 
     public static String getSetterMethod(String type, String method)
@@ -2229,7 +2252,7 @@ public class Widget extends RemoteViewsService
                     int widthLimit = widgetDimensions[0];
                     int heightLimit = widgetDimensions[1];
 
-                    RemoteViews view = resolveDimensions(Widget.this, widgetId, views, false, widthLimit, heightLimit);
+                    RemoteViews view = resolveDimensions(Widget.this, widgetId, views, CollectionLayout.NOT_COLLECTION, widthLimit, heightLimit);
                     //appWidgetManager.notifyAppWidgetViewDataChanged(androidWidgetId, R.id.root);
                     appWidgetManager.updateAppWidget(androidWidgetId, view);
                 }
@@ -2950,7 +2973,13 @@ public class Widget extends RemoteViewsService
                 {
                     for (int androidWidgetId : widgetIntent.getIntArrayExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS))
                     {
+//                        boolean newWidget = fromAndroidWidget(androidWidgetId, false) == null;
                         int widgetId = fromAndroidWidget(androidWidgetId, true);
+//                        if(newWidget)
+//                        {
+//                            Log.d("APPY", "new widget!");
+//                            setLoadingWidget(widgetId);
+//                        }
                         addTask(widgetId, new Task<>(new CallUpdateTask(), widgetId));
                     }
                 }
