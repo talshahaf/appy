@@ -235,7 +235,7 @@ class Element:
         return e
 
     def dict(self, without_id=None):
-        if 'tag' in self.d and 'tag' in self.d.tag:
+        if 'tag' in self.d and 'tag' in self.d.tag and not isinstance(self.d.tag['tag'], str):
             self.d.tag['tag'] = dumps(self.d.tag['tag'])
         d = AttrDict.make({k:copy.deepcopy(v) for k,v in self.d.items() if k != 'children' and (not without_id or k != 'id')})
         d.children = [[c.dict(without_id=without_id) if isinstance(c, Element) else c for c in arr] for arr in self.children]
