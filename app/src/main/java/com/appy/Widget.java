@@ -1124,7 +1124,7 @@ public class Widget extends RemoteViewsService
 
                     Intent listintent = new Intent(context, Widget.class);
                     listintent.putExtra(WIDGET_ID_EXTRA, widgetId);
-                    listintent.putExtra(LIST_SERIALIZED_EXTRA, layout.toJSON());
+                    listintent.putExtra(LIST_SERIALIZED_EXTRA, Gzip.compress(layout.toJSON()));
                     listintent.putExtra(XML_ID_EXTRA, layout.xml_id);
                     listintent.putExtra(VIEW_ID_EXTRA, layout.view_id);
                     listintent.setData(Uri.parse(listintent.toUri(Intent.URI_INTENT_SCHEME)));
@@ -1592,7 +1592,7 @@ public class Widget extends RemoteViewsService
         int widgetId = intent.getIntExtra(WIDGET_ID_EXTRA, -1);
         int xmlId = intent.getIntExtra(XML_ID_EXTRA, 0);
         int viewId = intent.getIntExtra(VIEW_ID_EXTRA, 0);
-        String list = intent.getStringExtra(LIST_SERIALIZED_EXTRA);
+        String list = Gzip.decompress(intent.getByteArrayExtra(LIST_SERIALIZED_EXTRA));
         return getFactory(this, widgetId, xmlId, viewId, list);
     }
 
@@ -1767,8 +1767,26 @@ public class Widget extends RemoteViewsService
     public void loadCorrectionFactors()
     {
         SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
-        float widthCorrection = Float.parseFloat(sharedPref.getString("width_correction", "1"));
-        float heightCorrection = Float.parseFloat(sharedPref.getString("height_correction", "1"));
+        float widthCorrection = 1.0f;
+        float heightCorrection = 1.0f;
+
+        try
+        {
+            widthCorrection = Float.parseFloat(sharedPref.getString("width_correction", "1"));
+        }
+        catch(NumberFormatException e)
+        {
+            Log.w("APPY", "wrong number format for width");
+        }
+
+        try
+        {
+            heightCorrection = Float.parseFloat(sharedPref.getString("height_correction", "1"));
+        }
+        catch(NumberFormatException e)
+        {
+            Log.w("APPY", "wrong number format for width");
+        }
 
         if(widthCorrection <= 0 || widthCorrection > 3)
         {

@@ -3,6 +3,12 @@ from .java import clazz
 
 
 ##############refresh button##############################
+def reset_refresh_buttons_if_needed(widget, views):
+    for e in views.all():
+        if '__refreshing' in e.tag and e.tag.__refreshing:
+            e.visibility = clazz.android.view.View().VISIBLE
+            e.tag.__refreshing = False
+
 def refresh_button_action(widget, views, on_click, id):
     call_general_function(on_click, widget=widget, views=views)
     btn = None
@@ -12,6 +18,7 @@ def refresh_button_action(widget, views, on_click, id):
         pass
     if btn is not None:
         btn.visibility = clazz.android.view.View().VISIBLE
+    btn.tag.__refreshing = False
 
 def refresh_button_click(widget, views, on_click, id, timer_id=None):
     btn = None
@@ -21,6 +28,7 @@ def refresh_button_click(widget, views, on_click, id, timer_id=None):
         #disable timer
         if timer_id is not None:
             widget.cancel_timer(timer_id)
+    btn.tag.__refreshing = True
     if btn is not None:
         btn.visibility = clazz.android.view.View().INVISIBLE
     widget.post(refresh_button_action, on_click=on_click, id=id)
@@ -30,6 +38,8 @@ def refresh_button(on_click, name=None, initial_refresh=None, widget=None, timeo
     btn.click = (refresh_button_click, dict(on_click=on_click, id=btn.id))
     if name is not None:
         btn.name = name
+
+    btn.tag.__refreshing = False
 
     if (initial_refresh or interval or timeout) and not widget:
         raise ValueError('must supply widget argument when using initial_refresh, interval or timeout')
@@ -88,7 +98,7 @@ def updating_list_create(widget, initial_values, on_refresh, background_param, a
     return views
 
 def updating_list(name, initial_values=None, on_refresh=None, background=None, adapter=None, initial_refresh=None, timeout=None, interval=None):
-    register_widget(name, (updating_list_create, dict(initial_values=initial_values, on_refresh=on_refresh, background_param=background, adapter=adapter, initial_refresh=initial_refresh, timeout=timeout, interval=interval)), None)
+    register_widget(name, (updating_list_create, dict(initial_values=initial_values, on_refresh=on_refresh, background_param=background, adapter=adapter, initial_refresh=initial_refresh, timeout=timeout, interval=interval)), reset_refresh_buttons_if_needed)
 
 ##############text template############################
 def call_text_adapter(widget, adapter, value, view, **kwargs):
@@ -109,10 +119,6 @@ def updating_text_create(widget, initial_value, on_refresh, background_param, ad
         call_text_adapter(widget, adapter, value=initial_value, view=text)
 
     btn = refresh_button((updating_text_refresh_action, dict(on_refresh=on_refresh, adapter=adapter)), initial_refresh=initial_refresh, widget=widget, timeout=timeout, interval=interval)
-    del btn.bottom
-    del btn.left
-    btn.top = 0
-    btn.right = 0
 
     views = []
     if background_param is not None and background_param is not False:
@@ -123,7 +129,7 @@ def updating_text_create(widget, initial_value, on_refresh, background_param, ad
     return views
 
 def updating_text(name, initial_value=None, on_refresh=None, background=None, adapter=None, initial_refresh=None, timeout=None, interval=None):
-    register_widget(name, (updating_text_create, dict(initial_value=initial_value, on_refresh=on_refresh, background_param=background, adapter=adapter, initial_refresh=initial_refresh, timeout=timeout, interval=interval)), None)
+    register_widget(name, (updating_text_create, dict(initial_value=initial_value, on_refresh=on_refresh, background_param=background, adapter=adapter, initial_refresh=initial_refresh, timeout=timeout, interval=interval)), reset_refresh_buttons_if_needed)
 
 #################keyboard###############################
 def key_backspace_click(output):

@@ -36,7 +36,7 @@ public class FileBrowserAdapter extends BaseAdapter
         ArrayList<File> selectedFiles = new ArrayList<>();
         for(int i : selected)
         {
-            selectedFiles.add(files[i]);
+            selectedFiles.add((File)getItem(i));
         }
         return selectedFiles;
     }
