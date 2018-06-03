@@ -147,6 +147,8 @@ class Element:
             del self.d.selectors[key]
         elif key in ('children',):
             self.d[key].clear()
+        elif key in ('tag',):
+            raise AttributeError(f'{key} can not be deleted')
         elif 'tag' in self.d and key in self.d.tag:
             del self.d.tag[key]
         else:
@@ -159,6 +161,14 @@ class Element:
             return getattr(self.d, item)
         if item in ('style', 'alignment'):
             return getattr(self.d.selectors, item)
+        if item in ('tag',):
+            if 'tag' not in self.d:
+                self.d.tag = {}
+            if 'tag' not in self.d.tag:
+                self.d.tag['tag'] = AttrDict()
+            if isinstance(self.d.tag['tag'], str):
+                self.d.tag['tag'] = loads(self.d.tag['tag'])
+            return self.d.tag['tag']
 
         if 'tag' in self.d and item in self.d.tag:
             attr = self.d.tag[item]
@@ -186,6 +196,8 @@ class Element:
             if 'tag' not in self.d:
                 self.d.tag = {}
             self.d.tag[key] = value
+        elif key in ('tag',):
+            raise AttributeError(f'{key} can not be modified')
         elif key in ('style', 'alignment'):
             if 'selectors' not in self.d:
                 self.d.selectors = {}
@@ -223,6 +235,8 @@ class Element:
         return e
 
     def dict(self, without_id=None):
+        if 'tag' in self.d and 'tag' in self.d.tag:
+            self.d.tag['tag'] = dumps(self.d.tag['tag'])
         d = AttrDict.make({k:copy.deepcopy(v) for k,v in self.d.items() if k != 'children' and (not without_id or k != 'id')})
         d.children = [[c.dict(without_id=without_id) if isinstance(c, Element) else c for c in arr] for arr in self.children]
         return d
@@ -235,37 +249,36 @@ class Element:
 
 class elist(list):
     @classmethod
-    def _find_element_rec(cls, lst, pred):
-        found = set()
+    def _all_rec(cls, lst):
         for e in lst:
             if isinstance(e, list):
-                found.update(cls._find_element_rec(e, pred))
+                yield from cls._all_rec(e)
             else:
-                if pred(e):
-                    found.add(e)
-                found.update(cls._find_element_rec(e.children, pred))
-        return list(found)
+                yield e
+                yield from cls._all_rec(e.children)
 
-    @classmethod
-    def _find_element(cls, lst, pred):
-        found = cls._find_element_rec(lst, pred)
+    def all(self):
+        yield from self._all_rec(self)
+
+    def _find_element(self, pred):
+        found = list(set(e for e in self.all() if pred(e)))
         if not found:
             raise KeyError('element not found')
         elif len(found) == 1:
             return found.pop()
         return found
 
-    def find_element(self, name):
-        return self._find_element(self, (lambda name: (lambda e: getattr(e, 'name', None) == name))(name)) #capture name
+    def find_name(self, name):
+        return self._find_element((lambda name: (lambda e: getattr(e, 'name', None) == name))(name)) #capture name
 
     def find_id(self, id):
-        return self._find_element(self, (lambda id: (lambda e: getattr(e, 'id', None) == id))(id)) #capture id
+        return self._find_element((lambda id: (lambda e: getattr(e, 'id', None) == id))(id)) #capture id
 
     def __getitem__(self, item):
         try:
             return super().__getitem__(item)
         except TypeError:
-            return self.find_element(item)
+            return self.find_name(item)
 
 #children is list of lists
 class ChildrenList(elist):
@@ -454,11 +467,13 @@ class Widget:
 
     @staticmethod
     def click_invoker(element_id, views, **kwargs):
-        views.find_id(element_id).__event__('click', views=views, **kwargs)
+        view = views.find_id(element_id)
+        view.__event__('click', views=views, view=view, **kwargs)
 
     @staticmethod
     def itemclick_invoker(element_id, views, **kwargs):
-        views.find_id(element_id).__event__('itemclick', views=views, **kwargs)
+        view = views.find_id(element_id)
+        view.__event__('itemclick', views=views, view=view, **kwargs)
 
     def invoke_click(self, element):
         self.post(self.click_invoker, element_id=element.id)
@@ -543,7 +558,7 @@ def widget_manager_update(widget, manager_state, views):
             return None
         else:
             if on_update:
-                return call_general_function(on_update, widget=widget, views=views)
+                call_general_function(on_update, widget=widget, views=views)
             return views
     return widget_manager_create(widget, manager_state) #maybe present error widget
 
