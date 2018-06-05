@@ -102,6 +102,8 @@ def call_general_function(func, **kwargs):
 def deserialize_arg(arg):
     if not isinstance(arg, dict):
         return arg
+    if arg['type'] == 'null':
+        return None
     if arg['type'] == 'primitive':
         return arg['value']
 
@@ -112,6 +114,9 @@ def serialize_arg(arg):
     #probably already serialized
     if isinstance(arg, dict):
         return arg
+
+    if arg is None or arg == java.Null:
+        return AttrDict(type='null')
 
     if not isinstance(arg, java.Object):
         return AttrDict(type='primitive', value=arg)
@@ -208,6 +213,16 @@ class Element:
             if not isinstance(value, (list, tuple)):
                 value = [value]
             self.d[key].set(value)
+        elif key in ('tint', 'backgroundTint'):
+            prev_alpha = -1
+            if hasattr(self, 'drawableParameters'):
+                prev_alpha = self.drawableParameters[1]
+            self.drawableParameters = (key == 'backgroundTint', prev_alpha, value, java.clazz.android.graphics.PorterDuff.Mode().SRC_ATOP, -1)
+        elif key in ('alpha', 'backgroundAlpha'):
+            prev_color, prev_mode = -1, None
+            if hasattr(self, 'drawableParameters'):
+                prev_color, prev_mode = self.drawableParameters[2], self.drawableParameters[3]
+            self.drawableParameters = (key == 'backgroundAlpha', value & 0xff, prev_color, prev_mode, -1)
         else:
             param_setter, method = get_param_setter(self.d.type, key)
             if param_setter is not None:
@@ -536,7 +551,7 @@ def widget_manager_create(widget, manager_state):
     manager_state.chosen[widget.widget_id] = None
 
     restart_btn = ImageButton(style='success_btn_oval_nopad', click=restart, colorFilter=0xffffffff, width=140, height=140, right=0, bottom=0, imageResource=java.clazz.android.R.drawable().ic_lock_power_off)
-    restart_btn.drawableParameters = (True, -1, 0x80000000, java.clazz.android.graphics.PorterDuff.Mode().SRC_ATOP, -1)
+    restart_btn.backgroundTint = Widget.color(r=0, g=0, b=0, a=128)
 
     if not available_widgets:
         lst = TextView(text='No widgets')

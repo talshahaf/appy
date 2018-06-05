@@ -16,6 +16,12 @@ public class Serializer
     {
         JSONObject jsonobj = new JSONObject();
 
+        if(obj == null)
+        {
+            jsonobj.put("type", "null");
+            return jsonobj;
+        }
+
         if(obj instanceof Boolean || obj instanceof Byte || obj instanceof Character || obj instanceof Short || obj instanceof Integer || obj instanceof Long || obj instanceof Float || obj instanceof Double
                 || obj instanceof String || obj instanceof CharSequence || obj instanceof JSONArray || obj instanceof JSONObject)
         {
@@ -47,11 +53,16 @@ public class Serializer
 //            return jsonobj;
 //        }
 
-        throw new IllegalArgumentException("cannot serialize " + obj.getClass().getName());
+        throw new IllegalArgumentException("cannot serialize " + obj.getClass().getName() + " " + obj.toString());
     }
 
     public static Object deserialize(JSONObject value) throws JSONException
     {
+        if(value.getString("type").equals("null"))
+        {
+            return null;
+        }
+
         if(value.getString("type").equals("primitive"))
         {
             return value.get("value");
