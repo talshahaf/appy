@@ -67,7 +67,8 @@ def background(widget, name=None, color=None, drawable=None):
         drawable = clazz.com.appy.R.drawable().rounded_rect
 
     bg = RelativeLayout(width=widget.width, height=widget.height, backgroundResource=drawable)
-    bg.drawableParameters = (True, (color >> 24) & 0xff, color | 0xff000000, clazz.android.graphics.PorterDuff.Mode().SRC_ATOP, -1)
+    bg.backgroundTint = color | 0xff000000
+    bg.backgroundAlpha = (color >> 24) & 0xff
     if name is not None:
         bg.name = name
     return bg
@@ -83,11 +84,11 @@ def call_list_adapter(widget, adapter, value, **kwargs):
 
 def updating_list_refresh_action(widget, views, on_refresh, adapter):
     values = call_general_function(on_refresh, widget=widget, views=views)
-    views['list'].children = None if values is None else [call_list_adapter(widget, adapter, value=v, index=i) for i, v in enumerate(values)]
+    views['list'].children = None if not values else [call_list_adapter(widget, adapter, value=v, index=i) for i, v in enumerate(values)]
 
 def updating_list_create(widget, initial_values, on_refresh, background_param, adapter, initial_refresh, timeout, interval):
     btn = refresh_button((updating_list_refresh_action, dict(on_refresh=on_refresh, adapter=adapter)), initial_refresh=initial_refresh, widget=widget, timeout=timeout, interval=interval)
-    lst = ListView(name='list', children=None if initial_values is None else [call_list_adapter(widget, adapter, value=v, index=i) for i, v in enumerate(initial_values)])
+    lst = ListView(name='list', children=None if not initial_values else [call_list_adapter(widget, adapter, value=v, index=i) for i, v in enumerate(initial_values)])
 
     views = []
     if background_param is not None and background_param is not False:
