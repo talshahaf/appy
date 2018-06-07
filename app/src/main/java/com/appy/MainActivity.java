@@ -51,6 +51,7 @@ public class MainActivity extends AppCompatActivity implements StatusListener
         ActionBar actionBar = getSupportActionBar();
         actionBar.setDisplayHomeAsUpEnabled(true);
         actionBar.setHomeButtonEnabled(true);
+        actionBar.setHomeAsUpIndicator(R.drawable.ic_menu_black_24dp);
         // Find our drawer view
         drawer = findViewById(R.id.drawer_layout);
         navView = findViewById(R.id.nav_view);

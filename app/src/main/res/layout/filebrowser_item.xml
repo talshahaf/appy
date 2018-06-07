@@ -17,10 +17,12 @@
         android:id="@+id/fileicon"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_alignBottom="@+id/filedate"
         android:layout_alignParentTop="true"
         android:layout_toRightOf="@+id/filecheckbox"
+        android:layout_gravity="center"
         android:clickable="false"
-        android:focusable="false" />
+        android:focusable="false"/>
 
     <TextView
         android:id="@+id/filename"

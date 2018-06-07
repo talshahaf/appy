@@ -27,9 +27,9 @@ public class FileBrowserAdapter extends BaseAdapter
     Context context;
     boolean isRoot;
 
-    public static final int FILE_RESOURCE = android.R.drawable.ic_dialog_map;
-    public static final int DIRECTORY_RESOURCE = android.R.drawable.ic_dialog_email;
-    public static final int PYTHON_FILE_RESOURCE = android.R.drawable.ic_dialog_alert;
+    public static final int FILE_RESOURCE = R.drawable.any_file;
+    public static final int DIRECTORY_RESOURCE = R.drawable.folder;
+    public static final int PYTHON_FILE_RESOURCE = R.drawable.python_file;
 
     public ArrayList<File> getSelected()
     {
@@ -113,6 +113,14 @@ public class FileBrowserAdapter extends BaseAdapter
             viewHolder.filename.setText(item.getName());
             viewHolder.icon.setImageResource(setFileImageType(item));
             viewHolder.date.setText(getLastDate(item));
+            if (item.isDirectory())
+            {
+                viewHolder.checkbox.setVisibility(View.INVISIBLE);
+            }
+            else
+            {
+                viewHolder.checkbox.setVisibility(View.VISIBLE);
+            }
         }
 
         viewHolder.checkbox.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener()
