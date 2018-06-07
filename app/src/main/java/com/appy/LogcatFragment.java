@@ -45,50 +45,34 @@ public class LogcatFragment extends MyFragment implements RunnerListener
         return layout;
     }
 
-    final ArrayDeque<String> logcatLines = new ArrayDeque<>();
     public static final int INITIAL_LOGCAT_LINES = 200;
-    public static final int LOGCAT_LINES = 1000;
 
     Runner logcat = null;
 
     @Override
-    public void onLine(String line)
+    public void onLine(final String line)
     {
-        synchronized (logcatLines)
+        if(handler != null)
         {
-            logcatLines.add(line);
-            while (logcatLines.size() > LOGCAT_LINES)
+            handler.post(new Runnable()
             {
-                logcatLines.pop();
-            }
-
-            if(handler != null)
-            {
-                handler.post(new Runnable()
+                @Override
+                public void run()
                 {
-                    @Override
-                    public void run()
+                    logcatView.append("\n"+line);
+                    if (atEnd)
                     {
-                        String lines;
-                        synchronized (logcatLines)
+                        handler.post(new Runnable()
                         {
-                            lines = join("\n", logcatLines);
-                        }
-                        logcatView.setText(lines);
-                        if (atEnd)
-                        {
-                            handler.post(new Runnable()
+                            @Override
+                            public void run()
                             {
-                                @Override
-                                public void run()
-                                {
-                                    scroller.fullScroll(View.FOCUS_DOWN);
-                                }
-                            });
-                        }
+                                scroller.fullScroll(View.FOCUS_DOWN);
+                            }
+                        });
                     }
-                });
-            }
+                }
+            });
         }
     }
 
@@ -123,6 +107,17 @@ public class LogcatFragment extends MyFragment implements RunnerListener
         stopLogcat();
         logcat = new Runner("logcat -b main -v time -T "+INITIAL_LOGCAT_LINES, null, this);
         logcat.start();
+        if(handler != null)
+        {
+            handler.post(new Runnable()
+            {
+                @Override
+                public void run()
+                {
+                    logcatView.setText("");
+                }
+            });
+        }
     }
 
     @Override
