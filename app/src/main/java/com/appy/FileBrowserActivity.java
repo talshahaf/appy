@@ -22,6 +22,7 @@ import java.io.File;
 import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 
 /**
  * Created by Tal on 23/03/2018.
@@ -86,7 +87,12 @@ public class FileBrowserActivity extends AppCompatActivity
         File[] filesArray = current.listFiles();
 
         //sorting file list in alphabetical order
-        Arrays.sort(filesArray);
+        Arrays.sort(filesArray, new Comparator<File>() {
+            @Override
+            public int compare(File o1, File o2) {
+                return o1.getAbsolutePath().compareToIgnoreCase(o2.getAbsolutePath());
+            }
+        });
         adapter = new FileBrowserAdapter(this, filesArray, current, isRoot);
         list.setAdapter(adapter);
         list.setOnItemClickListener(new AdapterView.OnItemClickListener()
