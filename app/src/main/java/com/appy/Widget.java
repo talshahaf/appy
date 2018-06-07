@@ -78,465 +78,18 @@ import org.kamranzafar.jtar.TarEntry;
 import org.kamranzafar.jtar.TarHeader;
 import org.kamranzafar.jtar.TarInputStream;
 
+
 public class Widget extends RemoteViewsService
 {
-    private static final String ITEM_ID_EXTRA = "ITEM_ID";
-    private static final String ITEM_TAG_EXTRA = "ITEM_TAG";
-    public static final String WIDGET_INTENT = "WIDGET_INTENT";
-    private static final String COLLECTION_ITEM_ID_EXTRA = "COLLECTION_ITEM_ID_EXTRA";
-    private static final String COLLECTION_POSITION_EXTRA = "COLLECTION_POSITION_EXTRA";
-    private static final String LIST_SERIALIZED_EXTRA = "LIST_SERIALIZED_EXTRA";
-    private static final String XML_ID_EXTRA = "XML_ID_EXTRA";
-    private static final String VIEW_ID_EXTRA = "VIEW_ID_EXTRA";
-    private static final String WIDGET_ID_EXTRA = "WIDGET_ID_EXTRA";
-    public static final String LOCAL_BIND_EXTRA = "LOCAL_BIND_EXTRA";
-    private static final int SPECIAL_WIDGET_ID = 100;
-    private static final int SPECIAL_WIDGET_RESTART = 1;
-    private static final int SPECIAL_WIDGET_CLEAR = 2;
-    private static final int SPECIAL_WIDGET_RELOAD = 3;
-    public static final int TIMER_RELATIVE = 1;
-    public static final int TIMER_ABSOLUTE = 2;
-    public static final int TIMER_REPEATING = 3;
-    public static final int IMPORT_TASK_QUEUE = -1;
-
-    public enum StartupState
-    {
-        IDLE,
-        RUNNING,
-        ERROR,
-        COMPLETED,
-    }
-
-    public enum CollectionLayout
-    {
-        NOT_COLLECTION,
-        UNCONSTRAINED,
-        VERTICAL,
-        HORIZONTAL,
-        BOTH,
-    }
-
     private final IBinder mBinder = new LocalBinder();
 
-    public static HashMap<String, Class<?>> typeToClass = new HashMap<>();
-    public static HashMap<String, HashMap<String, String>> typeToRemotableMethod = new HashMap<>();
-    public static HashMap<Class<?>, String> parameterToSetter = new HashMap<>();
 
-    static
-    {
-        typeToClass.put("FrameLayout", FrameLayout.class);
-        typeToClass.put("LinearLayout", LinearLayout.class);
-        typeToClass.put("RelativeLayout", RelativeLayout.class);
-        typeToClass.put("GridLayout", GridLayout.class);
-        typeToClass.put("AnalogClock", AnalogClock.class);
-        typeToClass.put("Button", Button.class);
-        typeToClass.put("Chronometer", Chronometer.class);
-        typeToClass.put("ImageButton", ImageButton.class);
-        typeToClass.put("ImageView", ImageView.class);
-        typeToClass.put("ProgressBar", ProgressBar.class);
-        typeToClass.put("TextView", TextView.class);
-        typeToClass.put("ViewFlipper", ViewFlipper.class);
-        typeToClass.put("ListView", ListView.class);
-        typeToClass.put("GridView", GridView.class);
-        typeToClass.put("StackView", StackView.class);
-        typeToClass.put("AdapterViewFlipper", AdapterViewFlipper.class);
-
-
-        parameterToSetter.put(Boolean.TYPE, "setBoolean");
-        parameterToSetter.put(Byte.TYPE, "setByte");
-        parameterToSetter.put(Short.TYPE, "setShort");
-        parameterToSetter.put(Integer.TYPE, "setInt");
-        parameterToSetter.put(Long.TYPE, "setLong");
-        parameterToSetter.put(Float.TYPE, "setFloat");
-        parameterToSetter.put(Double.TYPE, "setDouble");
-        parameterToSetter.put(Character.TYPE, "setChar");
-
-        parameterToSetter.put(Boolean.class, "setBoolean");
-        parameterToSetter.put(Byte.class, "setByte");
-        parameterToSetter.put(Short.class, "setShort");
-        parameterToSetter.put(Integer.class, "setInt");
-        parameterToSetter.put(Long.class, "setLong");
-        parameterToSetter.put(Float.class, "setFloat");
-        parameterToSetter.put(Double.class, "setDouble");
-        parameterToSetter.put(Character.class, "setChar");
-        parameterToSetter.put(String.class, "setString");
-        parameterToSetter.put(CharSequence.class, "setCharSequence");
-        parameterToSetter.put(Uri.class, "setUri");
-        parameterToSetter.put(Bitmap.class, "setBitmap");
-        parameterToSetter.put(Bundle.class, "setBundle");
-        parameterToSetter.put(Intent.class, "setIntent");
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M)
-        {
-            parameterToSetter.put(Icon.class, "setIcon");
-        }
-
-        for (String type : typeToClass.keySet())
-        {
-            typeToRemotableMethod.put(type, getRemotableMethods(type));
-        }
-    }
-
-    static HashMap<String, CollectionLayout> collection_layout_type = new HashMap<>();
-    static
-    {
-        collection_layout_type.put("ListView", CollectionLayout.VERTICAL);
-        collection_layout_type.put("GridView", CollectionLayout.BOTH);
-        collection_layout_type.put("StackView", CollectionLayout.UNCONSTRAINED);
-        collection_layout_type.put("AdapterViewFlipper", CollectionLayout.UNCONSTRAINED);
-    }
-
-    static HashMap<List<String>, Integer> collection_map = new HashMap<>();
-    static
-    {
-        collection_map.put(Arrays.asList("ListView"), R.layout.root_listview);
-        collection_map.put(Arrays.asList("GridView"), R.layout.root_gridview);
-        collection_map.put(Arrays.asList("StackView"), R.layout.root_stackview);
-        collection_map.put(Arrays.asList("AdapterViewFlipper"), R.layout.root_adapterviewflipper);
-        collection_map.put(Arrays.asList("AdapterViewFlipper", "AdapterViewFlipper"), R.layout.root_adapterviewflipper_adapterviewflipper);
-        collection_map.put(Arrays.asList("AdapterViewFlipper", "GridView"), R.layout.root_adapterviewflipper_gridview);
-        collection_map.put(Arrays.asList("AdapterViewFlipper", "ListView"), R.layout.root_adapterviewflipper_listview);
-        collection_map.put(Arrays.asList("AdapterViewFlipper", "StackView"), R.layout.root_adapterviewflipper_stackview);
-        collection_map.put(Arrays.asList("GridView", "GridView"), R.layout.root_gridview_gridview);
-        collection_map.put(Arrays.asList("GridView", "ListView"), R.layout.root_gridview_listview);
-        collection_map.put(Arrays.asList("GridView", "StackView"), R.layout.root_gridview_stackview);
-        collection_map.put(Arrays.asList("ListView", "ListView"), R.layout.root_listview_listview);
-        collection_map.put(Arrays.asList("ListView", "StackView"), R.layout.root_listview_stackview);
-        collection_map.put(Arrays.asList("StackView", "StackView"), R.layout.root_stackview_stackview);
-    }
-
-    static class SelectorElement
-    {
-        int res;
-        HashMap<String, String> selectors = new HashMap<>();
-
-        SelectorElement(int res, String... selector_pairs)
-        {
-            this.res = res;
-            if(selector_pairs.length % 2 != 0)
-            {
-                throw new IllegalArgumentException("selector pairs argument must be even");
-            }
-            for(int i = 0; i < selector_pairs.length; i += 2)
-            {
-                selectors.put(selector_pairs[i], selector_pairs[i + 1]);
-            }
-        }
-
-        int fit(HashMap<String, String> required)
-        {
-            for(String key : required.keySet())
-            {
-                if(!required.get(key).equals(selectors.get(key)))
-                {
-                    return 0;
-                }
-            }
-            return selectors.size();
-        }
-
-        int getResource()
-        {
-            return res;
-        }
-    }
-
-    static HashMap<String, ArrayList<SelectorElement>> element_map = new HashMap<>();
-    static
-    {
-        element_map.put("AnalogClock", new ArrayList<SelectorElement>());
-        element_map.get("AnalogClock").add(new SelectorElement(R.layout.element_analogclock, "", ""));
-        element_map.put("Button", new ArrayList<SelectorElement>());
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button, "", ""));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_primary_btn, "style", "primary_btn"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_primary_btn, "style", "outline_primary_btn"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_primary_btn_sml, "style", "primary_btn_sml"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_primary_btn_sml, "style", "outline_primary_btn_sml"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_primary_btn_lg, "style", "primary_btn_lg"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_primary_btn_lg, "style", "outline_primary_btn_lg"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_primary_btn_nopad, "style", "primary_btn_nopad"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_primary_btn_nopad, "style", "outline_primary_btn_nopad"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_primary_btn_oval, "style", "primary_btn_oval"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_primary_btn_oval, "style", "outline_primary_btn_oval"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_primary_btn_oval_sml, "style", "primary_btn_oval_sml"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_primary_btn_oval_sml, "style", "outline_primary_btn_oval_sml"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_primary_btn_oval_lg, "style", "primary_btn_oval_lg"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_primary_btn_oval_lg, "style", "outline_primary_btn_oval_lg"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_primary_btn_oval_nopad, "style", "primary_btn_oval_nopad"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_primary_btn_oval_nopad, "style", "outline_primary_btn_oval_nopad"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_secondary_btn, "style", "secondary_btn"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_secondary_btn, "style", "outline_secondary_btn"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_secondary_btn_sml, "style", "secondary_btn_sml"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_secondary_btn_sml, "style", "outline_secondary_btn_sml"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_secondary_btn_lg, "style", "secondary_btn_lg"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_secondary_btn_lg, "style", "outline_secondary_btn_lg"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_secondary_btn_nopad, "style", "secondary_btn_nopad"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_secondary_btn_nopad, "style", "outline_secondary_btn_nopad"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_secondary_btn_oval, "style", "secondary_btn_oval"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_secondary_btn_oval, "style", "outline_secondary_btn_oval"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_secondary_btn_oval_sml, "style", "secondary_btn_oval_sml"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_secondary_btn_oval_sml, "style", "outline_secondary_btn_oval_sml"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_secondary_btn_oval_lg, "style", "secondary_btn_oval_lg"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_secondary_btn_oval_lg, "style", "outline_secondary_btn_oval_lg"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_secondary_btn_oval_nopad, "style", "secondary_btn_oval_nopad"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_secondary_btn_oval_nopad, "style", "outline_secondary_btn_oval_nopad"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_success_btn, "style", "success_btn"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_success_btn, "style", "outline_success_btn"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_success_btn_sml, "style", "success_btn_sml"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_success_btn_sml, "style", "outline_success_btn_sml"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_success_btn_lg, "style", "success_btn_lg"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_success_btn_lg, "style", "outline_success_btn_lg"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_success_btn_nopad, "style", "success_btn_nopad"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_success_btn_nopad, "style", "outline_success_btn_nopad"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_success_btn_oval, "style", "success_btn_oval"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_success_btn_oval, "style", "outline_success_btn_oval"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_success_btn_oval_sml, "style", "success_btn_oval_sml"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_success_btn_oval_sml, "style", "outline_success_btn_oval_sml"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_success_btn_oval_lg, "style", "success_btn_oval_lg"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_success_btn_oval_lg, "style", "outline_success_btn_oval_lg"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_success_btn_oval_nopad, "style", "success_btn_oval_nopad"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_success_btn_oval_nopad, "style", "outline_success_btn_oval_nopad"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_danger_btn, "style", "danger_btn"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_danger_btn, "style", "outline_danger_btn"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_danger_btn_sml, "style", "danger_btn_sml"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_danger_btn_sml, "style", "outline_danger_btn_sml"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_danger_btn_lg, "style", "danger_btn_lg"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_danger_btn_lg, "style", "outline_danger_btn_lg"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_danger_btn_nopad, "style", "danger_btn_nopad"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_danger_btn_nopad, "style", "outline_danger_btn_nopad"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_danger_btn_oval, "style", "danger_btn_oval"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_danger_btn_oval, "style", "outline_danger_btn_oval"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_danger_btn_oval_sml, "style", "danger_btn_oval_sml"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_danger_btn_oval_sml, "style", "outline_danger_btn_oval_sml"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_danger_btn_oval_lg, "style", "danger_btn_oval_lg"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_danger_btn_oval_lg, "style", "outline_danger_btn_oval_lg"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_danger_btn_oval_nopad, "style", "danger_btn_oval_nopad"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_danger_btn_oval_nopad, "style", "outline_danger_btn_oval_nopad"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_warning_btn, "style", "warning_btn"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_warning_btn, "style", "outline_warning_btn"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_warning_btn_sml, "style", "warning_btn_sml"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_warning_btn_sml, "style", "outline_warning_btn_sml"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_warning_btn_lg, "style", "warning_btn_lg"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_warning_btn_lg, "style", "outline_warning_btn_lg"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_warning_btn_nopad, "style", "warning_btn_nopad"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_warning_btn_nopad, "style", "outline_warning_btn_nopad"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_warning_btn_oval, "style", "warning_btn_oval"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_warning_btn_oval, "style", "outline_warning_btn_oval"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_warning_btn_oval_sml, "style", "warning_btn_oval_sml"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_warning_btn_oval_sml, "style", "outline_warning_btn_oval_sml"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_warning_btn_oval_lg, "style", "warning_btn_oval_lg"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_warning_btn_oval_lg, "style", "outline_warning_btn_oval_lg"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_warning_btn_oval_nopad, "style", "warning_btn_oval_nopad"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_warning_btn_oval_nopad, "style", "outline_warning_btn_oval_nopad"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_info_btn, "style", "info_btn"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_info_btn, "style", "outline_info_btn"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_info_btn_sml, "style", "info_btn_sml"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_info_btn_sml, "style", "outline_info_btn_sml"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_info_btn_lg, "style", "info_btn_lg"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_info_btn_lg, "style", "outline_info_btn_lg"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_info_btn_nopad, "style", "info_btn_nopad"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_info_btn_nopad, "style", "outline_info_btn_nopad"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_info_btn_oval, "style", "info_btn_oval"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_info_btn_oval, "style", "outline_info_btn_oval"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_info_btn_oval_sml, "style", "info_btn_oval_sml"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_info_btn_oval_sml, "style", "outline_info_btn_oval_sml"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_info_btn_oval_lg, "style", "info_btn_oval_lg"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_info_btn_oval_lg, "style", "outline_info_btn_oval_lg"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_info_btn_oval_nopad, "style", "info_btn_oval_nopad"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_info_btn_oval_nopad, "style", "outline_info_btn_oval_nopad"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_light_btn, "style", "light_btn"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_light_btn, "style", "outline_light_btn"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_light_btn_sml, "style", "light_btn_sml"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_light_btn_sml, "style", "outline_light_btn_sml"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_light_btn_lg, "style", "light_btn_lg"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_light_btn_lg, "style", "outline_light_btn_lg"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_light_btn_nopad, "style", "light_btn_nopad"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_light_btn_nopad, "style", "outline_light_btn_nopad"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_light_btn_oval, "style", "light_btn_oval"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_light_btn_oval, "style", "outline_light_btn_oval"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_light_btn_oval_sml, "style", "light_btn_oval_sml"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_light_btn_oval_sml, "style", "outline_light_btn_oval_sml"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_light_btn_oval_lg, "style", "light_btn_oval_lg"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_light_btn_oval_lg, "style", "outline_light_btn_oval_lg"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_light_btn_oval_nopad, "style", "light_btn_oval_nopad"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_light_btn_oval_nopad, "style", "outline_light_btn_oval_nopad"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_dark_btn, "style", "dark_btn"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_dark_btn, "style", "outline_dark_btn"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_dark_btn_sml, "style", "dark_btn_sml"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_dark_btn_sml, "style", "outline_dark_btn_sml"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_dark_btn_lg, "style", "dark_btn_lg"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_dark_btn_lg, "style", "outline_dark_btn_lg"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_dark_btn_nopad, "style", "dark_btn_nopad"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_dark_btn_nopad, "style", "outline_dark_btn_nopad"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_dark_btn_oval, "style", "dark_btn_oval"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_dark_btn_oval, "style", "outline_dark_btn_oval"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_dark_btn_oval_sml, "style", "dark_btn_oval_sml"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_dark_btn_oval_sml, "style", "outline_dark_btn_oval_sml"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_dark_btn_oval_lg, "style", "dark_btn_oval_lg"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_dark_btn_oval_lg, "style", "outline_dark_btn_oval_lg"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_dark_btn_oval_nopad, "style", "dark_btn_oval_nopad"));
-        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_dark_btn_oval_nopad, "style", "outline_dark_btn_oval_nopad"));
-        element_map.put("Chronometer", new ArrayList<SelectorElement>());
-        element_map.get("Chronometer").add(new SelectorElement(R.layout.element_chronometer, "", ""));
-        element_map.put("ImageButton", new ArrayList<SelectorElement>());
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton, "", ""));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_primary_btn, "style", "primary_btn"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_primary_btn, "style", "outline_primary_btn"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_primary_btn_sml, "style", "primary_btn_sml"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_primary_btn_sml, "style", "outline_primary_btn_sml"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_primary_btn_lg, "style", "primary_btn_lg"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_primary_btn_lg, "style", "outline_primary_btn_lg"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_primary_btn_nopad, "style", "primary_btn_nopad"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_primary_btn_nopad, "style", "outline_primary_btn_nopad"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_primary_btn_oval, "style", "primary_btn_oval"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_primary_btn_oval, "style", "outline_primary_btn_oval"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_primary_btn_oval_sml, "style", "primary_btn_oval_sml"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_primary_btn_oval_sml, "style", "outline_primary_btn_oval_sml"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_primary_btn_oval_lg, "style", "primary_btn_oval_lg"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_primary_btn_oval_lg, "style", "outline_primary_btn_oval_lg"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_primary_btn_oval_nopad, "style", "primary_btn_oval_nopad"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_primary_btn_oval_nopad, "style", "outline_primary_btn_oval_nopad"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_secondary_btn, "style", "secondary_btn"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_secondary_btn, "style", "outline_secondary_btn"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_secondary_btn_sml, "style", "secondary_btn_sml"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_secondary_btn_sml, "style", "outline_secondary_btn_sml"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_secondary_btn_lg, "style", "secondary_btn_lg"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_secondary_btn_lg, "style", "outline_secondary_btn_lg"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_secondary_btn_nopad, "style", "secondary_btn_nopad"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_secondary_btn_nopad, "style", "outline_secondary_btn_nopad"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_secondary_btn_oval, "style", "secondary_btn_oval"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_secondary_btn_oval, "style", "outline_secondary_btn_oval"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_secondary_btn_oval_sml, "style", "secondary_btn_oval_sml"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_secondary_btn_oval_sml, "style", "outline_secondary_btn_oval_sml"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_secondary_btn_oval_lg, "style", "secondary_btn_oval_lg"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_secondary_btn_oval_lg, "style", "outline_secondary_btn_oval_lg"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_secondary_btn_oval_nopad, "style", "secondary_btn_oval_nopad"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_secondary_btn_oval_nopad, "style", "outline_secondary_btn_oval_nopad"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_success_btn, "style", "success_btn"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_success_btn, "style", "outline_success_btn"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_success_btn_sml, "style", "success_btn_sml"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_success_btn_sml, "style", "outline_success_btn_sml"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_success_btn_lg, "style", "success_btn_lg"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_success_btn_lg, "style", "outline_success_btn_lg"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_success_btn_nopad, "style", "success_btn_nopad"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_success_btn_nopad, "style", "outline_success_btn_nopad"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_success_btn_oval, "style", "success_btn_oval"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_success_btn_oval, "style", "outline_success_btn_oval"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_success_btn_oval_sml, "style", "success_btn_oval_sml"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_success_btn_oval_sml, "style", "outline_success_btn_oval_sml"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_success_btn_oval_lg, "style", "success_btn_oval_lg"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_success_btn_oval_lg, "style", "outline_success_btn_oval_lg"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_success_btn_oval_nopad, "style", "success_btn_oval_nopad"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_success_btn_oval_nopad, "style", "outline_success_btn_oval_nopad"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_danger_btn, "style", "danger_btn"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_danger_btn, "style", "outline_danger_btn"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_danger_btn_sml, "style", "danger_btn_sml"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_danger_btn_sml, "style", "outline_danger_btn_sml"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_danger_btn_lg, "style", "danger_btn_lg"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_danger_btn_lg, "style", "outline_danger_btn_lg"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_danger_btn_nopad, "style", "danger_btn_nopad"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_danger_btn_nopad, "style", "outline_danger_btn_nopad"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_danger_btn_oval, "style", "danger_btn_oval"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_danger_btn_oval, "style", "outline_danger_btn_oval"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_danger_btn_oval_sml, "style", "danger_btn_oval_sml"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_danger_btn_oval_sml, "style", "outline_danger_btn_oval_sml"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_danger_btn_oval_lg, "style", "danger_btn_oval_lg"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_danger_btn_oval_lg, "style", "outline_danger_btn_oval_lg"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_danger_btn_oval_nopad, "style", "danger_btn_oval_nopad"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_danger_btn_oval_nopad, "style", "outline_danger_btn_oval_nopad"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_warning_btn, "style", "warning_btn"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_warning_btn, "style", "outline_warning_btn"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_warning_btn_sml, "style", "warning_btn_sml"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_warning_btn_sml, "style", "outline_warning_btn_sml"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_warning_btn_lg, "style", "warning_btn_lg"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_warning_btn_lg, "style", "outline_warning_btn_lg"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_warning_btn_nopad, "style", "warning_btn_nopad"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_warning_btn_nopad, "style", "outline_warning_btn_nopad"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_warning_btn_oval, "style", "warning_btn_oval"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_warning_btn_oval, "style", "outline_warning_btn_oval"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_warning_btn_oval_sml, "style", "warning_btn_oval_sml"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_warning_btn_oval_sml, "style", "outline_warning_btn_oval_sml"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_warning_btn_oval_lg, "style", "warning_btn_oval_lg"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_warning_btn_oval_lg, "style", "outline_warning_btn_oval_lg"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_warning_btn_oval_nopad, "style", "warning_btn_oval_nopad"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_warning_btn_oval_nopad, "style", "outline_warning_btn_oval_nopad"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_info_btn, "style", "info_btn"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_info_btn, "style", "outline_info_btn"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_info_btn_sml, "style", "info_btn_sml"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_info_btn_sml, "style", "outline_info_btn_sml"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_info_btn_lg, "style", "info_btn_lg"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_info_btn_lg, "style", "outline_info_btn_lg"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_info_btn_nopad, "style", "info_btn_nopad"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_info_btn_nopad, "style", "outline_info_btn_nopad"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_info_btn_oval, "style", "info_btn_oval"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_info_btn_oval, "style", "outline_info_btn_oval"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_info_btn_oval_sml, "style", "info_btn_oval_sml"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_info_btn_oval_sml, "style", "outline_info_btn_oval_sml"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_info_btn_oval_lg, "style", "info_btn_oval_lg"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_info_btn_oval_lg, "style", "outline_info_btn_oval_lg"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_info_btn_oval_nopad, "style", "info_btn_oval_nopad"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_info_btn_oval_nopad, "style", "outline_info_btn_oval_nopad"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_light_btn, "style", "light_btn"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_light_btn, "style", "outline_light_btn"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_light_btn_sml, "style", "light_btn_sml"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_light_btn_sml, "style", "outline_light_btn_sml"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_light_btn_lg, "style", "light_btn_lg"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_light_btn_lg, "style", "outline_light_btn_lg"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_light_btn_nopad, "style", "light_btn_nopad"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_light_btn_nopad, "style", "outline_light_btn_nopad"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_light_btn_oval, "style", "light_btn_oval"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_light_btn_oval, "style", "outline_light_btn_oval"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_light_btn_oval_sml, "style", "light_btn_oval_sml"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_light_btn_oval_sml, "style", "outline_light_btn_oval_sml"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_light_btn_oval_lg, "style", "light_btn_oval_lg"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_light_btn_oval_lg, "style", "outline_light_btn_oval_lg"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_light_btn_oval_nopad, "style", "light_btn_oval_nopad"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_light_btn_oval_nopad, "style", "outline_light_btn_oval_nopad"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_dark_btn, "style", "dark_btn"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_dark_btn, "style", "outline_dark_btn"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_dark_btn_sml, "style", "dark_btn_sml"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_dark_btn_sml, "style", "outline_dark_btn_sml"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_dark_btn_lg, "style", "dark_btn_lg"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_dark_btn_lg, "style", "outline_dark_btn_lg"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_dark_btn_nopad, "style", "dark_btn_nopad"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_dark_btn_nopad, "style", "outline_dark_btn_nopad"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_dark_btn_oval, "style", "dark_btn_oval"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_dark_btn_oval, "style", "outline_dark_btn_oval"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_dark_btn_oval_sml, "style", "dark_btn_oval_sml"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_dark_btn_oval_sml, "style", "outline_dark_btn_oval_sml"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_dark_btn_oval_lg, "style", "dark_btn_oval_lg"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_dark_btn_oval_lg, "style", "outline_dark_btn_oval_lg"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_dark_btn_oval_nopad, "style", "dark_btn_oval_nopad"));
-        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_dark_btn_oval_nopad, "style", "outline_dark_btn_oval_nopad"));
-        element_map.put("ImageView", new ArrayList<SelectorElement>());
-        element_map.get("ImageView").add(new SelectorElement(R.layout.element_imageview, "", ""));
-        element_map.put("ProgressBar", new ArrayList<SelectorElement>());
-        element_map.get("ProgressBar").add(new SelectorElement(R.layout.element_progressbar, "", ""));
-        element_map.put("TextView", new ArrayList<SelectorElement>());
-        element_map.get("TextView").add(new SelectorElement(R.layout.element_textview, "", ""));
-        element_map.get("TextView").add(new SelectorElement(R.layout.element_textview_alignment_left, "alignment", "left"));
-        element_map.get("TextView").add(new SelectorElement(R.layout.element_textview_alignment_right, "alignment", "right"));
-        element_map.get("TextView").add(new SelectorElement(R.layout.element_textview_alignment_center_horizontal, "alignment", "center_horizontal"));
-        element_map.get("TextView").add(new SelectorElement(R.layout.element_textview_alignment_top, "alignment", "top"));
-        element_map.get("TextView").add(new SelectorElement(R.layout.element_textview_alignment_bottom, "alignment", "bottom"));
-        element_map.get("TextView").add(new SelectorElement(R.layout.element_textview_alignment_center_vertical, "alignment", "center_vertical"));
-        element_map.get("TextView").add(new SelectorElement(R.layout.element_textview_alignment_top_left, "alignment", "top_left"));
-        element_map.get("TextView").add(new SelectorElement(R.layout.element_textview_alignment_top_right, "alignment", "top_right"));
-        element_map.get("TextView").add(new SelectorElement(R.layout.element_textview_alignment_top_center, "alignment", "top_center"));
-        element_map.get("TextView").add(new SelectorElement(R.layout.element_textview_alignment_bottom_left, "alignment", "bottom_left"));
-        element_map.get("TextView").add(new SelectorElement(R.layout.element_textview_alignment_bottom_right, "alignment", "bottom_right"));
-        element_map.get("TextView").add(new SelectorElement(R.layout.element_textview_alignment_bottom_center, "alignment", "bottom_center"));
-        element_map.get("TextView").add(new SelectorElement(R.layout.element_textview_alignment_center_left, "alignment", "center_left"));
-        element_map.get("TextView").add(new SelectorElement(R.layout.element_textview_alignment_center_right, "alignment", "center_right"));
-        element_map.get("TextView").add(new SelectorElement(R.layout.element_textview_alignment_center, "alignment", "center"));
-        element_map.put("RelativeLayout", new ArrayList<SelectorElement>());
-        element_map.get("RelativeLayout").add(new SelectorElement(R.layout.element_relativelayout, "", ""));
-    }
 
 
     WidgetUpdateListener updateListener = null;
     StatusListener statusListener = null;
     Handler handler;
-    StartupState startupState = StartupState.IDLE;
+    Constants.StartupState startupState = Constants.StartupState.IDLE;
 
     final Object lock = new Object();
     HashMap<Integer, TaskQueue> widgetsTasks = new HashMap<>();
@@ -721,7 +274,7 @@ public class Widget extends RemoteViewsService
         ArrayList<DynamicView> views = new ArrayList<>();
 
         DynamicView btn = new DynamicView("Button");
-        btn.methodCalls.add(new RemoteMethodCall("setText", false, getSetterMethod(btn.type, "setText"), "setText", "initial button"));
+        btn.methodCalls.add(new RemoteMethodCall("setText", false, Constants.getSetterMethod(btn.type, "setText"), "setText", "initial button"));
 
         Attributes.AttributeValue _100px = attributeParse("100");
         Attributes.AttributeValue halfWidth = attributeParse("w(p)*0.5");
@@ -762,7 +315,7 @@ public class Widget extends RemoteViewsService
         Log.d("APPY", "updateWidget " + widgetId);
 
         DynamicView view = root.get(0);
-        view.methodCalls.add(new RemoteMethodCall("setText", false, getSetterMethod(view.type, "setText"), "setText", "" + new Random().nextInt(1000)));
+        view.methodCalls.add(new RemoteMethodCall("setText", false, Constants.getSetterMethod(view.type, "setText"), "setText", "" + new Random().nextInt(1000)));
         view.methodCalls.add(new RemoteMethodCall("setTextViewTextSize", false, "setTextViewTextSize", TypedValue.COMPLEX_UNIT_SP, 30));
         return root;
     }
@@ -855,13 +408,13 @@ public class Widget extends RemoteViewsService
                     if (position < list.children.size())
                     {
                         ArrayList<DynamicView> dynamicViewCopy = DynamicView.fromJSONArray(DynamicView.toJSONString(list.children.get(position)));
-                        RemoteViews remoteView = resolveDimensions(context, widgetId, dynamicViewCopy, collection_layout_type.get(list.type), list.actualWidth, list.actualHeight);
+                        RemoteViews remoteView = resolveDimensions(context, widgetId, dynamicViewCopy, Constants.collection_layout_type.get(list.type), list.actualWidth, list.actualHeight).first;
                         Intent fillIntent = new Intent(context, WidgetReceiver.class);
                         if (list.children.get(position).size() == 1)
                         {
-                            fillIntent.putExtra(ITEM_ID_EXTRA, list.children.get(position).get(0).getId());
+                            fillIntent.putExtra(Constants.ITEM_ID_EXTRA, list.children.get(position).get(0).getId());
                         }
-                        fillIntent.putExtra(COLLECTION_POSITION_EXTRA, position);
+                        fillIntent.putExtra(Constants.COLLECTION_POSITION_EXTRA, position);
                         remoteView.setOnClickFillInIntent(R.id.collection_root, fillIntent);
                         return remoteView;
                     }
@@ -947,7 +500,7 @@ public class Widget extends RemoteViewsService
             }
         });
 
-        Integer res = collection_map.get(collections);
+        Integer res = Constants.collection_map.get(collections);
         if (res == null)
         {
             throw new IllegalArgumentException("collection types not supported");
@@ -995,14 +548,14 @@ public class Widget extends RemoteViewsService
 
     public int typeToLayout(String type, HashMap<String, String> selectors)
     {
-        if(!element_map.containsKey(type))
+        if(!Constants.element_map.containsKey(type))
         {
             throw new IllegalArgumentException("unknown type " + type);
         }
 
         int mostGeneralResource = 0;
         int mostGeneralFit = 0;
-        for(SelectorElement selector : element_map.get(type))
+        for(Constants.SelectorElement selector : Constants.element_map.get(type))
         {
             int fit = selector.fit(selectors);
             if(fit != 0 && (mostGeneralFit == 0 || fit < mostGeneralFit))
@@ -1019,8 +572,9 @@ public class Widget extends RemoteViewsService
         return mostGeneralResource;
     }
 
-    public RemoteViews generate(Context context, int widgetId, ArrayList<DynamicView> dynamicList, boolean keepDescription, boolean inCollection) throws InvocationTargetException, IllegalAccessException
+    public Pair<RemoteViews, HashSet<Integer>> generate(Context context, int widgetId, ArrayList<DynamicView> dynamicList, boolean keepDescription, boolean inCollection) throws InvocationTargetException, IllegalAccessException
     {
+        HashSet<Integer> collection_views = new HashSet<>();
         ArrayList<String> collections = new ArrayList<>();
         for (DynamicView layout : dynamicList)
         {
@@ -1110,23 +664,24 @@ public class Widget extends RemoteViewsService
 
             Intent clickIntent = new Intent(context, WidgetReceiver.class);
             clickIntent.setAction(AppWidgetManager.ACTION_APPWIDGET_UPDATE);
-            clickIntent.putExtra(WIDGET_ID_EXTRA, widgetId);
+            clickIntent.putExtra(Constants.WIDGET_ID_EXTRA, widgetId);
 
             if (isCollection(layout.type))
             {
+                collection_views.add(layout.view_id);
                 if (keepDescription)
                 {
-                    clickIntent.putExtra(COLLECTION_ITEM_ID_EXTRA, layout.getId());
+                    clickIntent.putExtra(Constants.COLLECTION_ITEM_ID_EXTRA, layout.getId());
                     remoteView.setPendingIntentTemplate(layout.view_id, PendingIntent.getBroadcast(context, widgetId + (layout.getId() << 16), clickIntent, PendingIntent.FLAG_UPDATE_CURRENT));
 
                     //prepare factory
                     getFactory(context, widgetId, layout.xml_id, layout.view_id, layout.toJSON());
 
                     Intent listintent = new Intent(context, Widget.class);
-                    listintent.putExtra(WIDGET_ID_EXTRA, widgetId);
-                    listintent.putExtra(LIST_SERIALIZED_EXTRA, Gzip.compress(layout.toJSON()));
-                    listintent.putExtra(XML_ID_EXTRA, layout.xml_id);
-                    listintent.putExtra(VIEW_ID_EXTRA, layout.view_id);
+                    listintent.putExtra(Constants.WIDGET_ID_EXTRA, widgetId);
+                    listintent.putExtra(Constants.LIST_SERIALIZED_EXTRA, Gzip.compress(layout.toJSON()));
+                    listintent.putExtra(Constants.XML_ID_EXTRA, layout.xml_id);
+                    listintent.putExtra(Constants.VIEW_ID_EXTRA, layout.view_id);
                     listintent.setData(Uri.parse(listintent.toUri(Intent.URI_INTENT_SCHEME)));
                     remoteView.setRemoteAdapter(layout.view_id, listintent);
 
@@ -1135,10 +690,10 @@ public class Widget extends RemoteViewsService
             }
             else if (!inCollection)
             {
-                clickIntent.putExtra(ITEM_ID_EXTRA, layout.getId());
+                clickIntent.putExtra(Constants.ITEM_ID_EXTRA, layout.getId());
                 if (layout.tag instanceof Integer)
                 {
-                    clickIntent.putExtra(ITEM_TAG_EXTRA, (Integer) layout.tag);
+                    clickIntent.putExtra(Constants.ITEM_TAG_EXTRA, (Integer) layout.tag);
                 }
                 remoteView.setOnClickPendingIntent(layout.view_id, PendingIntent.getBroadcast(context, widgetId + (layout.getId() << 16), clickIntent, PendingIntent.FLAG_UPDATE_CURRENT));
             }
@@ -1148,7 +703,7 @@ public class Widget extends RemoteViewsService
                 rootView.addView(elements_id, remoteView);
             }
         }
-        return rootView;
+        return new Pair<>(rootView, collection_views);
     }
 
     //only one level
@@ -1288,9 +843,9 @@ public class Widget extends RemoteViewsService
         third.arguments.add(new Pair<>(refs, (double)0));
     }
 
-    public RemoteViews resolveDimensions(Context context, int widgetId, ArrayList<DynamicView> dynamicList, CollectionLayout collectionLayout, int widthLimit, int heightLimit) throws InvocationTargetException, IllegalAccessException
+    public Pair<RemoteViews, HashSet<Integer>> resolveDimensions(Context context, int widgetId, ArrayList<DynamicView> dynamicList, Constants.CollectionLayout collectionLayout, int widthLimit, int heightLimit) throws InvocationTargetException, IllegalAccessException
     {
-        RemoteViews remote = generate(context, widgetId, dynamicList, false, collectionLayout != CollectionLayout.NOT_COLLECTION);
+        RemoteViews remote = generate(context, widgetId, dynamicList, false, collectionLayout != Constants.CollectionLayout.NOT_COLLECTION).first;
         RelativeLayout layout = new RelativeLayout(this);
         View inflated = remote.apply(context, layout);
         layout.addView(inflated);
@@ -1438,19 +993,19 @@ public class Widget extends RemoteViewsService
             Pair<Integer, Integer> ver = new Pair<>(dynamicView.attributes.attributes.get(Attributes.Type.TOP).resolvedValue.intValue(),
                     dynamicView.attributes.attributes.get(Attributes.Type.BOTTOM).resolvedValue.intValue());
 
-            if (collectionLayout == CollectionLayout.HORIZONTAL || collectionLayout == CollectionLayout.BOTH)
+            if (collectionLayout == Constants.CollectionLayout.HORIZONTAL || collectionLayout == Constants.CollectionLayout.BOTH)
             {
                 //collection is aligned horizontally, we cant do width
                 hor = new Pair<>(dynamicView.attributes.attributes.get(Attributes.Type.LEFT).resolvedValue.intValue(), 0);
             }
-            if (collectionLayout == CollectionLayout.VERTICAL || collectionLayout == CollectionLayout.BOTH)
+            if (collectionLayout == Constants.CollectionLayout.VERTICAL || collectionLayout == Constants.CollectionLayout.BOTH)
             {
                 //collection is aligned vertically, we cant do height
                 ver = new Pair<>(dynamicView.attributes.attributes.get(Attributes.Type.TOP).resolvedValue.intValue(), 0);
             }
 
             //assigning to collection for its children
-            if(collectionLayout == CollectionLayout.NOT_COLLECTION)
+            if(collectionLayout == Constants.CollectionLayout.NOT_COLLECTION)
             {
                 dynamicView.actualWidth = dynamicView.attributes.attributes.get(Attributes.Type.WIDTH).resolvedValue.intValue();
                 dynamicView.actualHeight = dynamicView.attributes.attributes.get(Attributes.Type.HEIGHT).resolvedValue.intValue();
@@ -1470,42 +1025,7 @@ public class Widget extends RemoteViewsService
                     ver.second));
         }
 
-        return generate(context, widgetId, dynamicList, true, collectionLayout != CollectionLayout.NOT_COLLECTION);
-    }
-
-    public static String getSetterMethod(String type, String method)
-    {
-        return typeToRemotableMethod.get(type).get(method);
-    }
-
-    public static HashMap<String, String> getRemotableMethods(String type)
-    {
-        Class<?> clazz = typeToClass.get(type);
-
-        HashMap<String, String> methods = new HashMap<>();
-        for (Method method : clazz.getMethods())
-        {
-            Annotation[] annotations = method.getAnnotations();
-            boolean remotable = false;
-            for (Annotation annotation : annotations)
-            {
-                if (annotation.annotationType().getName().equals("android.view.RemotableViewMethod"))
-                {
-                    remotable = true;
-                    break;
-                }
-            }
-
-            if (remotable)
-            {
-                if (method.getParameterTypes().length != 1)
-                {
-                    continue;
-                }
-                methods.put(method.getName(), parameterToSetter.get(method.getParameterTypes()[0]));
-            }
-        }
-        return methods;
+        return generate(context, widgetId, dynamicList, true, collectionLayout != Constants.CollectionLayout.NOT_COLLECTION);
     }
 
     private void java_widget()
@@ -1589,10 +1109,10 @@ public class Widget extends RemoteViewsService
     @Override
     public RemoteViewsFactory onGetViewFactory(Intent intent)
     {
-        int widgetId = intent.getIntExtra(WIDGET_ID_EXTRA, -1);
-        int xmlId = intent.getIntExtra(XML_ID_EXTRA, 0);
-        int viewId = intent.getIntExtra(VIEW_ID_EXTRA, 0);
-        String list = Gzip.decompress(intent.getByteArrayExtra(LIST_SERIALIZED_EXTRA));
+        int widgetId = intent.getIntExtra(Constants.WIDGET_ID_EXTRA, -1);
+        int xmlId = intent.getIntExtra(Constants.XML_ID_EXTRA, 0);
+        int viewId = intent.getIntExtra(Constants.VIEW_ID_EXTRA, 0);
+        String list = Gzip.decompress(intent.getByteArrayExtra(Constants.LIST_SERIALIZED_EXTRA));
         return getFactory(this, widgetId, xmlId, viewId, list);
     }
 
@@ -1965,10 +1485,10 @@ public class Widget extends RemoteViewsService
 
     public int setTimer(long millis, int type, int widgetId, String data, int timerId)
     {
-        if (type == TIMER_RELATIVE)
+        if (type == Constants.TIMER_RELATIVE)
         {
             millis += System.currentTimeMillis();
-            type = TIMER_ABSOLUTE;
+            type = Constants.TIMER_ABSOLUTE;
         }
 
         if (timerId == -1)
@@ -1979,7 +1499,7 @@ public class Widget extends RemoteViewsService
         timerIntent.setAction("timer" + timerId); //make it unique for cancel
         timerIntent.putExtra("widgetId", widgetId);
         timerIntent.putExtra("timer", timerId);
-        timerIntent.putExtra("timerData", data);
+        timerIntent.putExtra("timerData", Gzip.compress(data));
 
         PendingIntent pendingIntent = null;
 
@@ -1990,7 +1510,7 @@ public class Widget extends RemoteViewsService
         }
         saveTimers();
 
-        if (type == TIMER_REPEATING && millis <= 10 * 60 * 1000)
+        if (type == Constants.TIMER_REPEATING && millis <= 10 * 60 * 1000)
         {
             Log.d("APPY", "setting short time timer");
             handler.post(new ArgRunnable(timerIntent, millis, timerId)
@@ -2027,7 +1547,7 @@ public class Widget extends RemoteViewsService
             //clear previous alarm (if we crashed but no reboot)
             mgr.cancel(pendingIntent);
 
-            if (type == TIMER_REPEATING)
+            if (type == Constants.TIMER_REPEATING)
             {
                 Log.d("APPY", "setting long time timer: " + millis);
                 mgr.setRepeating(AlarmManager.RTC, System.currentTimeMillis() + millis, millis, pendingIntent);
@@ -2106,7 +1626,7 @@ public class Widget extends RemoteViewsService
         Task task = new Task<>(new CallImportTask(), file);
         if (usePool)
         {
-            addTask(IMPORT_TASK_QUEUE, task);
+            addTask(Constants.IMPORT_TASK_QUEUE, task);
         }
         else
         {
@@ -2268,9 +1788,12 @@ public class Widget extends RemoteViewsService
                     int widthLimit = widgetDimensions[0];
                     int heightLimit = widgetDimensions[1];
 
-                    RemoteViews view = resolveDimensions(Widget.this, widgetId, views, CollectionLayout.NOT_COLLECTION, widthLimit, heightLimit);
-                    //appWidgetManager.notifyAppWidgetViewDataChanged(androidWidgetId, R.id.root);
-                    appWidgetManager.updateAppWidget(androidWidgetId, view);
+                    Pair<RemoteViews, HashSet<Integer>> view = resolveDimensions(Widget.this, widgetId, views, Constants.CollectionLayout.NOT_COLLECTION, widthLimit, heightLimit);
+                    appWidgetManager.updateAppWidget(androidWidgetId, view.first);
+                    for(Integer collection_view : view.second)
+                    {
+                        appWidgetManager.notifyAppWidgetViewDataChanged(androidWidgetId, collection_view);
+                    }
                 }
                 catch(Exception e)
                 {
@@ -2294,7 +1817,7 @@ public class Widget extends RemoteViewsService
         ArrayList<DynamicView> views = new ArrayList<>();
 
         DynamicView textView = new DynamicView("TextView");
-        textView.methodCalls.add(new RemoteMethodCall("setText", false, getSetterMethod(textView.type, "setText"), "setText", "Loading..."));
+        textView.methodCalls.add(new RemoteMethodCall("setText", false, Constants.getSetterMethod(textView.type, "setText"), "setText", "Loading..."));
 
         Attributes.AttributeValue wholeWidth = attributeParse("w(p)");
         Attributes.AttributeValue wholeHeight = attributeParse("h(p)");
@@ -2303,7 +1826,7 @@ public class Widget extends RemoteViewsService
 
         views.add(textView);
 
-        setWidget(androidWidgetId, SPECIAL_WIDGET_ID, views, true);
+        setWidget(androidWidgetId, Constants.SPECIAL_WIDGET_ID, views, true);
 
         needUpdateWidgets.add(widgetId);
     }
@@ -2315,18 +1838,18 @@ public class Widget extends RemoteViewsService
         ArrayList<DynamicView> views = new ArrayList<>();
 
         DynamicView textView = new DynamicView("TextView");
-        textView.methodCalls.add(new RemoteMethodCall("setText", false, getSetterMethod(textView.type, "setText"), "setText", "Error"));
+        textView.methodCalls.add(new RemoteMethodCall("setText", false, Constants.getSetterMethod(textView.type, "setText"), "setText", "Error"));
 
         DynamicView restart = new DynamicView("ImageButton");
         restart.selectors.put("style", "success_btn_oval_nopad");
-        restart.methodCalls.add(new RemoteMethodCall("setColorFilter", false, getSetterMethod(restart.type, "setColorFilter"), "setColorFilter", 0xffffffff));
-        restart.methodCalls.add(new RemoteMethodCall("setImageResource", false, getSetterMethod(restart.type, "setImageResource"), "setImageResource", android.R.drawable.ic_lock_power_off));
+        restart.methodCalls.add(new RemoteMethodCall("setColorFilter", false, Constants.getSetterMethod(restart.type, "setColorFilter"), "setColorFilter", 0xffffffff));
+        restart.methodCalls.add(new RemoteMethodCall("setImageResource", false, Constants.getSetterMethod(restart.type, "setImageResource"), "setImageResource", android.R.drawable.ic_lock_power_off));
         restart.methodCalls.add(new RemoteMethodCall("setDrawableParameters", false, "setDrawableParameters", true, 255, 0x80000000, android.graphics.PorterDuff.Mode.SRC_ATOP, -1));
         restart.attributes.attributes.put(Attributes.Type.WIDTH, attributeParse("140"));
         restart.attributes.attributes.put(Attributes.Type.HEIGHT, attributeParse("140"));
         restart.attributes.attributes.put(Attributes.Type.RIGHT, attributeParse("0"));
         restart.attributes.attributes.put(Attributes.Type.BOTTOM, attributeParse("0"));
-        restart.tag = SPECIAL_WIDGET_RESTART; //onclick
+        restart.tag = Constants.SPECIAL_WIDGET_RESTART; //onclick
 
         views.add(textView);
         views.add(restart);
@@ -2336,24 +1859,24 @@ public class Widget extends RemoteViewsService
             Attributes.AttributeValue afterText = attributeParse("h("+textView.getId()+")+10");
 
             DynamicView clear = new DynamicView("Button");
-            clear.methodCalls.add(new RemoteMethodCall("setText", false, getSetterMethod(clear.type, "setText"), "setText", "Clear"));
+            clear.methodCalls.add(new RemoteMethodCall("setText", false, Constants.getSetterMethod(clear.type, "setText"), "setText", "Clear"));
             clear.selectors.put("style", "dark_btn_sml");
             clear.attributes.attributes.put(Attributes.Type.TOP, afterText);
             clear.attributes.attributes.put(Attributes.Type.LEFT, attributeParse("l(p)"));
-            clear.tag = widgetId + (SPECIAL_WIDGET_CLEAR << 16);
+            clear.tag = widgetId + (Constants.SPECIAL_WIDGET_CLEAR << 16);
 
             DynamicView reload = new DynamicView("Button");
-            reload.methodCalls.add(new RemoteMethodCall("setText", false, getSetterMethod(reload.type, "setText"), "setText", "Reload"));
+            reload.methodCalls.add(new RemoteMethodCall("setText", false, Constants.getSetterMethod(reload.type, "setText"), "setText", "Reload"));
             reload.selectors.put("style", "info_btn_sml");
             reload.attributes.attributes.put(Attributes.Type.TOP, afterText);
             reload.attributes.attributes.put(Attributes.Type.RIGHT, attributeParse("r(p)"));
-            reload.tag = widgetId + (SPECIAL_WIDGET_RELOAD << 16);
+            reload.tag = widgetId + (Constants.SPECIAL_WIDGET_RELOAD << 16);
 
             views.add(clear);
             views.add(reload);
         }
 
-        setWidget(androidWidgetId, SPECIAL_WIDGET_ID, views, false);
+        setWidget(androidWidgetId, Constants.SPECIAL_WIDGET_ID, views, false);
 
         needUpdateWidgets.add(widgetId);
     }
@@ -2391,7 +1914,7 @@ public class Widget extends RemoteViewsService
         @Override
         protected Void doInBackground(Void... param)
         {
-            startupState = StartupState.RUNNING;
+            startupState = Constants.StartupState.RUNNING;
             callStatusChange(true);
 
             error = false;
@@ -2575,7 +2098,7 @@ public class Widget extends RemoteViewsService
         {
             return;
         }
-        if(timer.type != TIMER_REPEATING)
+        if(timer.type != Constants.TIMER_REPEATING)
         {
             cancelTimer(timerId);
         }
@@ -2746,7 +2269,7 @@ public class Widget extends RemoteViewsService
 
     @Override
     public IBinder onBind(Intent intent) {
-        if(intent.getBooleanExtra(LOCAL_BIND_EXTRA, false))
+        if(intent.getBooleanExtra(Constants.LOCAL_BIND_EXTRA, false))
         {
             return mBinder;
         }
@@ -2761,7 +2284,7 @@ public class Widget extends RemoteViewsService
         statusListener = listener;
     }
 
-    public StartupState getStartupState()
+    public Constants.StartupState getStartupState()
     {
         return startupState;
     }
@@ -2809,7 +2332,7 @@ public class Widget extends RemoteViewsService
     {
         if(!startedAfterSetup && pythonSetupTask.getStatus() == AsyncTask.Status.PENDING)
         {
-            startupState = StartupState.IDLE;
+            startupState = Constants.StartupState.IDLE;
             handler = new Handler();
 
             loadPythonFiles();
@@ -2833,7 +2356,7 @@ public class Widget extends RemoteViewsService
 
         if(pythonSetupTask.getStatus() == AsyncTask.Status.FINISHED && pythonSetupTask.hadError())
         {
-            startupState = StartupState.ERROR;
+            startupState = Constants.StartupState.ERROR;
             handler.post(new Runnable()
             {
                 @Override
@@ -2846,7 +2369,7 @@ public class Widget extends RemoteViewsService
             return false;
         }
 
-        startupState = StartupState.COMPLETED;
+        startupState = Constants.StartupState.COMPLETED;
         callStatusChange(true);
         return true;
     }
@@ -2928,7 +2451,7 @@ public class Widget extends RemoteViewsService
 
         if(intent != null)
         {
-            widgetIntent = intent.getParcelableExtra(WIDGET_INTENT);
+            widgetIntent = intent.getParcelableExtra(Constants.WIDGET_INTENT);
         }
 
         if(firstStart)
@@ -2948,7 +2471,7 @@ public class Widget extends RemoteViewsService
         else if (intent != null && intent.hasExtra("widgetId") && intent.hasExtra("timer"))
         {
             Log.d("APPY", "timer fire");
-            addTask(intent.getIntExtra("widgetId", -1), new Task<>(new CallTimerTask(), intent.getIntExtra("timer", -1), intent.getIntExtra("widgetId", -1), intent.getStringExtra("timerData")));
+            addTask(intent.getIntExtra("widgetId", -1), new Task<>(new CallTimerTask(), intent.getIntExtra("timer", -1), intent.getIntExtra("widgetId", -1), Gzip.decompress(intent.getByteArrayExtra("timerData"))));
         }
         else if(widgetIntent != null)
         {
@@ -2999,18 +2522,18 @@ public class Widget extends RemoteViewsService
                         addTask(widgetId, new Task<>(new CallUpdateTask(), widgetId));
                     }
                 }
-                else if(widgetIntent.hasExtra(WIDGET_ID_EXTRA))
+                else if(widgetIntent.hasExtra(Constants.WIDGET_ID_EXTRA))
                 {
-                    int eventWidgetId = widgetIntent.getIntExtra(WIDGET_ID_EXTRA, -1);
+                    int eventWidgetId = widgetIntent.getIntExtra(Constants.WIDGET_ID_EXTRA, -1);
 
-                    if(eventWidgetId == SPECIAL_WIDGET_ID)
+                    if(eventWidgetId == Constants.SPECIAL_WIDGET_ID)
                     {
-                        int tag = widgetIntent.getIntExtra(ITEM_TAG_EXTRA, 0);
-                        if(tag == SPECIAL_WIDGET_RESTART)
+                        int tag = widgetIntent.getIntExtra(Constants.ITEM_TAG_EXTRA, 0);
+                        if(tag == Constants.SPECIAL_WIDGET_RESTART)
                         {
                             restart();
                         }
-                        else if(((tag >> 16) & 0xffff) == SPECIAL_WIDGET_CLEAR)
+                        else if(((tag >> 16) & 0xffff) == Constants.SPECIAL_WIDGET_CLEAR)
                         {
                             int widgetId = tag & 0xffff;
                             if(widgetId > 0)
@@ -3019,7 +2542,7 @@ public class Widget extends RemoteViewsService
                                 clearWidget(widgetId);
                             }
                         }
-                        else if(((tag >> 16) & 0xffff) == SPECIAL_WIDGET_RELOAD)
+                        else if(((tag >> 16) & 0xffff) == Constants.SPECIAL_WIDGET_RELOAD)
                         {
                             int widgetId = tag & 0xffff;
                             if(widgetId > 0)
@@ -3031,7 +2554,7 @@ public class Widget extends RemoteViewsService
                     }
                     else
                     {
-                        addTask(eventWidgetId, new Task<>(new CallEventTask(), eventWidgetId, widgetIntent.getIntExtra(ITEM_ID_EXTRA, 0), widgetIntent.getIntExtra(COLLECTION_ITEM_ID_EXTRA, 0), widgetIntent.getIntExtra(COLLECTION_POSITION_EXTRA, -1)));
+                        addTask(eventWidgetId, new Task<>(new CallEventTask(), eventWidgetId, widgetIntent.getIntExtra(Constants.ITEM_ID_EXTRA, 0), widgetIntent.getIntExtra(Constants.COLLECTION_ITEM_ID_EXTRA, 0), widgetIntent.getIntExtra(Constants.COLLECTION_POSITION_EXTRA, -1)));
                     }
                 }
             }

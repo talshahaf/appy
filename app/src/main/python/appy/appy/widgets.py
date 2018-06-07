@@ -11,7 +11,7 @@ def get_id():
 
 @functools.lru_cache(maxsize=128, typed=True)
 def validate_type(type):
-    return java.clazz.com.appy.Widget().typeToClass.containsKey(type)
+    return java.clazz.com.appy.Constants().typeToClass.containsKey(type)
 
 def method_from_attr(attr):
     return f'set{cap(attr)}'
@@ -19,7 +19,7 @@ def method_from_attr(attr):
 @functools.lru_cache(maxsize=128, typed=True)
 def get_param_setter(type, attr):
     method = method_from_attr(attr)
-    setter = java.clazz.com.appy.Widget().getSetterMethod(type, method)
+    setter = java.clazz.com.appy.Constants().getSetterMethod(type, method)
     return setter if setter != java.Null else None, method
 
 @functools.lru_cache(maxsize=128, typed=True)
@@ -446,13 +446,13 @@ class Widget:
         state.wipe_state()
 
     def set_absolute_timer(self, seconds, f, **captures):
-        return self.set_timer(seconds, java.clazz.com.appy.Widget().TIMER_ABSOLUTE, f, captures)
+        return self.set_timer(seconds, java.clazz.com.appy.Constants().TIMER_ABSOLUTE, f, captures)
 
     def set_timeout(self, seconds, f, **captures):
-        return self.set_timer(seconds, java.clazz.com.appy.Widget().TIMER_RELATIVE, f, captures)
+        return self.set_timer(seconds, java.clazz.com.appy.Constants().TIMER_RELATIVE, f, captures)
 
     def set_interval(self, seconds, f, **captures):
-        return self.set_timer(seconds, java.clazz.com.appy.Widget().TIMER_REPEATING, f, captures)
+        return self.set_timer(seconds, java.clazz.com.appy.Constants().TIMER_REPEATING, f, captures)
 
     def set_timer(self, seconds, t, f, captures):
         return java_widget_manager.setTimer(int(seconds * 1000), t, self.widget_id, dumps((f, captures)))

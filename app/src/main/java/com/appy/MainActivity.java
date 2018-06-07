@@ -191,7 +191,7 @@ public class MainActivity extends AppCompatActivity implements StatusListener
 
     void doBindService() {
         Intent bindIntent = new Intent(this, Widget.class);
-        bindIntent.putExtra(Widget.LOCAL_BIND_EXTRA, true);
+        bindIntent.putExtra(Constants.LOCAL_BIND_EXTRA, true);
         bindService(bindIntent, mConnection, Context.BIND_AUTO_CREATE);
     }
 

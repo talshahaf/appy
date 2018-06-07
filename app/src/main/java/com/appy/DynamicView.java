@@ -56,7 +56,7 @@ public class DynamicView
         this.container_id = container_id;
         this.xml_id = xml_id;
 
-        if(!Widget.typeToClass.containsKey(type) && !type.equals("*"))
+        if(!Constants.typeToClass.containsKey(type) && !type.equals("*"))
         {
             throw new IllegalArgumentException("no such type: "+type);
         }
