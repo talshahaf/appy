@@ -394,6 +394,9 @@ def load_module(path):
 
 def clear_module(path):
     global available_widgets
+    mod = sys.modules.get(module_name(path))
+    if mod and hasattr(mod, '__del__'):
+        mod.__del__()
     available_widgets = {k:v for k,v in available_widgets.items() if v['pythonfile'] != path}
     sys.modules.pop(module_name(path), None)
 
