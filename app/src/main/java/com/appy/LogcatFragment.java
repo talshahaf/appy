@@ -82,17 +82,6 @@ public class LogcatFragment extends MyFragment implements RunnerListener
 
     }
 
-    public String join(String sep, Collection<String> arr)
-    {
-        StringBuilder sb = new StringBuilder();
-        boolean first = true;
-        for(String item : arr){
-            if(!first || (first = false)) sb.append(sep);
-            sb.append(item);
-        }
-        return sb.toString();
-    }
-
     public void stopLogcat()
     {
         if(logcat != null)
