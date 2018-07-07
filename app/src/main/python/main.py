@@ -36,7 +36,7 @@ def execute(command):
         raise subprocess.CalledProcessError(command, exitCode)
 
 exe_dir = os.path.join(os.environ['PYTHONHOME'], 'bin')
-exe = os.path.join(exe_dir, 'python3.6m')
+exe = os.path.join(exe_dir, 'python3.7')
 
 try:
     import pip

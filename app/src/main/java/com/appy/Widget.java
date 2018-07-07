@@ -82,9 +82,7 @@ import org.kamranzafar.jtar.TarInputStream;
 public class Widget extends RemoteViewsService
 {
     private final IBinder mBinder = new LocalBinder();
-
-
-
+    public static final int PYTHON_VERSION = 37;
 
     WidgetUpdateListener updateListener = null;
     StatusListener statusListener = null;
@@ -1759,18 +1757,18 @@ public class Widget extends RemoteViewsService
         return sharedPref.getString("state", null);
     }
 
-    public void setPythonUnpacked(boolean unpacked)
+    public void setPythonUnpacked(int version)
     {
         SharedPreferences sharedPref = getSharedPreferences("appy", Context.MODE_PRIVATE);
         SharedPreferences.Editor editor = sharedPref.edit();
-        editor.putBoolean("unpacked", unpacked);
+        editor.putInt("unpacked_version", version);
         editor.apply();
     }
 
-    public boolean getPythonUnpacked()
+    public int getPythonUnpacked()
     {
         SharedPreferences sharedPref = getSharedPreferences("appy", Context.MODE_PRIVATE);
-        return sharedPref.getBoolean("unpacked", false);
+        return sharedPref.getInt("unpacked_version", 0);
     }
 
     public void setWidget(final int androidWidgetId, final int widgetId, final ArrayList<DynamicView> views, final boolean errorOnFailure)
@@ -1902,6 +1900,19 @@ public class Widget extends RemoteViewsService
         }
     }
 
+    public static void deleteDir(File file)
+    {
+        File[] contents = file.listFiles();
+        if (contents != null)
+        {
+            for (File f : contents)
+            {
+                deleteDir(f);
+            }
+        }
+        file.delete();
+    }
+
     private class PythonSetupTask extends AsyncTask<Void, Void, Void>
     {
         private boolean error = false;
@@ -1919,14 +1930,15 @@ public class Widget extends RemoteViewsService
 
             error = false;
             String pythonHome = new File(getFilesDir(), "python").getAbsolutePath();
-            String pythonLib = new File(pythonHome, "/lib/libpython3.6m.so").getAbsolutePath(); //must be without
+            String pythonLib = new File(pythonHome, "/lib/libpython3.7m.so").getAbsolutePath(); //must be without
             String cacheDir = getCacheDir().getAbsolutePath();
             try
             {
-                if(!getPythonUnpacked())
+                if(getPythonUnpacked() != PYTHON_VERSION)
                 {
+                    deleteDir(new File(pythonHome));
                     unpackPython(getAssets().open("python.targz"), pythonHome);
-                    setPythonUnpacked(true);
+                    setPythonUnpacked(PYTHON_VERSION);
                 }
                 else
                 {

@@ -13,7 +13,10 @@ import android.widget.TextView;
 import java.io.File;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Created by Tal on 23/03/2018.
@@ -21,27 +24,48 @@ import java.util.List;
 
 public class FileBrowserAdapter extends BaseAdapter
 {
-    private ArrayList<Integer> selected = new ArrayList<>();
-    private File current;
-    private File[] files;
+    public static class FileItem
+    {
+        File file;
+        boolean checked = false;
+    }
+    interface OnCheckedChanged
+    {
+        void onCheckedChanged(FileBrowserAdapter adapter, File file, boolean checked);
+    }
+
+    private FileItem current;
+    private FileItem[] files;
     Context context;
     boolean isRoot;
+    OnCheckedChanged checkedListener;
+    boolean selectingEnabled = true;
 
     public static final int FILE_RESOURCE = R.drawable.any_file;
     public static final int DIRECTORY_RESOURCE = R.drawable.folder;
     public static final int PYTHON_FILE_RESOURCE = R.drawable.python_file;
 
-    public ArrayList<File> getSelected()
+    public void setCheckedListener(OnCheckedChanged listener)
     {
-        ArrayList<File> selectedFiles = new ArrayList<>();
-        for(int i : selected)
-        {
-            selectedFiles.add((File)getItem(i));
-        }
-        return selectedFiles;
+        checkedListener = listener;
     }
 
-    public File getCurrent()
+    public void setSelectingEnabled(boolean enabled)
+    {
+        selectingEnabled = enabled;
+        notifyDataSetInvalidated();
+    }
+
+    public void updateSelection(Collection<File> selected)
+    {
+        for(FileItem file : files)
+        {
+            file.checked = selected.contains(file.file);
+        }
+        notifyDataSetInvalidated();
+    }
+
+    public FileItem getCurrent()
     {
         return current;
     }
@@ -51,7 +75,7 @@ public class FileBrowserAdapter extends BaseAdapter
         return position == 0 && !isRoot;
     }
 
-    public FileBrowserAdapter(Context context, File[] files, File current, boolean isRoot) {
+    public FileBrowserAdapter(Context context, FileItem[] files, FileItem current, boolean isRoot) {
         this.context = context;
         this.files = files;
         this.current = current;
@@ -100,7 +124,7 @@ public class FileBrowserAdapter extends BaseAdapter
             viewHolder = ((ViewHolder) view.getTag());
         }
 
-        File item = (File)getItem(position);
+        final FileItem item = (FileItem)getItem(position);
         if(item == current)
         {
             viewHolder.filename.setText("..");
@@ -110,17 +134,11 @@ public class FileBrowserAdapter extends BaseAdapter
         }
         else
         {
-            viewHolder.filename.setText(item.getName());
+            viewHolder.filename.setText(item.file.getName());
             viewHolder.icon.setImageResource(setFileImageType(item));
             viewHolder.date.setText(getLastDate(item));
-            if (item.isDirectory())
-            {
-                viewHolder.checkbox.setVisibility(View.INVISIBLE);
-            }
-            else
-            {
-                viewHolder.checkbox.setVisibility(View.VISIBLE);
-            }
+            viewHolder.checkbox.setChecked(item.checked);
+            viewHolder.checkbox.setEnabled(selectingEnabled);
         }
 
         viewHolder.checkbox.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener()
@@ -128,14 +146,10 @@ public class FileBrowserAdapter extends BaseAdapter
             @Override
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked)
             {
-                if(isChecked)
+                item.checked = isChecked;
+                if(checkedListener != null)
                 {
-                    selected.add(position);
-                }
-                else
-                {
-                    //remove item, not removeAt
-                    selected.remove(Integer.valueOf(position));
+                    checkedListener.onCheckedChanged(FileBrowserAdapter.this, item.file, isChecked);
                 }
             }
         });
@@ -150,15 +164,15 @@ public class FileBrowserAdapter extends BaseAdapter
         TextView date;
     }
 
-    private int setFileImageType(File file)
+    private int setFileImageType(FileItem file)
     {
-        if (file.isDirectory())
+        if (file.file.isDirectory())
         {
             return DIRECTORY_RESOURCE;
         }
         else
         {
-            String extension = file.getName().substring(file.getName().lastIndexOf(".") + 1);
+            String extension = file.file.getName().substring(file.file.getName().lastIndexOf(".") + 1);
             if(extension.equalsIgnoreCase("py"))
             {
                 return PYTHON_FILE_RESOURCE;
@@ -170,8 +184,8 @@ public class FileBrowserAdapter extends BaseAdapter
         }
     }
 
-    String getLastDate(File file)
+    String getLastDate(FileItem file)
     {
-        return new SimpleDateFormat("dd/MM/yyyy HH:mm:ss").format(file.lastModified());
+        return new SimpleDateFormat("dd/MM/yyyy HH:mm:ss").format(file.file.lastModified());
     }
 }

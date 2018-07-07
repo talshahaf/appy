@@ -13,6 +13,7 @@
 #include <functional>
 #include <deque>
 #include <vector>
+#include <cxxabi.h>
 #include "native.h"
 
 #define LOG(fmt, ...) __android_log_print(ANDROID_LOG_DEBUG, "APPY", fmt, ##__VA_ARGS__)
@@ -2063,6 +2064,26 @@ extern "C" JNIEXPORT void JNICALL Java_com_appy_Widget_pythonInit(JNIEnv * env, 
 {
     try
     {
+        std::set_terminate([]()
+        {
+            if (auto exc = std::current_exception())
+            {
+                try
+                {
+                    std::rethrow_exception(exc);
+                }
+                catch (std::exception & e)
+                {
+                    LOG("unhandled exception: %s %s", typeid(e).name(), e.what());
+                }
+                catch(...)
+                {
+                    LOG("unhandled exception: %s", __cxxabiv1::__cxa_current_exception_type()->name());
+                }
+            }
+            abort();
+        });
+
         LOG("python init");
 
         find_types(env);
@@ -2078,6 +2099,8 @@ extern "C" JNIEXPORT void JNICALL Java_com_appy_Widget_pythonInit(JNIEnv * env, 
         auto cachepath = get_string(env, j_cachepath);
         auto pythonlib = get_string(env, j_pythonlib);
         auto scriptpath = get_string(env, j_scriptpath);
+
+        LOG("setting env");
 
         setenv("PYTHONHOME", pythonhome.c_str(), 1);
         setenv("HOME", pythonhome.c_str(), 1);
@@ -2101,6 +2124,7 @@ extern "C" JNIEXPORT void JNICALL Java_com_appy_Widget_pythonInit(JNIEnv * env, 
         ((decltype(&android_update_LD_LIBRARY_PATH))dlsym(RTLD_DEFAULT, "android_update_LD_LIBRARY_PATH"))(library_path.c_str());
         //--------------------
 
+        LOG("registering python module");
         ret = PyImport_AppendInittab("native_appy", PyInit_native_appy);
         if(ret == -1)
         {
@@ -2115,6 +2139,7 @@ extern "C" JNIEXPORT void JNICALL Java_com_appy_Widget_pythonInit(JNIEnv * env, 
             return;
         }
 
+        LOG("running python");
         Py_SetProgramName(pythonlib_w);
         Py_InitializeEx(0);
 
@@ -2147,8 +2172,11 @@ extern "C" JNIEXPORT void JNICALL Java_com_appy_Widget_pythonInit(JNIEnv * env, 
 
         PySys_SetArgv(1, &program);
 
+        LOG("executing init script");
+
         ret = PyRun_SimpleFileExFlags(fh, scriptpath.c_str(), 1, NULL);
 
+        LOG("done executing init script");
         PyEval_InitThreads();
 
         //TODO not sure if this is ok
@@ -2160,6 +2188,7 @@ extern "C" JNIEXPORT void JNICALL Java_com_appy_Widget_pythonInit(JNIEnv * env, 
             return;
         }
 
+        LOG("python init done");
         return;
     }
     catch(std::exception & e)
