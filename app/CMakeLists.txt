@@ -10,6 +10,8 @@ cmake_minimum_required(VERSION 3.4.1)
 # and CMake builds them for you. When you build your app, Gradle
 # automatically packages shared libraries with your APK.
 
+set(ANDROID_STL "c++_static")
+
 find_library( # Defines the name of the path variable that stores the
               # location of the NDK library.
               log-lib
@@ -29,10 +31,10 @@ add_library( # Specifies the name of the library.
 
 add_library(pythonlib SHARED IMPORTED)
 set_target_properties(pythonlib PROPERTIES IMPORTED_LOCATION
-    ${CMAKE_SOURCE_DIR}/src/main/cpp/lib/libpython3.6m.so.1.0)
+    ${CMAKE_SOURCE_DIR}/src/main/cpp/lib/libpython3.7m.so.1.0)
 
 include_directories(src/main/cpp/inc/)
-include_directories(src/main/cpp/inc/python3.6m)
+include_directories(src/main/cpp/inc/python3.7m)
 
 target_link_libraries( # Specifies the target library.
                        native

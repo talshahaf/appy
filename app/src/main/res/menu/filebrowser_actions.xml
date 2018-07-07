@@ -1,9 +1,44 @@
 <?xml version="1.0" encoding="utf-8"?>
-<menu xmlns:android="http://schemas.android.com/apk/res/android"
+<menu xmlns:tools="http://schemas.android.com/tools" xmlns:android="http://schemas.android.com/apk/res/android"
       xmlns:app="http://schemas.android.com/apk/res-auto">
     <item
+        android:id="@+id/action_goto"
+        android:icon="@drawable/ic_action_goto"
+        android:title="Go to"
+        app:showAsAction="always"/>
+    <item
         android:id="@+id/action_select"
-        android:icon="@android:drawable/ic_menu_add"
+        android:icon="@drawable/ic_action_add"
         android:title="Select"
-        app:showAsAction="ifRoom"/>
+        app:showAsAction="always"/>
+    <item
+        android:id="@+id/action_copy"
+        android:icon="@drawable/ic_action_copy"
+        android:title="Copy"
+        app:showAsAction="always"/>
+    <item
+        android:id="@+id/action_cut"
+        android:icon="@drawable/ic_action_cut"
+        android:title="Cut"
+        app:showAsAction="always"/>
+    <item
+        android:id="@+id/action_delete"
+        android:icon="@drawable/ic_action_delete"
+        android:title="Delete"
+        app:showAsAction="always"/>
+    <item
+        android:id="@+id/action_cancel"
+        android:icon="@drawable/ic_action_cancel"
+        android:title="Cancel"
+        app:showAsAction="always"/>
+    <item
+        android:id="@+id/action_clear"
+        android:icon="@drawable/ic_action_clear"
+        android:title="Clear"
+        app:showAsAction="always"/>
+    <item
+        android:id="@+id/action_paste"
+        android:icon="@drawable/ic_action_paste"
+        android:title="Paste"
+        app:showAsAction="always"/>
 </menu>
