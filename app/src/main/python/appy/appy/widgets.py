@@ -131,7 +131,7 @@ class Element:
         if 'id' not in self.d:
             self.d.id = get_id()
         if 'children' in self.d:
-            self.d.children = ChildrenList([[c if isinstance(c, Element) else Element(c) for c in arr] for arr in self.d.children])
+            self.d.children = ChildrenList([c if isinstance(c, Element) else Element(c) for c in arr] for arr in self.d.children)
         else:
             self.d.children = ChildrenList()
 
@@ -596,14 +596,14 @@ class Handler:
             return None
         if not isinstance(output, (list, tuple)):
             output = [output]
-
         out_json = [e.dict() for e in output]
-        if input is not None and json.loads(input) == out_json:
+        if input is not None and input == out_json:
             return None
         return json.dumps(out_json, indent=4)
 
     def import_(self, s):
-        return elist([Element(e) for e in json.loads(s)])
+        d = json.loads(s)
+        return d, elist(Element(e) for e in d)
 
     @java.interface
     def onCreate(self, widget_id):
@@ -612,10 +612,11 @@ class Handler:
         return self.export(None, widget_manager_create(widget, manager_state))
 
     @java.interface
-    def onUpdate(self, widget_id, views):
+    def onUpdate(self, widget_id, views_str):
         print(f'python got onUpdate')
         widget, manager_state = create_widget(widget_id)
-        return self.export(views, widget_manager_update(widget, manager_state, self.import_(views)))
+        input, views = self.import_(views_str)
+        return self.export(input, widget_manager_update(widget, manager_state, views))
 
     @java.interface
     def onDelete(self, widget_id):
@@ -625,39 +626,39 @@ class Handler:
     @java.interface
     def onItemClick(self, widget_id, views_str, collection_id, position):
         print(f'python got onitemclick {widget_id} {collection_id} {position}')
-        views = self.import_(views_str)
+        input, views = self.import_(views_str)
         v = views.find_id(collection_id)
         widget, manager_state = create_widget(widget_id)
         handled = v.__event__('itemclick', widget=widget, views=views, view=v, position=position)
         handled = handled is True
-        return java.new.java.lang.Object[()]([handled, self.export(views_str, views)])
+        return java.new.java.lang.Object[()]([handled, self.export(input, views)])
 
     @java.interface
     def onClick(self, widget_id, views_str, view_id):
         print(f'python got onclick {widget_id} {view_id}')
-        views = self.import_(views_str)
+        input, views = self.import_(views_str)
         v = views.find_id(view_id)
         widget, manager_state = create_widget(widget_id)
         v.__event__('click', widget=widget, views=views, view=v)
-        return self.export(views_str, views)
+        return self.export(input, views)
 
     @java.interface
     def onTimer(self, timer_id, widget_id, views_str, data):
         print('timer called')
-        views = self.import_(views_str)
+        input, views = self.import_(views_str)
         func, captures = loads(data)
         widget, manager_state = create_widget(widget_id)
         call_function(func, captures, timer_id=timer_id, widget=widget, views=views)
-        return self.export(views_str, views)
+        return self.export(input, views)
 
     @java.interface
     def onPost(self, widget_id, views_str, data):
         print('post called')
-        views = self.import_(views_str)
+        input, views = self.import_(views_str)
         func, captures = loads(data)
         widget, manager_state = create_widget(widget_id)
         call_function(func, captures, widget=widget, views=views)
-        return self.export(views_str, views)
+        return self.export(input, views)
 
     @java.interface
     def wipeStateRequest(self):
