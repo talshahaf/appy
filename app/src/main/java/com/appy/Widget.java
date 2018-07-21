@@ -108,6 +108,49 @@ public class Widget extends RemoteViewsService
 
     }
 
+    static class FunctionCache<Arg, Ret>
+    {
+        Object[] storage;
+        Integer[] storage_hash;
+        FunctionCache(int capacity)
+        {
+            storage = new Object[capacity];
+            storage_hash = new Integer[capacity];
+        }
+
+        void set(Arg arg, Ret ret)
+        {
+            int hash = arg.hashCode();
+            int mod = hash % storage.length;
+            if(mod < 0)
+            {
+                mod += storage.length;
+            }
+            storage[mod] = ret;
+            storage_hash[mod] = hash;
+        }
+
+        Pair<Boolean, Ret> get(Arg arg)
+        {
+            int hash = arg.hashCode();
+            int mod = hash % storage.length;
+            if(mod < 0)
+            {
+                mod += storage.length;
+            }
+            if(storage_hash[mod] != null && storage_hash[mod] == hash)
+            {
+                //hit
+                return new Pair<>(true, (Ret)storage[mod]);
+            }
+            else
+            {
+                //miss
+                return new Pair<>(false, null);
+            }
+        }
+    }
+
     interface Runner<T>
     {
         void run(T... args);
@@ -544,11 +587,18 @@ public class Widget extends RemoteViewsService
         }
     }
 
+    public FunctionCache<Pair<String, HashMap<String, String>>, Integer> typeToLayoutCache = new FunctionCache<>(10);
     public int typeToLayout(String type, HashMap<String, String> selectors)
     {
         if(!Constants.element_map.containsKey(type))
         {
             throw new IllegalArgumentException("unknown type " + type);
+        }
+
+        Pair<Boolean, Integer> cache = typeToLayoutCache.get(new Pair<>(type, selectors));
+        if(cache.first)
+        {
+            return cache.second;
         }
 
         int mostGeneralResource = 0;
@@ -567,6 +617,7 @@ public class Widget extends RemoteViewsService
             throw new IllegalArgumentException("unknown resource for selectors: " + selectors + " and type " + type);
         }
 
+        typeToLayoutCache.set(new Pair<>(type, selectors), mostGeneralResource);
         return mostGeneralResource;
     }
 
@@ -660,9 +711,13 @@ public class Widget extends RemoteViewsService
                 remoteView.setCharSequence(layout.view_id, "setContentDescription", layout.getId() + "");
             }
 
-            Intent clickIntent = new Intent(context, WidgetReceiver.class);
-            clickIntent.setAction(AppWidgetManager.ACTION_APPWIDGET_UPDATE);
-            clickIntent.putExtra(Constants.WIDGET_ID_EXTRA, widgetId);
+            Intent clickIntent = null;
+            if (keepDescription)
+            {
+                clickIntent = new Intent(context, WidgetReceiver.class);
+                clickIntent.setAction(AppWidgetManager.ACTION_APPWIDGET_UPDATE);
+                clickIntent.putExtra(Constants.WIDGET_ID_EXTRA, widgetId);
+            }
 
             if (isCollection(layout.type))
             {
@@ -688,12 +743,15 @@ public class Widget extends RemoteViewsService
             }
             else if (!inCollection)
             {
-                clickIntent.putExtra(Constants.ITEM_ID_EXTRA, layout.getId());
-                if (layout.tag instanceof Integer)
+                if (keepDescription)
                 {
-                    clickIntent.putExtra(Constants.ITEM_TAG_EXTRA, (Integer) layout.tag);
+                    clickIntent.putExtra(Constants.ITEM_ID_EXTRA, layout.getId());
+                    if (layout.tag instanceof Integer)
+                    {
+                        clickIntent.putExtra(Constants.ITEM_TAG_EXTRA, (Integer) layout.tag);
+                    }
+                    remoteView.setOnClickPendingIntent(layout.view_id, PendingIntent.getBroadcast(context, widgetId + (layout.getId() << 16), clickIntent, PendingIntent.FLAG_UPDATE_CURRENT));
                 }
-                remoteView.setOnClickPendingIntent(layout.view_id, PendingIntent.getBroadcast(context, widgetId + (layout.getId() << 16), clickIntent, PendingIntent.FLAG_UPDATE_CURRENT));
             }
 
             if (remoteView != rootView)
@@ -701,6 +759,7 @@ public class Widget extends RemoteViewsService
                 rootView.addView(elements_id, remoteView);
             }
         }
+
         return new Pair<>(rootView, collection_views);
     }
 
@@ -2175,7 +2234,7 @@ public class Widget extends RemoteViewsService
 
     public void callEventWidget(int eventWidgetId, final int itemId, final int collectionItemId, final int collectionPosition)
     {
-        Log.d("APPY", "got intent: " + eventWidgetId + " " + itemId);
+        Log.d("APPY", "got event intent: " + eventWidgetId + " " + itemId);
 
         callWidgetChangingCallback(eventWidgetId, new CallbackCaller()
         {
@@ -2206,6 +2265,7 @@ public class Widget extends RemoteViewsService
 
                 Log.d("APPY", "calling listener onClick");
                 String newwidget = updateListener.onClick(widgetId, fromItemClick != null ? fromItemClick : current, itemId);
+                Log.d("APPY", "called listener onClick");
                 if(newwidget != null)
                 {
                     return newwidget;

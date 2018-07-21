@@ -52,10 +52,14 @@ except ImportError:
     execute([exe, '-m', 'pip', 'install', '--upgrade', 'pip', 'setuptools', 'wheel', 'requests'])
     import requests
 
+upgrade = False
 try:
     import appy
+#    if os.path.getmtime(appy.__file__) < os.path.getmtime(__file__):
+#        upgrade = True
+#        raise ImportError('outdated version')
 except ImportError as e:
     print('error importing appy: ', traceback.format_exc())
     print('installing appy')
-    execute([exe, '-m', 'pip', 'install', os.path.join(os.environ['TMP'], 'appy.tar.gz')])
+    execute([exe, '-m', 'pip', 'install', os.path.join(os.environ['TMP'], 'appy.tar.gz')] + ['--upgrade'] if upgrade else [])
     import appy
