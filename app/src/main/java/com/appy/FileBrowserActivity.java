@@ -73,7 +73,7 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
         }
         else
         {
-            getDirFromRoot(root);
+            getDirFromRoot(startDir);
         }
     }
 
@@ -84,7 +84,7 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
             case REQUEST_PERMISSION_STORAGE: {
                 if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED)
                 {
-                    getDirFromRoot(root);
+                    getDirFromRoot(startDir);
                 }
                 else
                 {
@@ -96,13 +96,20 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
         }
     }
 
-    private String root = Environment.getExternalStorageDirectory().getPath();
+    private String startDir = Environment.getExternalStorageDirectory().getPath();
+
+    public void userNavigate(String path)
+    {
+        if(!getDirFromRoot(path))
+        {
+            Toast.makeText(FileBrowserActivity.this, "Cannot navigate to " + path, Toast.LENGTH_SHORT).show();
+        }
+    }
 
     //get directories and files from selected path
     public boolean getDirFromRoot(String path)
     {
-        history.addFirst(path);
-        boolean isRoot = path.equalsIgnoreCase(root);
+        boolean isRoot = path.equals("/");
 
         FileBrowserAdapter.FileItem current = new FileBrowserAdapter.FileItem();
         current.file = new File(path);
@@ -111,6 +118,8 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
         {
             return false;
         }
+
+        history.addFirst(path);
 
         //sorting file list in alphabetical order
         Arrays.sort(filesArray, new Comparator<File>() {
@@ -138,14 +147,14 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
             {
                 if(adapter.isParent(position))
                 {
-                    getDirFromRoot(adapter.getCurrent().file.getParentFile().getAbsolutePath());
+                    userNavigate(adapter.getCurrent().file.getParentFile().getAbsolutePath());
                 }
                 else
                 {
                     FileBrowserAdapter.FileItem item = (FileBrowserAdapter.FileItem) adapter.getItem(position);
                     if (item.file.isDirectory())
                     {
-                        getDirFromRoot(item.file.getAbsolutePath());
+                        userNavigate(item.file.getAbsolutePath());
                     }
                     else
                     {
@@ -344,6 +353,40 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
                 adapter.updateSelection(selected.values());
                 return true;
             }
+            case R.id.action_rename:
+            {
+                AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                builder.setTitle("Rename");
+
+                final File file = selected.values().iterator().next();
+
+                final EditText input = new EditText(this);
+                input.setInputType(InputType.TYPE_TEXT_VARIATION_URI);
+                input.setText(file.getName());
+                builder.setView(input);
+
+                builder.setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        if(!file.renameTo(new File(file.getParentFile(), input.getText().toString())))
+                        {
+                            Toast.makeText(FileBrowserActivity.this, "Failed to rename", Toast.LENGTH_SHORT).show();
+                        }
+                        selected.clear();
+                        updateMenu();
+                        getDirFromRoot(currentDir());
+                    }
+                });
+                builder.setNegativeButton(android.R.string.cancel, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        dialog.cancel();
+                    }
+                });
+
+                builder.show();
+                return true;
+            }
             case R.id.action_goto:
             {
                 AlertDialog.Builder builder = new AlertDialog.Builder(this);
@@ -354,13 +397,35 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
                 input.setText(currentDir());
                 builder.setView(input);
 
+                builder.setSingleChoiceItems(new CharSequence[]
+                                {"app files dir", "app cache dir"}, -1,
+                        new DialogInterface.OnClickListener() {
+                            public void onClick(DialogInterface dialog, int which) {
+                                switch(which)
+                                {
+                                    case 0:
+                                    {
+                                        userNavigate(getFilesDir().getAbsolutePath());
+                                        dialog.dismiss();
+                                        break;
+                                    }
+                                    case 1:
+                                    {
+                                        userNavigate(getCacheDir().getAbsolutePath());
+                                        dialog.dismiss();
+                                        break;
+                                    }
+                                }
+                            }
+                        });
+
                 builder.setPositiveButton("Go", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
                         //overriding later
                     }
                 });
-                builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+                builder.setNegativeButton(android.R.string.cancel, new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
                         dialog.cancel();
@@ -402,10 +467,11 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
         if(menu != null)
         {
             menu.findItem(R.id.action_clear).setVisible( selected.size() > 0);
-            menu.findItem(R.id.action_select).setVisible(selected.size() > 0 && !copying && !cutting);
-            menu.findItem(R.id.action_copy).setVisible(  selected.size() > 0 && !copying && !cutting);
-            menu.findItem(R.id.action_cut).setVisible(   selected.size() > 0 && !copying && !cutting);
-            menu.findItem(R.id.action_delete).setVisible(selected.size() > 0 && !copying && !cutting);
+            menu.findItem(R.id.action_select).setVisible(selected.size() > 0  && !copying && !cutting);
+            menu.findItem(R.id.action_copy).setVisible(  selected.size() > 0  && !copying && !cutting);
+            menu.findItem(R.id.action_cut).setVisible(   selected.size() > 0  && !copying && !cutting);
+            menu.findItem(R.id.action_delete).setVisible(selected.size() > 0  && !copying && !cutting);
+            menu.findItem(R.id.action_rename).setVisible(selected.size() == 1 && !copying && !cutting);
 
             menu.findItem(R.id.action_cancel).setVisible(copying || cutting);
             menu.findItem(R.id.action_paste).setVisible( copying || cutting);
@@ -420,7 +486,7 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
         }
         catch (IOException e)
         {
-            throw new IllegalStateException(e.getMessage());
+            throw new IllegalStateException(e);
         }
     }
 

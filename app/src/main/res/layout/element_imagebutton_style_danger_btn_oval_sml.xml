@@ -5,6 +5,7 @@
     android:layout_height="match_parent"
     android:id="@+id/l0">
     <ImageButton android:id="@+id/e0"
+            android:scaleType="fitXY"
             style="@style/danger_btn_oval_sml"
             android:layout_width="match_parent"
             android:layout_height="match_parent"/>

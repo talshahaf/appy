@@ -43,6 +43,7 @@ public class Serializer
             jsonobj.put("type", "complicated");
             jsonobj.put("class", obj.getClass().getName());
             jsonobj.put("value", obj.toString());
+            return jsonobj;
         }
 
 //        if(obj instanceof Bitmap || obj instanceof Icon) // || obj instanceof Bundle || obj instanceof Intent
@@ -77,7 +78,7 @@ public class Serializer
             }
             if(value.getString("type").equals("complicated"))
             {
-                if(clazz.equals(Uri.class))
+                if(Uri.class.isAssignableFrom(clazz))
                 {
                     return Uri.parse(value.getString("value"));
                 }
@@ -85,7 +86,7 @@ public class Serializer
         }
         catch (ClassNotFoundException e)
         {
-            throw new IllegalArgumentException("no such class \"" + value.getString("class") + "\"");
+            throw new IllegalArgumentException("no such class \"" + value.getString("class") + "\"", e);
         }
 
         throw new IllegalArgumentException("cannot deserialize " + value.getString("type"));
@@ -99,8 +100,7 @@ public class Serializer
         }
         catch (JSONException e)
         {
-            e.printStackTrace();
-            throw new IllegalArgumentException("json deserialization failed "+value);
+            throw new IllegalArgumentException("json deserialization failed " + value, e);
         }
     }
 
@@ -112,8 +112,7 @@ public class Serializer
         }
         catch (JSONException e)
         {
-            e.printStackTrace();
-            throw new IllegalArgumentException("json serialization failed");
+            throw new IllegalArgumentException("json serialization failed", e);
         }
     }
 }

@@ -182,8 +182,7 @@ public class RemoteMethodCall
         }
         catch(IllegalArgumentException e)
         {
-            Log.e("APPY", "got illegal argument exception while calling "+identifier);
-            throw e;
+            throw new IllegalArgumentException("Illegal argument exception calling method " + identifier, e);
         }
     }
 
@@ -195,8 +194,7 @@ public class RemoteMethodCall
         }
         catch (JSONException e)
         {
-            e.printStackTrace();
-            throw new IllegalArgumentException("json deserialization failed");
+            throw new IllegalArgumentException("json deserialization failed", e);
         }
     }
 

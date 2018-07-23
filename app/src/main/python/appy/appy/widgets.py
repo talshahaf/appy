@@ -1,5 +1,5 @@
 import json, functools, copy, traceback, inspect, threading, os, collections, importlib.util, sys, hashlib
-from .utils import AttrDict, dumps, loads, cap, get_args
+from .utils import AttrDict, dumps, loads, cap, get_args, prepare_image_cache_dir, download_resource
 from . import java, state
 
 id_counter = 1
@@ -83,7 +83,12 @@ class WidgetAttribute:
             return AttributeValue(Reference(-1, attrs[item], 1))
         raise AttributeError()
 
+last_func_for_widget_id = {}
 def call_function(func, captures, **kwargs):
+    #for tracing errors to their module
+    if 'widget' in kwargs and hasattr(kwargs['widget'], 'widget_id'):
+        last_func_for_widget_id[kwargs['widget'].widget_id] = func
+
     pass_args = copy.deepcopy(captures)
     pass_args.update(kwargs) #kwargs priority
 
@@ -209,9 +214,11 @@ class Element:
             self.d.selectors[key] = value
         elif key in ('children',):
             if value is None:
-                value = []
-            if not isinstance(value, (list, tuple)):
-                value = [value]
+                value = ChildrenList()
+            elif not isinstance(value, (list, tuple)):
+                value = ChildrenList([value])
+            else:
+                value = ChildrenList(value)
             self.d[key].set(value)
         elif key in ('tint', 'backgroundTint'):
             prev_alpha = -1
@@ -252,8 +259,8 @@ class Element:
     def dict(self, without_id=None):
         if 'tag' in self.d and 'tag' in self.d.tag and not isinstance(self.d.tag['tag'], str):
             self.d.tag['tag'] = dumps(self.d.tag['tag'])
-        d = AttrDict.make({k:copy.deepcopy(v) for k,v in self.d.items() if k != 'children' and (not without_id or k != 'id')})
-        d.children = [[c.dict(without_id=without_id) if isinstance(c, Element) else c for c in arr] for arr in self.children]
+        d = {k:copy.deepcopy(v) for k,v in self.d.items() if k != 'children' and (not without_id or k != 'id')}
+        d['children'] = [[c.dict(without_id=without_id) if isinstance(c, Element) else c for c in arr] for arr in self.children]
         return d
 
     def duplicate(self):
@@ -414,8 +421,8 @@ class Widget:
     def locals(self, *attrs):
         self.state.locals(*attrs)
 
-    def widget(self, *attrs):
-        self.state.widget(*attrs)
+    def nonlocals(self, *attrs):
+        self.state.nonlocals(*attrs)
 
     def globals(self, *attrs):
         self.state.globals(*attrs)
@@ -423,8 +430,8 @@ class Widget:
     def local_token(self, token):
         return self.token(token, self.locals, self.clean_local)
 
-    def widget_token(self, token):
-        return self.token(token, self.widget, self.clean_widget)
+    def nonlocal_token(self, token):
+        return self.token(token, self.widget, self.clean_nonlocal)
 
     def global_token(self, token):
         return self.token(token, self.globals, self.wipe_global)
@@ -442,8 +449,8 @@ class Widget:
     def clean_local(self):
         state.clean_local_state(self.widget_id)
 
-    def clean_widget(self):
-        state.clean_widget_state(self.name)
+    def clean_nonlocal(self):
+        state.clean_nonlocal_state(self.name)
 
     def wipe_global(self):
         state.wipe_state()
@@ -474,6 +481,9 @@ class Widget:
 
     def post(self, f, **captures):
         java_widget_manager.setPost(self.widget_id, dumps((f, captures)))
+
+    def file_uri(self, path):
+        return java_widget_manager.getUriForPath(path)
 
     def size(self):
         size_arr = java_widget_manager.getWidgetDimensions(self.widget_id)
@@ -580,6 +590,27 @@ def widget_manager_update(widget, manager_state, views):
             return views
     return widget_manager_create(widget, manager_state) #maybe present error widget
 
+def set_error_to_widget_id(widget_id, error):
+    #try to get the last call_function
+    func = last_func_for_widget_id.get(widget_id)
+    if func is None:
+        #try to get the create or update functions
+        widget, manager_state = create_widget(widget_id)
+        chosen = manager_state.chosen.get(widget.widget_id)
+        if chosen is not None and chosen.name is not None:
+            available_widget = available_widgets[chosen.name]
+            func = None
+            if available_widget['create'] is not None:
+                func = available_widget['create']
+            elif available_widget['update'] is not None:
+                func = available_widget['update']
+            if func is not None:
+                if isinstance(func, (list, tuple)):
+                    func = func[0]
+
+    if func is not None:
+        set_module_error(inspect.getmodule(func), error)
+
 def refresh_managers():
     manager_state = create_manager_state()
     for widget_id, chosen in manager_state.chosen.items():
@@ -599,7 +630,7 @@ class Handler:
         out_json = [e.dict() for e in output]
         if input is not None and input == out_json:
             return None
-        return json.dumps(out_json, indent=4)
+        return json.dumps(out_json)
 
     def import_(self, s):
         d = json.loads(s)
@@ -622,6 +653,7 @@ class Handler:
     def onDelete(self, widget_id):
         print(f'python got onDelete')
         state.clean_local_state(widget_id)
+        last_func_for_widget_id.pop(widget_id, None)
 
     @java.interface
     def onItemClick(self, widget_id, views_str, collection_id, position):
@@ -635,7 +667,7 @@ class Handler:
 
     @java.interface
     def onClick(self, widget_id, views_str, view_id):
-        print(f'python got onclick {widget_id} {view_id}')
+        print(f'python got on click {widget_id} {view_id}')
         input, views = self.import_(views_str)
         v = views.find_id(view_id)
         widget, manager_state = create_widget(widget_id)
@@ -676,6 +708,10 @@ class Handler:
         clear_module(path)
         refresh_managers()
 
+    @java.interface
+    def onError(self, widget_id, error):
+        set_error_to_widget_id(widget_id, error)
+
 java_widget_manager = None
 
 def init():
@@ -683,6 +719,7 @@ def init():
     context = java.get_java_arg()
     java_widget_manager = context
     print('init')
+    prepare_image_cache_dir()
     context.registerOnWidgetUpdate(Handler().iface)
 
 def restart_app():

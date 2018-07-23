@@ -5,6 +5,7 @@
     android:layout_height="match_parent"
     android:id="@+id/l0">
     <TextView android:id="@+id/e0"
+            
             android:gravity="center_vertical|center_horizontal"
             android:layout_width="match_parent"
             android:layout_height="match_parent"/>

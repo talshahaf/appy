@@ -12,17 +12,13 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
-import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
@@ -35,15 +31,13 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.graphics.Bitmap;
-import android.graphics.drawable.Icon;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Binder;
-import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
+import android.support.v4.content.FileProvider;
 import android.support.v7.preference.PreferenceManager;
 import android.system.ErrnoException;
 import android.system.Os;
@@ -53,24 +47,9 @@ import android.util.Pair;
 import android.util.TypedValue;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.AdapterViewFlipper;
-import android.widget.AnalogClock;
-import android.widget.Button;
-import android.widget.Chronometer;
-import android.widget.FrameLayout;
-import android.widget.GridLayout;
-import android.widget.GridView;
-import android.widget.ImageButton;
-import android.widget.ImageView;
-import android.widget.LinearLayout;
-import android.widget.ListView;
-import android.widget.ProgressBar;
 import android.widget.RelativeLayout;
 import android.widget.RemoteViews;
 import android.widget.RemoteViewsService;
-import android.widget.StackView;
-import android.widget.TextView;
-import android.widget.ViewFlipper;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -461,11 +440,19 @@ public class Widget extends RemoteViewsService
                     }
                 }
             }
-            catch (InvocationTargetException | IllegalAccessException e)
+            catch(Exception e)
             {
                 e.printStackTrace();
+                try
+                {
+                    setSpecificErrorWidget(getAndroidWidget(widgetId), widgetId, e);
+                }
+                catch(WidgetDestroyedException e2)
+                {
+                    e2.printStackTrace();
+                }
             }
-            return null; //maybe TODO?
+            return new RemoteViews(context.getPackageName(), R.layout.root);
         }
 
         @Override
@@ -662,6 +649,10 @@ public class Widget extends RemoteViewsService
             }
 
             elements_id = R.id.elements0;
+        }
+        else
+        {
+            rootView.removeAllViews(R.id.collection_elements);
         }
 
         for (DynamicView layout : dynamicList)
@@ -1160,6 +1151,12 @@ public class Widget extends RemoteViewsService
             {
 
             }
+
+            @Override
+            public void onError(int widgetId, String error)
+            {
+
+            }
         });
     }
 
@@ -1433,7 +1430,7 @@ public class Widget extends RemoteViewsService
             }
             catch (JSONException e)
             {
-                throw new IllegalArgumentException();
+                throw new IllegalArgumentException(e);
             }
         }
 
@@ -1450,7 +1447,7 @@ public class Widget extends RemoteViewsService
             }
             catch (JSONException e)
             {
-                throw new IllegalArgumentException();
+                throw new IllegalArgumentException(e);
             }
         }
     }
@@ -1830,6 +1827,13 @@ public class Widget extends RemoteViewsService
         return sharedPref.getInt("unpacked_version", 0);
     }
 
+    public Uri getUriForPath(String path)
+    {
+        Uri uri = com.appy.FileProvider.getUriForFile(this, "com.appy.fileprovider", new File(path));
+        Log.d("APPY", "provider: "+uri.toString()+" "+path+" "+new File(path).exists());
+        return uri;
+    }
+
     public void setWidget(final int androidWidgetId, final int widgetId, final ArrayList<DynamicView> views, final boolean errorOnFailure)
     {
         needUpdateWidgets.remove(widgetId);
@@ -1857,7 +1861,7 @@ public class Widget extends RemoteViewsService
                     e.printStackTrace();
                     if(errorOnFailure)
                     {
-                        setSpecificErrorWidget(androidWidgetId, widgetId);
+                        setSpecificErrorWidget(androidWidgetId, widgetId, e);
                     }
                 }
             }
@@ -1888,9 +1892,21 @@ public class Widget extends RemoteViewsService
         needUpdateWidgets.add(widgetId);
     }
 
-    public void setSpecificErrorWidget(int androidWidgetId, int widgetId)
+    public void setSpecificErrorWidget(int androidWidgetId, int widgetId, Throwable error)
     {
         Log.d("APPY", "setting error widget for "+widgetId+" android: "+androidWidgetId);
+
+        if(widgetId > 0 && updateListener != null)
+        {
+            try
+            {
+                updateListener.onError(widgetId, getStacktrace(error));
+            }
+            catch(Exception e)
+            {
+                e.printStackTrace();
+            }
+        }
 
         ArrayList<DynamicView> views = new ArrayList<>();
 
@@ -1950,7 +1966,7 @@ public class Widget extends RemoteViewsService
         {
             if(error)
             {
-                setSpecificErrorWidget(id, 0);
+                setSpecificErrorWidget(id, 0, null);
             }
             else
             {
@@ -2225,7 +2241,7 @@ public class Widget extends RemoteViewsService
         {
             e.printStackTrace();
             Log.d("APPY", "error in caller");
-            setSpecificErrorWidget(androidWidgetId, widgetId);
+            setSpecificErrorWidget(androidWidgetId, widgetId, e);
             return true;
         }
 
@@ -2286,7 +2302,7 @@ public class Widget extends RemoteViewsService
 
         if (updateListener == null)
         {
-            setSpecificErrorWidget(androidWidgetId, widgetId);
+            setSpecificErrorWidget(androidWidgetId, widgetId, null);
             return;
         }
 
@@ -2310,7 +2326,7 @@ public class Widget extends RemoteViewsService
             });
             if(!updated)
             {
-                setSpecificErrorWidget(androidWidgetId, widgetId);
+                setSpecificErrorWidget(androidWidgetId, widgetId, null);
                 return;
             }
         }
@@ -2758,7 +2774,7 @@ public class Widget extends RemoteViewsService
                 }
                 catch(ErrnoException e)
                 {
-                    throw new IOException(e.getMessage());
+                    throw new IOException(e);
                 }
             }
             else if(entry.getHeader().linkFlag == TarHeader.LF_NORMAL)

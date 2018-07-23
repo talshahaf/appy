@@ -5,6 +5,7 @@
     android:layout_height="match_parent"
     android:id="@+id/l0">
     <Button android:id="@+id/e0"
+            
             style="@style/light_btn_oval_nopad"
             android:layout_width="match_parent"
             android:layout_height="match_parent"/>

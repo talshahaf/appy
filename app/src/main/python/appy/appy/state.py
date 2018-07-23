@@ -7,7 +7,7 @@ java_widget_manager = None
 def default_state():
     return AttrDict({
         'globals': {},
-        'widget': {},
+        'nonlocals': {},
         'locals': {},
     })
 
@@ -28,7 +28,7 @@ def getter(d, k):
 
 class State:
     def __init__(self, widget_name, widget_id):
-        self.__dict__['__info__'] = AttrDict(AttrDict(scope_keys=AttrDict(widget=widget_name, locals=widget_id, globals=None), scopes={}))
+        self.__dict__['__info__'] = AttrDict(AttrDict(scope_keys=AttrDict(locals=widget_id, nonlocals=widget_name, globals=None), scopes={}))
     
     def __getscope__(self, scope_name, scope_key):
         return global_state[scope_name].setdefault(scope_key, {}) if scope_key is not None else global_state[scope_name]
@@ -36,9 +36,9 @@ class State:
     def __act__(self, f, scope_name, scope_key, attr, **kwargs):
         return f(self.__getscope__(scope_name, scope_key), attr, **kwargs)
         
-    def widget(self, *attrs):
+    def nonlocals(self, *attrs):
         for attr in attrs:
-            self.__info__.scopes[attr] = 'widget'
+            self.__info__.scopes[attr] = 'nonlocals'
         
     def globals(self, *attrs):
         for attr in attrs:
@@ -55,8 +55,8 @@ class State:
             v, found = self.__act__(getter, 'locals', self.__info__.scope_keys.locals, attr)
             if found:
                 return v
-        if scope is None or scope == 'widget':
-            v, found = self.__act__(getter, 'widget', self.__info__.scope_keys.widget, attr)
+        if scope is None or scope == 'nonlocals':
+            v, found = self.__act__(getter, 'nonlocals', self.__info__.scope_keys.nonlocals, attr)
             if found:
                 return v
         if scope is None or scope == 'globals':
@@ -80,7 +80,7 @@ class State:
     def __dir__(self):
         return list(
                         set(self.__getscope__('locals', self.__info__.scope_keys.locals).keys()) |
-                        set(self.__getscope__('widget', self.__info__.scope_keys.widget).keys()) |
+                        set(self.__getscope__('nonlocals', self.__info__.scope_keys.nonlocals).keys()) |
                         set(self.__getscope__('globals', self.__info__.scope_keys.globals).keys())
                     )
 
@@ -117,8 +117,8 @@ def wipe_state():
     global_state = default_state()
     save()
 
-def clean_widget_state(name):
-    global_state.widgets.pop(name, None)
+def clean_nonlocals_state(name):
+    global_state.nonlocals.pop(name, None)
     save()
 
 def clean_local_state(widget_id):
