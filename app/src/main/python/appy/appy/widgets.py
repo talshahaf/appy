@@ -252,8 +252,8 @@ class Element:
     def dict(self, without_id=None):
         if 'tag' in self.d and 'tag' in self.d.tag and not isinstance(self.d.tag['tag'], str):
             self.d.tag['tag'] = dumps(self.d.tag['tag'])
-        d = AttrDict.make({k:copy.deepcopy(v) for k,v in self.d.items() if k != 'children' and (not without_id or k != 'id')})
-        d.children = [[c.dict(without_id=without_id) if isinstance(c, Element) else c for c in arr] for arr in self.children]
+        d = {k:copy.deepcopy(v) for k,v in self.d.items() if k != 'children' and (not without_id or k != 'id')}
+        d['children'] = [[c.dict(without_id=without_id) if isinstance(c, Element) else c for c in arr] for arr in self.children]
         return d
 
     def duplicate(self):
@@ -414,8 +414,8 @@ class Widget:
     def locals(self, *attrs):
         self.state.locals(*attrs)
 
-    def widget(self, *attrs):
-        self.state.widget(*attrs)
+    def nonlocals(self, *attrs):
+        self.state.nonlocals(*attrs)
 
     def globals(self, *attrs):
         self.state.globals(*attrs)
@@ -423,8 +423,8 @@ class Widget:
     def local_token(self, token):
         return self.token(token, self.locals, self.clean_local)
 
-    def widget_token(self, token):
-        return self.token(token, self.widget, self.clean_widget)
+    def nonlocal_token(self, token):
+        return self.token(token, self.widget, self.clean_nonlocal)
 
     def global_token(self, token):
         return self.token(token, self.globals, self.wipe_global)
@@ -442,8 +442,8 @@ class Widget:
     def clean_local(self):
         state.clean_local_state(self.widget_id)
 
-    def clean_widget(self):
-        state.clean_widget_state(self.name)
+    def clean_nonlocal(self):
+        state.clean_nonlocal_state(self.name)
 
     def wipe_global(self):
         state.wipe_state()
@@ -599,7 +599,7 @@ class Handler:
         out_json = [e.dict() for e in output]
         if input is not None and input == out_json:
             return None
-        return json.dumps(out_json, indent=4)
+        return json.dumps(out_json)
 
     def import_(self, s):
         d = json.loads(s)
@@ -635,7 +635,7 @@ class Handler:
 
     @java.interface
     def onClick(self, widget_id, views_str, view_id):
-        print(f'python got onclick {widget_id} {view_id}')
+        print(f'python got on click {widget_id} {view_id}')
         input, views = self.import_(views_str)
         v = views.find_id(view_id)
         widget, manager_state = create_widget(widget_id)

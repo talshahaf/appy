@@ -461,11 +461,19 @@ public class Widget extends RemoteViewsService
                     }
                 }
             }
-            catch (InvocationTargetException | IllegalAccessException e)
+            catch(Exception e)
             {
                 e.printStackTrace();
+                try
+                {
+                    setSpecificErrorWidget(getAndroidWidget(widgetId), widgetId);
+                }
+                catch(WidgetDestroyedException e2)
+                {
+                    e2.printStackTrace();
+                }
             }
-            return null; //maybe TODO?
+            return new RemoteViews(context.getPackageName(), R.layout.root);
         }
 
         @Override

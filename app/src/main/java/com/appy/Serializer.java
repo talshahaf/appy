@@ -43,6 +43,7 @@ public class Serializer
             jsonobj.put("type", "complicated");
             jsonobj.put("class", obj.getClass().getName());
             jsonobj.put("value", obj.toString());
+            return jsonobj;
         }
 
 //        if(obj instanceof Bitmap || obj instanceof Icon) // || obj instanceof Bundle || obj instanceof Intent
@@ -77,7 +78,7 @@ public class Serializer
             }
             if(value.getString("type").equals("complicated"))
             {
-                if(clazz.equals(Uri.class))
+                if(Uri.class.isAssignableFrom(clazz))
                 {
                     return Uri.parse(value.getString("value"));
                 }

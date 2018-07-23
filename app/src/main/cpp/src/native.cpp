@@ -13,6 +13,7 @@
 #include <functional>
 #include <deque>
 #include <vector>
+#include <exception>
 #include <cxxabi.h>
 #include "native.h"
 
@@ -884,11 +885,23 @@ static PyObject * act(PyObject *self, PyObject *args)
         jvalue ret;
         GET_ENV_WITHOUT_SCOPES();
 
+        std::exception_ptr exc = nullptr;
+
         Py_BEGIN_ALLOW_THREADS
-
-        ret = act_raw(env, (jobject)self, (void *)method, jvalues, return_type, op);
-
+        try
+        {
+            ret = act_raw(env, (jobject)self, (void *)method, jvalues, return_type, op);
+        }
+        catch(...)
+        {
+            exc = std::current_exception();
+        }
         Py_END_ALLOW_THREADS
+
+        if(exc != nullptr)
+        {
+            std::rethrow_exception(exc);
+        }
 
         if(op == SET_FIELD || op == SET_STATIC_FIELD)
         {
