@@ -128,8 +128,7 @@ public class Attributes
             }
             catch (JSONException e)
             {
-                e.printStackTrace();
-                throw new IllegalArgumentException("json serialization failed");
+                throw new IllegalArgumentException("json serialization failed", e);
             }
         }
     }
@@ -188,8 +187,7 @@ public class Attributes
         }
         catch (JSONException e)
         {
-            e.printStackTrace();
-            throw new IllegalArgumentException("json serialization failed");
+            throw new IllegalArgumentException("json serialization failed", e);
         }
     }
 }

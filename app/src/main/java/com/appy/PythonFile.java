@@ -45,7 +45,7 @@ public class PythonFile
         }
         catch (UnsupportedEncodingException e)
         {
-            throw new IllegalArgumentException("can't encode info");
+            throw new IllegalArgumentException("can't encode info", e);
         }
         obj.put("info", Base64.encodeToString(data, Base64.DEFAULT));
         return obj;
@@ -60,7 +60,7 @@ public class PythonFile
         }
         catch (UnsupportedEncodingException e)
         {
-            throw new IllegalArgumentException("can't encode info");
+            throw new IllegalArgumentException("can't encode info", e);
         }
         return new PythonFile(obj.getString("path"), text);
     }
@@ -79,8 +79,7 @@ public class PythonFile
         }
         catch(JSONException e)
         {
-            e.printStackTrace();
-            throw new IllegalArgumentException("json serialization failed");
+            throw new IllegalArgumentException("json serialization failed", e);
         }
     }
 
@@ -97,8 +96,7 @@ public class PythonFile
         }
         catch(JSONException e)
         {
-            e.printStackTrace();
-            throw new IllegalArgumentException("json serialization failed");
+            throw new IllegalArgumentException("json serialization failed", e);
         }
     }
 }

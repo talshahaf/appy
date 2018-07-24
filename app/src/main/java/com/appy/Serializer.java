@@ -86,7 +86,7 @@ public class Serializer
         }
         catch (ClassNotFoundException e)
         {
-            throw new IllegalArgumentException("no such class \"" + value.getString("class") + "\"");
+            throw new IllegalArgumentException("no such class \"" + value.getString("class") + "\"", e);
         }
 
         throw new IllegalArgumentException("cannot deserialize " + value.getString("type"));
@@ -100,8 +100,7 @@ public class Serializer
         }
         catch (JSONException e)
         {
-            e.printStackTrace();
-            throw new IllegalArgumentException("json deserialization failed "+value);
+            throw new IllegalArgumentException("json deserialization failed " + value, e);
         }
     }
 
@@ -113,8 +112,7 @@ public class Serializer
         }
         catch (JSONException e)
         {
-            e.printStackTrace();
-            throw new IllegalArgumentException("json serialization failed");
+            throw new IllegalArgumentException("json serialization failed", e);
         }
     }
 }

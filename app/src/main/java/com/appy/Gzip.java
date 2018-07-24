@@ -27,12 +27,12 @@ public class Gzip {
         }
         catch (IOException e)
         {
-            e.printStackTrace();
+            throw new IllegalStateException("compress failed", e);
         }
-        throw new IllegalStateException("compress failed");
     }
 
-    public static String decompress(byte[] compressed) {
+    public static String decompress(byte[] compressed)
+    {
         try
         {
             ByteArrayInputStream bis = new ByteArrayInputStream(compressed);
@@ -50,8 +50,7 @@ public class Gzip {
         }
         catch (IOException e)
         {
-            e.printStackTrace();
+            throw new IllegalStateException("compress failed", e);
         }
-            throw new IllegalStateException("compress failed");
-        }
+    }
 }

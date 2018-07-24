@@ -74,8 +74,7 @@ public class DynamicView
         }
         catch (JSONException e)
         {
-            e.printStackTrace();
-            throw new IllegalArgumentException("json deserialization failed "+json);
+            throw new IllegalArgumentException("json deserialization failed", e);
         }
     }
     private static DynamicView fromJSON(JSONObject obj) throws JSONException
@@ -222,8 +221,7 @@ public class DynamicView
         }
         catch (JSONException e)
         {
-            e.printStackTrace();
-            throw new IllegalArgumentException("json serialization failed");
+            throw new IllegalArgumentException("json serialization failed", e);
         }
     }
 
@@ -245,8 +243,7 @@ public class DynamicView
         }
         catch (JSONException e)
         {
-            e.printStackTrace();
-            throw new IllegalArgumentException("json deserialization failed");
+            throw new IllegalArgumentException("json deserialization failed", e);
         }
     }
 
@@ -268,8 +265,7 @@ public class DynamicView
         }
         catch (JSONException e)
         {
-            e.printStackTrace();
-            throw new IllegalArgumentException("json serialization failed");
+            throw new IllegalArgumentException("json serialization failed", e);
         }
     }
 }

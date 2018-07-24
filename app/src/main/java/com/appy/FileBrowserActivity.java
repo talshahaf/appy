@@ -486,7 +486,7 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
         }
         catch (IOException e)
         {
-            throw new IllegalStateException(e.getMessage());
+            throw new IllegalStateException(e);
         }
     }
 

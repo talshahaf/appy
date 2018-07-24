@@ -445,7 +445,7 @@ public class Widget extends RemoteViewsService
                 e.printStackTrace();
                 try
                 {
-                    setSpecificErrorWidget(getAndroidWidget(widgetId), widgetId);
+                    setSpecificErrorWidget(getAndroidWidget(widgetId), widgetId, e);
                 }
                 catch(WidgetDestroyedException e2)
                 {
@@ -1151,6 +1151,12 @@ public class Widget extends RemoteViewsService
             {
 
             }
+
+            @Override
+            public void onError(int widgetId, String error)
+            {
+
+            }
         });
     }
 
@@ -1424,7 +1430,7 @@ public class Widget extends RemoteViewsService
             }
             catch (JSONException e)
             {
-                throw new IllegalArgumentException();
+                throw new IllegalArgumentException(e);
             }
         }
 
@@ -1441,7 +1447,7 @@ public class Widget extends RemoteViewsService
             }
             catch (JSONException e)
             {
-                throw new IllegalArgumentException();
+                throw new IllegalArgumentException(e);
             }
         }
     }
@@ -1855,7 +1861,7 @@ public class Widget extends RemoteViewsService
                     e.printStackTrace();
                     if(errorOnFailure)
                     {
-                        setSpecificErrorWidget(androidWidgetId, widgetId);
+                        setSpecificErrorWidget(androidWidgetId, widgetId, e);
                     }
                 }
             }
@@ -1886,9 +1892,21 @@ public class Widget extends RemoteViewsService
         needUpdateWidgets.add(widgetId);
     }
 
-    public void setSpecificErrorWidget(int androidWidgetId, int widgetId)
+    public void setSpecificErrorWidget(int androidWidgetId, int widgetId, Throwable error)
     {
         Log.d("APPY", "setting error widget for "+widgetId+" android: "+androidWidgetId);
+
+        if(widgetId > 0 && updateListener != null)
+        {
+            try
+            {
+                updateListener.onError(widgetId, getStacktrace(error));
+            }
+            catch(Exception e)
+            {
+                e.printStackTrace();
+            }
+        }
 
         ArrayList<DynamicView> views = new ArrayList<>();
 
@@ -1948,7 +1966,7 @@ public class Widget extends RemoteViewsService
         {
             if(error)
             {
-                setSpecificErrorWidget(id, 0);
+                setSpecificErrorWidget(id, 0, null);
             }
             else
             {
@@ -2223,7 +2241,7 @@ public class Widget extends RemoteViewsService
         {
             e.printStackTrace();
             Log.d("APPY", "error in caller");
-            setSpecificErrorWidget(androidWidgetId, widgetId);
+            setSpecificErrorWidget(androidWidgetId, widgetId, e);
             return true;
         }
 
@@ -2284,7 +2302,7 @@ public class Widget extends RemoteViewsService
 
         if (updateListener == null)
         {
-            setSpecificErrorWidget(androidWidgetId, widgetId);
+            setSpecificErrorWidget(androidWidgetId, widgetId, null);
             return;
         }
 
@@ -2308,7 +2326,7 @@ public class Widget extends RemoteViewsService
             });
             if(!updated)
             {
-                setSpecificErrorWidget(androidWidgetId, widgetId);
+                setSpecificErrorWidget(androidWidgetId, widgetId, null);
                 return;
             }
         }
@@ -2756,7 +2774,7 @@ public class Widget extends RemoteViewsService
                 }
                 catch(ErrnoException e)
                 {
-                    throw new IOException(e.getMessage());
+                    throw new IOException(e);
                 }
             }
             else if(entry.getHeader().linkFlag == TarHeader.LF_NORMAL)
