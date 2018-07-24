@@ -12,17 +12,13 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
-import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
@@ -35,15 +31,13 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.graphics.Bitmap;
-import android.graphics.drawable.Icon;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Binder;
-import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
+import android.support.v4.content.FileProvider;
 import android.support.v7.preference.PreferenceManager;
 import android.system.ErrnoException;
 import android.system.Os;
@@ -53,24 +47,9 @@ import android.util.Pair;
 import android.util.TypedValue;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.AdapterViewFlipper;
-import android.widget.AnalogClock;
-import android.widget.Button;
-import android.widget.Chronometer;
-import android.widget.FrameLayout;
-import android.widget.GridLayout;
-import android.widget.GridView;
-import android.widget.ImageButton;
-import android.widget.ImageView;
-import android.widget.LinearLayout;
-import android.widget.ListView;
-import android.widget.ProgressBar;
 import android.widget.RelativeLayout;
 import android.widget.RemoteViews;
 import android.widget.RemoteViewsService;
-import android.widget.StackView;
-import android.widget.TextView;
-import android.widget.ViewFlipper;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -670,6 +649,10 @@ public class Widget extends RemoteViewsService
             }
 
             elements_id = R.id.elements0;
+        }
+        else
+        {
+            rootView.removeAllViews(R.id.collection_elements);
         }
 
         for (DynamicView layout : dynamicList)
@@ -1836,6 +1819,13 @@ public class Widget extends RemoteViewsService
     {
         SharedPreferences sharedPref = getSharedPreferences("appy", Context.MODE_PRIVATE);
         return sharedPref.getInt("unpacked_version", 0);
+    }
+
+    public Uri getUriForPath(String path)
+    {
+        Uri uri = com.appy.FileProvider.getUriForFile(this, "com.appy.fileprovider", new File(path));
+        Log.d("APPY", "provider: "+uri.toString()+" "+path+" "+new File(path).exists());
+        return uri;
     }
 
     public void setWidget(final int androidWidgetId, final int widgetId, final ArrayList<DynamicView> views, final boolean errorOnFailure)

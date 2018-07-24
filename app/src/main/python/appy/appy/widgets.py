@@ -1,5 +1,5 @@
 import json, functools, copy, traceback, inspect, threading, os, collections, importlib.util, sys, hashlib
-from .utils import AttrDict, dumps, loads, cap, get_args
+from .utils import AttrDict, dumps, loads, cap, get_args, prepare_image_cache_dir, download_resource
 from . import java, state
 
 id_counter = 1
@@ -209,9 +209,11 @@ class Element:
             self.d.selectors[key] = value
         elif key in ('children',):
             if value is None:
-                value = []
-            if not isinstance(value, (list, tuple)):
-                value = [value]
+                value = ChildrenList()
+            elif not isinstance(value, (list, tuple)):
+                value = ChildrenList([value])
+            else:
+                value = ChildrenList(value)
             self.d[key].set(value)
         elif key in ('tint', 'backgroundTint'):
             prev_alpha = -1
@@ -475,6 +477,9 @@ class Widget:
     def post(self, f, **captures):
         java_widget_manager.setPost(self.widget_id, dumps((f, captures)))
 
+    def file_uri(self, path):
+        return java_widget_manager.getUriForPath(path)
+
     def size(self):
         size_arr = java_widget_manager.getWidgetDimensions(self.widget_id)
         return int(size_arr[0]), int(size_arr[1])
@@ -683,6 +688,7 @@ def init():
     context = java.get_java_arg()
     java_widget_manager = context
     print('init')
+    prepare_image_cache_dir()
     context.registerOnWidgetUpdate(Handler().iface)
 
 def restart_app():

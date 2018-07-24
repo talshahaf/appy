@@ -45,6 +45,16 @@
 
         <service android:name="com.appy.Widget"
                  android:permission="android.permission.BIND_REMOTEVIEWS"/>
+
+        <provider
+            android:name="com.appy.FileProvider"
+            android:authorities="com.appy.fileprovider"
+            android:exported="true"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/provider_paths"/>
+        </provider>
     </application>
 
 </manifest>
