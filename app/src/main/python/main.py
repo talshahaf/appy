@@ -2,11 +2,15 @@ import faulthandler
 faulthandler.enable()
 
 import logcat
-import subprocess
-import os
-import sys
-import traceback
-import time
+import subprocess, os, sys, traceback, time, email, tarfile
+from distutils.version import StrictVersion
+
+def tar_version(path):
+    with tarfile.open(path) as tar:
+        info_members = [member for member in tar.getmembers() if os.path.basename(member.name) == 'PKG-INFO']
+        info_member = min(info_members, key=lambda member: len(member.name))
+        info = tar.extractfile(info_member).read()
+    return email.message_from_bytes(info)['Version']
 
 def execute(command):
     process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
@@ -38,6 +42,7 @@ def execute(command):
 exe_dir = os.path.join(os.environ['PYTHONHOME'], 'bin')
 exe = os.path.join(exe_dir, 'python3.7')
 
+#TODO offline initialization
 try:
     import pip
 except ImportError:
@@ -53,13 +58,17 @@ except ImportError:
     import requests
 
 upgrade = False
+tar = os.path.join(os.environ['TMP'], 'appy.tar.gz')
 try:
     import appy
-#    if os.path.getmtime(appy.__file__) < os.path.getmtime(__file__):
-#        upgrade = True
-#        raise ImportError('outdated version')
-except ImportError as e:
+    existing_version = StrictVersion(appy.__version__)
+    available_version = StrictVersion(tar_version(tar))
+    print(f'versions - existing: {existing_version}, available: {available_version}')
+    if existing_version < available_version:
+        upgrade = True
+        raise ImportError('outdated version')
+except Exception as e:
     print('error importing appy: ', traceback.format_exc())
     print('installing appy')
-    execute([exe, '-m', 'pip', 'install', os.path.join(os.environ['TMP'], 'appy.tar.gz')] + ['--upgrade'] if upgrade else [])
+    execute([exe, '-m', 'pip', 'install', os.path.join(os.environ['TMP'], 'appy.tar.gz')] + (['--upgrade'] if upgrade else []))
     import appy
