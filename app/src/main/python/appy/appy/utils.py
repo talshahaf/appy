@@ -39,16 +39,16 @@ class AttrDict(dict):
         else:
             return d
 
-IMAGE_CACHE_DIR = os.path.join(os.environ['TMP'], 'resources')
+RESOURCE_CACHE_DIR = os.path.join(os.environ['TMP'], 'resources')
 def prepare_image_cache_dir():
     #TODO somehow cleanup cache every now and then
-    #shutil.rmtree(IMAGE_CACHE_DIR, ignore_errors=True)
-    os.makedirs(IMAGE_CACHE_DIR, exist_ok=True)
+    #shutil.rmtree(RESOURCE_CACHE_DIR, ignore_errors=True)
+    os.makedirs(RESOURCE_CACHE_DIR, exist_ok=True)
 
 def generate_filename(url):
     extension = url[url.rfind('.'):]
     extension = extension if '.' in extension and extension in mimetypes.types_map else ''
-    return os.path.join(IMAGE_CACHE_DIR, hashlib.sha256(url.encode()).hexdigest() + extension)
+    return os.path.join(RESOURCE_CACHE_DIR, hashlib.sha256(url.encode()).hexdigest() + extension)
 
 @functools.lru_cache(maxsize=128, typed=True)
 def download_resource(url):

@@ -5,7 +5,7 @@
         android:id="@+id/action_goto"
         android:icon="@drawable/ic_action_goto"
         android:title="Go to"
-        app:showAsAction="always"/>
+        app:showAsAction="ifRoom"/>
     <item
         android:id="@+id/action_select"
         android:icon="@drawable/ic_action_add"
@@ -15,17 +15,17 @@
         android:id="@+id/action_copy"
         android:icon="@drawable/ic_action_copy"
         android:title="Copy"
-        app:showAsAction="always"/>
+        app:showAsAction="ifRoom"/>
     <item
         android:id="@+id/action_cut"
         android:icon="@drawable/ic_action_cut"
         android:title="Cut"
-        app:showAsAction="always"/>
+        app:showAsAction="ifRoom"/>
     <item
         android:id="@+id/action_delete"
         android:icon="@drawable/ic_action_delete"
         android:title="Delete"
-        app:showAsAction="always"/>
+        app:showAsAction="ifRoom"/>
     <item
         android:id="@+id/action_cancel"
         android:icon="@drawable/ic_action_cancel"
@@ -41,4 +41,9 @@
         android:icon="@drawable/ic_action_paste"
         android:title="Paste"
         app:showAsAction="always"/>
+    <item
+        android:id="@+id/action_rename"
+        android:icon="@drawable/ic_action_rename"
+        android:title="Rename"
+        app:showAsAction="ifRoom"/>
 </menu>
