@@ -31,10 +31,10 @@ public class Attributes
     {
         static class Reference
         {
-            public int id;
+            public long id;
             public Type type;
             public double factor;
-            public Reference(int id, Type type, double factor)
+            public Reference(long id, Type type, double factor)
             {
                 this.id = id;
                 this.type = type;
@@ -80,7 +80,7 @@ public class Attributes
                 {
                     JSONObject referenceObj = referenceArray.getJSONObject(j);
 
-                    Reference ref = new Reference(referenceObj.getInt("id"), Type.valueOf(referenceObj.getString("type")), referenceObj.getDouble("factor"));
+                    Reference ref = new Reference(referenceObj.getLong("id"), Type.valueOf(referenceObj.getString("type")), referenceObj.getDouble("factor"));
                     references.add(ref);
                 }
 

@@ -1,13 +1,9 @@
-import json, functools, copy, traceback, inspect, threading, os, collections, importlib.util, sys, hashlib
+import json, functools, copy, traceback, inspect, threading, os, collections, importlib.util, sys, hashlib, struct, re
 from .utils import AttrDict, dumps, loads, cap, get_args, prepare_image_cache_dir, download_resource
 from . import java, state
 
-id_counter = 1
-def get_id():
-    global id_counter
-    c = id_counter
-    id_counter += 1
-    return c
+def gen_id():
+    return struct.unpack('<q', os.urandom(8))[0]
 
 @functools.lru_cache(maxsize=128, typed=True)
 def validate_type(type):
@@ -26,6 +22,27 @@ def get_param_setter(type, attr):
 def validate_remoteviews_method(method):
     return java.clazz.com.appy.RemoteMethodCall().remoteViewMethods.containsKey(method)
 
+@functools.lru_cache(maxsize=128, typed=True)
+def unit_constants():
+    dp_to_px = float(java_widget_manager.convertUnit(1.0, java.clazz.android.util.TypedValue().COMPLEX_UNIT_DIP, java.clazz.android.util.TypedValue().COMPLEX_UNIT_PX))
+    sp_to_px = float(java_widget_manager.convertUnit(1.0, java.clazz.android.util.TypedValue().COMPLEX_UNIT_SP,  java.clazz.android.util.TypedValue().COMPLEX_UNIT_PX))
+    pt_to_px = float(java_widget_manager.convertUnit(1.0, java.clazz.android.util.TypedValue().COMPLEX_UNIT_PT,  java.clazz.android.util.TypedValue().COMPLEX_UNIT_PX))
+    in_to_px = float(java_widget_manager.convertUnit(1.0, java.clazz.android.util.TypedValue().COMPLEX_UNIT_IN,  java.clazz.android.util.TypedValue().COMPLEX_UNIT_PX))
+    mm_to_px = float(java_widget_manager.convertUnit(1.0, java.clazz.android.util.TypedValue().COMPLEX_UNIT_MM,  java.clazz.android.util.TypedValue().COMPLEX_UNIT_PX))
+    return {'px': 1.0, 'dp': dp_to_px, 'dip': dp_to_px, 'sp': sp_to_px, 'pt': pt_to_px, 'in': in_to_px, 'mm': mm_to_px}
+
+def convert_unit(value):
+    if not isinstance(value, str):
+        return value
+    reg = re.match(r'^([+-]?(?:[0-9]+(?:[.][0-9]*)?|[.][0-9]+))\s*\*?\s*([a-zA-Z]+)$', value)
+    if reg:
+        value, unit = reg.groups()
+        unit = unit.lower()
+        units = unit_constants()
+        if unit in units:
+            return float(value) * units[unit]
+    return float(value)
+
 class Reference:
     def __init__(self, id, key, factor):
         self.id = id
@@ -37,7 +54,7 @@ class Reference:
 
 class AttributeValue:
     def __init__(self, *args):
-        self.pol = args
+        self.pol = tuple(convert_unit(arg) for arg in args)
 
     def __add__(self, other):
         if isinstance(other, AttributeValue):
@@ -49,7 +66,7 @@ class AttributeValue:
         return self + (-other)
 
     def __mul__(self, other):
-        return AttributeValue(*(Reference(e.id, e.key, e.factor * other) if isinstance(e, Reference) else e * other for e in self.pol))
+        return AttributeValue(*((Reference(e.id, e.key, e.factor * other) if isinstance(e, Reference) else e * convert_unit(other)) for e in self.pol))
 
     def __truediv__(self, other):
         return self * (1 / other)
@@ -75,12 +92,44 @@ class AttributeValue:
             else:
                 amount += e
         return dict(function='IDENTITY', arguments=[dict(amount=amount, references=refs)])
-
+        
+def attribute_ileft(e):
+    return e.right + e.width
+def attribute_itop(e):
+    return e.bottom + e.height
+def attribute_iright(e):
+    return e.left + e.width
+def attribute_ibottom(e):
+    return e.top + e.height
+def attribute_hcenter(e):
+    return e.left + (e.width / 2)
+def attribute_vcenter(e):
+    return e.left + (e.height / 2)
+def attribute_ihcenter(e):
+    return e.right + (e.width / 2)
+def attribute_ivcenter(e):
+    return e.right + (e.height / 2)
+def attribute_write_hcenter(e, value):
+    if value is None:
+        del e.left
+    else:
+        e.left = -(e.width / 2) + value
+def attribute_write_vcenter(e, value):
+    if value is None:
+        del e.top
+    else:
+        e.top = -(e.height / 2) + value
+        
 attrs = dict(left='LEFT', top='TOP', right='RIGHT', bottom='BOTTOM', width='WIDTH', height='HEIGHT')
+composite_attrs = dict(ileft=attribute_ileft, itop=attribute_itop, iright=attribute_iright, ibottom=attribute_ibottom,
+                       hcenter=attribute_hcenter, vcenter=attribute_vcenter, ihcenter=attribute_ihcenter, ivcenter=attribute_ivcenter)
+write_attrs = dict(hcenter=attribute_write_hcenter, vcenter=attribute_write_vcenter)
 class WidgetAttribute:
     def __getattr__(self, item):
         if item in attrs:
             return AttributeValue(Reference(-1, attrs[item], 1))
+        if item in composite_attrs:
+            return composite_attrs[item](self)
         raise AttributeError()
 
 last_func_for_widget_id = {}
@@ -134,7 +183,7 @@ class Element:
     def __init__(self, d):
         self.__dict__['d'] = AttrDict.make(d)
         if 'id' not in self.d:
-            self.d.id = get_id()
+            self.d.id = gen_id()
         if 'children' in self.d:
             self.d.children = ChildrenList([c if isinstance(c, Element) else Element(c) for c in arr] for arr in self.d.children)
         else:
@@ -153,6 +202,8 @@ class Element:
     def __delattr__(self, key):
         if key in attrs:
             del self.d.attributes[attrs[key]]
+        elif key in write_attrs:
+            write_attrs[key](self, None)
         elif 'selectors' in self.d and key in ('style', 'alignment'):
             del self.d.selectors[key]
         elif key in ('children',):
@@ -167,6 +218,8 @@ class Element:
     def __getattr__(self, item):
         if item in attrs:
             return AttributeValue(Reference(self.d.id, attrs[item], 1))
+        if item in composite_attrs:
+            return composite_attrs[item](self)
         if item in ('type', 'id', 'children'):
             return getattr(self.d, item)
         if item in ('style', 'alignment'):
@@ -193,11 +246,16 @@ class Element:
 
     def __setattr__(self, key, value):
         if key in attrs:
-            if not isinstance(value, AttributeValue):
-                value = AttributeValue(value)
-            if 'attributes' not in self.d:
-                self.d.attributes = {}
-            self.d.attributes[attrs[key]] = value.compile()
+            if value is None:
+                delattr(self, key)
+            else:
+                if not isinstance(value, AttributeValue):
+                    value = AttributeValue(value)
+                if 'attributes' not in self.d:
+                    self.d.attributes = {}
+                self.d.attributes[attrs[key]] = value.compile()
+        elif key in write_attrs:
+            write_attrs[key](self, value)
         elif key in ('click', 'itemclick'):
             if not isinstance(value, (list, tuple)):
                 value = (value, {})

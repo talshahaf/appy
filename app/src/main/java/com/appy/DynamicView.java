@@ -7,14 +7,16 @@ import org.json.JSONObject;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.Random;
 
 /**
  * Created by Tal on 14/01/2018.
  */
 public class DynamicView
 {
-    private int id;
+    public static Random random = new Random();
+
+    private long id;
     public String type;
     public ArrayList<RemoteMethodCall> methodCalls = new ArrayList<>();
     public ArrayList<ArrayList<DynamicView>> children = new ArrayList<>();
@@ -27,10 +29,9 @@ public class DynamicView
     public int actualHeight;
     public HashMap<String, String> selectors = new HashMap<>();
 
-    private static AtomicInteger id_counter = new AtomicInteger(1);
-    private static int genId()
+    private static long genId()
     {
-        return id_counter.getAndIncrement();
+        return random.nextLong();
     }
 
     public String toString()
@@ -43,12 +44,12 @@ public class DynamicView
         this(genId(), type);
     }
 
-    private DynamicView(int id, String type)
+    private DynamicView(long id, String type)
     {
         this(id, type, 0, 0, 0);
     }
 
-    public DynamicView(int id, String type, int view_id, int container_id, int xml_id)
+    public DynamicView(long id, String type, int view_id, int container_id, int xml_id)
     {
         this.id = id;
         this.type = type;
@@ -62,7 +63,7 @@ public class DynamicView
         }
     }
 
-    public int getId()
+    public long getId()
     {
         return id;
     }
@@ -79,10 +80,10 @@ public class DynamicView
     }
     private static DynamicView fromJSON(JSONObject obj) throws JSONException
     {
-        int id;
+        long id;
         if(obj.has("id"))
         {
-            id = obj.getInt("id");
+            id = obj.getLong("id");
         }
         else
         {
