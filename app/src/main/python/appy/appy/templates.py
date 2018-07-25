@@ -82,12 +82,14 @@ def call_list_adapter(widget, adapter, value, **kwargs):
         view[0].text = str(value)
     return view
 
-def updating_list_refresh_action(widget, views, on_refresh, adapter):
+def updating_list_refresh_action(widget, views, on_refresh, adapter, update_hook):
     values = call_general_function(on_refresh, widget=widget, views=views)
     views['list'].children = None if not values else [call_list_adapter(widget, adapter, value=v, index=i) for i, v in enumerate(values)]
+    if update_hook is not None:
+        update_hook(widget, views)
 
-def updating_list_create(widget, initial_values, on_refresh, background_param, adapter, initial_refresh, timeout, interval, create_hook):
-    btn = refresh_button((updating_list_refresh_action, dict(on_refresh=on_refresh, adapter=adapter)), initial_refresh=initial_refresh, widget=widget, timeout=timeout, interval=interval, name='refresh_button')
+def updating_list_create(widget, initial_values, on_refresh, background_param, adapter, initial_refresh, timeout, interval, create_hook, update_hook):
+    btn = refresh_button((updating_list_refresh_action, dict(on_refresh=on_refresh, adapter=adapter, update_hook=update_hook)), initial_refresh=initial_refresh, widget=widget, timeout=timeout, interval=interval, name='refresh_button')
     lst = ListView(name='list', children=None if not initial_values else [call_list_adapter(widget, adapter, value=v, index=i) for i, v in enumerate(initial_values)])
 
     views = elist()
@@ -102,8 +104,8 @@ def updating_list_create(widget, initial_values, on_refresh, background_param, a
     
     return views
 
-def updating_list(name, initial_values=None, on_refresh=None, background=None, adapter=None, initial_refresh=None, timeout=None, interval=None, create_hook=None):
-    register_widget(name, (updating_list_create, dict(initial_values=initial_values, on_refresh=on_refresh, background_param=background, adapter=adapter, initial_refresh=initial_refresh, timeout=timeout, interval=interval, create_hook=create_hook)), reset_refresh_buttons_if_needed)
+def updating_list(name, initial_values=None, on_refresh=None, background=None, adapter=None, initial_refresh=None, timeout=None, interval=None, create_hook=None, update_hook=None):
+    register_widget(name, (updating_list_create, dict(initial_values=initial_values, on_refresh=on_refresh, background_param=background, adapter=adapter, initial_refresh=initial_refresh, timeout=timeout, interval=interval, create_hook=create_hook, update_hook=update_hook)), reset_refresh_buttons_if_needed)
 
 ##############text template############################
 def call_text_adapter(widget, adapter, value, view, **kwargs):
@@ -112,18 +114,20 @@ def call_text_adapter(widget, adapter, value, view, **kwargs):
     else:
         view.text = str(value)
 
-def updating_text_refresh_action(widget, views, on_refresh, adapter):
+def updating_text_refresh_action(widget, views, on_refresh, adapter, update_hook):
     value = call_general_function(on_refresh, widget=widget, views=views)
     call_text_adapter(widget, adapter, value=value, view=views['content'])
+    if update_hook is not None:
+        update_hook(widget, views)
 
-def updating_text_create(widget, initial_value, on_refresh, background_param, adapter, initial_refresh, timeout, interval, create_hook):
+def updating_text_create(widget, initial_value, on_refresh, background_param, adapter, initial_refresh, timeout, interval, create_hook, update_hook):
     text = TextView(name='content', text='', textViewTextSize=(clazz.android.util.TypedValue().COMPLEX_UNIT_SP, 30))
     text.left = (widget.width  / 2) - (text.width  / 2)
     text.top  = (widget.height / 2) - (text.height / 2)
     if initial_value is not None:
         call_text_adapter(widget, adapter, value=initial_value, view=text)
 
-    btn = refresh_button((updating_text_refresh_action, dict(on_refresh=on_refresh, adapter=adapter)), initial_refresh=initial_refresh, widget=widget, timeout=timeout, interval=interval, name='refresh_button')
+    btn = refresh_button((updating_text_refresh_action, dict(on_refresh=on_refresh, adapter=adapter, update_hook=update_hook)), initial_refresh=initial_refresh, widget=widget, timeout=timeout, interval=interval, name='refresh_button')
 
     views = elist()
     if background_param is not None and background_param is not False:
@@ -137,8 +141,8 @@ def updating_text_create(widget, initial_value, on_refresh, background_param, ad
         
     return views
 
-def updating_text(name, initial_value=None, on_refresh=None, background=None, adapter=None, initial_refresh=None, timeout=None, interval=None, create_hook=None):
-    register_widget(name, (updating_text_create, dict(initial_value=initial_value, on_refresh=on_refresh, background_param=background, adapter=adapter, initial_refresh=initial_refresh, timeout=timeout, interval=interval, create_hook=create_hook)), reset_refresh_buttons_if_needed)
+def updating_text(name, initial_value=None, on_refresh=None, background=None, adapter=None, initial_refresh=None, timeout=None, interval=None, create_hook=None, update_hook=None):
+    register_widget(name, (updating_text_create, dict(initial_value=initial_value, on_refresh=on_refresh, background_param=background, adapter=adapter, initial_refresh=initial_refresh, timeout=timeout, interval=interval, create_hook=create_hook, update_hook=update_hook)), reset_refresh_buttons_if_needed)
 
 #################keyboard###############################
 def key_backspace_click(output):
