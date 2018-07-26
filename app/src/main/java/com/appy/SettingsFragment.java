@@ -59,6 +59,6 @@ public class SettingsFragment extends MySettingsFragment implements SharedPrefer
             return;
         }
 
-        getWidgetService().loadCorrectionFactors();
+        getWidgetService().loadCorrectionFactors(false);
     }
 }

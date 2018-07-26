@@ -1415,43 +1415,70 @@ public class Widget extends RemoteViewsService
         editor.apply();
     }
 
-    public void loadCorrectionFactors()
+    public float[] getCorrectionFactors()
     {
-        SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
+        return new float[]{widthCorrectionFactor, heightCorrectionFactor};
+    }
+
+    public void setCorrectionFactors(float widthCorrection, float heightCorrection)
+    {
+        SharedPreferences.Editor editor = PreferenceManager.getDefaultSharedPreferences(getApplicationContext()).edit();
+        editor.putString("width_correction", widthCorrection+"");
+        editor.putString("height_correction", heightCorrection+"");
+        editor.apply();
+
+        loadCorrectionFactors(false);
+    }
+
+    public void loadCorrectionFactors(boolean initing)
+    {
         float widthCorrection = 1.0f;
         float heightCorrection = 1.0f;
 
         try
         {
-            widthCorrection = Float.parseFloat(sharedPref.getString("width_correction", "1"));
-        }
-        catch(NumberFormatException e)
-        {
-            Log.w("APPY", "wrong number format for width");
-        }
+            SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
+            try
+            {
+                widthCorrection = Float.parseFloat(sharedPref.getString("width_correction", "1"));
+            }
+            catch (NumberFormatException e)
+            {
+                Log.w("APPY", "wrong number format for width");
+            }
 
-        try
-        {
-            heightCorrection = Float.parseFloat(sharedPref.getString("height_correction", "1"));
-        }
-        catch(NumberFormatException e)
-        {
-            Log.w("APPY", "wrong number format for width");
-        }
+            try
+            {
+                heightCorrection = Float.parseFloat(sharedPref.getString("height_correction", "1"));
+            }
+            catch (NumberFormatException e)
+            {
+                Log.w("APPY", "wrong number format for width");
+            }
 
-        if(widthCorrection <= 0 || widthCorrection > 3)
-        {
-            widthCorrection = 1;
+            if (widthCorrection <= 0 || widthCorrection > 3)
+            {
+                widthCorrection = 1;
+            }
+            if (heightCorrection <= 0 || heightCorrection > 3)
+            {
+                heightCorrection = 1;
+            }
+
         }
-        if(heightCorrection <= 0 || heightCorrection > 3)
+        catch(Exception e)
         {
-            heightCorrection = 1;
+            e.printStackTrace();
         }
 
         widthCorrectionFactor = widthCorrection;
         heightCorrectionFactor = heightCorrection;
 
         Log.d("APPY", "new correction factors: " + widthCorrectionFactor + ", " + heightCorrectionFactor);
+        if(!initing)
+        {
+            updateAll();
+        }
     }
 
     public long generateTimerId()
@@ -1853,6 +1880,14 @@ public class Widget extends RemoteViewsService
     public void update(int widgetId)
     {
         addTask(widgetId, new Task<>(new CallUpdateTask(), widgetId));
+    }
+
+    public void updateAll()
+    {
+        for(int widgetId : getAllWidgets())
+        {
+            update(widgetId);
+        }
     }
 
     public void restart()
@@ -2498,7 +2533,7 @@ public class Widget extends RemoteViewsService
             handler = new Handler();
 
             loadPythonFiles();
-            loadCorrectionFactors();
+            loadCorrectionFactors(true);
             loadWidgets();
             loadTimers();
 
