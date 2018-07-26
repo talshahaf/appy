@@ -4,8 +4,9 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:id="@+id/collection_root">
-    <RelativeLayout android:id="@+id/size_filler"
+    android:id="@+id/collection_root"
+    android:orientation="horizontal">
+    <RelativeLayout android:id="@+id/size_h_filler"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content">
         <RelativeLayout

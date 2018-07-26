@@ -37,7 +37,6 @@ import android.os.Binder;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
-import android.support.v4.content.FileProvider;
 import android.support.v7.preference.PreferenceManager;
 import android.system.ErrnoException;
 import android.system.Os;
@@ -569,7 +568,7 @@ public class Widget extends RemoteViewsService
             case R.id.elements2:
                 return null;
             default:
-                return elements_id; //for collection_element and others
+                return elements_id; //for collection_element_vertical and others
         }
     }
 
@@ -607,8 +606,9 @@ public class Widget extends RemoteViewsService
         return mostGeneralResource;
     }
 
-    public Pair<RemoteViews, HashSet<Integer>> generate(Context context, int widgetId, ArrayList<DynamicView> dynamicList, boolean forMeasurement, boolean inCollection) throws InvocationTargetException, IllegalAccessException
+    public Pair<RemoteViews, HashSet<Integer>> generate(Context context, int widgetId, ArrayList<DynamicView> dynamicList, boolean forMeasurement, Constants.CollectionLayout collectionLayout) throws InvocationTargetException, IllegalAccessException
     {
+        boolean inCollection = collectionLayout != Constants.CollectionLayout.NOT_COLLECTION;
         HashSet<Integer> collection_views = new HashSet<>();
         ArrayList<String> collections = new ArrayList<>();
         for (DynamicView layout : dynamicList)
@@ -630,10 +630,38 @@ public class Widget extends RemoteViewsService
 
         if (inCollection)
         {
-            //can only be collections == 0
-            //this fixes a bug when using the same id? i think it's in removeAllViews or in addView
-            root_xml = forMeasurement ? R.layout.collection_element_measurements : R.layout.collection_element;
             elements_id = R.id.collection_elements;
+            if(forMeasurement)
+            {
+                root_xml = R.layout.collection_element_measurements;
+            }
+            else
+            {
+                switch(collectionLayout)
+                {
+                    case VERTICAL:
+                    {
+                        root_xml = R.layout.collection_element_vertical;
+                        break;
+                    }
+                    case HORIZONTAL:
+                    {
+                        root_xml = R.layout.collection_element_horizontal;
+                        break;
+                    }
+                    case BOTH:
+                    {
+                        root_xml = R.layout.collection_element_both;
+                        break;
+                    }
+                    case UNCONSTRAINED:
+                    {
+                        //can also be collection_element_horizontal but not collection_element_both
+                        root_xml = R.layout.collection_element_vertical;
+                        break;
+                    }
+                }
+            }
         }
 
         RemoteViews rootView = new RemoteViews(context.getPackageName(), root_xml);
@@ -967,7 +995,7 @@ public class Widget extends RemoteViewsService
 
     public Pair<RemoteViews, HashSet<Integer>> resolveDimensions(Context context, int widgetId, ArrayList<DynamicView> dynamicList, Constants.CollectionLayout collectionLayout, int widthLimit, int heightLimit) throws InvocationTargetException, IllegalAccessException
     {
-        RemoteViews remote = generate(context, widgetId, dynamicList, true, collectionLayout != Constants.CollectionLayout.NOT_COLLECTION).first;
+        RemoteViews remote = generate(context, widgetId, dynamicList, true, collectionLayout).first;
         RelativeLayout layout = new RelativeLayout(this);
         View inflated = remote.apply(context, layout);
         layout.addView(inflated);
@@ -1105,14 +1133,22 @@ public class Widget extends RemoteViewsService
                     ver.second));
         }
 
-        Pair<RemoteViews, HashSet<Integer>> views = generate(context, widgetId, dynamicList, false, collectionLayout != Constants.CollectionLayout.NOT_COLLECTION);
+        Pair<RemoteViews, HashSet<Integer>> views = generate(context, widgetId, dynamicList, false, collectionLayout);
         //only collection elements has size_filler view
         if(collectionLayout != Constants.CollectionLayout.NOT_COLLECTION)
         {
-            //Log.d("APPY", "special limits: "+specialWidth+" "+specialHeight);
+//            Log.d("APPY", "special limits: "+specialWidth+" "+specialHeight);
 
-            //fill the size filler (will only mean something when specialWidth or specialHeight is not 0
-            views.first.setViewPadding(R.id.size_filler, (int) (specialWidth/2), (int) (specialHeight/2), (int) (specialWidth/2), (int) (specialHeight/2));
+            if(collectionLayout == Constants.CollectionLayout.HORIZONTAL || collectionLayout == Constants.CollectionLayout.BOTH)
+            {
+                //fill the size width filler (specialWidth must not be 0)
+                views.first.setViewPadding(R.id.size_w_filler, (int) (specialWidth / 2), 0, (int) (specialWidth / 2), 0);
+            }
+            if(collectionLayout == Constants.CollectionLayout.VERTICAL || collectionLayout == Constants.CollectionLayout.BOTH)
+            {
+                //fill the size height filler (specialHeight must not be 0)
+                views.first.setViewPadding(R.id.size_h_filler, 0, (int) (specialHeight / 2), 0, (int) (specialHeight / 2));
+            }
         }
         return views;
     }

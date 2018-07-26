@@ -25,7 +25,7 @@ def execute(command):
         sys.stdout.flush()
 
         #XXX until next version of pip
-        if b'Successfully installed' in nextline or b'Successfully uninstalled' in nextline:
+        if b'Successfully installed' in nextline or b'Successfully uninstalled' in nextline or b'as it is not installed' in nextline:
             time.sleep(2)
             process.kill()
             killed = True
