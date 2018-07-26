@@ -104,11 +104,11 @@ def attribute_ibottom(e):
 def attribute_hcenter(e):
     return e.left + (e.width / 2)
 def attribute_vcenter(e):
-    return e.left + (e.height / 2)
+    return e.top + (e.height / 2)
 def attribute_ihcenter(e):
     return e.right + (e.width / 2)
 def attribute_ivcenter(e):
-    return e.right + (e.height / 2)
+    return e.bottom + (e.height / 2)
 def attribute_write_hcenter(e, value):
     if value is None:
         del e.left
@@ -130,7 +130,7 @@ class WidgetAttribute:
             return AttributeValue(Reference(-1, attrs[item], 1))
         if item in composite_attrs:
             return composite_attrs[item](self)
-        raise AttributeError()
+        raise AttributeError(item)
 
 last_func_for_widget_id = {}
 def call_function(func, captures, **kwargs):
@@ -180,14 +180,24 @@ def serialize_arg(arg):
 
 
 class Element:
+    __slots__ = ('d',)
     def __init__(self, d):
-        self.__dict__['d'] = AttrDict.make(d)
+        self.init(d)
+
+    def init(self, d):
+        self.d = AttrDict.make(d)
         if 'id' not in self.d:
             self.d.id = gen_id()
         if 'children' in self.d:
             self.d.children = ChildrenList([c if isinstance(c, Element) else Element(c) for c in arr] for arr in self.d.children)
         else:
             self.d.children = ChildrenList()
+
+    def __getstate__(self):
+        return self.dict()
+
+    def __setstate__(self, state):
+        self.init(state)
 
     def __event__(self, key, **kwargs):
         if 'tag' in self.d and key in self.d.tag:
@@ -239,12 +249,26 @@ class Element:
                 attr = loads(attr)
             return attr
 
-        args = [c.arguments if c.identifier == c.method else c.arguments[1:] for c in self.d.methodCalls if c.identifier == method_from_attr(item)]
+        args = [c.arguments if c.identifier == c.method else c.arguments[1:] for c in self.d.methodCalls if c.identifier == method_from_attr(item)] if 'methodCalls' in self.d else []
         if args:
             return deserialize_arg(args[0][0]) if len(args[0]) == 1 else [deserialize_arg(arg) for arg in args[0]]
-        raise AttributeError()
+        raise AttributeError(item)
 
     def __setattr__(self, key, value):
+        #special handling of 'd' member allowing it to be set once and without using __dict__
+        if key == 'd':
+            already_set = False
+            try:
+                object.__getattribute__(self, key)
+                already_set = True
+            except AttributeError:
+                pass
+            if not already_set:
+                object.__setattr__(self, key, value)
+                return
+            else:
+                raise AttributeError(f'{key} can not be modified')
+
         if key in attrs:
             if value is None:
                 delattr(self, key)
@@ -288,6 +312,7 @@ class Element:
             if hasattr(self, 'drawableParameters'):
                 prev_color, prev_mode = self.drawableParameters[2], self.drawableParameters[3]
             self.drawableParameters = (key == 'backgroundAlpha', value & 0xff, prev_color, prev_mode, -1)
+        #TODO showNext, showPrevious
         else:
             param_setter, method = get_param_setter(self.d.type, key)
             if param_setter is not None:
@@ -296,7 +321,7 @@ class Element:
                 method = param_setter
             else:
                 if not validate_remoteviews_method(method):
-                    raise AttributeError(key)
+                    raise AttributeError(method)
                 identifier = method
                 if not isinstance(value, (list, tuple)):
                     value = [value]
@@ -340,19 +365,19 @@ class elist(list):
     def all(self):
         yield from self._all_rec(self)
 
-    def _find_element(self, pred):
+    def _find_element(self, pred, hint=None):
         found = list(set(e for e in self.all() if pred(e)))
         if not found:
-            raise KeyError('element not found')
+            raise KeyError(f'element {f"{hint} " if hint is not None else ""}not found')
         elif len(found) == 1:
             return found.pop()
         return found
 
     def find_name(self, name):
-        return self._find_element((lambda name: (lambda e: getattr(e, 'name', None) == name))(name)) #capture name
+        return self._find_element((lambda name: (lambda e: getattr(e, 'name', None) == name))(name), f'named {name}') #capture name
 
     def find_id(self, id):
-        return self._find_element((lambda id: (lambda e: getattr(e, 'id', None) == id))(id)) #capture id
+        return self._find_element((lambda id: (lambda e: getattr(e, 'id', None) == id))(id), f'with id {id}') #capture id
 
     def __getitem__(self, item):
         try:
@@ -547,6 +572,9 @@ class Widget:
         size_arr = java_widget_manager.getWidgetDimensions(self.widget_id)
         return int(size_arr[0]), int(size_arr[1])
 
+    def java_context(self):
+        return java_widget_manager
+
     @staticmethod
     def invoker(element_id, views, key, **kwargs):
         views.find_id(element_id).__event__(key, views=views, **kwargs)
@@ -624,11 +652,14 @@ def widget_manager_create(widget, manager_state):
     restart_btn = ImageButton(style='success_btn_oval_nopad', click=restart, colorFilter=0xffffffff, width=140, height=140, right=0, bottom=0, imageResource=java.clazz.android.R.drawable().ic_lock_power_off)
     restart_btn.backgroundTint = Widget.color(r=0, g=0, b=0, a=128)
 
+    #calling java releases the gil and available_widgets might be changed while iterating it
+    names = [name for name in available_widgets]
+
     if not available_widgets:
         lst = TextView(text='No widgets')
     else:
         lst = ListView(children=[TextView(text=name, textViewTextSize=(java.clazz.android.util.TypedValue().COMPLEX_UNIT_SP, 30),
-                                                                click=(choose_widget, dict(name=name))) for name in available_widgets])
+                                                                click=(choose_widget, dict(name=name))) for name in names])
     return [lst, restart_btn]
 
 def widget_manager_update(widget, manager_state, views):

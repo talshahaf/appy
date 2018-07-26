@@ -51,11 +51,14 @@ except ImportError:
     import pip
 
 try:
-    import requests
-except ImportError:
-    print('installing requests setuptools wheel')
-    execute([exe, '-m', 'pip', 'install', '--upgrade', 'pip', 'setuptools', 'wheel', 'requests'])
-    import requests
+    try:
+        import requests
+    except ImportError:
+        print('installing requests setuptools wheel')
+        execute([exe, '-m', 'pip', 'install', '--upgrade', 'pip', 'setuptools', 'wheel', 'requests'])
+        import requests
+except Exception:
+    pass #optional packages
 
 upgrade = False
 tar = os.path.join(os.environ['TMP'], 'appy.tar.gz')
