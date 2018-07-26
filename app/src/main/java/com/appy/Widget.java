@@ -74,8 +74,8 @@ public class Widget extends RemoteViewsService
     HashMap<Integer, String> widgets = new HashMap<>();
     HashMap<Integer, Integer> androidToWidget = new HashMap<>();
     HashMap<Integer, Integer> widgetToAndroid = new HashMap<>();
-    HashMap<Integer, Timer> activeTimers = new HashMap<>();
-    HashMap<Integer, PendingIntent> activeTimersIntents = new HashMap<>();
+    HashMap<Long, Timer> activeTimers = new HashMap<>();
+    HashMap<Long, PendingIntent> activeTimersIntents = new HashMap<>();
     HashMap<Pair<Integer, Integer>, HashMap<Integer, ListFactory>> factories = new HashMap<>();
     ArrayList<PythonFile> pythonFiles = new ArrayList<>();
     HashSet<Integer> needUpdateWidgets = new HashSet<>();
@@ -240,7 +240,6 @@ public class Widget extends RemoteViewsService
     public Attributes.AttributeValue attributeParse(String attributeValue)
     {
         attributeValue = attributeValue.replace(" ", "").replace("\r", "").replace("\t", "").replace("\n", "").replace("*", "");
-        attributeValue = attributeValue.replace("-", "+-");
 
         String[] args = attributeValue.split("\\+");
 
@@ -275,7 +274,7 @@ public class Widget extends RemoteViewsService
 
             int parEnd = arg.indexOf(")", idx.first);
             String refId = arg.substring(idx.first + 2, parEnd);
-            Attributes.AttributeValue.Reference reference = new Attributes.AttributeValue.Reference(refId.equalsIgnoreCase("p") ? -1 : Integer.parseInt(refId), idx.second, 1);
+            Attributes.AttributeValue.Reference reference = new Attributes.AttributeValue.Reference(refId.equalsIgnoreCase("p") ? -1 : Long.parseLong(refId), idx.second, 1);
             reference.factor *= Double.parseDouble(idx.first > 0 ? arg.substring(0, idx.first) : "1");
             reference.factor *= Double.parseDouble(parEnd + 1 < arg.length() ? arg.substring(parEnd + 1) : "1");
             references.add(reference);
@@ -716,7 +715,8 @@ public class Widget extends RemoteViewsService
                 if (!forMeasurement)
                 {
                     clickIntent.putExtra(Constants.COLLECTION_ITEM_ID_EXTRA, layout.getId());
-                    remoteView.setPendingIntentTemplate(layout.view_id, PendingIntent.getBroadcast(context, widgetId + (layout.getId() << 16), clickIntent, PendingIntent.FLAG_UPDATE_CURRENT));
+                    //request code has to be unique at any given time
+                    remoteView.setPendingIntentTemplate(layout.view_id, PendingIntent.getBroadcast(context, widgetId + ((int)layout.getId() << 10), clickIntent, PendingIntent.FLAG_UPDATE_CURRENT));
 
                     //prepare factory
                     getFactory(context, widgetId, layout.xml_id, layout.view_id, layout.toJSON());
@@ -741,7 +741,11 @@ public class Widget extends RemoteViewsService
                     {
                         clickIntent.putExtra(Constants.ITEM_TAG_EXTRA, (Integer) layout.tag);
                     }
-                    remoteView.setOnClickPendingIntent(layout.view_id, PendingIntent.getBroadcast(context, widgetId + (layout.getId() << 16), clickIntent, PendingIntent.FLAG_UPDATE_CURRENT));
+                    else if (layout.tag instanceof Long)
+                    {
+                        clickIntent.putExtra(Constants.ITEM_TAG_EXTRA, (Long) layout.tag);
+                    }
+                    remoteView.setOnClickPendingIntent(layout.view_id, PendingIntent.getBroadcast(context, widgetId + ((int)layout.getId() << 10), clickIntent, PendingIntent.FLAG_UPDATE_CURRENT));
                 }
             }
 
@@ -755,7 +759,7 @@ public class Widget extends RemoteViewsService
     }
 
     //only one level
-    public DynamicView find(ArrayList<DynamicView> dynamicList, int id)
+    public DynamicView find(ArrayList<DynamicView> dynamicList, long id)
     {
         for (DynamicView view : dynamicList)
         {
@@ -1018,7 +1022,7 @@ public class Widget extends RemoteViewsService
                 {
                     continue;
                 }
-                DynamicView dynamicView = find(dynamicList, Integer.parseInt(view.getContentDescription().toString()));
+                DynamicView dynamicView = find(dynamicList, Long.parseLong(view.getContentDescription().toString()));
 
                 double viewWidth = view.getMeasuredWidth();
                 double viewHeight = view.getMeasuredHeight();
@@ -1146,21 +1150,21 @@ public class Widget extends RemoteViewsService
             }
 
             @Override
-            public Object[] onItemClick(int widgetId, String views, int collectionId, int position)
+            public Object[] onItemClick(int widgetId, String views, long collectionId, int position)
             {
                 Log.d("APPY", "on item click: " + collectionId + " " + position);
                 return new Object[]{false, null};
             }
 
             @Override
-            public String onClick(int widgetId, String views, int id)
+            public String onClick(int widgetId, String views, long id)
             {
                 Log.d("APPY", "on click: " + id);
                 return null;
             }
 
             @Override
-            public String onTimer(int timerId, int widgetId, String views, String data)
+            public String onTimer(long timerId, int widgetId, String views, String data)
             {
                 return null;
             }
@@ -1414,7 +1418,7 @@ public class Widget extends RemoteViewsService
         Log.d("APPY", "new correction factors: " + widthCorrectionFactor + ", " + heightCorrectionFactor);
     }
 
-    public int generateTimerId()
+    public long generateTimerId()
     {
         synchronized (lock)
         {
@@ -1422,7 +1426,7 @@ public class Widget extends RemoteViewsService
             {
                 return 1;
             }
-            int newId = Collections.max(activeTimers.keySet()) + 1;
+            long newId = Collections.max(activeTimers.keySet()) + 1;
             activeTimers.put(newId, null); //save room
             return newId;
         }
@@ -1489,12 +1493,12 @@ public class Widget extends RemoteViewsService
         }
     }
 
-    public void cancelTimer(int timerId)
+    public void cancelTimer(long timerId)
     {
         cancelTimer(timerId, true);
     }
 
-    public void cancelTimer(int timerId, boolean save)
+    public void cancelTimer(long timerId, boolean save)
     {
         PendingIntent pendingIntent;
         synchronized (lock)
@@ -1516,13 +1520,13 @@ public class Widget extends RemoteViewsService
 
     public void cancelWidgetTimers(int widgetId)
     {
-        HashMap<Integer, Timer> activeTimersCopy;
+        HashMap<Long, Timer> activeTimersCopy;
         synchronized (lock)
         {
             activeTimersCopy = new HashMap<>(activeTimers);
         }
-        HashSet<Integer> toCancel = new HashSet<>();
-        for (Map.Entry<Integer, Timer> timer : activeTimersCopy.entrySet())
+        HashSet<Long> toCancel = new HashSet<>();
+        for (Map.Entry<Long, Timer> timer : activeTimersCopy.entrySet())
         {
             if (timer.getValue().widgetId == widgetId)
             {
@@ -1530,7 +1534,7 @@ public class Widget extends RemoteViewsService
             }
         }
 
-        for (int timer : toCancel)
+        for (long timer : toCancel)
         {
             cancelTimer(timer, false);
         }
@@ -1540,12 +1544,12 @@ public class Widget extends RemoteViewsService
     public void cancelAllTimers()
     {
         Log.d("APPY", "cancelling all timers");
-        HashSet<Integer> toCancel = new HashSet<>();
+        HashSet<Long> toCancel = new HashSet<>();
         synchronized (lock)
         {
             toCancel.addAll(activeTimers.keySet());
         }
-        for (int timer : toCancel)
+        for (long timer : toCancel)
         {
             cancelTimer(timer, false);
         }
@@ -1569,12 +1573,12 @@ public class Widget extends RemoteViewsService
         addTask(widgetId, new Task<>(new CallPostTask(), widgetId, data));
     }
 
-    public int setTimer(long millis, int type, int widgetId, String data)
+    public long setTimer(long millis, int type, int widgetId, String data)
     {
         return setTimer(millis, type, widgetId, data, -1);
     }
 
-    public int setTimer(long millis, int type, int widgetId, String data, int timerId)
+    public long setTimer(long millis, int type, int widgetId, String data, long timerId)
     {
         if (type == Constants.TIMER_RELATIVE)
         {
@@ -1617,7 +1621,7 @@ public class Widget extends RemoteViewsService
                         Widget.this.startService((Intent) args[0]);
                     }
                     first = false;
-                    int timer = (int) args[2];
+                    long timer = (long) args[2];
                     Timer obj;
                     synchronized (lock)
                     {
@@ -1661,9 +1665,9 @@ public class Widget extends RemoteViewsService
             String timersString = sharedPref.getString("timers", null);
             if (timersString != null)
             {
-                HashMap<Integer, Timer> loaded = new MapSerialize<Integer, Timer>().deserialize(timersString, new MapSerialize.IntKey(), new TimerValue());
+                HashMap<Long, Timer> loaded = new MapSerialize<Long, Timer>().deserialize(timersString, new MapSerialize.LongKey(), new TimerValue());
                 Log.d("APPY", "loaded " + loaded.size() + " timers");
-                for (Map.Entry<Integer, Timer> timer : loaded.entrySet())
+                for (Map.Entry<Long, Timer> timer : loaded.entrySet())
                 {
                     setTimer(timer.getValue().millis, timer.getValue().type, timer.getValue().widgetId, timer.getValue().data, timer.getKey());
                 }
@@ -1674,7 +1678,6 @@ public class Widget extends RemoteViewsService
             e.printStackTrace();
         }
     }
-
 
     public void loadPythonFiles()
     {
@@ -1790,7 +1793,7 @@ public class Widget extends RemoteViewsService
         SharedPreferences.Editor editor = sharedPref.edit();
         synchronized (lock)
         {
-            editor.putString("timers", new MapSerialize<Integer, Timer>().serialize(activeTimers, new MapSerialize.IntKey(), new TimerValue()));
+            editor.putString("timers", new MapSerialize<Long, Timer>().serialize(activeTimers, new MapSerialize.LongKey(), new TimerValue()));
         }
         editor.apply();
     }
@@ -1866,9 +1869,7 @@ public class Widget extends RemoteViewsService
 
     public Uri getUriForPath(String path)
     {
-        Uri uri = com.appy.FileProvider.getUriForFile(this, "com.appy.fileprovider", new File(path));
-        Log.d("APPY", "provider: "+uri.toString()+" "+path+" "+new File(path).exists());
-        return uri;
+        return com.appy.FileProvider.getUriForFile(this, "com.appy.fileprovider", new File(path));
     }
 
     public void setWidget(final int androidWidgetId, final int widgetId, final ArrayList<DynamicView> views, final boolean errorOnFailure)
@@ -2094,12 +2095,12 @@ public class Widget extends RemoteViewsService
         }
     }
 
-    private class CallEventTask implements Runner<Integer>
+    private class CallEventTask implements Runner<Long>
     {
         @Override
-        public void run(Integer... args)
+        public void run(Long... args)
         {
-            callEventWidget(args[0], args[1], args[2], args[3]);
+            callEventWidget(args[0].intValue(), args[1], args[2], args[3].intValue());
         }
     }
 
@@ -2108,7 +2109,7 @@ public class Widget extends RemoteViewsService
         @Override
         public void run(Object... args)
         {
-            callTimerWidget((int)args[0], (int)args[1], (String)args[2]);
+            callTimerWidget((long)args[0], (int)args[1], (String)args[2]);
         }
     }
 
@@ -2211,7 +2212,7 @@ public class Widget extends RemoteViewsService
         });
     }
 
-    public void callTimerWidget(final int timerId, int widgetId, final String data)
+    public void callTimerWidget(final long timerId, int widgetId, final String data)
     {
         Timer timer;
         synchronized (lock)
@@ -2285,7 +2286,7 @@ public class Widget extends RemoteViewsService
         return false;
     }
 
-    public void callEventWidget(int eventWidgetId, final int itemId, final int collectionItemId, final int collectionPosition)
+    public void callEventWidget(int eventWidgetId, final long itemId, final long collectionItemId, final int collectionPosition)
     {
         Log.d("APPY", "got event intent: " + eventWidgetId + " " + itemId);
 
@@ -2596,7 +2597,7 @@ public class Widget extends RemoteViewsService
         else if (intent != null && intent.hasExtra("widgetId") && intent.hasExtra("timer"))
         {
             Log.d("APPY", "timer fire");
-            addTask(intent.getIntExtra("widgetId", -1), new Task<>(new CallTimerTask(), intent.getIntExtra("timer", -1), intent.getIntExtra("widgetId", -1), Gzip.decompress(intent.getByteArrayExtra("timerData"))));
+            addTask(intent.getIntExtra("widgetId", -1), new Task<>(new CallTimerTask(), intent.getLongExtra("timer", -1), intent.getIntExtra("widgetId", -1), Gzip.decompress(intent.getByteArrayExtra("timerData"))));
         }
         else if(widgetIntent != null)
         {
@@ -2679,7 +2680,7 @@ public class Widget extends RemoteViewsService
                     }
                     else
                     {
-                        addTask(eventWidgetId, new Task<>(new CallEventTask(), eventWidgetId, widgetIntent.getIntExtra(Constants.ITEM_ID_EXTRA, 0), widgetIntent.getIntExtra(Constants.COLLECTION_ITEM_ID_EXTRA, 0), widgetIntent.getIntExtra(Constants.COLLECTION_POSITION_EXTRA, -1)));
+                        addTask(eventWidgetId, new Task<>(new CallEventTask(), (long)eventWidgetId, widgetIntent.getLongExtra(Constants.ITEM_ID_EXTRA, 0), widgetIntent.getLongExtra(Constants.COLLECTION_ITEM_ID_EXTRA, 0), (long)widgetIntent.getIntExtra(Constants.COLLECTION_POSITION_EXTRA, -1)));
                     }
                 }
             }

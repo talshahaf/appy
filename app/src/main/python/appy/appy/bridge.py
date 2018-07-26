@@ -337,6 +337,9 @@ class array(jobjectbase):
         self._length = length
         self.element_class = element_class
 
+    def __len__(self):
+        return self.length
+
     @property
     def length(self):
         if self._length is None:
@@ -452,7 +455,7 @@ def get_java_arg():
 
 def callback(arg):
     try:
-        print('callback called')
+        #print('callback called')
         args = upcast(jobject(jref(arg), 'callback arg'))
         key, cls, method, args = args
 

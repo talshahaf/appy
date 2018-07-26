@@ -35,6 +35,21 @@ public class MapSerialize<T, S>
         }
     }
 
+    static class LongKey implements Converter<Long, String>
+    {
+        @Override
+        public String convert(Long l)
+        {
+            return l.toString();
+        }
+
+        @Override
+        public Long invert(String s)
+        {
+            return Long.parseLong(s);
+        }
+    }
+
     static class IntValue implements Converter<Integer, Object>
     {
 

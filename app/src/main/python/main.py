@@ -25,7 +25,7 @@ def execute(command):
         sys.stdout.flush()
 
         #XXX until next version of pip
-        if b'Successfully installed' in nextline:
+        if b'Successfully installed' in nextline or b'Successfully uninstalled' in nextline:
             time.sleep(2)
             process.kill()
             killed = True
@@ -64,11 +64,12 @@ try:
     existing_version = StrictVersion(appy.__version__)
     available_version = StrictVersion(tar_version(tar))
     print(f'versions - existing: {existing_version}, available: {available_version}')
-    if existing_version < available_version:
+    if existing_version != available_version:
         upgrade = True
         raise ImportError('outdated version')
 except Exception as e:
     print('error importing appy: ', traceback.format_exc())
     print('installing appy')
-    execute([exe, '-m', 'pip', 'install', os.path.join(os.environ['TMP'], 'appy.tar.gz')] + (['--upgrade'] if upgrade else []))
+    execute([exe, '-m', 'pip', 'uninstall', 'appy' ,'--yes'])
+    execute([exe, '-m', 'pip', 'install', os.path.join(os.environ['TMP'], 'appy.tar.gz')])
     import appy

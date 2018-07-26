@@ -24,6 +24,8 @@ android {
 
     task pythonPackage(description: 'Pack the appy package') {
         doLast {
+            delete fileTree('/src/main/python/appy/dist') {
+            }
             exec {
                 workingDir = '/src/main/python/appy'
                 commandLine = ['python', 'setup.py', 'sdist', '--formats=gztar']

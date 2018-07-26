@@ -809,7 +809,7 @@ static PyObject * unpack_value(jvalue v, int t)
     }
     case LONG:
     {
-        return PyLong_FromLongLong((long long)v.l);
+        return PyLong_FromLongLong((long long)v.j);
     }
     case FLOAT:
     {
