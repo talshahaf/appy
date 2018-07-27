@@ -15,8 +15,9 @@
                         android:layout_height="match_parent"
                         android:id="@+id/cl0">
             <GridView android:layout_width="match_parent"
-                      android:layout_height="match_parent"
-                      android:id="@+id/ce0">
+                    android:layout_height="match_parent"
+                    android:id="@+id/ce0"
+                    android:numColumns="auto_fit">
             </GridView>
         </RelativeLayout>
     </RelativeLayout>
