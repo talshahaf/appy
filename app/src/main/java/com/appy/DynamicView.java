@@ -31,7 +31,12 @@ public class DynamicView
 
     private static long genId()
     {
-        return random.nextLong();
+        long id = 0;
+        while(id == 0 || id == -1)
+        {
+            id = random.nextLong();
+        }
+        return id;
     }
 
     public String toString()

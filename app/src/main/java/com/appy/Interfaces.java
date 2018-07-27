@@ -22,7 +22,7 @@ interface WidgetUpdateListener
     String onCreate(int widgetId);
     String onUpdate(int widgetId, String views);
     void onDelete(int widgetId);
-    Object[] onItemClick(int widgetId, String views, long collectionId, int position);
+    Object[] onItemClick(int widgetId, String views, long collectionId, int position, long id);
     String onClick(int widgetId, String views, long id);
     String onTimer(long timerId, int widgetId, String views, String data);
     String onPost(int widgetId, String views, String data);
