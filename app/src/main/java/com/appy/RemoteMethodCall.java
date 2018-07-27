@@ -33,6 +33,10 @@ public class RemoteMethodCall
 
     public static Object cast(Object obj, Class<?> required)
     {
+        if(obj == null)
+        {
+            return null;
+        }
         long lng;
         double dbl;
         Class cls = obj.getClass();

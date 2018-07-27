@@ -3,7 +3,10 @@ from .utils import AttrDict, dumps, loads, cap, get_args, prepare_image_cache_di
 from . import java, state
 
 def gen_id():
-    return struct.unpack('<q', os.urandom(8))[0]
+    id = 0
+    while id in (0, -1):
+        id = struct.unpack('<q', os.urandom(8))[0]
+    return id
 
 @functools.lru_cache(maxsize=128, typed=True)
 def validate_type(type):
@@ -745,12 +748,13 @@ class Handler:
         last_func_for_widget_id.pop(widget_id, None)
 
     @java.interface
-    def onItemClick(self, widget_id, views_str, collection_id, position):
-        print(f'python got onitemclick {widget_id} {collection_id} {position}')
+    def onItemClick(self, widget_id, views_str, collection_id, position, view_id):
+        print(f'python got onitemclick {widget_id} {collection_id} {position} {view_id}')
         input, views = self.import_(views_str)
-        v = views.find_id(collection_id)
+        collection = views.find_id(collection_id)
+        view = collection.children.find_id(view_id) if view_id != 0 else None
         widget, manager_state = create_widget(widget_id)
-        handled = v.__event__('itemclick', widget=widget, views=views, view=v, position=position)
+        handled = collection.__event__('itemclick', widget=widget, views=views, collection=collection, position=position, view=view)
         handled = handled is True
         return java.new.java.lang.Object[()]([handled, self.export(input, views)])
 

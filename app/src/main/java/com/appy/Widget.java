@@ -426,7 +426,7 @@ public class Widget extends RemoteViewsService
                     if (position < list.children.size())
                     {
                         ArrayList<DynamicView> dynamicViewCopy = DynamicView.fromJSONArray(DynamicView.toJSONString(list.children.get(position)));
-                        RemoteViews remoteView = resolveDimensions(context, widgetId, dynamicViewCopy, Constants.collection_layout_type.get(list.type), list.actualWidth, list.actualHeight).first;
+                        RemoteViews remoteView = resolveDimensions(context, widgetId, dynamicViewCopy, Constants.collection_layout_type.get(list.type), new Object[]{list.getId(), position}, list.actualWidth, list.actualHeight).first;
                         Intent fillIntent = new Intent(context, WidgetReceiver.class);
                         if (list.children.get(position).size() == 1)
                         {
@@ -606,7 +606,7 @@ public class Widget extends RemoteViewsService
         return mostGeneralResource;
     }
 
-    public Pair<RemoteViews, HashSet<Integer>> generate(Context context, int widgetId, ArrayList<DynamicView> dynamicList, boolean forMeasurement, Constants.CollectionLayout collectionLayout) throws InvocationTargetException, IllegalAccessException
+    public Pair<RemoteViews, HashSet<Integer>> generate(Context context, int widgetId, ArrayList<DynamicView> dynamicList, boolean forMeasurement, Constants.CollectionLayout collectionLayout, Object[] collectionExtraData) throws InvocationTargetException, IllegalAccessException
     {
         boolean inCollection = collectionLayout != Constants.CollectionLayout.NOT_COLLECTION;
         HashSet<Integer> collection_views = new HashSet<>();
@@ -760,7 +760,7 @@ public class Widget extends RemoteViewsService
                     //Log.d("APPY", "set remote adapter on " + layout.view_id+", "+layout.xml_id+" in dynamic "+layout.getId());
                 }
             }
-            else if (!inCollection)
+            else
             {
                 if (!forMeasurement)
                 {
@@ -773,7 +773,13 @@ public class Widget extends RemoteViewsService
                     {
                         clickIntent.putExtra(Constants.ITEM_TAG_EXTRA, (Long) layout.tag);
                     }
-                    remoteView.setOnClickPendingIntent(layout.view_id, PendingIntent.getBroadcast(context, widgetId + ((int)layout.getId() << 10), clickIntent, PendingIntent.FLAG_UPDATE_CURRENT));
+
+                    if (inCollection)
+                    {
+                        clickIntent.putExtra(Constants.COLLECTION_ITEM_ID_EXTRA, (long) collectionExtraData[0]);
+                        clickIntent.putExtra(Constants.COLLECTION_POSITION_EXTRA, (int) collectionExtraData[1]);
+                    }
+                    remoteView.setOnClickPendingIntent(layout.view_id, PendingIntent.getBroadcast(context, widgetId + ((int) layout.getId() << 10), clickIntent, PendingIntent.FLAG_UPDATE_CURRENT));
                 }
             }
 
@@ -993,9 +999,9 @@ public class Widget extends RemoteViewsService
         return max;
     }
 
-    public Pair<RemoteViews, HashSet<Integer>> resolveDimensions(Context context, int widgetId, ArrayList<DynamicView> dynamicList, Constants.CollectionLayout collectionLayout, int widthLimit, int heightLimit) throws InvocationTargetException, IllegalAccessException
+    public Pair<RemoteViews, HashSet<Integer>> resolveDimensions(Context context, int widgetId, ArrayList<DynamicView> dynamicList, Constants.CollectionLayout collectionLayout, Object[] collectionExtras, int widthLimit, int heightLimit) throws InvocationTargetException, IllegalAccessException
     {
-        RemoteViews remote = generate(context, widgetId, dynamicList, true, collectionLayout).first;
+        RemoteViews remote = generate(context, widgetId, dynamicList, true, collectionLayout, collectionExtras).first;
         RelativeLayout layout = new RelativeLayout(this);
         View inflated = remote.apply(context, layout);
         layout.addView(inflated);
@@ -1133,7 +1139,7 @@ public class Widget extends RemoteViewsService
                     ver.second));
         }
 
-        Pair<RemoteViews, HashSet<Integer>> views = generate(context, widgetId, dynamicList, false, collectionLayout);
+        Pair<RemoteViews, HashSet<Integer>> views = generate(context, widgetId, dynamicList, false, collectionLayout, collectionExtras);
         //only collection elements has size_filler view
         if(collectionLayout != Constants.CollectionLayout.NOT_COLLECTION)
         {
@@ -1186,9 +1192,9 @@ public class Widget extends RemoteViewsService
             }
 
             @Override
-            public Object[] onItemClick(int widgetId, String views, long collectionId, int position)
+            public Object[] onItemClick(int widgetId, String views, long collectionId, int position, long id)
             {
-                Log.d("APPY", "on item click: " + collectionId + " " + position);
+                Log.d("APPY", "on item click: " + collectionId + " " + position + " " + id);
                 return new Object[]{false, null};
             }
 
@@ -1958,7 +1964,7 @@ public class Widget extends RemoteViewsService
                     int widthLimit = widgetDimensions[0];
                     int heightLimit = widgetDimensions[1];
 
-                    Pair<RemoteViews, HashSet<Integer>> view = resolveDimensions(Widget.this, widgetId, views, Constants.CollectionLayout.NOT_COLLECTION, widthLimit, heightLimit);
+                    Pair<RemoteViews, HashSet<Integer>> view = resolveDimensions(Widget.this, widgetId, views, Constants.CollectionLayout.NOT_COLLECTION, null, widthLimit, heightLimit);
                     appWidgetManager.updateAppWidget(androidWidgetId, view.first);
                     for(Integer collection_view : view.second)
                     {
@@ -2378,7 +2384,7 @@ public class Widget extends RemoteViewsService
                 if(collectionItemId != 0)
                 {
                     Log.d("APPY", "calling listener onItemClick");
-                    Object[] ret = updateListener.onItemClick(widgetId, current, collectionItemId, collectionPosition);
+                    Object[] ret = updateListener.onItemClick(widgetId, current, collectionItemId, collectionPosition, itemId);
                     boolean handled = (boolean)ret[0];
                     fromItemClick = (String)ret[1];
                     if(handled || itemId == 0)
