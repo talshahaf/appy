@@ -15,8 +15,9 @@
                         android:layout_height="match_parent"
                         android:id="@+id/cl0">
             <ListView android:layout_width="match_parent"
-                      android:layout_height="match_parent"
-                      android:id="@+id/ce0">
+                     android:layout_height="match_parent"
+                     android:id="@+id/ce0"
+                     >
             </ListView>
         </RelativeLayout>
     </RelativeLayout>
@@ -31,8 +32,9 @@
                         android:layout_height="match_parent"
                         android:id="@+id/cl1">
             <StackView android:layout_width="match_parent"
-                      android:layout_height="match_parent"
-                      android:id="@+id/ce1">
+                     android:layout_height="match_parent"
+                     android:id="@+id/ce1"
+                     >
             </StackView>
         </RelativeLayout>
     </RelativeLayout>
