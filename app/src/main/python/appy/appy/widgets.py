@@ -1,6 +1,6 @@
 import json, functools, copy, traceback, inspect, threading, os, collections, importlib.util, sys, hashlib, struct, re
-from .utils import AttrDict, dumps, loads, cap, get_args, prepare_image_cache_dir, download_resource
-from . import java, state
+from .utils import AttrDict, dumps, loads, cap, get_args, prepare_image_cache_dir
+from . import widgets, java, state
 
 def gen_id():
     id = 0
@@ -427,19 +427,6 @@ class ChildrenList(elist):
 
 
 widget_dims    = WidgetAttribute()
-AnalogClock    = lambda *args, **kwargs: Element.create('AnalogClock',    *args, **kwargs)
-Button         = lambda *args, **kwargs: Element.create('Button',         *args, **kwargs)
-Chronometer    = lambda *args, **kwargs: Element.create('Chronometer',    *args, **kwargs)
-ImageButton    = lambda *args, **kwargs: Element.create('ImageButton',    *args, **kwargs)
-ImageView      = lambda *args, **kwargs: Element.create('ImageView',      *args, **kwargs)
-ProgressBar    = lambda *args, **kwargs: Element.create('ProgressBar',    *args, **kwargs)
-TextView       = lambda *args, **kwargs: Element.create('TextView',       *args, **kwargs)
-RelativeLayout = lambda *args, **kwargs: Element.create('RelativeLayout', *args, **kwargs)
-
-ListView           = lambda *args, **kwargs: Element.create('ListView',           *args, **kwargs)
-GridView           = lambda *args, **kwargs: Element.create('GridView',           *args, **kwargs)
-StackView          = lambda *args, **kwargs: Element.create('StackView',          *args, **kwargs)
-AdapterViewFlipper = lambda *args, **kwargs: Element.create('AdapterViewFlipper', *args, **kwargs)
 
 available_widgets = {}
 
@@ -450,19 +437,6 @@ def __set_importing_module(path):
 
 def __clear_importing_module():
     __importing_module.path = None
-
-def register_widget(name, on_create, on_update=None):
-    path = getattr(__importing_module, 'path', None)
-    if path is None:
-        raise ValueError('register_widget can only be called on import')
-
-    if name in available_widgets and available_widgets[name]['pythonfile'] != path:
-        raise ValueError(f'name {name} exists')
-
-    dumps(on_create)
-    dumps(on_update)
-
-    available_widgets[name] = dict(pythonfile=path, create=on_create, update=on_update)
 
 def module_name(path):
     return f'{os.path.splitext(os.path.basename(path))[0]}_{int(hashlib.sha1(path.encode()).hexdigest(), 16) % (10 ** 8)}'
@@ -493,135 +467,6 @@ def clear_module(path):
     available_widgets = {k:v for k,v in available_widgets.items() if v['pythonfile'] != path}
     sys.modules.pop(module_name(path), None)
 
-class Widget:
-    def __init__(self, widget_id, widget_name):
-        self.widget_id = widget_id
-        if widget_name is not None:
-            self.name = widget_name
-            self.state = state.State(widget_name, widget_id)
-        self.widget_dims = widget_dims
-
-    def __getattr__(self, item):
-        return getattr(self.widget_dims, item)
-
-    def locals(self, *attrs):
-        self.state.locals(*attrs)
-
-    def nonlocals(self, *attrs):
-        self.state.nonlocals(*attrs)
-
-    def globals(self, *attrs):
-        self.state.globals(*attrs)
-
-    def local_token(self, token):
-        return self.token(token, self.locals, self.clean_local)
-
-    def nonlocal_token(self, token):
-        return self.token(token, self.widget, self.clean_nonlocal)
-
-    def global_token(self, token):
-        return self.token(token, self.globals, self.wipe_global)
-
-    def token(self, token, scope, clean):
-        scope('__token__')
-        existing_token = getattr(self.state, '__token__', None)
-        if existing_token != token:
-            print(f'{existing_token} != {token} cleaning {scope.__name__}')
-            clean()
-            self.state.__token__ = token
-            return True
-        return False
-
-    def clean_local(self):
-        state.clean_local_state(self.widget_id)
-
-    def clean_nonlocal(self):
-        state.clean_nonlocal_state(self.name)
-
-    def wipe_global(self):
-        state.wipe_state()
-
-    def set_absolute_timer(self, seconds, f, **captures):
-        return self.set_timer(seconds, java.clazz.com.appy.Constants().TIMER_ABSOLUTE, f, captures)
-
-    def set_timeout(self, seconds, f, **captures):
-        return self.set_timer(seconds, java.clazz.com.appy.Constants().TIMER_RELATIVE, f, captures)
-
-    def set_interval(self, seconds, f, **captures):
-        return self.set_timer(seconds, java.clazz.com.appy.Constants().TIMER_REPEATING, f, captures)
-
-    def set_timer(self, seconds, t, f, captures):
-        return java_widget_manager.setTimer(int(seconds * 1000), t, self.widget_id, dumps((f, captures)))
-
-    def cancel_timer(self, timer_id):
-        return java_widget_manager.cancelTimer(timer_id)
-
-    def invalidate(self):
-        java_widget_manager.update(self.widget_id)
-
-    def set_loading(self):
-        java_widget_manager.setLoadingWidget(self.widget_id)
-
-    def cancel_all_timers(self):
-        return java_widget_manager.cancelWidgetTimers(self.widget_id)
-
-    def post(self, f, **captures):
-        java_widget_manager.setPost(self.widget_id, dumps((f, captures)))
-
-    def file_uri(self, path):
-        return java_widget_manager.getUriForPath(path)
-
-    def size(self):
-        size_arr = java_widget_manager.getWidgetDimensions(self.widget_id)
-        return int(size_arr[0]), int(size_arr[1])
-
-    def java_context(self):
-        return java_widget_manager
-
-    def request_permissions(self, *permissions, timeout=None):
-        return self._request_permissions(True, *permissions, timeout=timeout)
-
-    def has_permissions(self, *permissions):
-        return self._request_permissions(False, *permissions)
-
-    def _request_permissions(self, request, *permissions, timeout=None):
-        perm_map = {getattr(java.clazz.android.Manifest.permission(), permission) : permission for permission in permissions}
-        result = java_widget_manager.requestPermissions(java.new.java.lang.String[()](perm_map.keys()), request, timeout if timeout is not None else -1)
-        if result is None or result == java.Null:
-            raise RuntimeError('timeout')
-        perms, states = list(result.first), list(result.second)
-        granted = [perm_map[perm] for i, perm in enumerate(perms) if states[i] == java.clazz.android.content.pm.PackageManager().PERMISSION_GRANTED]
-        denied  = [perm_map[perm] for i, perm in enumerate(perms) if states[i] != java.clazz.android.content.pm.PackageManager().PERMISSION_GRANTED]
-        return granted, denied
-
-    @staticmethod
-    def invoker(element_id, views, key, **kwargs):
-        views.find_id(element_id).__event__(key, views=views, **kwargs)
-
-    @staticmethod
-    def click_invoker(element_id, views, **kwargs):
-        view = views.find_id(element_id)
-        view.__event__('click', views=views, view=view, **kwargs)
-
-    @staticmethod
-    def itemclick_invoker(element_id, views, **kwargs):
-        view = views.find_id(element_id)
-        view.__event__('itemclick', views=views, view=view, **kwargs)
-
-    def invoke_click(self, element):
-        self.post(self.click_invoker, element_id=element.id)
-
-    def invoke_item_click(self, element, position):
-        self.post(self.itemclick_invoker, element_id=element.id, position=position)
-
-    @classmethod
-    def color(cls, r=0, g=0, b=0, a=255):
-        return ((a & 0xff) << 24) + \
-               ((r & 0xff) << 16) + \
-               ((g & 0xff) << 8) + \
-               ((b & 0xff))
-
-
 def create_manager_state():
     manager_state = state.State(None, -1) #special own scope
     manager_state.locals('__token__')
@@ -640,7 +485,7 @@ def create_widget(widget_id):
     name = None
     if manager_state.chosen[widget_id] is not None:
         name = manager_state.chosen[widget_id].name
-    widget = Widget(widget_id, name)
+    widget = widgets.Widget(widget_id, name)
     return widget, manager_state
 
 def choose_widget(widget, name):
@@ -650,9 +495,6 @@ def choose_widget(widget, name):
     widget.set_loading()
     widget.invalidate()
 
-def restart():
-    restart_app()
-
 def widget_manager_create(widget, manager_state):
     print('widget_manager_create')
     widget.cancel_all_timers()
@@ -660,16 +502,16 @@ def widget_manager_create(widget, manager_state):
     #clear state
     manager_state.chosen[widget.widget_id] = None
 
-    restart_btn = ImageButton(style='success_btn_oval_nopad', click=restart, colorFilter=0xffffffff, width=140, height=140, right=0, bottom=0, imageResource=java.clazz.android.R.drawable().ic_lock_power_off)
-    restart_btn.backgroundTint = Widget.color(r=0, g=0, b=0, a=128)
+    restart_btn = widgets.ImageButton(style='success_btn_oval_nopad', click=widgets.restart, colorFilter=0xffffffff, width=140, height=140, right=0, bottom=0, imageResource=java.clazz.android.R.drawable().ic_lock_power_off)
+    restart_btn.backgroundTint = widgets.color(r=0, g=0, b=0, a=128)
 
     #calling java releases the gil and available_widgets might be changed while iterating it
     names = [name for name in available_widgets]
 
     if not available_widgets:
-        lst = TextView(text='No widgets')
+        lst = widgets.TextView(text='No widgets')
     else:
-        lst = ListView(children=[TextView(text=name, textViewTextSize=(java.clazz.android.util.TypedValue().COMPLEX_UNIT_SP, 30),
+        lst = widgets.ListView(children=[widgets.TextView(text=name, textViewTextSize=(java.clazz.android.util.TypedValue().COMPLEX_UNIT_SP, 30),
                                                                 click=(choose_widget, dict(name=name))) for name in names])
     return [lst, restart_btn]
 
@@ -715,7 +557,7 @@ def refresh_managers():
     manager_state = create_manager_state()
     for widget_id, chosen in manager_state.chosen.items():
         if chosen is None:
-            Widget(widget_id, None).invalidate()
+            widgets.Widget(widget_id, None).invalidate()
 
 class Handler:
     def __init__(self):
@@ -823,7 +665,19 @@ def init():
     print('init')
     prepare_image_cache_dir()
     context.registerOnWidgetUpdate(Handler().iface)
+    
+def java_context():
+    return java_widget_manager
+    
+def register_widget(name, on_create, on_update=None):
+    path = getattr(__importing_module, 'path', None)
+    if path is None:
+        raise ValueError('register_widget can only be called on import')
 
-def restart_app():
-    print('restarting')
-    java_widget_manager.restart()
+    if name in available_widgets and available_widgets[name]['pythonfile'] != path:
+        raise ValueError(f'name {name} exists')
+
+    dumps(on_create)
+    dumps(on_update)
+
+    available_widgets[name] = dict(pythonfile=path, create=on_create, update=on_update)
