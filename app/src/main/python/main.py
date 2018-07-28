@@ -12,7 +12,10 @@ def tar_version(path):
         info = tar.extractfile(info_member).read()
     return email.message_from_bytes(info)['Version']
 
-def execute(command):
+INSTALL_PHRASES = [b'Successfully installed']
+UNINSTALL_PHRASES = [b'Successfully uninstalled', b'as it is not installed']
+
+def execute(command, kill_phrases=None):
     process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
     killed = False
@@ -25,7 +28,7 @@ def execute(command):
         sys.stdout.flush()
 
         #XXX until next version of pip
-        if b'Successfully installed' in nextline or b'Successfully uninstalled' in nextline or b'as it is not installed' in nextline:
+        if kill_phrases is not None and any(phrase in nextline for phrase in kill_phrases):
             time.sleep(2)
             process.kill()
             killed = True
@@ -55,7 +58,7 @@ try:
         import requests
     except ImportError:
         print('installing requests setuptools wheel')
-        execute([exe, '-m', 'pip', 'install', '--upgrade', 'pip', 'setuptools', 'wheel', 'requests'])
+        execute([exe, '-m', 'pip', 'install', '--upgrade', 'pip', 'setuptools', 'wheel', 'requests'], kill_phrases=INSTALL_PHRASES)
         import requests
 except Exception:
     pass #optional packages
@@ -73,6 +76,6 @@ try:
 except Exception as e:
     print('error importing appy: ', traceback.format_exc())
     print('installing appy')
-    execute([exe, '-m', 'pip', 'uninstall', 'appy' ,'--yes'])
-    execute([exe, '-m', 'pip', 'install', os.path.join(os.environ['TMP'], 'appy.tar.gz')])
+    execute([exe, '-m', 'pip', 'uninstall', 'appy' ,'--yes'], kill_phrases=UNINSTALL_PHRASES)
+    execute([exe, '-m', 'pip', 'install', os.path.join(os.environ['TMP'], 'appy.tar.gz')], kill_phrases=INSTALL_PHRASES)
     import appy
