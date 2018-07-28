@@ -1,4 +1,5 @@
-from . import utils, bridge, java, widgets, state
+from . import utils, bridge, java, state, widgets
+from . import widget_manager #must be after widgets
 from .__version__ import __version__
 
-widgets.init()
+widget_manager.init()

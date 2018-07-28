@@ -1,23 +1,23 @@
 import datetime
-from .widgets import ListView, TextView, Button, ImageButton, RelativeLayout, call_general_function, register_widget, elist
-from .java import clazz
+from .widgets import ListView, TextView, Button, ImageButton, RelativeLayout
+from . import java, widgets
 
 ##############refresh button##############################
 def reset_refresh_buttons_if_needed(widget, views):
     for e in views.all():
         if '__refreshing' in e.tag and e.tag.__refreshing:
-            e.visibility = clazz.android.view.View().VISIBLE
+            e.visibility = java.clazz.android.view.View().VISIBLE
             e.tag.__refreshing = False
 
 def refresh_button_action(widget, views, on_click, id):
-    call_general_function(on_click, widget=widget, views=views)
+    widgets.call_general_function(on_click, widget=widget, views=views)
     btn = None
     try:
         btn = views.find_id(id)
     except KeyError:
         pass
     if btn is not None:
-        btn.visibility = clazz.android.view.View().VISIBLE
+        btn.visibility = java.clazz.android.view.View().VISIBLE
     btn.tag.__refreshing = False
 
 def refresh_button_click(widget, views, on_click, id, timer_id=None):
@@ -30,11 +30,11 @@ def refresh_button_click(widget, views, on_click, id, timer_id=None):
             widget.cancel_timer(timer_id)
     btn.tag.__refreshing = True
     if btn is not None:
-        btn.visibility = clazz.android.view.View().INVISIBLE
+        btn.visibility = java.clazz.android.view.View().INVISIBLE
     widget.post(refresh_button_action, on_click=on_click, id=id)
 
 def refresh_button(on_click, name=None, initial_refresh=None, widget=None, timeout=None, interval=None):
-    btn = ImageButton(style='dark_btn_oval_nopad', colorFilter=0xffffffff, width=140, height=140, left=0, bottom=0, imageResource=clazz.android.R.drawable().ic_popup_sync)
+    btn = ImageButton(style='dark_btn_oval_nopad', colorFilter=0xffffffff, width=140, height=140, left=0, bottom=0, imageResource=java.clazz.android.R.drawable().ic_popup_sync)
     btn.click = (refresh_button_click, dict(on_click=on_click, id=btn.id))
     if name is not None:
         btn.name = name
@@ -55,16 +55,16 @@ def refresh_button(on_click, name=None, initial_refresh=None, widget=None, timeo
 ##################background####################################
 def background(widget, name=None, color=None, drawable=None):
     if isinstance(color, dict):
-        color = widget.color(**color)
+        color = widgets.color(**color)
     elif isinstance(color, (list, tuple)):
-        color = widget.color(*color)
+        color = widgets.color(*color)
     elif isinstance(color, int):
         color = color
     else:
-        color = widget.color(r=0, g=0, b=0, a=100)
+        color = widgets.color(r=0, g=0, b=0, a=100)
 
     if drawable is None:
-        drawable = clazz.com.appy.R.drawable().rounded_rect
+        drawable = java.clazz.com.appy.R.drawable().rounded_rect
 
     bg = RelativeLayout(width=widget.width, height=widget.height, backgroundResource=drawable)
     bg.backgroundTint = color | 0xff000000
@@ -75,15 +75,15 @@ def background(widget, name=None, color=None, drawable=None):
 
 ##############list template###############################
 def call_list_adapter(widget, adapter, value, **kwargs):
-    view = elist([TextView(textViewTextSize=(clazz.android.util.TypedValue().COMPLEX_UNIT_SP, 15))])
+    view = widgets.elist([TextView(textViewTextSize=(java.clazz.android.util.TypedValue().COMPLEX_UNIT_SP, 15))])
     if adapter is not None:
-        call_general_function(adapter, widget=widget, view=view, value=value, **kwargs)
+        widgets.call_general_function(adapter, widget=widget, view=view, value=value, **kwargs)
     else:
         view[0].text = str(value)
     return view
 
 def updating_list_refresh_action(widget, views, on_refresh, adapter, update_hook):
-    values = call_general_function(on_refresh, widget=widget, views=views)
+    values = widgets.call_general_function(on_refresh, widget=widget, views=views)
     views['list'].children = None if not values else [call_list_adapter(widget, adapter, value=v, index=i) for i, v in enumerate(values)]
     
     try:
@@ -92,13 +92,13 @@ def updating_list_refresh_action(widget, views, on_refresh, adapter, update_hook
         pass
         
     if update_hook is not None:
-        call_general_function(update_hook, widget=widget, views=views)
+        widgets.call_general_function(update_hook, widget=widget, views=views)
 
 def updating_list_create(widget, initial_values, on_refresh, background_param, adapter, initial_refresh, timeout, interval, last_update, create_hook, update_hook):
     btn = refresh_button((updating_list_refresh_action, dict(on_refresh=on_refresh, adapter=adapter, update_hook=update_hook)), initial_refresh=initial_refresh, widget=widget, timeout=timeout, interval=interval, name='refresh_button')
     lst = ListView(name='list', children=None if not initial_values else [call_list_adapter(widget, adapter, value=v, index=i) for i, v in enumerate(initial_values)])
     
-    views = elist()
+    views = widgets.elist()
     if background_param is not None and background_param is not False:
         views.append(background(widget, color=None if background_param is True else background_param))
 
@@ -108,22 +108,22 @@ def updating_list_create(widget, initial_values, on_refresh, background_param, a
     views.append(btn)
     
     if create_hook is not None:
-        call_general_function(create_hook, widget=widget, views=views)
+        widgets.call_general_function(create_hook, widget=widget, views=views)
     
     return views
 
 def updating_list(name, initial_values=None, on_refresh=None, background=None, adapter=None, initial_refresh=None, timeout=None, interval=None, last_update=None, create_hook=None, update_hook=None):
-    register_widget(name, (updating_list_create, dict(initial_values=initial_values, on_refresh=on_refresh, background_param=background, adapter=adapter, initial_refresh=initial_refresh, timeout=timeout, interval=interval, last_update=last_update, create_hook=create_hook, update_hook=update_hook)), reset_refresh_buttons_if_needed)
+    widgets.register_widget(name, (updating_list_create, dict(initial_values=initial_values, on_refresh=on_refresh, background_param=background, adapter=adapter, initial_refresh=initial_refresh, timeout=timeout, interval=interval, last_update=last_update, create_hook=create_hook, update_hook=update_hook)), reset_refresh_buttons_if_needed)
 
 ##############text template############################
 def call_text_adapter(widget, adapter, value, view, **kwargs):
     if adapter is not None:
-        call_general_function(adapter, widget=widget, view=view, value=value, **kwargs)
+        widgets.call_general_function(adapter, widget=widget, view=view, value=value, **kwargs)
     else:
         view.text = str(value)
 
 def updating_text_refresh_action(widget, views, on_refresh, adapter, update_hook):
-    value = call_general_function(on_refresh, widget=widget, views=views)
+    value = widgets.call_general_function(on_refresh, widget=widget, views=views)
     call_text_adapter(widget, adapter, value=value, view=views['content'])
     
     try:
@@ -132,10 +132,10 @@ def updating_text_refresh_action(widget, views, on_refresh, adapter, update_hook
         pass
         
     if update_hook is not None:
-        call_general_function(update_hook, widget=widget, views=views)
+        widgets.call_general_function(update_hook, widget=widget, views=views)
 
 def updating_text_create(widget, initial_value, on_refresh, background_param, adapter, initial_refresh, timeout, interval, last_update, create_hook, update_hook):
-    text = TextView(name='content', text='', textViewTextSize=(clazz.android.util.TypedValue().COMPLEX_UNIT_SP, 30))
+    text = TextView(name='content', text='', textViewTextSize=(java.clazz.android.util.TypedValue().COMPLEX_UNIT_SP, 30))
     text.hcenter = widget.hcenter
     text.vcenter  = widget.vcenter
     if initial_value is not None:
@@ -143,7 +143,7 @@ def updating_text_create(widget, initial_value, on_refresh, background_param, ad
 
     btn = refresh_button((updating_text_refresh_action, dict(on_refresh=on_refresh, adapter=adapter, update_hook=update_hook)), initial_refresh=initial_refresh, widget=widget, timeout=timeout, interval=interval, name='refresh_button')
 
-    views = elist()
+    views = widgets.elist()
     if background_param is not None and background_param is not False:
         views.append(background(widget, color=None if background_param is True else background_param))
 
@@ -153,12 +153,12 @@ def updating_text_create(widget, initial_value, on_refresh, background_param, ad
     views.append(btn)
     
     if create_hook is not None:
-        call_general_function(create_hook, widget=widget, views=views)
+        widgets.call_general_function(create_hook, widget=widget, views=views)
         
     return views
 
 def updating_text(name, initial_value=None, on_refresh=None, background=None, adapter=None, initial_refresh=None, timeout=None, interval=None, last_update=None, create_hook=None, update_hook=None):
-    register_widget(name, (updating_text_create, dict(initial_value=initial_value, on_refresh=on_refresh, background_param=background, adapter=adapter, initial_refresh=initial_refresh, timeout=timeout, interval=interval, last_update=last_update, create_hook=create_hook, update_hook=update_hook)), reset_refresh_buttons_if_needed)
+    widgets.register_widget(name, (updating_text_create, dict(initial_value=initial_value, on_refresh=on_refresh, background_param=background, adapter=adapter, initial_refresh=initial_refresh, timeout=timeout, interval=interval, last_update=last_update, create_hook=create_hook, update_hook=update_hook)), reset_refresh_buttons_if_needed)
 
 #################keyboard###############################
 def key_backspace_click(output):
@@ -167,7 +167,7 @@ def key_backspace_click(output):
 def key_click(widget, views, output_id, key=None, handler=None):
     output = views.find_id(output_id)
     if handler is not None:
-        call_general_function(handler, widget=widget, output=output)
+        widgets.call_general_function(handler, widget=widget, output=output)
     else:
         output.text = output.text + key
 
@@ -194,7 +194,7 @@ def keyboard(widget, layout=None):
 
     layout_height = resolved_layout[-1][3] + resolved_layout[-1][2]
     btns = []
-    edit = TextView(name='output', text='', textViewTextSize=(clazz.android.util.TypedValue().COMPLEX_UNIT_SP, 30))
+    edit = TextView(name='output', text='', textViewTextSize=(java.clazz.android.util.TypedValue().COMPLEX_UNIT_SP, 30))
     for resolved_line in resolved_layout:
         btn_line = []
         line, line_width, line_height, top = resolved_line
