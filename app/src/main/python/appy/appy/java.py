@@ -146,6 +146,10 @@ class Null(Object):
         raise ValueError('Object is null')
     def __invert__(self):
         return self
+    def __repr__(self):
+        return 'Null'
+    def __str__(self):
+        return repr(self)
 
 class Class(Object):
     def __init__(self, *args, **kwargs):

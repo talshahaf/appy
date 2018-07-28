@@ -315,7 +315,6 @@ class Element:
             if hasattr(self, 'drawableParameters'):
                 prev_color, prev_mode = self.drawableParameters[2], self.drawableParameters[3]
             self.drawableParameters = (key == 'backgroundAlpha', value & 0xff, prev_color, prev_mode, -1)
-        #TODO showNext, showPrevious
         else:
             param_setter, method = get_param_setter(self.d.type, key)
             if param_setter is not None:
@@ -511,7 +510,7 @@ def widget_manager_create(widget, manager_state):
     if not available_widgets:
         lst = widgets.TextView(text='No widgets')
     else:
-        lst = widgets.ListView(children=[widgets.TextView(text=name, textViewTextSize=(java.clazz.android.util.TypedValue().COMPLEX_UNIT_SP, 30),
+        lst = widgets.ListView(children=[widgets.TextView(text=name, textSize=30,
                                                                 click=(choose_widget, dict(name=name))) for name in names])
     return [lst, restart_btn]
 

@@ -122,7 +122,7 @@ def has_permissions(*permissions):
 def _request_permissions(request, *permissions, timeout=None):
     perm_map = {getattr(java.clazz.android.Manifest.permission(), permission) : permission for permission in permissions}
     result = widget_manager.java_context().requestPermissions(java.new.java.lang.String[()](perm_map.keys()), request, timeout if timeout is not None else -1)
-    if result is None or result == java.Null:
+    if result == java.Null:
         raise RuntimeError('timeout')
     perms, states = list(result.first), list(result.second)
     granted = [perm_map[perm] for i, perm in enumerate(perms) if states[i] == java.clazz.android.content.pm.PackageManager().PERMISSION_GRANTED]
