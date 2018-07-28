@@ -75,7 +75,7 @@ def background(widget, name=None, color=None, drawable=None):
 
 ##############list template###############################
 def call_list_adapter(widget, adapter, value, **kwargs):
-    view = widgets.elist([TextView(textViewTextSize=(java.clazz.android.util.TypedValue().COMPLEX_UNIT_SP, 15))])
+    view = widgets.elist([TextView(textSize=15)])
     if adapter is not None:
         widgets.call_general_function(adapter, widget=widget, view=view, value=value, **kwargs)
     else:
@@ -135,7 +135,7 @@ def updating_text_refresh_action(widget, views, on_refresh, adapter, update_hook
         widgets.call_general_function(update_hook, widget=widget, views=views)
 
 def updating_text_create(widget, initial_value, on_refresh, background_param, adapter, initial_refresh, timeout, interval, last_update, create_hook, update_hook):
-    text = TextView(name='content', text='', textViewTextSize=(java.clazz.android.util.TypedValue().COMPLEX_UNIT_SP, 30))
+    text = TextView(name='content', text='', textSize=30)
     text.hcenter = widget.hcenter
     text.vcenter  = widget.vcenter
     if initial_value is not None:
@@ -194,7 +194,7 @@ def keyboard(widget, layout=None):
 
     layout_height = resolved_layout[-1][3] + resolved_layout[-1][2]
     btns = []
-    edit = TextView(name='output', text='', textViewTextSize=(java.clazz.android.util.TypedValue().COMPLEX_UNIT_SP, 30))
+    edit = TextView(name='output', text='', textSize=30)
     for resolved_line in resolved_layout:
         btn_line = []
         line, line_width, line_height, top = resolved_line
