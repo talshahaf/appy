@@ -391,7 +391,7 @@ class elist(list):
 #children is list of lists
 class ChildrenList(elist):
     def adapt(self, item):
-        return item if isinstance(item, (list, tuple)) else [item]
+        return elist(item if isinstance(item, (list, tuple)) else [item])
 
     def set(self, other):
         i = -1
@@ -578,6 +578,22 @@ class Widget:
     def java_context(self):
         return java_widget_manager
 
+    def request_permissions(self, *permissions, timeout=None):
+        return self._request_permissions(True, *permissions, timeout=timeout)
+
+    def has_permissions(self, *permissions):
+        return self._request_permissions(False, *permissions)
+
+    def _request_permissions(self, request, *permissions, timeout=None):
+        perm_map = {getattr(java.clazz.android.Manifest.permission(), permission) : permission for permission in permissions}
+        result = java_widget_manager.requestPermissions(java.new.java.lang.String[()](perm_map.keys()), request, timeout if timeout is not None else -1)
+        if result is None or result == java.Null:
+            raise RuntimeError('timeout')
+        perms, states = list(result.first), list(result.second)
+        granted = [perm_map[perm] for i, perm in enumerate(perms) if states[i] == java.clazz.android.content.pm.PackageManager().PERMISSION_GRANTED]
+        denied  = [perm_map[perm] for i, perm in enumerate(perms) if states[i] != java.clazz.android.content.pm.PackageManager().PERMISSION_GRANTED]
+        return granted, denied
+
     @staticmethod
     def invoker(element_id, views, key, **kwargs):
         views.find_id(element_id).__event__(key, views=views, **kwargs)
@@ -604,14 +620,6 @@ class Widget:
                ((r & 0xff) << 16) + \
                ((g & 0xff) << 8) + \
                ((b & 0xff))
-
-    UNIT_PX = int(java.clazz.android.util.TypedValue().COMPLEX_UNIT_PX)
-    UNIT_DP = int(java.clazz.android.util.TypedValue().COMPLEX_UNIT_DIP)
-    UNIT_SP = int(java.clazz.android.util.TypedValue().COMPLEX_UNIT_SP)
-
-    @classmethod
-    def convert_unit(cls, value, fro, to):
-        return float(java_widget_manager.convertUnit(value, fro, to))
 
 
 def create_manager_state():
@@ -745,6 +753,7 @@ class Handler:
     def onDelete(self, widget_id):
         print(f'python got onDelete')
         state.clean_local_state(widget_id)
+        create_manager_state().chosen.pop(widget_id, None)
         last_func_for_widget_id.pop(widget_id, None)
 
     @java.interface

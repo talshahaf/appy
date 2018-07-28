@@ -24,6 +24,7 @@ import java.util.Random;
 import java.util.Set;
 import java.util.zip.GZIPInputStream;
 
+import android.Manifest;
 import android.app.AlarmManager;
 import android.app.PendingIntent;
 import android.appwidget.AppWidgetManager;
@@ -31,12 +32,16 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Binder;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
+import android.os.Looper;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.preference.PreferenceManager;
 import android.system.ErrnoException;
 import android.system.Os;
@@ -1491,11 +1496,11 @@ public class Widget extends RemoteViewsService
     {
         synchronized (lock)
         {
-            if (activeTimers.isEmpty())
+            long newId = 1;
+            if (!activeTimers.isEmpty())
             {
-                return 1;
+                newId = Collections.max(activeTimers.keySet()) + 1;
             }
-            long newId = Collections.max(activeTimers.keySet()) + 1;
             activeTimers.put(newId, null); //save room
             return newId;
         }
@@ -1947,6 +1952,104 @@ public class Widget extends RemoteViewsService
     public Uri getUriForPath(String path)
     {
         return com.appy.FileProvider.getUriForFile(this, "com.appy.fileprovider", new File(path));
+    }
+
+    public int generateRequestCode()
+    {
+        synchronized (notifier)
+        {
+            int newId = 1;
+            if (!activeRequests.isEmpty())
+            {
+                newId = Collections.max(activeRequests.keySet()) + 1;
+            }
+            activeRequests.put(newId, null); //save room
+            return newId;
+        }
+    }
+    HashMap<Integer, Pair<String[], int[]>> activeRequests = new HashMap<>();
+    final Object notifier = new Object();
+
+    public static Pair<int[], Boolean> getPermissionState(Context context, String[] permissions)
+    {
+        int[] granted = new int[permissions.length];
+        boolean hasDenied = false;
+        for(int i = 0; i < permissions.length; i++)
+        {
+            granted[i] = ContextCompat.checkSelfPermission(context, permissions[i]);
+            if (granted[i] != PackageManager.PERMISSION_GRANTED)
+            {
+                hasDenied = true;
+                break;
+            }
+        }
+        return new Pair<>(granted, !hasDenied);
+    }
+
+    public Pair<String[], int[]> requestPermissions(String[] permissions, boolean request, int timeoutMilli)
+    {
+        Pair<int[], Boolean> state = getPermissionState(this, permissions);
+        if(state.second || !request) //if all was granted or we should not request any, return the current state
+        {
+            return new Pair<>(permissions, state.first);
+        }
+
+        if(Looper.myLooper() != null)
+        {
+            throw new IllegalStateException("requestPermissions must be called on a Task thread");
+        }
+
+        int requestCode = generateRequestCode();
+        Intent intent = new Intent(this, PermissionActivity.class);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_MULTIPLE_TASK);
+        intent.putExtra(PermissionActivity.EXTRA_REQUEST_CODE, requestCode);
+        intent.putExtra(PermissionActivity.EXTRA_PERMISSIONS, permissions);
+        startActivity(intent);
+
+        Pair<String[], int[]> result;
+        synchronized (notifier)
+        {
+            boolean hasTimeout = timeoutMilli >= 0;
+            long end = System.currentTimeMillis() + timeoutMilli;
+            while (activeRequests.get(requestCode) == null)
+            {
+                try
+                {
+                    if(hasTimeout)
+                    {
+                        long left = end - System.currentTimeMillis();
+                        if (left <= 0)
+                        {
+                            break;
+                        }
+
+                        notifier.wait(left);
+                    }
+                    else
+                    {
+                        notifier.wait();
+                    }
+                }
+                catch (InterruptedException e)
+                {
+
+                }
+            }
+            result = activeRequests.remove(requestCode);
+        }
+        return result;
+    }
+
+    public void reportRequestPermission(int requestCode, String[] permission, int[] granted)
+    {
+        synchronized (notifier)
+        {
+            if(activeRequests.containsKey(requestCode))
+            {
+                activeRequests.put(requestCode, new Pair<>(permission, granted));
+                notifier.notify();
+            }
+        }
     }
 
     public void setWidget(final int androidWidgetId, final int widgetId, final ArrayList<DynamicView> views, final boolean errorOnFailure)
@@ -2659,7 +2762,6 @@ public class Widget extends RemoteViewsService
 
         if(firstStart)
         {
-
             int[] ids = requestAndroidWidgets();
             if(ids != null)
             {
