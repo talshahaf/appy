@@ -42,6 +42,9 @@ public class PipFragment extends MyFragment implements RunnerListener
         output = layout.findViewById(R.id.output);
         scroller = layout.findViewById(R.id.scroller);
 
+        command.setText("");
+        command.append("pip install ");
+
         handler = new Handler();
 
         cwd = new File(System.getenv("PYTHONHOME"), "bin");

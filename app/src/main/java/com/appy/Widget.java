@@ -2245,17 +2245,27 @@ public class Widget extends RemoteViewsService
             String pythonHome = new File(getFilesDir(), "python").getAbsolutePath();
             String pythonLib = new File(pythonHome, "/lib/libpython3.7m.so").getAbsolutePath(); //must be without
             String cacheDir = getCacheDir().getAbsolutePath();
+            String exampleDir = new File(getFilesDir(), "examples").getAbsolutePath();
             try
             {
                 if(getPythonUnpacked() != PYTHON_VERSION)
                 {
                     deleteDir(new File(pythonHome));
-                    unpackPython(getAssets().open("python.targz"), pythonHome);
+                    Log.d("APPY", "unpacking python");
+                    untar(getAssets().open("python.targz"), pythonHome);
+                    Log.d("APPY", "done unpacking python");
                     setPythonUnpacked(PYTHON_VERSION);
                 }
                 else
                 {
                     Log.d("APPY", "python already unpacked");
+                }
+                if(!new File(exampleDir).exists())
+                {
+                    Log.d("APPY", "unpacking examples");
+                    new File(exampleDir).mkdir();
+                    untar(getAssets().open("examples.targz"), exampleDir);
+                    Log.d("APPY", "done unpacking examples");
                 }
                 copyAsset(getAssets().open("main.py"), new File(cacheDir, "main.py"));
                 copyAsset(getAssets().open("logcat.py"), new File(cacheDir, "logcat.py"));
@@ -2962,20 +2972,6 @@ public class Widget extends RemoteViewsService
         out.close();
     }
 
-    public static void unpackPython(InputStream pythontar, String pythonHome)
-    {
-        Log.d("APPY", "unpacking python");
-        try
-        {
-            untar(pythontar, pythonHome);
-        }
-        catch(IOException e){
-            e.printStackTrace();
-            Log.e("APPY", "tar exception: "+e);
-        }
-        Log.d("APPY", "done unpacking python");
-    }
-
     public static int READ_PERM = 0444;
     public static int WRITE_PERM = 0222;
     public static int EXEC_PERM = 0111;
@@ -3050,24 +3046,31 @@ public class Widget extends RemoteViewsService
         file.setLastModified(entry.getModTime().getTime());
     }
 
-    public static void untar(InputStream tar, String dest) throws IOException
+    public static void untar(InputStream tar, String dest)
     {
-        // Create a TarInputStream
-        TarInputStream tis = new TarInputStream(new GZIPInputStream(new BufferedInputStream(tar)));
-        TarEntry entry;
+        try
+        {
+            // Create a TarInputStream
+            TarInputStream tis = new TarInputStream(new GZIPInputStream(new BufferedInputStream(tar)));
+            TarEntry entry;
 
-        while((entry = tis.getNextEntry()) != null) {
-            try
-            {
-                process(tis, entry, dest);
+            while((entry = tis.getNextEntry()) != null) {
+                try
+                {
+                    process(tis, entry, dest);
+                }
+                catch(IOException e)
+                {
+                    Log.w("APPY", "exception in tar file: ", e);
+                }
             }
-            catch(IOException e)
-            {
-                Log.w("APPY", "exception in tar file: ", e);
-            }
+
+            tis.close();
         }
-
-        tis.close();
+        catch(IOException e) {
+            e.printStackTrace();
+            Log.e("APPY", "tar exception: "+e);
+        }
     }
 
     public static String getStacktrace(Throwable e)

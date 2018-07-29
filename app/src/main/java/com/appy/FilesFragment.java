@@ -5,6 +5,7 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
+import android.support.design.widget.FloatingActionButton;
 import android.support.v7.app.AlertDialog;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -22,7 +23,7 @@ import java.util.ArrayList;
 
 public class FilesFragment extends MyFragment implements FileGridAdapter.ItemActionListener
 {
-    Button browse;
+    FloatingActionButton browse;
     GridView filegrid;
     FileGridAdapter adapter;
     Handler handler;

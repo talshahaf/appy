@@ -14,11 +14,14 @@ import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.text.InputType;
 import android.util.Log;
+import android.util.TypedValue;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.EditText;
+import android.widget.FrameLayout;
 import android.widget.ListAdapter;
 import android.widget.ListView;
 import android.widget.Toast;
@@ -55,6 +58,9 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
     HashMap<String, File> selected = new HashMap<>();
     boolean selectingEnabled = true;
 
+    private String[] preset_names;
+    private String[] preset_paths;
+
     @Override
     protected void onCreate(Bundle savedInstanceState)
     {
@@ -64,6 +70,9 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
         list = findViewById(R.id.filelist);
         toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
+
+        preset_names = new String[]{"app files dir", "app cache dir", "examples"};
+        preset_paths = new String[]{getFilesDir().getAbsolutePath(), getCacheDir().getAbsolutePath(), new File(getFilesDir(), "examples").getAbsolutePath()};
 
         // Here, thisActivity is the current activity
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED ||
@@ -392,30 +401,26 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
                 AlertDialog.Builder builder = new AlertDialog.Builder(this);
                 builder.setTitle("Go to");
 
+                FrameLayout container = new FrameLayout(this);
+
                 final EditText input = new EditText(this);
                 input.setInputType(InputType.TYPE_TEXT_VARIATION_URI);
                 input.setText(currentDir());
-                builder.setView(input);
 
-                builder.setSingleChoiceItems(new CharSequence[]
-                                {"app files dir", "app cache dir"}, -1,
+                float margin = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP,30, getResources().getDisplayMetrics());
+                FrameLayout.LayoutParams params = new  FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+                params.leftMargin = (int)margin;
+                params.rightMargin = (int)margin;
+                input.setLayoutParams(params);
+                container.addView(input);
+
+                builder.setView(container);
+
+                builder.setSingleChoiceItems(preset_names, -1,
                         new DialogInterface.OnClickListener() {
                             public void onClick(DialogInterface dialog, int which) {
-                                switch(which)
-                                {
-                                    case 0:
-                                    {
-                                        userNavigate(getFilesDir().getAbsolutePath());
-                                        dialog.dismiss();
-                                        break;
-                                    }
-                                    case 1:
-                                    {
-                                        userNavigate(getCacheDir().getAbsolutePath());
-                                        dialog.dismiss();
-                                        break;
-                                    }
-                                }
+                                userNavigate(preset_paths[which]);
+                                dialog.dismiss();
                             }
                         });
 
