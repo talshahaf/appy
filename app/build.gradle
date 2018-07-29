@@ -46,8 +46,20 @@ android {
         }
     }
 
+    task pythonExamples(type: Tar, description: 'Pack the appy examples') {
+        from '/src/main/python/examples'
+        archiveName = 'examples.targz'
+        destinationDir = file('src/main/assets')
+        compression = Compression.GZIP
+    }
+
+    task pythonTask {
+        dependsOn 'pythonPackage'
+        dependsOn 'pythonExamples'
+    }
+
     tasks.withType(JavaCompile) {
-        compileTask -> compileTask.dependsOn pythonPackage
+        compileTask -> compileTask.dependsOn pythonTask
     }
 
     // Encapsulates your external native build configurations.

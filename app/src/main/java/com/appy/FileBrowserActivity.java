@@ -55,6 +55,9 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
     HashMap<String, File> selected = new HashMap<>();
     boolean selectingEnabled = true;
 
+    private String[] preset_names;
+    private String[] preset_paths;
+
     @Override
     protected void onCreate(Bundle savedInstanceState)
     {
@@ -64,6 +67,9 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
         list = findViewById(R.id.filelist);
         toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
+
+        preset_names = new String[]{"app files dir", "app cache dir", "examples"};
+        preset_paths = new String[]{getFilesDir().getAbsolutePath(), getCacheDir().getAbsolutePath(), new File(getFilesDir(), "examples").getAbsolutePath()};
 
         // Here, thisActivity is the current activity
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED ||
@@ -397,25 +403,11 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
                 input.setText(currentDir());
                 builder.setView(input);
 
-                builder.setSingleChoiceItems(new CharSequence[]
-                                {"app files dir", "app cache dir"}, -1,
+                builder.setSingleChoiceItems(preset_names, -1,
                         new DialogInterface.OnClickListener() {
                             public void onClick(DialogInterface dialog, int which) {
-                                switch(which)
-                                {
-                                    case 0:
-                                    {
-                                        userNavigate(getFilesDir().getAbsolutePath());
-                                        dialog.dismiss();
-                                        break;
-                                    }
-                                    case 1:
-                                    {
-                                        userNavigate(getCacheDir().getAbsolutePath());
-                                        dialog.dismiss();
-                                        break;
-                                    }
-                                }
+                                userNavigate(preset_paths[which]);
+                                dialog.dismiss();
                             }
                         });
 
