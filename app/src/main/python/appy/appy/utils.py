@@ -1,5 +1,16 @@
 import base64, pickle, inspect, shutil, functools, mimetypes, hashlib, os, time
 
+def timeit(f):
+    def wrapper(*args, **kwargs):
+        ts = time.time()
+        result = f(*args, **kwargs)
+        te = time.time()
+        if te - ts >= 0.005:
+            print(f'+++ {f.__name__} {te-ts:.3f} sec')
+        return result
+
+    return wrapper
+
 def cap(s):
     return s[0].upper() + s[1:]
 
@@ -18,23 +29,50 @@ def get_args(f):
     return args, kwargs, varargs is not None, varkw is not None
 
 class AttrDict(dict):
-    def __getattr__(self, item):
-        try:
-            return self.__getitem__(item)
-        except KeyError:
-            raise AttributeError()
+    def __init__(self, *args, **kwargs):
+        if len(args) == 1 and isinstance(args[0], AttrDict):
+            self.__dict__ = {k:v for k,v in args[0].items()}
+        else:
+            self.__dict__ = dict(*args, **kwargs)
 
-    def __setattr__(self, key, value):
-        try:
-            return self.__setitem__(key, value)
-        except KeyError:
-            raise AttributeError()
-
+    def __iter__(self, *args, **kwargs):
+        return self.__dict__.__iter__(*args, **kwargs)
+    def keys(self, *args, **kwargs):
+        return self.__dict__.keys(*args, **kwargs)
+    def values(self, *args, **kwargs):
+        return self.__dict__.values(*args, **kwargs)
+    def items(self, *args, **kwargs):
+        return self.__dict__.items(*args, **kwargs)
+    def __len__(self, *args, **kwargs):
+        return self.__dict__.__len__(*args, **kwargs)
+    def __str__(self, *args, **kwargs):
+        return self.__dict__.__str__(*args, **kwargs)
+    def __repr__(self, *args, **kwargs):
+        return self.__dict__.__repr__(*args, **kwargs)
+    def __getitem__(self, *args, **kwargs):
+        return self.__dict__.__getitem__(*args, **kwargs)
+    def __setitem__(self, *args, **kwargs):
+        return self.__dict__.__setitem__(*args, **kwargs)
+    def __delitem__(self, *args, **kwargs):
+        return self.__dict__.__delitem__(*args, **kwargs)
+    def __contains__(self, *args, **kwargs):
+        return self.__dict__.__contains__(*args, **kwargs)
+    def __eq__(self, *args, **kwargs):
+        return self.__dict__.__eq__(*args, **kwargs)
+    
     @classmethod
     def make(cls, d):
-        if isinstance(d, dict):
-            return AttrDict({k: cls.make(v) for k,v in d.items()})
-        elif isinstance(d, (list, tuple, set)):
+        if isinstance(d, AttrDict):
+            return d
+        elif isinstance(d, dict):
+            for k in d:
+                d[k] = cls.make(d[k])
+            return AttrDict(d)
+        elif isinstance(d, list):
+            for i in range(len(d)):
+                d[i] = cls.make(d[i])
+            return d
+        elif isinstance(d, (tuple, set)):
             return type(d)(cls.make(v) for v in d)
         else:
             return d
@@ -61,14 +99,3 @@ def download_resource(url):
             if chunk:
                 f.write(chunk)
     return filename
-    
-def timeit(f):
-    def wrapper(*args, **kw):
-        ts = time.time()
-        result = f(*args, **kw)
-        te = time.time()
-
-        print(f'{f.__name__} {te-ts:.2f} sec')
-        return result
-
-    return f

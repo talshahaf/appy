@@ -8,6 +8,12 @@ def gen_id():
         id = struct.unpack('<q', os.urandom(8))[0]
     return id
 
+def json_dumps(d):
+    #c json fucks up because we're not a regular dict, indent=* causes python to use the python implementation
+    return json.dumps(d, indent=2)
+def json_loads(s):
+    return json.loads(s)
+
 @functools.lru_cache(maxsize=128, typed=True)
 def validate_type(type):
     return java.clazz.com.appy.Constants().typeToClass.containsKey(type)
@@ -55,22 +61,31 @@ class Reference:
     def compile(self):
         return dict(id=self.id, type=self.key, factor=self.factor)
 
-class AttributeValue:
+class AttributeBase:
+    pass
+    
+class AttributeValue(AttributeBase):
     def __init__(self, *args):
+        if any(isinstance(arg, AttributeBase) for arg in args):
+            raise ValueError('AttributeValue misuse')
         self.pol = tuple(convert_unit(arg) for arg in args)
 
     def __add__(self, other):
-        if isinstance(other, AttributeValue):
+        if isinstance(other, AttributeBase):
+            if not isinstance(other, AttributeValue):
+                raise ValueError('cannot add min/max attributes')
             return AttributeValue(*self.pol, *other.pol)
         else:
             return AttributeValue(*self.pol, other)
+            
+    def __mul__(self, other):
+        if isinstance(other, AttributeBase):
+            raise ValueError('cannot multiply attributes')
+        return AttributeValue(*((Reference(e.id, e.key, e.factor * other) if isinstance(e, Reference) else e * convert_unit(other)) for e in self.pol))
 
     def __sub__(self, other):
         return self + (-other)
-
-    def __mul__(self, other):
-        return AttributeValue(*((Reference(e.id, e.key, e.factor * other) if isinstance(e, Reference) else e * convert_unit(other)) for e in self.pol))
-
+    
     def __truediv__(self, other):
         return self * (1 / other)
 
@@ -95,6 +110,22 @@ class AttributeValue:
             else:
                 amount += e
         return dict(function='IDENTITY', arguments=[dict(amount=amount, references=refs)])
+
+class AttributeFunction(AttributeBase):
+    def __init__(self, function, *attrs):
+        self.args = tuple(attr if isinstance(attr, AttributeBase) else AttributeValue(attr) for attr in attrs)
+        self.function = function
+    
+    def compile(self):
+        return dict(function=self.function, arguments=[arg.compile()['arguments'][0] for arg in self.args])
+        
+    @classmethod
+    def min(cls, *args):
+        return cls('MIN', *args)
+        
+    @classmethod
+    def max(cls, *args):
+        return cls('MAX', *args)
         
 def attribute_ileft(e):
     return e.right + e.width
@@ -165,7 +196,7 @@ def deserialize_arg(arg):
         return arg['value']
 
     #gotta go to java
-    return java.clazz.com.appy.Serializer().deserializeString(json.dumps(arg))
+    return java.clazz.com.appy.Serializer().deserializeString(json_dumps(arg))
 
 def serialize_arg(arg):
     #probably already serialized
@@ -179,7 +210,7 @@ def serialize_arg(arg):
         return AttrDict(type='primitive', value=arg)
 
     #gotta go to java
-    return json.loads(java.clazz.com.appy.Serializer().serializeToString(arg))
+    return json_loads(java.clazz.com.appy.Serializer().serializeToString(arg))
 
 
 class Element:
@@ -197,7 +228,7 @@ class Element:
             self.d.children = ChildrenList()
 
     def __getstate__(self):
-        return self.dict()
+        return self.dict(do_copy=False)
 
     def __setstate__(self, state):
         self.init(state)
@@ -276,7 +307,7 @@ class Element:
             if value is None:
                 delattr(self, key)
             else:
-                if not isinstance(value, AttributeValue):
+                if not isinstance(value, AttributeBase):
                     value = AttributeValue(value)
                 if 'attributes' not in self.d:
                     self.d.attributes = {}
@@ -334,25 +365,25 @@ class Element:
 
             arguments = [serialize_arg(arg.__raw__() if isinstance(arg, tuple(java.primitive_wraps.values())) else arg) for arg in arguments]
             self.d.methodCalls = [c for c in self.d.methodCalls if c.identifier != identifier] + [AttrDict(identifier=identifier, method=method, arguments=arguments)]
-
+            
     @classmethod
     def create(cls, type, **kwargs):
         e = cls(dict(type=type))
         [setattr(e, k, v) for k,v in kwargs.items()]
         return e
 
-    def dict(self, without_id=None):
+    def dict(self, do_copy, without_id=None):
         if 'tag' in self.d and 'tag' in self.d.tag and not isinstance(self.d.tag['tag'], str):
             self.d.tag['tag'] = dumps(self.d.tag['tag'])
-        d = {k:copy.deepcopy(v) for k,v in self.d.items() if k != 'children' and (not without_id or k != 'id')}
-        d['children'] = [[c.dict(without_id=without_id) if isinstance(c, Element) else c for c in arr] for arr in self.children]
+        d = {k: (copy.deepcopy(v) if do_copy else v) for k,v in self.d.items() if k != 'children' and (not without_id or k != 'id')}
+        d['children'] = [[c.dict(do_copy=do_copy, without_id=without_id) if isinstance(c, Element) else c for c in arr] for arr in self.children]
         return d
 
     def duplicate(self):
-        return Element(self.dict(without_id=True))
+        return Element(self.dict(do_copy=True, without_id=True))
 
     def __repr__(self):
-        return repr(self.dict())
+        return repr(self.dict(do_copy=False))
 
 class elist(list):
     @classmethod
@@ -462,7 +493,11 @@ def clear_module(path):
     global available_widgets
     mod = sys.modules.get(module_name(path))
     if mod and hasattr(mod, '__del__'):
-        mod.__del__()
+        try:
+            mod.__del__()
+        except:
+            #destructor should be nothrow
+            print(traceback.format_exc())
     available_widgets = {k:v for k,v in available_widgets.items() if v['pythonfile'] != path}
     sys.modules.pop(module_name(path), None)
 
@@ -486,7 +521,17 @@ def create_widget(widget_id):
         name = manager_state.chosen[widget_id].name
     widget = widgets.Widget(widget_id, name)
     return widget, manager_state
-
+    
+def get_widget_name(widget_id):
+    manager_state = create_manager_state()
+    if widget_id in manager_state.chosen and manager_state.chosen[widget_id] is not None:
+        return manager_state.chosen[widget_id].name
+    raise KeyError(f'no such widget {widget_id}')
+    
+def get_widgets_by_name(name):
+    manager_state = create_manager_state()
+    return [widget_id for widget_id, chosen in manager_state.chosen.items() if chosen is not None and chosen.name == name]
+    
 def choose_widget(widget, name):
     print(f'choosing widget: {widget.widget_id} -> {name}')
     manager_state = create_manager_state()
@@ -568,13 +613,13 @@ class Handler:
             return None
         if not isinstance(output, (list, tuple)):
             output = [output]
-        out_json = [e.dict() for e in output]
-        if input is not None and input == out_json:
+        out = [e.dict(do_copy=False) for e in output]
+        if input is not None and input == out:
             return None
-        return json.dumps(out_json)
+        return json_dumps(out) #c json fucks up because we're not a regular dict, indent=* causes python to use the python implementation
 
     def import_(self, s):
-        d = json.loads(s)
+        d = json_loads(s)
         return d, elist(Element(e) for e in d)
 
     @java.interface
@@ -593,8 +638,9 @@ class Handler:
     @java.interface
     def onDelete(self, widget_id):
         print(f'python got onDelete')
+        widget, manager_state = create_widget(widget_id)
         state.clean_local_state(widget_id)
-        create_manager_state().chosen.pop(widget_id, None)
+        manager_state.chosen.pop(widget_id, None)
         last_func_for_widget_id.pop(widget_id, None)
 
     @java.interface
@@ -668,7 +714,7 @@ def init():
 def java_context():
     return java_widget_manager
     
-def register_widget(name, on_create, on_update=None):
+def register_widget(name, create, update=None):
     path = getattr(__importing_module, 'path', None)
     if path is None:
         raise ValueError('register_widget can only be called on import')
@@ -676,7 +722,7 @@ def register_widget(name, on_create, on_update=None):
     if name in available_widgets and available_widgets[name]['pythonfile'] != path:
         raise ValueError(f'name {name} exists')
 
-    dumps(on_create)
-    dumps(on_update)
+    dumps(create)
+    dumps(update)
 
-    available_widgets[name] = dict(pythonfile=path, create=on_create, update=on_update)
+    available_widgets[name] = dict(pythonfile=path, create=create, update=update)
