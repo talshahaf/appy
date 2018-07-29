@@ -1,4 +1,4 @@
-import base64, pickle, inspect, shutil, functools, mimetypes, hashlib, os
+import base64, pickle, inspect, shutil, functools, mimetypes, hashlib, os, time
 
 def cap(s):
     return s[0].upper() + s[1:]
@@ -61,3 +61,14 @@ def download_resource(url):
             if chunk:
                 f.write(chunk)
     return filename
+    
+def timeit(f):
+    def wrapper(*args, **kw):
+        ts = time.time()
+        result = f(*args, **kw)
+        te = time.time()
+
+        print(f'{f.__name__} {te-ts:.2f} sec')
+        return result
+
+    return f
