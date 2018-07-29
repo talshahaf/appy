@@ -1347,6 +1347,26 @@ public class Widget extends RemoteViewsService
         }
     }
 
+    public void deleteWidgetMappings(int widget)
+    {
+        synchronized (lock)
+        {
+            widgetToAndroid.remove(widget);
+            HashSet<Integer> toremove = new HashSet<>();
+            for(Map.Entry<Integer, Integer> entry : androidToWidget.entrySet())
+            {
+                if(entry.getValue() == widget)
+                {
+                    toremove.add(entry.getKey());
+                }
+            }
+            for(Integer androidWidgetId : toremove)
+            {
+                androidToWidget.remove(androidWidgetId);
+            }
+        }
+    }
+
     public void deleteAndroidWidget(int androidWidget)
     {
         synchronized (lock)
@@ -2365,9 +2385,13 @@ public class Widget extends RemoteViewsService
             if(args[1] != null)
             {
                 deleteAndroidWidget(args[1]);
-                saveWidgetMapping();
-                saveWidgets();
             }
+            else
+            {
+                deleteWidgetMappings(widget);
+            }
+            saveWidgetMapping();
+            saveWidgets();
         }
     }
 
@@ -2765,11 +2789,19 @@ public class Widget extends RemoteViewsService
             int[] ids = requestAndroidWidgets();
             if(ids != null)
             {
+                HashSet<Integer> activeWidgetIds = new HashSet<>();
                 for (int id : ids)
                 {
                     int widgetId = fromAndroidWidget(id, true);
+                    activeWidgetIds.add(widgetId);
                     needUpdateWidgets.add(widgetId);
                     addTask(widgetId, new Task<>(new CallUpdateTask(), widgetId));
+                }
+                Set<Integer> allWidgetIds = getAllWidgets();
+                allWidgetIds.removeAll(activeWidgetIds);
+                for(int widgetId : allWidgetIds)
+                {
+                    delete(widgetId);
                 }
             }
         }

@@ -20,6 +20,9 @@ class Widget:
         if widget_name is not None:
             self.name = widget_name
             self.state = state.State(widget_name, widget_id)
+        else:
+            self.name = None
+            self.state = None
         self.widget_dims = widget_manager.widget_dims
 
     def __getattr__(self, item):
@@ -105,7 +108,14 @@ class Widget:
 
     def invoke_item_click(self, element, position):
         self.post(self.itemclick_invoker, element_id=element.id, position=position)
-
+    
+    @staticmethod
+    def by_id(widget_id):
+        return Widget(widget_id, widget_manager.get_widget_name(widget_id))
+        
+    @staticmethod
+    def by_name(name):
+        return [Widget(widget_id, name) for widget_id in widget_manager.get_widgets_by_name(name)]
         
 def wipe_global():
     state.wipe_state()
@@ -139,5 +149,5 @@ def restart():
     print('restarting')
     widget_manager.java_context().restart()
 
-from .widget_manager import register_widget, java_context, elist, call_general_function
+from .widget_manager import register_widget, java_context, elist, call_general_function, AttributeFunction
 from .utils import download_resource
