@@ -35,6 +35,13 @@
         <item name="android:textSize">26sp</item>
     </style>
 
+    <style name="btn_pad" parent="btn">
+        <item name="android:paddingTop">4dp</item>
+        <item name="android:paddingBottom">4dp</item>
+        <item name="android:paddingLeft">4dp</item>
+        <item name="android:paddingRight">4dp</item>
+    </style>
+
     <style name="btn_nopad" parent="btn">
         <item name="android:paddingTop">0sp</item>
         <item name="android:paddingBottom">0sp</item>
@@ -63,6 +70,14 @@
         <item name="android:textColor">@color/color_primary_text</item>
     </style>
     <style name="outline_primary_btn_lg" parent="btn_lg">
+        <item name="android:background">@drawable/drawable_outline_primary_btn</item>
+        <item name="android:textColor">@color/color_outline_primary_text</item>
+    </style>
+    <style name="primary_btn_pad" parent="btn_pad">
+        <item name="android:background">@drawable/drawable_primary_btn</item>
+        <item name="android:textColor">@color/color_primary_text</item>
+    </style>
+    <style name="outline_primary_btn_pad" parent="btn_pad">
         <item name="android:background">@drawable/drawable_outline_primary_btn</item>
         <item name="android:textColor">@color/color_outline_primary_text</item>
     </style>
@@ -95,6 +110,14 @@
         <item name="android:textColor">@color/color_primary_text</item>
     </style>
     <style name="outline_primary_btn_oval_lg" parent="btn_lg">
+        <item name="android:background">@drawable/drawable_outline_primary_btn_oval</item>
+        <item name="android:textColor">@color/color_outline_primary_text</item>
+    </style>
+    <style name="primary_btn_oval_pad" parent="btn_pad">
+        <item name="android:background">@drawable/drawable_primary_btn_oval</item>
+        <item name="android:textColor">@color/color_primary_text</item>
+    </style>
+    <style name="outline_primary_btn_oval_pad" parent="btn_pad">
         <item name="android:background">@drawable/drawable_outline_primary_btn_oval</item>
         <item name="android:textColor">@color/color_outline_primary_text</item>
     </style>
@@ -131,6 +154,14 @@
         <item name="android:background">@drawable/drawable_outline_secondary_btn</item>
         <item name="android:textColor">@color/color_outline_secondary_text</item>
     </style>
+    <style name="secondary_btn_pad" parent="btn_pad">
+        <item name="android:background">@drawable/drawable_secondary_btn</item>
+        <item name="android:textColor">@color/color_secondary_text</item>
+    </style>
+    <style name="outline_secondary_btn_pad" parent="btn_pad">
+        <item name="android:background">@drawable/drawable_outline_secondary_btn</item>
+        <item name="android:textColor">@color/color_outline_secondary_text</item>
+    </style>
     <style name="secondary_btn_nopad" parent="btn_nopad">
         <item name="android:background">@drawable/drawable_secondary_btn</item>
         <item name="android:textColor">@color/color_secondary_text</item>
@@ -160,6 +191,14 @@
         <item name="android:textColor">@color/color_secondary_text</item>
     </style>
     <style name="outline_secondary_btn_oval_lg" parent="btn_lg">
+        <item name="android:background">@drawable/drawable_outline_secondary_btn_oval</item>
+        <item name="android:textColor">@color/color_outline_secondary_text</item>
+    </style>
+    <style name="secondary_btn_oval_pad" parent="btn_pad">
+        <item name="android:background">@drawable/drawable_secondary_btn_oval</item>
+        <item name="android:textColor">@color/color_secondary_text</item>
+    </style>
+    <style name="outline_secondary_btn_oval_pad" parent="btn_pad">
         <item name="android:background">@drawable/drawable_outline_secondary_btn_oval</item>
         <item name="android:textColor">@color/color_outline_secondary_text</item>
     </style>
@@ -196,6 +235,14 @@
         <item name="android:background">@drawable/drawable_outline_success_btn</item>
         <item name="android:textColor">@color/color_outline_success_text</item>
     </style>
+    <style name="success_btn_pad" parent="btn_pad">
+        <item name="android:background">@drawable/drawable_success_btn</item>
+        <item name="android:textColor">@color/color_success_text</item>
+    </style>
+    <style name="outline_success_btn_pad" parent="btn_pad">
+        <item name="android:background">@drawable/drawable_outline_success_btn</item>
+        <item name="android:textColor">@color/color_outline_success_text</item>
+    </style>
     <style name="success_btn_nopad" parent="btn_nopad">
         <item name="android:background">@drawable/drawable_success_btn</item>
         <item name="android:textColor">@color/color_success_text</item>
@@ -225,6 +272,14 @@
         <item name="android:textColor">@color/color_success_text</item>
     </style>
     <style name="outline_success_btn_oval_lg" parent="btn_lg">
+        <item name="android:background">@drawable/drawable_outline_success_btn_oval</item>
+        <item name="android:textColor">@color/color_outline_success_text</item>
+    </style>
+    <style name="success_btn_oval_pad" parent="btn_pad">
+        <item name="android:background">@drawable/drawable_success_btn_oval</item>
+        <item name="android:textColor">@color/color_success_text</item>
+    </style>
+    <style name="outline_success_btn_oval_pad" parent="btn_pad">
         <item name="android:background">@drawable/drawable_outline_success_btn_oval</item>
         <item name="android:textColor">@color/color_outline_success_text</item>
     </style>
@@ -261,6 +316,14 @@
         <item name="android:background">@drawable/drawable_outline_danger_btn</item>
         <item name="android:textColor">@color/color_outline_danger_text</item>
     </style>
+    <style name="danger_btn_pad" parent="btn_pad">
+        <item name="android:background">@drawable/drawable_danger_btn</item>
+        <item name="android:textColor">@color/color_danger_text</item>
+    </style>
+    <style name="outline_danger_btn_pad" parent="btn_pad">
+        <item name="android:background">@drawable/drawable_outline_danger_btn</item>
+        <item name="android:textColor">@color/color_outline_danger_text</item>
+    </style>
     <style name="danger_btn_nopad" parent="btn_nopad">
         <item name="android:background">@drawable/drawable_danger_btn</item>
         <item name="android:textColor">@color/color_danger_text</item>
@@ -290,6 +353,14 @@
         <item name="android:textColor">@color/color_danger_text</item>
     </style>
     <style name="outline_danger_btn_oval_lg" parent="btn_lg">
+        <item name="android:background">@drawable/drawable_outline_danger_btn_oval</item>
+        <item name="android:textColor">@color/color_outline_danger_text</item>
+    </style>
+    <style name="danger_btn_oval_pad" parent="btn_pad">
+        <item name="android:background">@drawable/drawable_danger_btn_oval</item>
+        <item name="android:textColor">@color/color_danger_text</item>
+    </style>
+    <style name="outline_danger_btn_oval_pad" parent="btn_pad">
         <item name="android:background">@drawable/drawable_outline_danger_btn_oval</item>
         <item name="android:textColor">@color/color_outline_danger_text</item>
     </style>
@@ -326,6 +397,14 @@
         <item name="android:background">@drawable/drawable_outline_warning_btn</item>
         <item name="android:textColor">@color/color_outline_warning_text</item>
     </style>
+    <style name="warning_btn_pad" parent="btn_pad">
+        <item name="android:background">@drawable/drawable_warning_btn</item>
+        <item name="android:textColor">@color/color_warning_text</item>
+    </style>
+    <style name="outline_warning_btn_pad" parent="btn_pad">
+        <item name="android:background">@drawable/drawable_outline_warning_btn</item>
+        <item name="android:textColor">@color/color_outline_warning_text</item>
+    </style>
     <style name="warning_btn_nopad" parent="btn_nopad">
         <item name="android:background">@drawable/drawable_warning_btn</item>
         <item name="android:textColor">@color/color_warning_text</item>
@@ -355,6 +434,14 @@
         <item name="android:textColor">@color/color_warning_text</item>
     </style>
     <style name="outline_warning_btn_oval_lg" parent="btn_lg">
+        <item name="android:background">@drawable/drawable_outline_warning_btn_oval</item>
+        <item name="android:textColor">@color/color_outline_warning_text</item>
+    </style>
+    <style name="warning_btn_oval_pad" parent="btn_pad">
+        <item name="android:background">@drawable/drawable_warning_btn_oval</item>
+        <item name="android:textColor">@color/color_warning_text</item>
+    </style>
+    <style name="outline_warning_btn_oval_pad" parent="btn_pad">
         <item name="android:background">@drawable/drawable_outline_warning_btn_oval</item>
         <item name="android:textColor">@color/color_outline_warning_text</item>
     </style>
@@ -391,6 +478,14 @@
         <item name="android:background">@drawable/drawable_outline_info_btn</item>
         <item name="android:textColor">@color/color_outline_info_text</item>
     </style>
+    <style name="info_btn_pad" parent="btn_pad">
+        <item name="android:background">@drawable/drawable_info_btn</item>
+        <item name="android:textColor">@color/color_info_text</item>
+    </style>
+    <style name="outline_info_btn_pad" parent="btn_pad">
+        <item name="android:background">@drawable/drawable_outline_info_btn</item>
+        <item name="android:textColor">@color/color_outline_info_text</item>
+    </style>
     <style name="info_btn_nopad" parent="btn_nopad">
         <item name="android:background">@drawable/drawable_info_btn</item>
         <item name="android:textColor">@color/color_info_text</item>
@@ -420,6 +515,14 @@
         <item name="android:textColor">@color/color_info_text</item>
     </style>
     <style name="outline_info_btn_oval_lg" parent="btn_lg">
+        <item name="android:background">@drawable/drawable_outline_info_btn_oval</item>
+        <item name="android:textColor">@color/color_outline_info_text</item>
+    </style>
+    <style name="info_btn_oval_pad" parent="btn_pad">
+        <item name="android:background">@drawable/drawable_info_btn_oval</item>
+        <item name="android:textColor">@color/color_info_text</item>
+    </style>
+    <style name="outline_info_btn_oval_pad" parent="btn_pad">
         <item name="android:background">@drawable/drawable_outline_info_btn_oval</item>
         <item name="android:textColor">@color/color_outline_info_text</item>
     </style>
@@ -456,6 +559,14 @@
         <item name="android:background">@drawable/drawable_outline_light_btn</item>
         <item name="android:textColor">@color/color_outline_light_text</item>
     </style>
+    <style name="light_btn_pad" parent="btn_pad">
+        <item name="android:background">@drawable/drawable_light_btn</item>
+        <item name="android:textColor">@color/color_light_text</item>
+    </style>
+    <style name="outline_light_btn_pad" parent="btn_pad">
+        <item name="android:background">@drawable/drawable_outline_light_btn</item>
+        <item name="android:textColor">@color/color_outline_light_text</item>
+    </style>
     <style name="light_btn_nopad" parent="btn_nopad">
         <item name="android:background">@drawable/drawable_light_btn</item>
         <item name="android:textColor">@color/color_light_text</item>
@@ -485,6 +596,14 @@
         <item name="android:textColor">@color/color_light_text</item>
     </style>
     <style name="outline_light_btn_oval_lg" parent="btn_lg">
+        <item name="android:background">@drawable/drawable_outline_light_btn_oval</item>
+        <item name="android:textColor">@color/color_outline_light_text</item>
+    </style>
+    <style name="light_btn_oval_pad" parent="btn_pad">
+        <item name="android:background">@drawable/drawable_light_btn_oval</item>
+        <item name="android:textColor">@color/color_light_text</item>
+    </style>
+    <style name="outline_light_btn_oval_pad" parent="btn_pad">
         <item name="android:background">@drawable/drawable_outline_light_btn_oval</item>
         <item name="android:textColor">@color/color_outline_light_text</item>
     </style>
@@ -521,6 +640,14 @@
         <item name="android:background">@drawable/drawable_outline_dark_btn</item>
         <item name="android:textColor">@color/color_outline_dark_text</item>
     </style>
+    <style name="dark_btn_pad" parent="btn_pad">
+        <item name="android:background">@drawable/drawable_dark_btn</item>
+        <item name="android:textColor">@color/color_dark_text</item>
+    </style>
+    <style name="outline_dark_btn_pad" parent="btn_pad">
+        <item name="android:background">@drawable/drawable_outline_dark_btn</item>
+        <item name="android:textColor">@color/color_outline_dark_text</item>
+    </style>
     <style name="dark_btn_nopad" parent="btn_nopad">
         <item name="android:background">@drawable/drawable_dark_btn</item>
         <item name="android:textColor">@color/color_dark_text</item>
@@ -550,6 +677,14 @@
         <item name="android:textColor">@color/color_dark_text</item>
     </style>
     <style name="outline_dark_btn_oval_lg" parent="btn_lg">
+        <item name="android:background">@drawable/drawable_outline_dark_btn_oval</item>
+        <item name="android:textColor">@color/color_outline_dark_text</item>
+    </style>
+    <style name="dark_btn_oval_pad" parent="btn_pad">
+        <item name="android:background">@drawable/drawable_dark_btn_oval</item>
+        <item name="android:textColor">@color/color_dark_text</item>
+    </style>
+    <style name="outline_dark_btn_oval_pad" parent="btn_pad">
         <item name="android:background">@drawable/drawable_outline_dark_btn_oval</item>
         <item name="android:textColor">@color/color_outline_dark_text</item>
     </style>

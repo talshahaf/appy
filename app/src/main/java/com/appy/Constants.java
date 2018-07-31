@@ -203,6 +203,8 @@ public class Constants
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_primary_btn_sml, "style", "outline_primary_btn_sml"));
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_primary_btn_lg, "style", "primary_btn_lg"));
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_primary_btn_lg, "style", "outline_primary_btn_lg"));
+        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_primary_btn_pad, "style", "primary_btn_pad"));
+        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_primary_btn_pad, "style", "outline_primary_btn_pad"));
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_primary_btn_nopad, "style", "primary_btn_nopad"));
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_primary_btn_nopad, "style", "outline_primary_btn_nopad"));
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_primary_btn_oval, "style", "primary_btn_oval"));
@@ -211,6 +213,8 @@ public class Constants
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_primary_btn_oval_sml, "style", "outline_primary_btn_oval_sml"));
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_primary_btn_oval_lg, "style", "primary_btn_oval_lg"));
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_primary_btn_oval_lg, "style", "outline_primary_btn_oval_lg"));
+        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_primary_btn_oval_pad, "style", "primary_btn_oval_pad"));
+        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_primary_btn_oval_pad, "style", "outline_primary_btn_oval_pad"));
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_primary_btn_oval_nopad, "style", "primary_btn_oval_nopad"));
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_primary_btn_oval_nopad, "style", "outline_primary_btn_oval_nopad"));
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_secondary_btn, "style", "secondary_btn"));
@@ -219,6 +223,8 @@ public class Constants
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_secondary_btn_sml, "style", "outline_secondary_btn_sml"));
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_secondary_btn_lg, "style", "secondary_btn_lg"));
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_secondary_btn_lg, "style", "outline_secondary_btn_lg"));
+        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_secondary_btn_pad, "style", "secondary_btn_pad"));
+        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_secondary_btn_pad, "style", "outline_secondary_btn_pad"));
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_secondary_btn_nopad, "style", "secondary_btn_nopad"));
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_secondary_btn_nopad, "style", "outline_secondary_btn_nopad"));
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_secondary_btn_oval, "style", "secondary_btn_oval"));
@@ -227,6 +233,8 @@ public class Constants
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_secondary_btn_oval_sml, "style", "outline_secondary_btn_oval_sml"));
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_secondary_btn_oval_lg, "style", "secondary_btn_oval_lg"));
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_secondary_btn_oval_lg, "style", "outline_secondary_btn_oval_lg"));
+        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_secondary_btn_oval_pad, "style", "secondary_btn_oval_pad"));
+        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_secondary_btn_oval_pad, "style", "outline_secondary_btn_oval_pad"));
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_secondary_btn_oval_nopad, "style", "secondary_btn_oval_nopad"));
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_secondary_btn_oval_nopad, "style", "outline_secondary_btn_oval_nopad"));
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_success_btn, "style", "success_btn"));
@@ -235,6 +243,8 @@ public class Constants
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_success_btn_sml, "style", "outline_success_btn_sml"));
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_success_btn_lg, "style", "success_btn_lg"));
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_success_btn_lg, "style", "outline_success_btn_lg"));
+        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_success_btn_pad, "style", "success_btn_pad"));
+        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_success_btn_pad, "style", "outline_success_btn_pad"));
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_success_btn_nopad, "style", "success_btn_nopad"));
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_success_btn_nopad, "style", "outline_success_btn_nopad"));
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_success_btn_oval, "style", "success_btn_oval"));
@@ -243,6 +253,8 @@ public class Constants
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_success_btn_oval_sml, "style", "outline_success_btn_oval_sml"));
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_success_btn_oval_lg, "style", "success_btn_oval_lg"));
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_success_btn_oval_lg, "style", "outline_success_btn_oval_lg"));
+        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_success_btn_oval_pad, "style", "success_btn_oval_pad"));
+        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_success_btn_oval_pad, "style", "outline_success_btn_oval_pad"));
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_success_btn_oval_nopad, "style", "success_btn_oval_nopad"));
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_success_btn_oval_nopad, "style", "outline_success_btn_oval_nopad"));
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_danger_btn, "style", "danger_btn"));
@@ -251,6 +263,8 @@ public class Constants
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_danger_btn_sml, "style", "outline_danger_btn_sml"));
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_danger_btn_lg, "style", "danger_btn_lg"));
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_danger_btn_lg, "style", "outline_danger_btn_lg"));
+        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_danger_btn_pad, "style", "danger_btn_pad"));
+        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_danger_btn_pad, "style", "outline_danger_btn_pad"));
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_danger_btn_nopad, "style", "danger_btn_nopad"));
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_danger_btn_nopad, "style", "outline_danger_btn_nopad"));
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_danger_btn_oval, "style", "danger_btn_oval"));
@@ -259,6 +273,8 @@ public class Constants
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_danger_btn_oval_sml, "style", "outline_danger_btn_oval_sml"));
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_danger_btn_oval_lg, "style", "danger_btn_oval_lg"));
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_danger_btn_oval_lg, "style", "outline_danger_btn_oval_lg"));
+        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_danger_btn_oval_pad, "style", "danger_btn_oval_pad"));
+        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_danger_btn_oval_pad, "style", "outline_danger_btn_oval_pad"));
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_danger_btn_oval_nopad, "style", "danger_btn_oval_nopad"));
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_danger_btn_oval_nopad, "style", "outline_danger_btn_oval_nopad"));
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_warning_btn, "style", "warning_btn"));
@@ -267,6 +283,8 @@ public class Constants
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_warning_btn_sml, "style", "outline_warning_btn_sml"));
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_warning_btn_lg, "style", "warning_btn_lg"));
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_warning_btn_lg, "style", "outline_warning_btn_lg"));
+        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_warning_btn_pad, "style", "warning_btn_pad"));
+        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_warning_btn_pad, "style", "outline_warning_btn_pad"));
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_warning_btn_nopad, "style", "warning_btn_nopad"));
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_warning_btn_nopad, "style", "outline_warning_btn_nopad"));
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_warning_btn_oval, "style", "warning_btn_oval"));
@@ -275,6 +293,8 @@ public class Constants
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_warning_btn_oval_sml, "style", "outline_warning_btn_oval_sml"));
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_warning_btn_oval_lg, "style", "warning_btn_oval_lg"));
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_warning_btn_oval_lg, "style", "outline_warning_btn_oval_lg"));
+        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_warning_btn_oval_pad, "style", "warning_btn_oval_pad"));
+        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_warning_btn_oval_pad, "style", "outline_warning_btn_oval_pad"));
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_warning_btn_oval_nopad, "style", "warning_btn_oval_nopad"));
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_warning_btn_oval_nopad, "style", "outline_warning_btn_oval_nopad"));
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_info_btn, "style", "info_btn"));
@@ -283,6 +303,8 @@ public class Constants
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_info_btn_sml, "style", "outline_info_btn_sml"));
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_info_btn_lg, "style", "info_btn_lg"));
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_info_btn_lg, "style", "outline_info_btn_lg"));
+        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_info_btn_pad, "style", "info_btn_pad"));
+        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_info_btn_pad, "style", "outline_info_btn_pad"));
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_info_btn_nopad, "style", "info_btn_nopad"));
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_info_btn_nopad, "style", "outline_info_btn_nopad"));
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_info_btn_oval, "style", "info_btn_oval"));
@@ -291,6 +313,8 @@ public class Constants
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_info_btn_oval_sml, "style", "outline_info_btn_oval_sml"));
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_info_btn_oval_lg, "style", "info_btn_oval_lg"));
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_info_btn_oval_lg, "style", "outline_info_btn_oval_lg"));
+        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_info_btn_oval_pad, "style", "info_btn_oval_pad"));
+        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_info_btn_oval_pad, "style", "outline_info_btn_oval_pad"));
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_info_btn_oval_nopad, "style", "info_btn_oval_nopad"));
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_info_btn_oval_nopad, "style", "outline_info_btn_oval_nopad"));
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_light_btn, "style", "light_btn"));
@@ -299,6 +323,8 @@ public class Constants
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_light_btn_sml, "style", "outline_light_btn_sml"));
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_light_btn_lg, "style", "light_btn_lg"));
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_light_btn_lg, "style", "outline_light_btn_lg"));
+        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_light_btn_pad, "style", "light_btn_pad"));
+        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_light_btn_pad, "style", "outline_light_btn_pad"));
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_light_btn_nopad, "style", "light_btn_nopad"));
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_light_btn_nopad, "style", "outline_light_btn_nopad"));
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_light_btn_oval, "style", "light_btn_oval"));
@@ -307,6 +333,8 @@ public class Constants
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_light_btn_oval_sml, "style", "outline_light_btn_oval_sml"));
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_light_btn_oval_lg, "style", "light_btn_oval_lg"));
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_light_btn_oval_lg, "style", "outline_light_btn_oval_lg"));
+        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_light_btn_oval_pad, "style", "light_btn_oval_pad"));
+        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_light_btn_oval_pad, "style", "outline_light_btn_oval_pad"));
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_light_btn_oval_nopad, "style", "light_btn_oval_nopad"));
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_light_btn_oval_nopad, "style", "outline_light_btn_oval_nopad"));
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_dark_btn, "style", "dark_btn"));
@@ -315,6 +343,8 @@ public class Constants
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_dark_btn_sml, "style", "outline_dark_btn_sml"));
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_dark_btn_lg, "style", "dark_btn_lg"));
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_dark_btn_lg, "style", "outline_dark_btn_lg"));
+        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_dark_btn_pad, "style", "dark_btn_pad"));
+        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_dark_btn_pad, "style", "outline_dark_btn_pad"));
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_dark_btn_nopad, "style", "dark_btn_nopad"));
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_dark_btn_nopad, "style", "outline_dark_btn_nopad"));
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_dark_btn_oval, "style", "dark_btn_oval"));
@@ -323,6 +353,8 @@ public class Constants
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_dark_btn_oval_sml, "style", "outline_dark_btn_oval_sml"));
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_dark_btn_oval_lg, "style", "dark_btn_oval_lg"));
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_dark_btn_oval_lg, "style", "outline_dark_btn_oval_lg"));
+        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_dark_btn_oval_pad, "style", "dark_btn_oval_pad"));
+        element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_dark_btn_oval_pad, "style", "outline_dark_btn_oval_pad"));
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_dark_btn_oval_nopad, "style", "dark_btn_oval_nopad"));
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_dark_btn_oval_nopad, "style", "outline_dark_btn_oval_nopad"));
         element_map.put("Chronometer", new ArrayList<SelectorElement>());
@@ -335,6 +367,8 @@ public class Constants
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_primary_btn_sml, "style", "outline_primary_btn_sml"));
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_primary_btn_lg, "style", "primary_btn_lg"));
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_primary_btn_lg, "style", "outline_primary_btn_lg"));
+        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_primary_btn_pad, "style", "primary_btn_pad"));
+        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_primary_btn_pad, "style", "outline_primary_btn_pad"));
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_primary_btn_nopad, "style", "primary_btn_nopad"));
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_primary_btn_nopad, "style", "outline_primary_btn_nopad"));
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_primary_btn_oval, "style", "primary_btn_oval"));
@@ -343,6 +377,8 @@ public class Constants
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_primary_btn_oval_sml, "style", "outline_primary_btn_oval_sml"));
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_primary_btn_oval_lg, "style", "primary_btn_oval_lg"));
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_primary_btn_oval_lg, "style", "outline_primary_btn_oval_lg"));
+        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_primary_btn_oval_pad, "style", "primary_btn_oval_pad"));
+        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_primary_btn_oval_pad, "style", "outline_primary_btn_oval_pad"));
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_primary_btn_oval_nopad, "style", "primary_btn_oval_nopad"));
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_primary_btn_oval_nopad, "style", "outline_primary_btn_oval_nopad"));
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_secondary_btn, "style", "secondary_btn"));
@@ -351,6 +387,8 @@ public class Constants
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_secondary_btn_sml, "style", "outline_secondary_btn_sml"));
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_secondary_btn_lg, "style", "secondary_btn_lg"));
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_secondary_btn_lg, "style", "outline_secondary_btn_lg"));
+        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_secondary_btn_pad, "style", "secondary_btn_pad"));
+        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_secondary_btn_pad, "style", "outline_secondary_btn_pad"));
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_secondary_btn_nopad, "style", "secondary_btn_nopad"));
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_secondary_btn_nopad, "style", "outline_secondary_btn_nopad"));
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_secondary_btn_oval, "style", "secondary_btn_oval"));
@@ -359,6 +397,8 @@ public class Constants
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_secondary_btn_oval_sml, "style", "outline_secondary_btn_oval_sml"));
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_secondary_btn_oval_lg, "style", "secondary_btn_oval_lg"));
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_secondary_btn_oval_lg, "style", "outline_secondary_btn_oval_lg"));
+        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_secondary_btn_oval_pad, "style", "secondary_btn_oval_pad"));
+        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_secondary_btn_oval_pad, "style", "outline_secondary_btn_oval_pad"));
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_secondary_btn_oval_nopad, "style", "secondary_btn_oval_nopad"));
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_secondary_btn_oval_nopad, "style", "outline_secondary_btn_oval_nopad"));
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_success_btn, "style", "success_btn"));
@@ -367,6 +407,8 @@ public class Constants
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_success_btn_sml, "style", "outline_success_btn_sml"));
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_success_btn_lg, "style", "success_btn_lg"));
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_success_btn_lg, "style", "outline_success_btn_lg"));
+        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_success_btn_pad, "style", "success_btn_pad"));
+        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_success_btn_pad, "style", "outline_success_btn_pad"));
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_success_btn_nopad, "style", "success_btn_nopad"));
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_success_btn_nopad, "style", "outline_success_btn_nopad"));
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_success_btn_oval, "style", "success_btn_oval"));
@@ -375,6 +417,8 @@ public class Constants
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_success_btn_oval_sml, "style", "outline_success_btn_oval_sml"));
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_success_btn_oval_lg, "style", "success_btn_oval_lg"));
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_success_btn_oval_lg, "style", "outline_success_btn_oval_lg"));
+        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_success_btn_oval_pad, "style", "success_btn_oval_pad"));
+        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_success_btn_oval_pad, "style", "outline_success_btn_oval_pad"));
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_success_btn_oval_nopad, "style", "success_btn_oval_nopad"));
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_success_btn_oval_nopad, "style", "outline_success_btn_oval_nopad"));
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_danger_btn, "style", "danger_btn"));
@@ -383,6 +427,8 @@ public class Constants
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_danger_btn_sml, "style", "outline_danger_btn_sml"));
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_danger_btn_lg, "style", "danger_btn_lg"));
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_danger_btn_lg, "style", "outline_danger_btn_lg"));
+        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_danger_btn_pad, "style", "danger_btn_pad"));
+        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_danger_btn_pad, "style", "outline_danger_btn_pad"));
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_danger_btn_nopad, "style", "danger_btn_nopad"));
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_danger_btn_nopad, "style", "outline_danger_btn_nopad"));
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_danger_btn_oval, "style", "danger_btn_oval"));
@@ -391,6 +437,8 @@ public class Constants
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_danger_btn_oval_sml, "style", "outline_danger_btn_oval_sml"));
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_danger_btn_oval_lg, "style", "danger_btn_oval_lg"));
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_danger_btn_oval_lg, "style", "outline_danger_btn_oval_lg"));
+        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_danger_btn_oval_pad, "style", "danger_btn_oval_pad"));
+        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_danger_btn_oval_pad, "style", "outline_danger_btn_oval_pad"));
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_danger_btn_oval_nopad, "style", "danger_btn_oval_nopad"));
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_danger_btn_oval_nopad, "style", "outline_danger_btn_oval_nopad"));
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_warning_btn, "style", "warning_btn"));
@@ -399,6 +447,8 @@ public class Constants
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_warning_btn_sml, "style", "outline_warning_btn_sml"));
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_warning_btn_lg, "style", "warning_btn_lg"));
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_warning_btn_lg, "style", "outline_warning_btn_lg"));
+        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_warning_btn_pad, "style", "warning_btn_pad"));
+        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_warning_btn_pad, "style", "outline_warning_btn_pad"));
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_warning_btn_nopad, "style", "warning_btn_nopad"));
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_warning_btn_nopad, "style", "outline_warning_btn_nopad"));
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_warning_btn_oval, "style", "warning_btn_oval"));
@@ -407,6 +457,8 @@ public class Constants
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_warning_btn_oval_sml, "style", "outline_warning_btn_oval_sml"));
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_warning_btn_oval_lg, "style", "warning_btn_oval_lg"));
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_warning_btn_oval_lg, "style", "outline_warning_btn_oval_lg"));
+        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_warning_btn_oval_pad, "style", "warning_btn_oval_pad"));
+        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_warning_btn_oval_pad, "style", "outline_warning_btn_oval_pad"));
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_warning_btn_oval_nopad, "style", "warning_btn_oval_nopad"));
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_warning_btn_oval_nopad, "style", "outline_warning_btn_oval_nopad"));
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_info_btn, "style", "info_btn"));
@@ -415,6 +467,8 @@ public class Constants
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_info_btn_sml, "style", "outline_info_btn_sml"));
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_info_btn_lg, "style", "info_btn_lg"));
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_info_btn_lg, "style", "outline_info_btn_lg"));
+        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_info_btn_pad, "style", "info_btn_pad"));
+        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_info_btn_pad, "style", "outline_info_btn_pad"));
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_info_btn_nopad, "style", "info_btn_nopad"));
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_info_btn_nopad, "style", "outline_info_btn_nopad"));
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_info_btn_oval, "style", "info_btn_oval"));
@@ -423,6 +477,8 @@ public class Constants
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_info_btn_oval_sml, "style", "outline_info_btn_oval_sml"));
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_info_btn_oval_lg, "style", "info_btn_oval_lg"));
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_info_btn_oval_lg, "style", "outline_info_btn_oval_lg"));
+        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_info_btn_oval_pad, "style", "info_btn_oval_pad"));
+        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_info_btn_oval_pad, "style", "outline_info_btn_oval_pad"));
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_info_btn_oval_nopad, "style", "info_btn_oval_nopad"));
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_info_btn_oval_nopad, "style", "outline_info_btn_oval_nopad"));
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_light_btn, "style", "light_btn"));
@@ -431,6 +487,8 @@ public class Constants
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_light_btn_sml, "style", "outline_light_btn_sml"));
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_light_btn_lg, "style", "light_btn_lg"));
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_light_btn_lg, "style", "outline_light_btn_lg"));
+        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_light_btn_pad, "style", "light_btn_pad"));
+        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_light_btn_pad, "style", "outline_light_btn_pad"));
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_light_btn_nopad, "style", "light_btn_nopad"));
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_light_btn_nopad, "style", "outline_light_btn_nopad"));
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_light_btn_oval, "style", "light_btn_oval"));
@@ -439,6 +497,8 @@ public class Constants
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_light_btn_oval_sml, "style", "outline_light_btn_oval_sml"));
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_light_btn_oval_lg, "style", "light_btn_oval_lg"));
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_light_btn_oval_lg, "style", "outline_light_btn_oval_lg"));
+        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_light_btn_oval_pad, "style", "light_btn_oval_pad"));
+        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_light_btn_oval_pad, "style", "outline_light_btn_oval_pad"));
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_light_btn_oval_nopad, "style", "light_btn_oval_nopad"));
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_light_btn_oval_nopad, "style", "outline_light_btn_oval_nopad"));
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_dark_btn, "style", "dark_btn"));
@@ -447,6 +507,8 @@ public class Constants
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_dark_btn_sml, "style", "outline_dark_btn_sml"));
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_dark_btn_lg, "style", "dark_btn_lg"));
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_dark_btn_lg, "style", "outline_dark_btn_lg"));
+        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_dark_btn_pad, "style", "dark_btn_pad"));
+        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_dark_btn_pad, "style", "outline_dark_btn_pad"));
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_dark_btn_nopad, "style", "dark_btn_nopad"));
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_dark_btn_nopad, "style", "outline_dark_btn_nopad"));
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_dark_btn_oval, "style", "dark_btn_oval"));
@@ -455,6 +517,8 @@ public class Constants
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_dark_btn_oval_sml, "style", "outline_dark_btn_oval_sml"));
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_dark_btn_oval_lg, "style", "dark_btn_oval_lg"));
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_dark_btn_oval_lg, "style", "outline_dark_btn_oval_lg"));
+        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_dark_btn_oval_pad, "style", "dark_btn_oval_pad"));
+        element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_dark_btn_oval_pad, "style", "outline_dark_btn_oval_pad"));
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_dark_btn_oval_nopad, "style", "dark_btn_oval_nopad"));
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton_style_outline_dark_btn_oval_nopad, "style", "outline_dark_btn_oval_nopad"));
         element_map.put("ImageView", new ArrayList<SelectorElement>());
@@ -469,15 +533,23 @@ public class Constants
         element_map.get("TextView").add(new SelectorElement(R.layout.element_textview_alignment_top, "alignment", "top"));
         element_map.get("TextView").add(new SelectorElement(R.layout.element_textview_alignment_bottom, "alignment", "bottom"));
         element_map.get("TextView").add(new SelectorElement(R.layout.element_textview_alignment_center_vertical, "alignment", "center_vertical"));
+        element_map.get("TextView").add(new SelectorElement(R.layout.element_textview_alignment_start, "alignment", "start"));
+        element_map.get("TextView").add(new SelectorElement(R.layout.element_textview_alignment_end, "alignment", "end"));
         element_map.get("TextView").add(new SelectorElement(R.layout.element_textview_alignment_top_left, "alignment", "top_left"));
         element_map.get("TextView").add(new SelectorElement(R.layout.element_textview_alignment_top_right, "alignment", "top_right"));
         element_map.get("TextView").add(new SelectorElement(R.layout.element_textview_alignment_top_center, "alignment", "top_center"));
+        element_map.get("TextView").add(new SelectorElement(R.layout.element_textview_alignment_top_start, "alignment", "top_start"));
+        element_map.get("TextView").add(new SelectorElement(R.layout.element_textview_alignment_top_end, "alignment", "top_end"));
         element_map.get("TextView").add(new SelectorElement(R.layout.element_textview_alignment_bottom_left, "alignment", "bottom_left"));
         element_map.get("TextView").add(new SelectorElement(R.layout.element_textview_alignment_bottom_right, "alignment", "bottom_right"));
         element_map.get("TextView").add(new SelectorElement(R.layout.element_textview_alignment_bottom_center, "alignment", "bottom_center"));
+        element_map.get("TextView").add(new SelectorElement(R.layout.element_textview_alignment_bottom_start, "alignment", "bottom_start"));
+        element_map.get("TextView").add(new SelectorElement(R.layout.element_textview_alignment_bottom_end, "alignment", "bottom_end"));
         element_map.get("TextView").add(new SelectorElement(R.layout.element_textview_alignment_center_left, "alignment", "center_left"));
         element_map.get("TextView").add(new SelectorElement(R.layout.element_textview_alignment_center_right, "alignment", "center_right"));
         element_map.get("TextView").add(new SelectorElement(R.layout.element_textview_alignment_center, "alignment", "center"));
+        element_map.get("TextView").add(new SelectorElement(R.layout.element_textview_alignment_center_start, "alignment", "center_start"));
+        element_map.get("TextView").add(new SelectorElement(R.layout.element_textview_alignment_center_end, "alignment", "center_end"));
         element_map.put("RelativeLayout", new ArrayList<SelectorElement>());
         element_map.get("RelativeLayout").add(new SelectorElement(R.layout.element_relativelayout, "", ""));
     }

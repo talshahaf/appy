@@ -2152,10 +2152,9 @@ public class Widget extends RemoteViewsService
         textView.methodCalls.add(new RemoteMethodCall("setText", false, Constants.getSetterMethod(textView.type, "setText"), "setText", "Error"));
 
         DynamicView restart = new DynamicView("ImageButton");
-        restart.selectors.put("style", "success_btn_oval_nopad");
+        restart.selectors.put("style", "danger_btn_oval_pad");
         restart.methodCalls.add(new RemoteMethodCall("setColorFilter", false, Constants.getSetterMethod(restart.type, "setColorFilter"), "setColorFilter", 0xffffffff));
         restart.methodCalls.add(new RemoteMethodCall("setImageResource", false, Constants.getSetterMethod(restart.type, "setImageResource"), "setImageResource", android.R.drawable.ic_lock_power_off));
-        restart.methodCalls.add(new RemoteMethodCall("setDrawableParameters", false, "setDrawableParameters", true, 255, 0x80000000, android.graphics.PorterDuff.Mode.SRC_ATOP, -1));
         restart.attributes.attributes.put(Attributes.Type.WIDTH, attributeParse("140"));
         restart.attributes.attributes.put(Attributes.Type.HEIGHT, attributeParse("140"));
         restart.attributes.attributes.put(Attributes.Type.RIGHT, attributeParse("0"));
