@@ -104,10 +104,14 @@ class Object:
             else:
                 obj, primitive = wrap(bridge.get_field(self.bridge.clazz, self.bridge, attr))
             if primitive:
-                if type(obj) not in primitive_wraps:
-                    primitive_wraps[type(obj)] = type(f'Wrapped_{type(obj).__name__}', (type(obj),),
+                subclassed_type = type(obj)
+                if subclassed_type == bool:
+                    #bool cannot be subclassed
+                    subclassed_type = int
+                if subclassed_type not in primitive_wraps:
+                    primitive_wraps[subclassed_type] = type(f'Wrapped_{subclassed_type.__name__}', (subclassed_type,),
                                                     dict(__raw__=(lambda t: lambda self, *args: t(self))(type(obj)), __call__=lambda self, *args: _call(self.__jparent__, self.__jattrname__, *args)))
-                obj = primitive_wraps[type(obj)](obj)
+                obj = primitive_wraps[subclassed_type](obj)
                 obj.__jparent__ = self
                 obj.__jattrname__ = attr
             else:
@@ -204,7 +208,6 @@ class primitive_array:
             element_cls = bridge.array_of_class(element_cls)
         return make_array(element_cls, *args)
 
-
     def __getitem__(self, key):
         if not isinstance(key, tuple) or len(key) != 0:
             raise ValueError('must be ()')
@@ -229,7 +232,7 @@ def interface(f):
     func.__interface__ = True
     return func
 
-jlong = jprimitive(bridge.jboolean)
+jboolean = jprimitive(bridge.jboolean)
 jbyte = jprimitive(bridge.jbyte)
 jchar = jprimitive(bridge.jchar)
 jshort = jprimitive(bridge.jshort)
