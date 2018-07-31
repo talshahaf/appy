@@ -1,5 +1,5 @@
 from appy import java
-from appy.widgets import java_context, register_widget, TextView, Widget
+from appy.widgets import java_context, register_widget, TextView, Widget, Button
 
 WIDGET_NAME = 'user present'
 
@@ -16,7 +16,7 @@ class Receiver:
             widgets[0].state.setdefault('count', 0)
             widgets[0].state.count += 1
         for widget in widgets:
-            widget.invalidate()
+            widget.post(update)
             
 receiver = Receiver()
 receiverBridge = java.new.com.appy.BroadcastInterfaceBridge(receiver.iface)
@@ -30,11 +30,19 @@ def register_receiver(intent):
         
 def update(widget, views):
     widget.nonlocals('count')
-    views['counter'].text = f'User was present\n{widget.state.get("count", 0)}\ntimes'
+    views['counter'].text = str(widget.state.get("count", 0))
+
+def reset(widget, views):
+    widget.nonlocals('count')
+    widget.state.count = 0
+    update(widget, views)
     
 def create(widget):
-    widget.invalidate()
-    return [TextView(name='counter', textSize=30, alignment='center')]
+    btn = Button(style='secondary_btn_sml', name='counter', click=reset, textSize=30, hcenter=widget.hcenter, vcenter=widget.vcenter)
+    widget.post(update)
+    return [TextView(text='User was present', textSize=30, alignment='center', hcenter=widget.hcenter, bottom=btn.itop + 5), 
+            TextView(text='times', textSize=30, alignment='center', hcenter=widget.hcenter, top=btn.ibottom + 5), 
+            btn]
         
-register_widget(WIDGET_NAME, create, update)
+register_widget(WIDGET_NAME, create)
 register_receiver('ACTION_USER_PRESENT')

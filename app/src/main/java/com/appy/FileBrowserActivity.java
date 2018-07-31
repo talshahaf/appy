@@ -14,11 +14,14 @@ import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.text.InputType;
 import android.util.Log;
+import android.util.TypedValue;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.EditText;
+import android.widget.FrameLayout;
 import android.widget.ListAdapter;
 import android.widget.ListView;
 import android.widget.Toast;
@@ -398,10 +401,20 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
                 AlertDialog.Builder builder = new AlertDialog.Builder(this);
                 builder.setTitle("Go to");
 
+                FrameLayout container = new FrameLayout(this);
+
                 final EditText input = new EditText(this);
                 input.setInputType(InputType.TYPE_TEXT_VARIATION_URI);
                 input.setText(currentDir());
-                builder.setView(input);
+
+                float margin = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP,30, getResources().getDisplayMetrics());
+                FrameLayout.LayoutParams params = new  FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+                params.leftMargin = (int)margin;
+                params.rightMargin = (int)margin;
+                input.setLayoutParams(params);
+                container.addView(input);
+
+                builder.setView(container);
 
                 builder.setSingleChoiceItems(preset_names, -1,
                         new DialogInterface.OnClickListener() {

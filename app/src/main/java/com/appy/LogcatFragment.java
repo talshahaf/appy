@@ -103,7 +103,7 @@ public class LogcatFragment extends MyFragment implements RunnerListener
                 @Override
                 public void run()
                 {
-                    logcatView.setText("");
+                    logcatView.setText("Loading...");
                 }
             });
         }

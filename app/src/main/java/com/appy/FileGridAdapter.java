@@ -85,9 +85,6 @@ public class FileGridAdapter extends BaseAdapter
         {
             LayoutInflater m_inflater = LayoutInflater.from(context);
             view = m_inflater.inflate(R.layout.filegrid_item, null);
-            view.setLayoutParams(new GridView.LayoutParams((int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP,120, context.getResources().getDisplayMetrics()),
-                                                           (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP,120, context.getResources().getDisplayMetrics())));
-
             viewHolder = new ViewHolder();
             viewHolder.layout = view.findViewById(R.id.filegrid_layout);
             viewHolder.name = view.findViewById(R.id.filegrid_name);
@@ -130,7 +127,6 @@ public class FileGridAdapter extends BaseAdapter
         viewHolder.layout.setBackgroundTintList(context.getResources().getColorStateList(color));
 
         viewHolder.name.setText(new File(file.path).getName());
-        viewHolder.icon.setImageResource(android.R.drawable.ic_lock_lock);
         viewHolder.info.setOnClickListener(new View.OnClickListener()
         {
             @Override

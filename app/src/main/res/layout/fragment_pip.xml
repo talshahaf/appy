@@ -18,17 +18,19 @@
     <Button
         android:id="@+id/run"
         android:layout_width="89dp"
-        android:layout_height="wrap_content" android:layout_marginStart="8dp"
-        android:layout_marginTop="8dp" android:text="Run"
-        app:layout_constraintStart_toStartOf="@+id/command"
-        app:layout_constraintTop_toBottomOf="@+id/command"/>
+        android:layout_height="wrap_content" android:text="Run"
+        app:layout_constraintEnd_toStartOf="@+id/stop"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/command"
+        style="@style/secondary_btn"/>
     <Button
         android:id="@+id/stop"
         android:layout_width="wrap_content"
-        android:layout_height="wrap_content" android:layout_marginEnd="8dp"
-        android:layout_marginTop="8dp" android:text="Stop"
-        app:layout_constraintEnd_toEndOf="@+id/command"
-        app:layout_constraintTop_toBottomOf="@+id/command"/>
+        android:layout_height="wrap_content" android:text="Stop"
+        app:layout_constraintStart_toEndOf="@+id/run"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/command"
+        style="@style/secondary_btn"/>
     <ScrollView
         android:id="@+id/scroller"
         android:layout_width="0dp"

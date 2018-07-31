@@ -8,11 +8,9 @@ import android.support.v4.app.FragmentTransaction;
 import android.support.annotation.NonNull;
 import android.support.v4.app.Fragment;
 import android.content.Intent;
-import android.os.Handler;
 import android.support.design.widget.NavigationView;
 import android.support.v4.app.FragmentManager;
 import android.support.v7.app.ActionBar;
-import android.support.v7.app.ActionBarDrawerToggle;
 import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.AppCompatActivity;
 
@@ -51,7 +49,7 @@ public class MainActivity extends AppCompatActivity implements StatusListener
         ActionBar actionBar = getSupportActionBar();
         actionBar.setDisplayHomeAsUpEnabled(true);
         actionBar.setHomeButtonEnabled(true);
-        actionBar.setHomeAsUpIndicator(R.drawable.ic_menu_black_24dp);
+        actionBar.setHomeAsUpIndicator(R.drawable.ic_menu_24dp);
         // Find our drawer view
         drawer = findViewById(R.id.drawer_layout);
         navView = findViewById(R.id.nav_view);

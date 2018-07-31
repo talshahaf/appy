@@ -4,10 +4,10 @@
     <color name="colorPrimaryDark">#303F9F</color>
     <color name="colorAccent">#ff4081</color>
     <color name="terminal_bg">#FF680b3c</color>
-    <color name="grid_green">#7c028100</color>
-    <color name="grid_yellow">#6ed3be00</color>
-    <color name="grid_red">#69b00003</color>
-    <color name="grid_grey">#69b0b0b0</color>
+    <color name="grid_green">#ff028100</color>
+    <color name="grid_yellow">#ffd3be00</color>
+    <color name="grid_red">#ffb00003</color>
+    <color name="grid_grey">#ffb0b0b0</color>
 
     <color name="color_primary_btn_bg_hover">#0069d9</color>
     <color name="color_primary_btn_border_hover">#0062cc</color>
