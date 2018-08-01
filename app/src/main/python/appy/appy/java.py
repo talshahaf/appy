@@ -1,7 +1,25 @@
 from . import bridge
 import time
 
-primitive_wraps = {}
+class wrapped_int(int):
+    def __raw__(self):
+        return int(self)
+    def __call__(self, *args):
+        return _call(self.__jparent__, self.__jattrname__, *args)
+        
+class wrapped_float(float):
+    def __raw__(self):
+        return float(self)
+    def __call__(self, *args):
+        return _call(self.__jparent__, self.__jattrname__, *args)
+        
+class wrapped_bool(int):
+    def __raw__(self):
+        return bool(self)
+    def __call__(self, *args):
+        return _call(self.__jparent__, self.__jattrname__, *args)
+
+primitive_wraps = {int: wrapped_int, float: wrapped_float, bool: wrapped_bool}
 
 def raise_(exc):
     raise exc
@@ -104,14 +122,9 @@ class Object:
             else:
                 obj, primitive = wrap(bridge.get_field(self.bridge.clazz, self.bridge, attr))
             if primitive:
-                subclassed_type = type(obj)
-                if subclassed_type == bool:
-                    #bool cannot be subclassed
-                    subclassed_type = int
-                if subclassed_type not in primitive_wraps:
-                    primitive_wraps[subclassed_type] = type(f'Wrapped_{subclassed_type.__name__}', (subclassed_type,),
-                                                    dict(__raw__=(lambda t: lambda self, *args: t(self))(type(obj)), __call__=lambda self, *args: _call(self.__jparent__, self.__jattrname__, *args)))
-                obj = primitive_wraps[subclassed_type](obj)
+                if type(obj) not in primitive_wraps:
+                    raise ValueError('primitive does not have a wrapper')
+                obj = primitive_wraps[type(obj)](obj)
                 obj.__jparent__ = self
                 obj.__jattrname__ = attr
             else:

@@ -363,7 +363,8 @@ class Element:
             if 'methodCalls' not in self.d:
                 self.d.methodCalls = []
 
-            arguments = [serialize_arg(arg.__raw__() if isinstance(arg, tuple(java.primitive_wraps.values())) else arg) for arg in arguments]
+            #serialize_arg(arg.__raw__()..., i want to see where this breaks
+            arguments = [serialize_arg(arg if isinstance(arg, tuple(java.primitive_wraps.values())) else arg) for arg in arguments]
             self.d.methodCalls = [c for c in self.d.methodCalls if c.identifier != identifier] + [AttrDict(identifier=identifier, method=method, arguments=arguments)]
             
     @classmethod
