@@ -204,7 +204,6 @@ class primitive_array:
             element_cls = bridge.array_of_class(element_cls)
         return make_array(element_cls, *args)
 
-
     def __getitem__(self, key):
         if not isinstance(key, tuple) or len(key) != 0:
             raise ValueError('must be ()')
@@ -229,7 +228,7 @@ def interface(f):
     func.__interface__ = True
     return func
 
-jlong = jprimitive(bridge.jboolean)
+jboolean = jprimitive(bridge.jboolean)
 jbyte = jprimitive(bridge.jbyte)
 jchar = jprimitive(bridge.jchar)
 jshort = jprimitive(bridge.jshort)
