@@ -104,10 +104,14 @@ class Object:
             else:
                 obj, primitive = wrap(bridge.get_field(self.bridge.clazz, self.bridge, attr))
             if primitive:
-                if type(obj) not in primitive_wraps:
-                    primitive_wraps[type(obj)] = type(f'Wrapped_{type(obj).__name__}', (type(obj),),
+                subclassed_type = type(obj)
+                if subclassed_type == bool:
+                    #bool cannot be subclassed
+                    subclassed_type = int
+                if subclassed_type not in primitive_wraps:
+                    primitive_wraps[subclassed_type] = type(f'Wrapped_{subclassed_type.__name__}', (subclassed_type,),
                                                     dict(__raw__=(lambda t: lambda self, *args: t(self))(type(obj)), __call__=lambda self, *args: _call(self.__jparent__, self.__jattrname__, *args)))
-                obj = primitive_wraps[type(obj)](obj)
+                obj = primitive_wraps[subclassed_type](obj)
                 obj.__jparent__ = self
                 obj.__jattrname__ = attr
             else:
