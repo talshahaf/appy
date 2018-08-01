@@ -1,5 +1,7 @@
 package com.appy;
 
+import org.apache.tools.ant.types.Commandline;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
@@ -92,7 +94,7 @@ public class Runner implements Runnable
         Integer exitCode = null;
         try
         {
-            process = Runtime.getRuntime().exec(command, null, cwd);
+            process = Runtime.getRuntime().exec(Commandline.translateCommandline(command), null, cwd);
             BufferedReader bufferedOut = new BufferedReader(new InputStreamReader(process.getInputStream()));
             BufferedReader bufferedErr = new BufferedReader(new InputStreamReader(process.getErrorStream()));
 

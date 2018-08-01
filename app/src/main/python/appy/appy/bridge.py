@@ -177,7 +177,18 @@ class meta_primitive(type):
         return inst
 
 class jprimitive(metaclass=meta_primitive):
-    pass
+    def __lt__(self, other):
+        return self.value.__lt__(other)
+    def __le__(self, other):
+        return self.value.__le__(other)
+    def __eq__(self, other):
+        return self.value.__eq__(other)
+    def __ne__(self, other):
+        return self.value.__ne__(other)
+    def __gt__(self, other):
+        return self.value.__gt__(other)
+    def __ge__(self, other):
+        return self.value.__ge__(other)
 
 class jboolean(jprimitive):
     def __init__(self, v):
@@ -637,7 +648,7 @@ def tests():
     test6()
     test7()
 
-    print('====================================end')
+    print('==================bridge tests end==================')
 
 if __name__ == '__main__':
     tests()

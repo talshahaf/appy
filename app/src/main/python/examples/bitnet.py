@@ -14,9 +14,12 @@ AMOUNT_CURRENCY = 1000
 
 def bit_on_refresh():
     print('refreshing')
-    ratio = float(json.loads(requests.get(BIT_TO_CURRENCY).text)['data']['quotes'][CURRENCY]['price'])
-    total = (AMOUNT_BTC * ratio) - AMOUNT_CURRENCY
-    return total
+    try:
+        ratio = float(json.loads(requests.get(BIT_TO_CURRENCY).text)['data']['quotes'][CURRENCY]['price'])
+        total = (AMOUNT_BTC * ratio) - AMOUNT_CURRENCY
+        return total
+    except OSError:
+        print('error fetching information')
 
 def bit_adapter(widget, view, value):
     view.textColor = color(g=255) if value >= 0 else color(r=255)

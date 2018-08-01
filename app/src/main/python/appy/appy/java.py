@@ -1,25 +1,54 @@
 from . import bridge
-import time
+import time, inspect, dis
 
-class wrapped_int(int):
-    def __raw__(self):
-        return int(self)
-    def __call__(self, *args):
-        return _call(self.__jparent__, self.__jattrname__, *args)
-        
-class wrapped_float(float):
-    def __raw__(self):
-        return float(self)
-    def __call__(self, *args):
-        return _call(self.__jparent__, self.__jattrname__, *args)
-        
-class wrapped_bool(int):
-    def __raw__(self):
-        return bool(self)
-    def __call__(self, *args):
-        return _call(self.__jparent__, self.__jattrname__, *args)
-
-primitive_wraps = {int: wrapped_int, float: wrapped_float, bool: wrapped_bool}
+# this function is called from a __getattr__ method. it determines whether the attribute being searched will be called right after getting it.
+# example:
+# class Obj:
+#     def __getattr__(self, key):
+#         if is_calling():
+#             return lambda: None
+#         else:
+#             return None
+#
+# Obj().a == None
+# Obj().a() == None (lambda was called)
+#
+# x = Obj().a # x == None
+# x()         # TypeError: 'NoneType' object is not callable
+def is_calling():
+    frame = inspect.stack()[2]
+    bytecode = dis.Bytecode(frame.frame.f_code)
+    inline = False
+    expr = []
+    for instr in bytecode:
+        if instr.offset == frame.frame.f_lasti:
+            inline = True
+        if instr.opname == 'POP_TOP':
+            inline = False
+        if inline:
+            expr.append(instr)
+            
+    if expr[0].opname not in ('LOAD_ATTR', 'LOAD_METHOD'):
+        #shouldn't happen
+        return False
+    #argnum is the source arg in LOAD_METHOD
+    argnum = None if expr[0].opname == 'LOAD_METHOD' else expr[0].arg
+    for instr in expr[1:]:
+        if argnum is None:
+            #searching for CALL_METHOD until another LOAD_METHOD
+            if instr.opname == 'LOAD_METHOD':
+                return False
+            if instr.opname == 'CALL_METHOD':
+                return True
+        elif instr.arg == argnum:
+            if instr.opname.startswith('CALL_FUNCTION'):
+                #found our call
+                return True
+            if instr.opname.startswith('LOAD_') and instr.opname != 'LOAD_CONST':
+                #value overwritten, no call
+                return False
+    #nothing found
+    return False
 
 def raise_(exc):
     raise exc
@@ -42,6 +71,8 @@ def wrap(obj, *args, **kwargs):
 def unwrap(obj):
     if isinstance(obj, (Object, Class, Array)):
         return obj.bridge
+    if isinstance(obj, InterfaceBase):
+        return obj.java_object.bridge
     if isinstance(obj, UnknownField):
         raise RuntimeError('field does not exists')
     return obj
@@ -87,7 +118,8 @@ class Path:
             for _ in range(self.array_dim - 1):
                 element_cls = bridge.array_of_class(element_cls)
             arr_cls = bridge.array_of_class(element_cls)
-            return self.arr_func(Class(arr_cls), Class(element_cls), *args)
+            wrapped_element_cls = Class(element_cls)
+            return self.arr_func(Class(arr_cls, array_element_class=wrapped_element_cls), wrapped_element_cls, *args)
 
     def __getitem__(self, key):
         if not isinstance(key, tuple) or len(key) != 0:
@@ -122,8 +154,12 @@ class Object:
             else:
                 obj, primitive = wrap(bridge.get_field(self.bridge.clazz, self.bridge, attr))
             if primitive:
+                if is_calling():
+                    return UnknownField(self, attr)
+                else:
+                    return obj
                 if type(obj) not in primitive_wraps:
-                    raise ValueError('primitive does not have a wrapper')
+                    raise ValueError(f'primitive {type(obj)} does not have a wrapper')
                 obj = primitive_wraps[type(obj)](obj)
                 obj.__jparent__ = self
                 obj.__jattrname__ = attr
@@ -154,7 +190,7 @@ class Object:
 
 class Null(Object):
     def __eq__(self, other):
-        return other == Null or isinstance(other, Null)
+        return other == Null or isinstance(other, Null) or other is None
     def __bool__(self):
         return False
     def __getattr__(self, item):
@@ -169,14 +205,27 @@ class Null(Object):
         return repr(self)
 
 class Class(Object):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, array_element_class=None, **kwargs):
         super().__init__(*args, use_static=True, **kwargs)
+        self.__dict__['array_element_class'] = array_element_class
 
     def __call__(self, *args):
-        return wrap(bridge.call_method(self.bridge, None, '', *unwrap_args(args)))[0]
+        if self.array_element_class is not None:
+            return make_array(self.array_element_class.bridge, *args)
+        else:
+            return wrap(bridge.call_method(self.bridge, None, '', *unwrap_args(args)))[0]
 
     def __lshift__(self, obj):
         return bridge.cast(bridge.box_python(unwrap(obj)), self.bridge)
+        
+    def __getitem__(self, key):
+        if not isinstance(key, tuple) or len(key) != 0:
+            raise ValueError('must be ()')
+        return Class(bridge.array_of_class(self.bridge), array_element_class=self)
+        
+    @property
+    def name(self):
+        return self.bridge.class_name
 
 def make_array(element_bridge_class, l):
     if not isinstance(l, int):
@@ -193,12 +242,22 @@ class Array(Object):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.__dict__['length'] = self.bridge.length
+        
+    def __eq__(self, other):
+        return self[:] == other
+        
+    def __bool__(self):
+        return bool(self[:])
 
     def __len__(self):
         return self.bridge.length
 
     def __getitem__(self, key):
-        return self.bridge[key]
+        items = self.bridge[key]
+        if isinstance(key, slice):
+            return tuple(wrap(item)[0] for item in items)
+        else:
+            return wrap(items)[0]
 
     def __setitem__(self, key, value):
         if isinstance(key, slice):
@@ -207,7 +266,7 @@ class Array(Object):
             value = unwrap(value)
         self.bridge[key] = value
 
-class primitive_array:
+class primitive_array_creator:
     def __init__(self, code, array_dim=1):
         self.code = code
         self.array_dim = array_dim
@@ -224,7 +283,7 @@ class primitive_array:
     def __getitem__(self, key):
         if not isinstance(key, tuple) or len(key) != 0:
             raise ValueError('must be ()')
-        return primitive_array(self.code, self.array_dim + 1)
+        return primitive_array_creator(self.code, self.array_dim + 1)
 
 class jprimitive:
     def __init__(self, bridge_class):
@@ -235,9 +294,9 @@ class jprimitive:
     def __getitem__(self, key):
         if not isinstance(key, tuple) or len(key) != 0:
             raise ValueError('must be ()')
-        return primitive_array(self.code)
+        return primitive_array_creator(self.code)
 
-def interface(f):
+def override(f):
     if hasattr(f, '__interface__'):
         return f
     def func(*args):
@@ -260,12 +319,21 @@ new = Path(cls_func=lambda cls, *args: cls(*args),
 
 clazz = Path(cls_func=lambda cls: cls,
              arr_func=lambda arr_cls, _: arr_cls)
+    
+interface_cache = {}
+class InterfaceBase:
+    def __init__(self, *ifaces):
+        self.ifaces += ifaces
+        self.java_object = wrap(bridge.make_interface(self, unwrap_args(self.ifaces)))[0]
 
-def create_interface(ins, *ifaces):
-    if isinstance(ins, dict):
-        ins = {k: interface(v) for k,v in ins.items()}
-    return wrap(bridge.make_interface(ins, unwrap_args(ifaces)))[0]
-
+def implements(*ifaces):
+    cache_key = tuple(iface.name for iface in ifaces)
+    if cache_key in interface_cache:
+        return interface_cache[cache_key]
+    interface = type(str(cache_key), (InterfaceBase,), {'ifaces': tuple(ifaces)})
+    interface_cache[cache_key] = interface
+    return interface
+        
 def get_java_arg():
     return wrap(bridge.get_java_arg())[0]
 
@@ -282,55 +350,57 @@ def tests():
         print(type(test2))
         print(test, test2)
 
-
-        print(test.ins_value)
+        assert(test.ins_value == 24)
         test.ins_value = 38
-        print(test.ins_value)
-        print(~test.test_value)
-        print(test.test_value.ins_value)
+        assert(test.ins_value == 38)
+        assert((~test.test_value).name == 'com.appy.Test.Test2')
+        assert(test.test_value.ins_value == 11)
         test.test_value.ins_value = 59
-        print(test.test_value.ins_value)
-        print('=====')
-        print(test.value)
-        print(test.value())
-        print(Test.value)
-        print(Test.value())
+        assert(test.test_value.ins_value == 59)
+
+        assert(test.value == 18)
+        assert(test.value() == 85)
+        assert(Test.value == 18)
+        assert(Test.value() == 85)
 
         arr = test.test_integer_array(13)
-        print(arr[1], arr[1:-2])
+        assert(arr == (Null,) * 13)
+        assert(arr[1] == Null)
+        assert(arr[1:-2] == (Null,) * 10)
         arr[1] = 15
+        assert(arr[1] == 15)
         arr[1:-2] = range(1,11)
+        assert(arr[1:-2] == tuple(range(1,11)))
         arr[:4] = [50, 51, 52, 53]
-        print(arr[1], arr[1:-2])
-        print(arr)
-        print(arr.length)
-        print('===')
-        print(new.com.appy.Test[()])
-        print(new.com.appy.Test[()]([new.com.appy.Test(), new.com.appy.Test()]))
-        print(new.com.appy.Test[()][()]([new.com.appy.Test[()]([new.com.appy.Test(), new.com.appy.Test()])]))
-        print(jlong(13))
-        print(jlong[()](3))
-        print(jlong[()]([jlong(1), jlong(2), jlong(3)]))
-        print(jlong[()][()]([
+        assert(arr == (tuple(range(50, 53 + 1)) + tuple(range(4, 10 + 1)) + (Null, Null)))
+        assert(len(arr) == arr.length == 13)
+
+        arr = new.com.appy.Test[()](0)
+        assert(len(arr) == 0)
+        arr = new.com.appy.Test[()]([new.com.appy.Test(), new.com.appy.Test()])
+        assert(len(arr) == 2)
+        arr = new.com.appy.Test[()][()]([new.com.appy.Test[()]([new.com.appy.Test(), new.com.appy.Test()])])
+        assert(len(arr) == 1)
+        assert(len(arr[0]) == 2)
+        assert(jlong(13) == 13)
+        assert(jlong[()](3) == (0,) * 3)
+        assert(jlong[()]([jlong(1), jlong(2), jlong(3)]) == (1,2,3))
+        mat = jlong[()][()]([
                                 jlong[()]([jlong(1), jlong(2), jlong(3)]),
                                 jlong[()]([jlong(4), jlong(5), jlong(6)]),
                                 jlong[()]([jlong(7), jlong(8), jlong(9)])
-                            ]))
-        #bridge.tests()
-        #nul = test.null_test
-        #print(type(nul), nul == Null, nul == nul, nul is Null, nul, test.null_test, test.null_test())
-        #print(nul.get)
-        #print(nul.get())
-        #nul.set = 3
+                            ])
+        assert(mat == ((1,2,3),(4,5,6),(7,8,9)))
+        assert(jlong[()]([1, 2, 3]) == (1,2,3))
+        assert(len((~test)[()]([test])) == 1)
 
     def test2():
-        class Receiver:
-            @interface
+        class Receiver(implements(clazz.com.appy.BroadcastInterface())):
+            @override
             def onReceive(self, context, intent):
                 print('action ', intent.getAction())
 
-        iface = create_interface(Receiver(), clazz.com.appy.BroadcastInterface())
-        receiver = new.com.appy.Reflection.BroadcastInterfaceBridge(iface)
+        receiver = new.com.appy.BroadcastInterfaceBridge(Receiver())
 
         start_time = time.time()
         for _ in range(1):
@@ -339,19 +409,18 @@ def tests():
 
         d = end_time - start_time
         #get_widget_manager().registerReceiver(receiver, filter)
-        print('end')
 
     def test3():
-        print('test3')
         obj = jstring('test')
         obj_cast = clazz.java.lang.CharSequence() << obj
         obj_cast2 = clazz.java.lang.CharSequence() << 'tes2t'
-        print(obj, obj_cast, obj_cast2)
         Test = clazz.com.appy.Test()
-        print(Test.cast_test(obj), Test.cast_test(obj_cast))
+        assert(Test.cast_test(obj) == 'string')
+        assert(Test.cast_test(obj_cast) == 'charsequence')
 
     bridge.tests()
     test1()
     test2()
     test3()
+    print('==================java tests end==================')
 

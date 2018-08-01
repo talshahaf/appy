@@ -3,11 +3,8 @@ from appy.widgets import java_context, register_widget, TextView, Widget, Button
 
 WIDGET_NAME = 'user present'
 
-class Receiver:
-    def __init__(self):
-        self.iface = java.create_interface(self, java.clazz.com.appy.BroadcastInterface())
-        
-    @java.interface
+class Receiver(java.implements(java.clazz.com.appy.BroadcastInterface())):   
+    @java.override
     def onReceive(*args, **kwargs):
         print('user present')
         widgets = Widget.by_name(WIDGET_NAME)
@@ -18,8 +15,7 @@ class Receiver:
         for widget in widgets:
             widget.post(update)
             
-receiver = Receiver()
-receiverBridge = java.new.com.appy.BroadcastInterfaceBridge(receiver.iface)
+receiverBridge = java.new.com.appy.BroadcastInterfaceBridge(Receiver())
             
 def __del__():
     java_context().unregisterReceiver(receiverBridge)
@@ -38,7 +34,7 @@ def reset(widget, views):
     update(widget, views)
     
 def create(widget):
-    btn = Button(style='secondary_btn_sml', name='counter', click=reset, textSize=30, hcenter=widget.hcenter, vcenter=widget.vcenter)
+    btn = Button(style='secondary_sml', name='counter', click=reset, textSize=30, hcenter=widget.hcenter, vcenter=widget.vcenter)
     widget.post(update)
     return [TextView(text='User was present', textSize=30, alignment='center', hcenter=widget.hcenter, bottom=btn.itop + 5), 
             TextView(text='times', textSize=30, alignment='center', hcenter=widget.hcenter, top=btn.ibottom + 5), 

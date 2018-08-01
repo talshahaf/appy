@@ -2,6 +2,19 @@ apply plugin: 'com.android.application'
 
 android {
     compileSdkVersion 27
+
+    packagingOptions {
+        exclude 'META-INF/DEPENDENCIES'
+        exclude 'META-INF/LICENSE'
+        exclude 'META-INF/LICENSE.txt'
+        exclude 'META-INF/license.txt'
+        exclude 'META-INF/NOTICE'
+        exclude 'META-INF/NOTICE.txt'
+        exclude 'META-INF/notice.txt'
+        exclude 'META-INF/ASL2.0'
+        exclude 'META-INF/INDEX.LIST'
+    }
+
     defaultConfig {
         applicationId "com.appy"
         minSdkVersion 21
@@ -102,6 +115,7 @@ dependencies {
     implementation 'org.kamranzafar:jtar:2.3'
     implementation 'com.android.support:design:27.1.1'
     implementation 'com.android.support:preference-v7:27.1.1'
+    implementation 'org.apache.ant:ant:1.9.13'
     testImplementation 'junit:junit:4.12'
     androidTestImplementation 'com.android.support.test:runner:1.0.2'
     androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.2'

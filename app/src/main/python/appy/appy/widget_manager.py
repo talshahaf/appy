@@ -364,7 +364,7 @@ class Element:
                 self.d.methodCalls = []
 
             #serialize_arg(arg.__raw__()..., i want to see where this breaks
-            arguments = [serialize_arg(arg if isinstance(arg, tuple(java.primitive_wraps.values())) else arg) for arg in arguments]
+            arguments = [serialize_arg(arg) for arg in arguments]
             self.d.methodCalls = [c for c in self.d.methodCalls if c.identifier != identifier] + [AttrDict(identifier=identifier, method=method, arguments=arguments)]
             
     @classmethod
@@ -547,7 +547,7 @@ def widget_manager_create(widget, manager_state):
     #clear state
     manager_state.chosen[widget.widget_id] = None
 
-    restart_btn = widgets.ImageButton(style='danger_btn_oval_pad', adjustViewBounds=True, click=widgets.restart, colorFilter=0xffffffff, width=140, height=140, right=0, bottom=0, imageResource=java.clazz.android.R.drawable().ic_lock_power_off)
+    restart_btn = widgets.ImageButton(style='danger_oval_pad', adjustViewBounds=True, click=widgets.restart, colorFilter=0xffffffff, width=140, height=140, right=0, bottom=0, imageResource=java.clazz.android.R.drawable().ic_lock_power_off)
 
     #calling java releases the gil and available_widgets might be changed while iterating it
     names = [name for name in available_widgets]
@@ -603,10 +603,7 @@ def refresh_managers():
         if chosen is None:
             widgets.Widget(widget_id, None).invalidate()
 
-class Handler:
-    def __init__(self):
-        self.iface = java.create_interface(self, java.clazz.com.appy.WidgetUpdateListener())
-
+class Handler(java.implements(java.clazz.com.appy.WidgetUpdateListener())):
     def export(self, input, output):
         state.save() #flushing changes
         if not output:
@@ -622,20 +619,20 @@ class Handler:
         d = json_loads(s)
         return d, elist(Element(e) for e in d)
 
-    @java.interface
+    @java.override
     def onCreate(self, widget_id):
         print(f'python got onCreate')
         widget, manager_state = create_widget(widget_id)
         return self.export(None, widget_manager_create(widget, manager_state))
 
-    @java.interface
+    @java.override
     def onUpdate(self, widget_id, views_str):
         print(f'python got onUpdate')
         widget, manager_state = create_widget(widget_id)
         input, views = self.import_(views_str)
         return self.export(input, widget_manager_update(widget, manager_state, views))
 
-    @java.interface
+    @java.override
     def onDelete(self, widget_id):
         print(f'python got onDelete')
         widget, manager_state = create_widget(widget_id)
@@ -643,7 +640,7 @@ class Handler:
         manager_state.chosen.pop(widget_id, None)
         last_func_for_widget_id.pop(widget_id, None)
 
-    @java.interface
+    @java.override
     def onItemClick(self, widget_id, views_str, collection_id, position, view_id):
         print(f'python got onitemclick {widget_id} {collection_id} {position} {view_id}')
         input, views = self.import_(views_str)
@@ -654,7 +651,7 @@ class Handler:
         handled = handled is True
         return java.new.java.lang.Object[()]([handled, self.export(input, views)])
 
-    @java.interface
+    @java.override
     def onClick(self, widget_id, views_str, view_id):
         print(f'python got on click {widget_id} {view_id}')
         input, views = self.import_(views_str)
@@ -663,7 +660,7 @@ class Handler:
         v.__event__('click', widget=widget, views=views, view=v)
         return self.export(input, views)
 
-    @java.interface
+    @java.override
     def onTimer(self, timer_id, widget_id, views_str, data):
         print('timer called')
         input, views = self.import_(views_str)
@@ -672,7 +669,7 @@ class Handler:
         call_function(func, captures, timer_id=timer_id, widget=widget, views=views)
         return self.export(input, views)
 
-    @java.interface
+    @java.override
     def onPost(self, widget_id, views_str, data):
         print('post called')
         input, views = self.import_(views_str)
@@ -681,23 +678,23 @@ class Handler:
         call_function(func, captures, widget=widget, views=views)
         return self.export(input, views)
 
-    @java.interface
+    @java.override
     def wipeStateRequest(self):
         print('wipe state request called')
         state.wipe_state()
 
-    @java.interface
+    @java.override
     def importFile(self, path):
         print(f'import file request called on {path}')
         load_module(path)
         refresh_managers()
 
-    @java.interface
+    @java.override
     def deimportFile(self, path):
         clear_module(path)
         refresh_managers()
 
-    @java.interface
+    @java.override
     def onError(self, widget_id, error):
         set_error_to_widget_id(widget_id, error)
 
@@ -709,7 +706,7 @@ def init():
     java_widget_manager = context
     print('init')
     prepare_image_cache_dir()
-    context.registerOnWidgetUpdate(Handler().iface)
+    context.registerOnWidgetUpdate(Handler())
     
 def java_context():
     return java_widget_manager

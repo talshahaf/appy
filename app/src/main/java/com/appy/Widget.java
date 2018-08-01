@@ -2152,7 +2152,7 @@ public class Widget extends RemoteViewsService
         textView.methodCalls.add(new RemoteMethodCall("setText", false, Constants.getSetterMethod(textView.type, "setText"), "setText", "Error"));
 
         DynamicView restart = new DynamicView("ImageButton");
-        restart.selectors.put("style", "danger_btn_oval_pad");
+        restart.selectors.put("style", "danger_oval_pad");
         restart.methodCalls.add(new RemoteMethodCall("setColorFilter", false, Constants.getSetterMethod(restart.type, "setColorFilter"), "setColorFilter", 0xffffffff));
         restart.methodCalls.add(new RemoteMethodCall("setImageResource", false, Constants.getSetterMethod(restart.type, "setImageResource"), "setImageResource", android.R.drawable.ic_lock_power_off));
         restart.attributes.attributes.put(Attributes.Type.WIDTH, attributeParse("140"));
@@ -2170,14 +2170,14 @@ public class Widget extends RemoteViewsService
 
             DynamicView clear = new DynamicView("Button");
             clear.methodCalls.add(new RemoteMethodCall("setText", false, Constants.getSetterMethod(clear.type, "setText"), "setText", "Clear"));
-            clear.selectors.put("style", "dark_btn_sml");
+            clear.selectors.put("style", "dark_sml");
             clear.attributes.attributes.put(Attributes.Type.TOP, afterText);
             clear.attributes.attributes.put(Attributes.Type.LEFT, attributeParse("l(p)"));
             clear.tag = widgetId + (Constants.SPECIAL_WIDGET_CLEAR << 16);
 
             DynamicView reload = new DynamicView("Button");
             reload.methodCalls.add(new RemoteMethodCall("setText", false, Constants.getSetterMethod(reload.type, "setText"), "setText", "Reload"));
-            reload.selectors.put("style", "info_btn_sml");
+            reload.selectors.put("style", "info_sml");
             reload.attributes.attributes.put(Attributes.Type.TOP, afterText);
             reload.attributes.attributes.put(Attributes.Type.RIGHT, attributeParse("r(p)"));
             reload.tag = widgetId + (Constants.SPECIAL_WIDGET_RELOAD << 16);

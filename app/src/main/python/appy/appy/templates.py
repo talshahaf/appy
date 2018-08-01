@@ -34,7 +34,7 @@ def refresh_button_click(widget, views, on_click, id, timer_id=None):
     widget.post(refresh_button_action, on_click=on_click, id=id)
 
 def refresh_button(on_click, name=None, initial_refresh=None, widget=None, timeout=None, interval=None):
-    btn = ImageButton(style='dark_btn_oval_pad', adjustViewBounds=True, colorFilter=0xffffffff, width=140, height=140, left=0, bottom=0, imageResource=java.clazz.com.appy.R.drawable().ic_action_refresh)
+    btn = ImageButton(style='dark_oval_pad', adjustViewBounds=True, colorFilter=0xffffffff, width=140, height=140, left=0, bottom=0, imageResource=java.clazz.com.appy.R.drawable().ic_action_refresh)
     btn.click = (refresh_button_click, dict(on_click=on_click, id=btn.id))
     if name is not None:
         btn.name = name
@@ -84,7 +84,8 @@ def call_list_adapter(widget, adapter, value, **kwargs):
 
 def updating_list_refresh_action(widget, views, on_refresh, adapter, update_hook):
     values = widgets.call_general_function(on_refresh, widget=widget, views=views)
-    views['list'].children = None if not values else [call_list_adapter(widget, adapter, value=v, index=i) for i, v in enumerate(values)]
+    if values is not None:
+        views['list'].children = None if not values else [call_list_adapter(widget, adapter, value=v, index=i) for i, v in enumerate(values)]
     
     try:
         views['last_update'].text = datetime.datetime.now().strftime('%x %X')
@@ -124,7 +125,8 @@ def call_text_adapter(widget, adapter, value, view, **kwargs):
 
 def updating_text_refresh_action(widget, views, on_refresh, adapter, update_hook):
     value = widgets.call_general_function(on_refresh, widget=widget, views=views)
-    call_text_adapter(widget, adapter, value=value, view=views['content'])
+    if value is not None:
+        call_text_adapter(widget, adapter, value=value, view=views['content'])
     
     try:
         views['last_update'].text = datetime.datetime.now().strftime('%x %X')
@@ -200,7 +202,7 @@ def keyboard(widget, layout=None):
         line, line_width, line_height, top = resolved_line
         for e in line:
             key_dict, left = e
-            btn = Button(style='secondary_btn_nopad',
+            btn = Button(style='secondary_nopad',
                          text=key_dict['label'],
                          width=key_dict['width'],
                          height=key_dict['height'],
