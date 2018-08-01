@@ -18,8 +18,14 @@ class wrapped_bool(int):
         return bool(self)
     def __call__(self, *args):
         return _call(self.__jparent__, self.__jattrname__, *args)
+        
+class wrapped_str(str):
+    def __raw__(self):
+        return str(self)
+    def __call__(self, *args):
+        return _call(self.__jparent__, self.__jattrname__, *args)
 
-primitive_wraps = {int: wrapped_int, float: wrapped_float, bool: wrapped_bool}
+primitive_wraps = {int: wrapped_int, float: wrapped_float, bool: wrapped_bool, str: wrapped_str}
 
 def raise_(exc):
     raise exc
@@ -123,7 +129,7 @@ class Object:
                 obj, primitive = wrap(bridge.get_field(self.bridge.clazz, self.bridge, attr))
             if primitive:
                 if type(obj) not in primitive_wraps:
-                    raise ValueError('primitive does not have a wrapper')
+                    raise ValueError(f'primitive {type(obj)} does not have a wrapper')
                 obj = primitive_wraps[type(obj)](obj)
                 obj.__jparent__ = self
                 obj.__jattrname__ = attr
