@@ -1,31 +1,47 @@
 from . import bridge
-import time
+import time, inspect, dis
 
-class wrapped_int(int):
-    def __raw__(self):
-        return int(self)
-    def __call__(self, *args):
-        return _call(self.__jparent__, self.__jattrname__, *args)
-        
-class wrapped_float(float):
-    def __raw__(self):
-        return float(self)
-    def __call__(self, *args):
-        return _call(self.__jparent__, self.__jattrname__, *args)
-        
-class wrapped_bool(int):
-    def __raw__(self):
-        return bool(self)
-    def __call__(self, *args):
-        return _call(self.__jparent__, self.__jattrname__, *args)
-        
-class wrapped_str(str):
-    def __raw__(self):
-        return str(self)
-    def __call__(self, *args):
-        return _call(self.__jparent__, self.__jattrname__, *args)
-
-primitive_wraps = {int: wrapped_int, float: wrapped_float, bool: wrapped_bool, str: wrapped_str}
+# this function is called from a __getattr__ method. it determines whether the attribute being searched will be called right after getting it.
+# example:
+# class Obj:
+#     def __getattr__(self, key):
+#         if is_calling():
+#             return lambda: None
+#         else:
+#             return None
+#
+# Obj().a == None
+# Obj().a() == None (lambda was called)
+#
+# x = Obj().a # x == None
+# x()         # TypeError: 'NoneType' object is not callable
+def is_calling():
+    frame = inspect.stack()[2]
+    bytecode = dis.Bytecode(frame.frame.f_code)
+    inline = False
+    expr = []
+    for instr in bytecode:
+        if instr.offset == frame.frame.f_lasti:
+            inline = True
+        if instr.opname == 'POP_TOP':
+            inline = False
+        if inline:
+            expr.append(instr)
+            
+    if expr[0].opname not in ('LOAD_ATTR', 'LOAD_METHOD'):
+        #shouldn't happen
+        return False
+    argnum = expr[0].arg
+    for instr in expr[1:]:
+        if instr.arg == argnum:
+            if instr.opname.startswith('LOAD_') and instr.opname != 'LOAD_CONST':
+                #value overwritten, no call
+                return False
+            if instr.opname.startswith('CALL_FUNCTION') or instr.opname == 'CALL_METHOD':
+                #found our call
+                return True
+    #nothing found
+    return False
 
 def raise_(exc):
     raise exc
@@ -128,6 +144,10 @@ class Object:
             else:
                 obj, primitive = wrap(bridge.get_field(self.bridge.clazz, self.bridge, attr))
             if primitive:
+                if is_calling():
+                    return UnknownField(self, attr)
+                else:
+                    return obj
                 if type(obj) not in primitive_wraps:
                     raise ValueError(f'primitive {type(obj)} does not have a wrapper')
                 obj = primitive_wraps[type(obj)](obj)

@@ -364,7 +364,7 @@ class Element:
                 self.d.methodCalls = []
 
             #serialize_arg(arg.__raw__()..., i want to see where this breaks
-            arguments = [serialize_arg(arg if isinstance(arg, tuple(java.primitive_wraps.values())) else arg) for arg in arguments]
+            arguments = [serialize_arg(arg) for arg in arguments]
             self.d.methodCalls = [c for c in self.d.methodCalls if c.identifier != identifier] + [AttrDict(identifier=identifier, method=method, arguments=arguments)]
             
     @classmethod
