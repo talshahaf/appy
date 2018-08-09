@@ -127,11 +127,11 @@ public class Test
 
     public static String cast_test(String str)
     {
-        return "not good";
+        return "string";
     }
     public static String cast_test(CharSequence str)
     {
-        return "yes!";
+        return "charsequence";
     }
 
     public static class Inner

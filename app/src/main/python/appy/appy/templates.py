@@ -84,7 +84,8 @@ def call_list_adapter(widget, adapter, value, **kwargs):
 
 def updating_list_refresh_action(widget, views, on_refresh, adapter, update_hook):
     values = widgets.call_general_function(on_refresh, widget=widget, views=views)
-    views['list'].children = None if not values else [call_list_adapter(widget, adapter, value=v, index=i) for i, v in enumerate(values)]
+    if values is not None:
+        views['list'].children = None if not values else [call_list_adapter(widget, adapter, value=v, index=i) for i, v in enumerate(values)]
     
     try:
         views['last_update'].text = datetime.datetime.now().strftime('%x %X')
@@ -124,7 +125,8 @@ def call_text_adapter(widget, adapter, value, view, **kwargs):
 
 def updating_text_refresh_action(widget, views, on_refresh, adapter, update_hook):
     value = widgets.call_general_function(on_refresh, widget=widget, views=views)
-    call_text_adapter(widget, adapter, value=value, view=views['content'])
+    if value is not None:
+        call_text_adapter(widget, adapter, value=value, view=views['content'])
     
     try:
         views['last_update'].text = datetime.datetime.now().strftime('%x %X')

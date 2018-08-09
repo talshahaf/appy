@@ -14,12 +14,18 @@ SPECIFIC = 'https://api.coinmarketcap.com/v2/ticker/{id}/?convert={currency}'
 IMAGE = 'https://s2.coinmarketcap.com/static/img/coins/32x32/{id}.png'
 
 def coin_list():
-    return {coin['symbol']: dict(id=coin['id'], name=coin['name'], symbol=coin['symbol']) for coin in json.loads(requests.get(COIN_LIST).text)['data']}
-    
+    try:
+        return {coin['symbol']: dict(id=coin['id'], name=coin['name'], symbol=coin['symbol']) for coin in json.loads(requests.get(COIN_LIST).text)['data']}
+    except OSError:
+        print('error fetching information')
+        
 def coin_value(id, currency):
-    data = json.loads(requests.get(SPECIFIC.format(id=id, currency=currency)).text)['data']['quotes'][currency]
-    return dict(price=data['price'], market_cap=data['market_cap'], percent_change_24h=data['percent_change_24h'])
-    
+    try:
+        data = json.loads(requests.get(SPECIFIC.format(id=id, currency=currency)).text)['data']['quotes'][currency]
+        return dict(price=data['price'], market_cap=data['market_cap'], percent_change_24h=data['percent_change_24h'])
+    except OSError:
+        print('error fetching information')
+        
 def coin_image(id):
     return IMAGE.format(id=id)
     
@@ -34,7 +40,11 @@ def refresh(widget):
     return filtered
 
 def adapter(widget, view, value, index):
-    icon = ImageView(width='20dp', height='20dp', adjustViewBounds=True, top=20, left=20, imageURI=widgets.file_uri(widgets.download_resource(coin_image(value['id']))))
+    icon = ImageView(width='20dp', height='20dp', adjustViewBounds=True, top=20, left=20)
+    try:
+        icon.imageURI=widgets.file_uri(widgets.download_resource(coin_image(value['id'])))
+    except OSError:
+        print('error fetching image')
     view.append(icon)
     view.append(RelativeLayout(height=20, top=icon.ibottom))
     view[0].left = icon.iright + '20dp'

@@ -40,6 +40,8 @@ def setimage(widget, views, index):
         img.imageURI=widgets.file_uri(widgets.download_resource(img.tag.url))
     except KeyError:
         pass #no image in item
+    except OSError:
+        print('error fetching image')
     
 def flip(widget, views, amount):
     print(f'flipping {amount}')
@@ -48,7 +50,12 @@ def flip(widget, views, amount):
     widget.post(setimage, index=index)
     
 def update(widget, views):
-    items = parse(*get())
+    try:
+        items = parse(*get())
+    except OSError:
+        print('error fetching information')
+        return
+        
     views['flipper'].displayedChild = 0
     
     for item in items[:20]:

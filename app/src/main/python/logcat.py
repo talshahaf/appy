@@ -9,12 +9,20 @@ class LogcatWriter:
     ERROR = 6
     FATAL = 7
     
-    def __init__(self, lvl):
+    def __init__(self, lvl, std):
         self.lvl = lvl
         self.buf = b''
         self.crash_handler = None
+        self.std = std
         
     def write(self, s):
+        if self.std is not None:
+            # tee to actual std
+            if isinstance(s, bytes):
+                self.std.write(s.decode())
+            else:
+                self.std.write(s)
+            
         if isinstance(s, str):
             s = s.encode()
         self.buf = self.buf + s
@@ -38,5 +46,5 @@ class LogcatWriter:
     def flush(self):
         self.write('\n')
             
-sys.stdout = LogcatWriter(LogcatWriter.INFO)
-sys.stderr = LogcatWriter(LogcatWriter.ERROR)
+sys.stdout = LogcatWriter(LogcatWriter.INFO,  sys.stdout)
+sys.stderr = LogcatWriter(LogcatWriter.ERROR, sys.stderr)

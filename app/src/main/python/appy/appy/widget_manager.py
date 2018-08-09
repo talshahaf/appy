@@ -603,10 +603,7 @@ def refresh_managers():
         if chosen is None:
             widgets.Widget(widget_id, None).invalidate()
 
-class Handler:
-    def __init__(self):
-        self.iface = java.create_interface(self, java.clazz.com.appy.WidgetUpdateListener())
-
+class Handler(java.implements(java.clazz.com.appy.WidgetUpdateListener())):
     def export(self, input, output):
         state.save() #flushing changes
         if not output:
@@ -709,7 +706,7 @@ def init():
     java_widget_manager = context
     print('init')
     prepare_image_cache_dir()
-    context.registerOnWidgetUpdate(Handler().iface)
+    context.registerOnWidgetUpdate(Handler())
     
 def java_context():
     return java_widget_manager

@@ -43,7 +43,7 @@ public class PipFragment extends MyFragment implements RunnerListener
         scroller = layout.findViewById(R.id.scroller);
 
         command.setText("");
-        command.append("pip install ");
+        command.append("python -m pip install ");
 
         handler = new Handler();
 

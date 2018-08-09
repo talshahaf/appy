@@ -66,13 +66,16 @@ def forecast(utcdate, lat, lon):
     return temp.get('unit'), temp.get('value'), symbol.get('number')
 
 def update(widget, views):
-    date = datetime.datetime.utcnow()
-    unit, temp, symbol = forecast(date, lat=LAT, lon=LON)
-    night = isnight(date, lat=LAT, lon=LON)
-    icon = WEATHER_ICONS.format(symbol=symbol, night=1 if night else 0)
-    
-    views['temp'].text = f'{temp}°{unit[0].upper()}'
-    views['img'].imageURI = widgets.file_uri(widgets.download_resource(icon))
+    try:
+        date = datetime.datetime.utcnow()
+        unit, temp, symbol = forecast(date, lat=LAT, lon=LON)
+        night = isnight(date, lat=LAT, lon=LON)
+        icon = WEATHER_ICONS.format(symbol=symbol, night=1 if night else 0)
+        
+        views['temp'].text = f'{temp}°{unit[0].upper()}'
+        views['img'].imageURI = widgets.file_uri(widgets.download_resource(icon))
+    except OSError:
+        print('error fetching information')
     
 def create(widget):
     bg = background(widget)

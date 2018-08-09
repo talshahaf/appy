@@ -3,10 +3,7 @@ from appy.widgets import java_context, register_widget, TextView, Widget, Button
 
 WIDGET_NAME = 'user present'
 
-class Receiver:
-    def __init__(self):
-        self.iface = java.create_interface(self, java.clazz.com.appy.BroadcastInterface())
-        
+class Receiver(java.implements(java.clazz.com.appy.BroadcastInterface())):   
     @java.interface
     def onReceive(*args, **kwargs):
         print('user present')
@@ -18,8 +15,7 @@ class Receiver:
         for widget in widgets:
             widget.post(update)
             
-receiver = Receiver()
-receiverBridge = java.new.com.appy.BroadcastInterfaceBridge(receiver.iface)
+receiverBridge = java.new.com.appy.BroadcastInterfaceBridge(Receiver())
             
 def __del__():
     java_context().unregisterReceiver(receiverBridge)
