@@ -296,7 +296,7 @@ class jprimitive:
             raise ValueError('must be ()')
         return primitive_array_creator(self.code)
 
-def interface(f):
+def override(f):
     if hasattr(f, '__interface__'):
         return f
     def func(*args):
@@ -396,7 +396,7 @@ def tests():
 
     def test2():
         class Receiver(implements(clazz.com.appy.BroadcastInterface())):
-            @interface
+            @override
             def onReceive(self, context, intent):
                 print('action ', intent.getAction())
 

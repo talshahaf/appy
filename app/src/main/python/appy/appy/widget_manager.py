@@ -619,20 +619,20 @@ class Handler(java.implements(java.clazz.com.appy.WidgetUpdateListener())):
         d = json_loads(s)
         return d, elist(Element(e) for e in d)
 
-    @java.interface
+    @java.override
     def onCreate(self, widget_id):
         print(f'python got onCreate')
         widget, manager_state = create_widget(widget_id)
         return self.export(None, widget_manager_create(widget, manager_state))
 
-    @java.interface
+    @java.override
     def onUpdate(self, widget_id, views_str):
         print(f'python got onUpdate')
         widget, manager_state = create_widget(widget_id)
         input, views = self.import_(views_str)
         return self.export(input, widget_manager_update(widget, manager_state, views))
 
-    @java.interface
+    @java.override
     def onDelete(self, widget_id):
         print(f'python got onDelete')
         widget, manager_state = create_widget(widget_id)
@@ -640,7 +640,7 @@ class Handler(java.implements(java.clazz.com.appy.WidgetUpdateListener())):
         manager_state.chosen.pop(widget_id, None)
         last_func_for_widget_id.pop(widget_id, None)
 
-    @java.interface
+    @java.override
     def onItemClick(self, widget_id, views_str, collection_id, position, view_id):
         print(f'python got onitemclick {widget_id} {collection_id} {position} {view_id}')
         input, views = self.import_(views_str)
@@ -651,7 +651,7 @@ class Handler(java.implements(java.clazz.com.appy.WidgetUpdateListener())):
         handled = handled is True
         return java.new.java.lang.Object[()]([handled, self.export(input, views)])
 
-    @java.interface
+    @java.override
     def onClick(self, widget_id, views_str, view_id):
         print(f'python got on click {widget_id} {view_id}')
         input, views = self.import_(views_str)
@@ -660,7 +660,7 @@ class Handler(java.implements(java.clazz.com.appy.WidgetUpdateListener())):
         v.__event__('click', widget=widget, views=views, view=v)
         return self.export(input, views)
 
-    @java.interface
+    @java.override
     def onTimer(self, timer_id, widget_id, views_str, data):
         print('timer called')
         input, views = self.import_(views_str)
@@ -669,7 +669,7 @@ class Handler(java.implements(java.clazz.com.appy.WidgetUpdateListener())):
         call_function(func, captures, timer_id=timer_id, widget=widget, views=views)
         return self.export(input, views)
 
-    @java.interface
+    @java.override
     def onPost(self, widget_id, views_str, data):
         print('post called')
         input, views = self.import_(views_str)
@@ -678,23 +678,23 @@ class Handler(java.implements(java.clazz.com.appy.WidgetUpdateListener())):
         call_function(func, captures, widget=widget, views=views)
         return self.export(input, views)
 
-    @java.interface
+    @java.override
     def wipeStateRequest(self):
         print('wipe state request called')
         state.wipe_state()
 
-    @java.interface
+    @java.override
     def importFile(self, path):
         print(f'import file request called on {path}')
         load_module(path)
         refresh_managers()
 
-    @java.interface
+    @java.override
     def deimportFile(self, path):
         clear_module(path)
         refresh_managers()
 
-    @java.interface
+    @java.override
     def onError(self, widget_id, error):
         set_error_to_widget_id(widget_id, error)
 

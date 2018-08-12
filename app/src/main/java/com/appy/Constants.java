@@ -6,6 +6,7 @@ import android.graphics.drawable.Icon;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.util.Log;
 import android.widget.AdapterViewFlipper;
 import android.widget.AnalogClock;
 import android.widget.Button;
@@ -579,7 +580,7 @@ public class Constants
 
             if (remotable)
             {
-                if (method.getParameterTypes().length != 1)
+                if (method.getParameterTypes().length != 1 || !parameterToSetter.containsKey(method.getParameterTypes()[0]))
                 {
                     continue;
                 }

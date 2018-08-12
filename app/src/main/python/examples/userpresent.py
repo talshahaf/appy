@@ -4,7 +4,7 @@ from appy.widgets import java_context, register_widget, TextView, Widget, Button
 WIDGET_NAME = 'user present'
 
 class Receiver(java.implements(java.clazz.com.appy.BroadcastInterface())):   
-    @java.interface
+    @java.override
     def onReceive(*args, **kwargs):
         print('user present')
         widgets = Widget.by_name(WIDGET_NAME)
