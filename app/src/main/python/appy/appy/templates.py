@@ -34,7 +34,7 @@ def refresh_button_click(widget, views, on_click, id, timer_id=None):
     widget.post(refresh_button_action, on_click=on_click, id=id)
 
 def refresh_button(on_click, name=None, initial_refresh=None, widget=None, timeout=None, interval=None):
-    btn = ImageButton(style='dark_btn_oval_pad', adjustViewBounds=True, colorFilter=0xffffffff, width=140, height=140, left=0, bottom=0, imageResource=java.clazz.com.appy.R.drawable().ic_action_refresh)
+    btn = ImageButton(style='dark_oval_pad', adjustViewBounds=True, colorFilter=0xffffffff, width=140, height=140, left=0, bottom=0, imageResource=java.clazz.com.appy.R.drawable().ic_action_refresh)
     btn.click = (refresh_button_click, dict(on_click=on_click, id=btn.id))
     if name is not None:
         btn.name = name
@@ -202,7 +202,7 @@ def keyboard(widget, layout=None):
         line, line_width, line_height, top = resolved_line
         for e in line:
             key_dict, left = e
-            btn = Button(style='secondary_btn_nopad',
+            btn = Button(style='secondary_nopad',
                          text=key_dict['label'],
                          width=key_dict['width'],
                          height=key_dict['height'],

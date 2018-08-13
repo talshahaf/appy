@@ -19,11 +19,11 @@ def act(widget, views, type=0, value=0):
 def on_create(widget):
     grid = GridView(children=[RelativeLayout(width=WIDTH, height=HEIGHT, backgroundColor=widgets.color(b=255))])
     rel = RelativeLayout(name='rel', width=WIDTH, height=HEIGHT, backgroundColor=widgets.color(r=255, a=128))
-    dec_w = Button(style='secondary_btn', click=(act, dict(type=0, value=0.005)), width=200, height=200, text='-', bottom=0, left=0)
-    inc_w = Button(style='secondary_btn', click=(act, dict(type=0, value=-0.005)),  width=200, height=200, text='+', bottom=0, left=dec_w.iright + 10)
-    dec_h = Button(style='secondary_btn', click=(act, dict(type=1, value=0.005)), width=200, height=200, text='-', right=0, top=0)
-    inc_h = Button(style='secondary_btn', click=(act, dict(type=1, value=-0.005)),  width=200, height=200, text='+', right=0, top=dec_h.ibottom + 10)
-    text  = Button(style='secondary_btn', click=set, name='text', right=0, bottom=0)
+    dec_w = Button(style='secondary', click=(act, dict(type=0, value=0.005)), width=200, height=200, text='-', bottom=0, left=0)
+    inc_w = Button(style='secondary', click=(act, dict(type=0, value=-0.005)),  width=200, height=200, text='+', bottom=0, left=dec_w.iright + 10)
+    dec_h = Button(style='secondary', click=(act, dict(type=1, value=0.005)), width=200, height=200, text='-', right=0, top=0)
+    inc_h = Button(style='secondary', click=(act, dict(type=1, value=-0.005)),  width=200, height=200, text='+', right=0, top=dec_h.ibottom + 10)
+    text  = Button(style='secondary', click=set, name='text', right=0, bottom=0)
     widget.state.ratio = list(widgets.java_context().getCorrectionFactors())
     widget.post(act)
     return [grid, rel, dec_w, inc_w, dec_h, inc_h, text]

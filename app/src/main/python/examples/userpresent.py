@@ -34,7 +34,7 @@ def reset(widget, views):
     update(widget, views)
     
 def create(widget):
-    btn = Button(style='secondary_btn_sml', name='counter', click=reset, textSize=30, hcenter=widget.hcenter, vcenter=widget.vcenter)
+    btn = Button(style='secondary_sml', name='counter', click=reset, textSize=30, hcenter=widget.hcenter, vcenter=widget.vcenter)
     widget.post(update)
     return [TextView(text='User was present', textSize=30, alignment='center', hcenter=widget.hcenter, bottom=btn.itop + 5), 
             TextView(text='times', textSize=30, alignment='center', hcenter=widget.hcenter, top=btn.ibottom + 5), 

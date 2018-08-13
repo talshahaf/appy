@@ -547,7 +547,7 @@ def widget_manager_create(widget, manager_state):
     #clear state
     manager_state.chosen[widget.widget_id] = None
 
-    restart_btn = widgets.ImageButton(style='danger_btn_oval_pad', adjustViewBounds=True, click=widgets.restart, colorFilter=0xffffffff, width=140, height=140, right=0, bottom=0, imageResource=java.clazz.android.R.drawable().ic_lock_power_off)
+    restart_btn = widgets.ImageButton(style='danger_oval_pad', adjustViewBounds=True, click=widgets.restart, colorFilter=0xffffffff, width=140, height=140, right=0, bottom=0, imageResource=java.clazz.android.R.drawable().ic_lock_power_off)
 
     #calling java releases the gil and available_widgets might be changed while iterating it
     names = [name for name in available_widgets]

@@ -83,8 +83,8 @@ def create(widget):
     del refresh.bottom
     refresh.top = 0
     refresh.right = 0
-    prev_btn = Button(style='secondary_btn_sml', text='<', left=0, bottom=0, click=(flip, dict(amount=-1)))
-    next_btn = Button(style='secondary_btn_sml', text='>', left=prev_btn.iright + 10, bottom=0, click=(flip, dict(amount=1)))
+    prev_btn = Button(style='secondary_sml', text='<', left=0, bottom=0, click=(flip, dict(amount=-1)))
+    next_btn = Button(style='secondary_sml', text='>', left=prev_btn.iright + 10, bottom=0, click=(flip, dict(amount=1)))
     return [AdapterViewFlipper(name='flipper'), prev_btn, next_btn, refresh]
         
 register_widget('rss', create, reset_refresh_buttons_if_needed)
