@@ -14,30 +14,27 @@ SPECIFIC = 'https://api.coinmarketcap.com/v2/ticker/{id}/?convert={currency}'
 IMAGE = 'https://s2.coinmarketcap.com/static/img/coins/32x32/{id}.png'
 
 def coin_list():
-    try:
-        return {coin['symbol']: dict(id=coin['id'], name=coin['name'], symbol=coin['symbol']) for coin in json.loads(requests.get(COIN_LIST).text)['data']}
-    except OSError:
-        print('error fetching information')
+    return {coin['symbol']: dict(id=coin['id'], name=coin['name'], symbol=coin['symbol']) for coin in json.loads(requests.get(COIN_LIST).text)['data']}
         
 def coin_value(id, currency):
-    try:
-        data = json.loads(requests.get(SPECIFIC.format(id=id, currency=currency)).text)['data']['quotes'][currency]
-        return dict(price=data['price'], market_cap=data['market_cap'], percent_change_24h=data['percent_change_24h'])
-    except OSError:
-        print('error fetching information')
-        
+    data = json.loads(requests.get(SPECIFIC.format(id=id, currency=currency)).text)['data']['quotes'][currency]
+    return dict(price=data['price'], market_cap=data['market_cap'], percent_change_24h=data['percent_change_24h'])
+
 def coin_image(id):
     return IMAGE.format(id=id)
     
 def refresh(widget):
-    #cache coin list in a non-local state shared by all crypto widgets
-    widget.nonlocals('coin_list')
-    if 'coin_list' not in widget.state:
-        widget.state.coin_list = coin_list()
-    filtered = [copy.deepcopy(widget.state.coin_list[coin]) for coin in COINS]
-    for info in filtered:
-        info.update(coin_value(info['id'], CURRENCY))
-    return filtered
+    try:
+        #cache coin list in a non-local state shared by all crypto widgets
+        widget.nonlocals('coin_list')
+        if 'coin_list' not in widget.state:
+            widget.state.coin_list = coin_list()
+        filtered = [copy.deepcopy(widget.state.coin_list[coin]) for coin in COINS]
+        for info in filtered:
+            info.update(coin_value(info['id'], CURRENCY))
+        return filtered
+    except OSError:
+        print('error fetching information')
 
 def adapter(widget, view, value, index):
     icon = ImageView(width='20dp', height='20dp', adjustViewBounds=True, top=20, left=20)
