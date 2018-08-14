@@ -86,11 +86,10 @@ def updating_list_refresh_action(widget, views, on_refresh, adapter, update_hook
     values = widgets.call_general_function(on_refresh, widget=widget, views=views)
     if values is not None:
         views['list'].children = None if not values else [call_list_adapter(widget, adapter, value=v, index=i) for i, v in enumerate(values)]
-    
-    try:
-        views['last_update'].text = datetime.datetime.now().strftime('%x %X')
-    except KeyError:
-        pass
+        try:
+            views['last_update'].text = datetime.datetime.now().strftime('%x %X')
+        except KeyError:
+            pass
         
     if update_hook is not None:
         widgets.call_general_function(update_hook, widget=widget, views=views)
@@ -127,11 +126,10 @@ def updating_text_refresh_action(widget, views, on_refresh, adapter, update_hook
     value = widgets.call_general_function(on_refresh, widget=widget, views=views)
     if value is not None:
         call_text_adapter(widget, adapter, value=value, view=views['content'])
-    
-    try:
-        views['last_update'].text = datetime.datetime.now().strftime('%x %X')
-    except KeyError:
-        pass
+        try:
+            views['last_update'].text = datetime.datetime.now().strftime('%x %X')
+        except KeyError:
+            pass
         
     if update_hook is not None:
         widgets.call_general_function(update_hook, widget=widget, views=views)
