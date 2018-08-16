@@ -4,11 +4,6 @@ from appy import templates, java
 from appy.widgets import ImageView, ImageButton, RelativeLayout
 from appy import widgets
 
-#preferences
-COINS = ['BTC', 'ETH']
-CURRENCY = 'USD'
-############
-
 COIN_LIST = 'https://api.coinmarketcap.com/v2/listings/'
 SPECIFIC = 'https://api.coinmarketcap.com/v2/ticker/{id}/?convert={currency}'
 IMAGE = 'https://s2.coinmarketcap.com/static/img/coins/32x32/{id}.png'
@@ -29,9 +24,9 @@ def refresh(widget):
         widget.nonlocals('coin_list')
         if 'coin_list' not in widget.state:
             widget.state.coin_list = coin_list()
-        filtered = [copy.deepcopy(widget.state.coin_list[coin]) for coin in COINS]
+        filtered = [copy.deepcopy(widget.state.coin_list[coin]) for coin in widget.config.coins]
         for info in filtered:
-            info.update(coin_value(info['id'], CURRENCY))
+            info.update(coin_value(info['id'], widget.config.currency))
         return filtered
     except OSError:
         print('error fetching information')
@@ -55,7 +50,8 @@ def on_create(widget, views):
     del views['last_update'].right
     views['last_update'].left = 20
     
-templates.updating_list('crypto', 
+templates.updating_list('crypto',
+                config=dict(coins=['BTC', 'ETH'], currency='USD'),
                 on_refresh=refresh, 
                 adapter=adapter,
                 initial_refresh=True, 

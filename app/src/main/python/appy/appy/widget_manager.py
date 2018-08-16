@@ -1,6 +1,6 @@
 import json, functools, copy, traceback, inspect, threading, os, collections, importlib.util, sys, hashlib, struct, re
 from .utils import AttrDict, dumps, loads, cap, get_args, prepare_image_cache_dir
-from . import widgets, java, state
+from . import widgets, java, state, configs
 
 def gen_id():
     id = 0
@@ -711,7 +711,7 @@ def init():
 def java_context():
     return java_widget_manager
     
-def register_widget(name, create, update=None):
+def register_widget(name, create, update=None, config=None):
     path = getattr(__importing_module, 'path', None)
     if path is None:
         raise ValueError('register_widget can only be called on import')
@@ -723,3 +723,5 @@ def register_widget(name, create, update=None):
     dumps(update)
 
     available_widgets[name] = dict(pythonfile=path, create=create, update=update)
+    if config is not None:
+        configs.set_defaults(name, config)

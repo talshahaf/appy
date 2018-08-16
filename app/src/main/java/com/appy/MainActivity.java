@@ -40,6 +40,7 @@ public class MainActivity extends AppCompatActivity implements StatusListener
         fragments.put(R.id.navigation_logcat, new Pair<Class<?>, Fragment>(LogcatFragment.class, null));
         fragments.put(R.id.navigation_pip, new Pair<Class<?>, Fragment>(PipFragment.class, null));
         fragments.put(R.id.navigation_files, new Pair<Class<?>, Fragment>(FilesFragment.class, null));
+        fragments.put(R.id.navigation_configs, new Pair<Class<?>, Fragment>(ConfigsFragment.class, null));
         fragments.put(R.id.navigation_crash, new Pair<Class<?>, Fragment>(CrashFragment.class, null));
         fragments.put(R.id.navigation_settings, new Pair<Class<?>, Fragment>(SettingsFragment.class, null));
 
@@ -150,7 +151,7 @@ public class MainActivity extends AppCompatActivity implements StatusListener
             transaction.setCustomAnimations(
                     R.animator.slide_in_from_right, R.animator.slide_out_to_left,
                     R.animator.slide_in_from_left, R.animator.slide_out_to_right);
-
+            transaction.setPrimaryNavigationFragment((Fragment)fragment);
             transaction.replace(R.id.container, (Fragment)fragment, FRAGMENT_TAG);
             if(prev != null)
             {

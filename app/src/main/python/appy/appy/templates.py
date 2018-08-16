@@ -112,8 +112,8 @@ def updating_list_create(widget, initial_values, on_refresh, background_param, a
     
     return views
 
-def updating_list(name, initial_values=None, on_refresh=None, background=None, adapter=None, initial_refresh=None, timeout=None, interval=None, last_update=None, create_hook=None, update_hook=None):
-    widgets.register_widget(name, (updating_list_create, dict(initial_values=initial_values, on_refresh=on_refresh, background_param=background, adapter=adapter, initial_refresh=initial_refresh, timeout=timeout, interval=interval, last_update=last_update, create_hook=create_hook, update_hook=update_hook)), reset_refresh_buttons_if_needed)
+def updating_list(name, initial_values=None, on_refresh=None, background=None, adapter=None, initial_refresh=None, timeout=None, interval=None, last_update=None, config=None, create_hook=None, update_hook=None):
+    widgets.register_widget(name, (updating_list_create, dict(initial_values=initial_values, on_refresh=on_refresh, background_param=background, adapter=adapter, initial_refresh=initial_refresh, timeout=timeout, interval=interval, last_update=last_update, create_hook=create_hook, update_hook=update_hook)), update=reset_refresh_buttons_if_needed, config=config)
 
 ##############text template############################
 def call_text_adapter(widget, adapter, value, view, **kwargs):
@@ -157,8 +157,8 @@ def updating_text_create(widget, initial_value, on_refresh, background_param, ad
         
     return views
 
-def updating_text(name, initial_value=None, on_refresh=None, background=None, adapter=None, initial_refresh=None, timeout=None, interval=None, last_update=None, create_hook=None, update_hook=None):
-    widgets.register_widget(name, (updating_text_create, dict(initial_value=initial_value, on_refresh=on_refresh, background_param=background, adapter=adapter, initial_refresh=initial_refresh, timeout=timeout, interval=interval, last_update=last_update, create_hook=create_hook, update_hook=update_hook)), reset_refresh_buttons_if_needed)
+def updating_text(name, initial_value=None, on_refresh=None, background=None, adapter=None, initial_refresh=None, timeout=None, interval=None, last_update=None, config=None, create_hook=None, update_hook=None):
+    widgets.register_widget(name, (updating_text_create, dict(initial_value=initial_value, on_refresh=on_refresh, background_param=background, adapter=adapter, initial_refresh=initial_refresh, timeout=timeout, interval=interval, last_update=last_update, create_hook=create_hook, update_hook=update_hook)), reset_refresh_buttons_if_needed, config=config)
 
 #################keyboard###############################
 def key_backspace_click(output):

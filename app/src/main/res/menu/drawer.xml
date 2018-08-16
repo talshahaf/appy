@@ -18,6 +18,10 @@
             android:title="Files"
         />
         <item
+            android:id="@+id/navigation_configs"
+            android:title="Configurations"
+        />
+        <item
             android:id="@+id/navigation_crash"
             android:title="Crashes"
         />
