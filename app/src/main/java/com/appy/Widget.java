@@ -85,6 +85,7 @@ public class Widget extends RemoteViewsService
     HashSet<Integer> needUpdateWidgets = new HashSet<>();
     float widthCorrectionFactor = 1.0f;
     float heightCorrectionFactor = 1.0f;
+    Configurations configurations = new Configurations(this);
 
     static class WidgetDestroyedException extends RuntimeException
     {
@@ -1955,6 +1956,11 @@ public class Widget extends RemoteViewsService
         return sharedPref.getString("state", null);
     }
 
+    public Configurations getConfigurations()
+    {
+        return configurations;
+    }
+
     public void setPythonUnpacked(int version)
     {
         SharedPreferences sharedPref = getSharedPreferences("appy", Context.MODE_PRIVATE);
@@ -2678,6 +2684,7 @@ public class Widget extends RemoteViewsService
             loadCorrectionFactors(true);
             loadWidgets();
             loadTimers();
+            configurations.load();
 
             setAllWidgets(false);
             callStatusChange(true);

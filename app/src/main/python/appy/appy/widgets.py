@@ -1,4 +1,4 @@
-from . import java, state, widget_manager, utils
+from . import java, state, widget_manager, utils, configs
 
 AnalogClock    = lambda *args, **kwargs: widget_manager.Element.create('AnalogClock',    *args, **kwargs)
 Button         = lambda *args, **kwargs: widget_manager.Element.create('Button',         *args, **kwargs)
@@ -26,6 +26,8 @@ class Widget:
         self.widget_dims = widget_manager.widget_dims
 
     def __getattr__(self, item):
+        if item == 'config':
+            return configs.global_configs[self.name]
         return getattr(self.widget_dims, item)
 
     def locals(self, *attrs):

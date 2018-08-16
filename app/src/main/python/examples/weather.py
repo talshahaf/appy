@@ -18,10 +18,6 @@ from appy import widgets, java
     # return dict(lat=float(lastKnownLocation.getLatitude()),
                 # lon=float(lastKnownLocation.getLongitude()),
                 # acc=float(lastKnownLocation.getAccuracy()))
-    
-#tel aviv for now
-LAT = 32.08
-LON = 34.78
 
 FORECAST = 'https://api.met.no/weatherapi/locationforecast/1.9/?lat={lat:.2f}&lon={lon:.2f}'
 SUNRISE = 'https://api.met.no/weatherapi/sunrise/1.1/?lat={lat:.2f}&lon={lon:.2f}&date={date}'
@@ -68,8 +64,9 @@ def forecast(utcdate, lat, lon):
 def update(widget, views):
     try:
         date = datetime.datetime.utcnow()
-        unit, temp, symbol = forecast(date, lat=LAT, lon=LON)
-        night = isnight(date, lat=LAT, lon=LON)
+        lat, lon = widget.config.lat, widget.config.lon
+        unit, temp, symbol = forecast(date, lat=lat, lon=lon)
+        night = isnight(date, lat=lat, lon=lon)
         icon = WEATHER_ICONS.format(symbol=symbol, night=1 if night else 0)
         
         views['temp'].text = f'{temp}°{unit[0].upper()}'
@@ -86,4 +83,4 @@ def create(widget):
     text = TextView(name='temp', top=img.ibottom, hcenter=widget.hcenter, textSize=30)
     return [bg, img, text, refresh]
     
-register_widget('weather', create, reset_refresh_buttons_if_needed)
+register_widget('weather', create, reset_refresh_buttons_if_needed, config=dict(lat=32.08, lon=34.78))
