@@ -5,20 +5,27 @@ from . import java, widgets
 ##############refresh button##############################
 def reset_refresh_buttons_if_needed(widget, views):
     for e in views.all():
-        if '__refreshing' in e.tag and e.tag.__refreshing:
+        if '__refresh_error' in e.tag and e.tag.__refresh_error:
             e.visibility = java.clazz.android.view.View().VISIBLE
-            e.tag.__refreshing = False
+            e.tag.__refresh_error = False
 
 def refresh_button_action(widget, views, on_click, id):
-    widgets.call_general_function(on_click, widget=widget, views=views)
-    btn = None
+    try:
+        widgets.call_general_function(on_click, widget=widget, views=views)
+    except:
+        try:
+            btn = views.find_id(id)
+            btn.tag.__refresh_error = True
+        except KeyError:
+            pass
+        raise
+        
     try:
         btn = views.find_id(id)
+        btn.visibility = java.clazz.android.view.View().VISIBLE
+        btn.tag.__refresh_error = False
     except KeyError:
         pass
-    if btn is not None:
-        btn.visibility = java.clazz.android.view.View().VISIBLE
-    btn.tag.__refreshing = False
 
 def refresh_button_click(widget, views, on_click, id, timer_id=None):
     btn = None
@@ -28,8 +35,8 @@ def refresh_button_click(widget, views, on_click, id, timer_id=None):
         #disable timer
         if timer_id is not None:
             widget.cancel_timer(timer_id)
-    btn.tag.__refreshing = True
     if btn is not None:
+        btn.tag.__refreshing = True
         btn.visibility = java.clazz.android.view.View().INVISIBLE
     widget.post(refresh_button_action, on_click=on_click, id=id)
 
@@ -65,6 +72,9 @@ def background(widget, name=None, color=None, drawable=None):
 
     if drawable is None:
         drawable = java.clazz.com.appy.R.drawable().rounded_rect
+        
+    if isinstance(drawable, str):
+        drawable = getattr(java.clazz.com.appy.R.drawable(), drawable)
 
     bg = RelativeLayout(width=widget.width, height=widget.height, backgroundResource=drawable)
     bg.backgroundTint = color | 0xff000000
