@@ -4,25 +4,32 @@ from appy.widgets import register_widget, ImageView, TextView, AttributeFunction
 from appy.templates import background, refresh_button, reset_refresh_buttons_if_needed
 from appy import widgets, java
 
-# PERMISSION = 'ACCESS_COARSE_LOCATION'
+# inaccurate location is enough
+PERMISSION = 'ACCESS_COARSE_LOCATION'
 
-# def get_location():
-    # if PERMISSION not in widgets.request_permissions(PERMISSION)[0]:
-        # print('no perms')
-        # return None
-    # locationManager = widgets.java_context().getSystemService(java.clazz.android.content.Context().LOCATION_SERVICE);
-    # lastKnownLocation = locationManager.getLastKnownLocation(java.clazz.android.location.LocationManager().NETWORK_PROVIDER);
-    # if lastKnownLocation == java.Null:
-        # print('no loc')
-        # return None
-    # return dict(lat=float(lastKnownLocation.getLatitude()),
-                # lon=float(lastKnownLocation.getLongitude()),
-                # acc=float(lastKnownLocation.getAccuracy()))
+# get location using the android providers (currently unused by this widget)
+def get_location():
+    # request_permissions blocks until user action
+    # request_permissions returns a tuple: (granted, denied)
+    if PERMISSION not in widgets.request_permissions(PERMISSION)[0]:
+        print('no perms')
+        return None
+    # getLastKnownLocation instead of active location request
+    locationManager = widgets.java_context().getSystemService(java.clazz.android.content.Context().LOCATION_SERVICE);
+    lastKnownLocation = locationManager.getLastKnownLocation(java.clazz.android.location.LocationManager().NETWORK_PROVIDER);
+    if lastKnownLocation == java.Null:
+        print('no loc')
+        return None
+    return dict(lat=float(lastKnownLocation.getLatitude()),
+                lon=float(lastKnownLocation.getLongitude()),
+                acc=float(lastKnownLocation.getAccuracy()))
 
+# see https://api.met.no/
 FORECAST = 'https://api.met.no/weatherapi/locationforecast/1.9/?lat={lat:.2f}&lon={lon:.2f}'
 SUNRISE = 'https://api.met.no/weatherapi/sunrise/1.1/?lat={lat:.2f}&lon={lon:.2f}&date={date}'
 WEATHER_ICONS = 'https://api.met.no/weatherapi/weathericon/1.1/?symbol={symbol}&is_night={night}&content_type=image/png'
 
+# large responses might be trimmed using the simple requests api
 def large_get(url):
     buf = io.BytesIO()
     r = requests.get(url, stream=True)
@@ -61,7 +68,7 @@ def forecast(utcdate, lat, lon):
     symbol = times[1].find('location').find('symbol')
     return temp.get('unit'), temp.get('value'), symbol.get('number')
 
-def update(widget, views):
+def on_refresh(widget, views):
     try:
         date = datetime.datetime.utcnow()
         lat, lon = widget.config.lat, widget.config.lon
@@ -76,11 +83,15 @@ def update(widget, views):
     
 def create(widget):
     bg = background(widget)
-    refresh = refresh_button(update, widget=widget, initial_refresh=True, interval=4*3600)
+    refresh = refresh_button(on_refresh, widget=widget, initial_refresh=True, interval=4*3600)
+    # moving refresh button
     del refresh.left
     refresh.right = 0
+    #                               width and height are 60% of the widget's height but no more than 200 pixels 
     img = ImageView(name='img', width=AttributeFunction.min(200, widget.height * 0.6), height=AttributeFunction.min(200, widget.height * 0.6), adjustViewBounds=True, hcenter=widget.hcenter, top=10)
     text = TextView(name='temp', top=img.ibottom, hcenter=widget.hcenter, textSize=30)
+    # bg is first
     return [bg, img, text, refresh]
     
+# no custom update callback is needed, just recover refresh button on error,    location is configurable in configurations tab
 register_widget('weather', create, reset_refresh_buttons_if_needed, config=dict(lat=32.08, lon=34.78))

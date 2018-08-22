@@ -118,9 +118,6 @@ class Widget:
     @staticmethod
     def by_name(name):
         return [Widget(widget_id, name) for widget_id in widget_manager.get_widgets_by_name(name)]
-        
-def wipe_global():
-    state.wipe_state()
    
 def file_uri(path):
     return widget_manager.java_context().getUriForPath(path)
@@ -153,3 +150,4 @@ def restart():
 
 from .widget_manager import register_widget, java_context, elist, call_general_function, AttributeFunction
 from .utils import download_resource
+from .state import wipe_state
