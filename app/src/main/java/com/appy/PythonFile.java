@@ -8,6 +8,7 @@ import org.json.JSONObject;
 
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
+import java.util.Date;
 
 /**
  * Created by Tal on 23/03/2018.
@@ -23,46 +24,64 @@ public class PythonFile
         FAILED,
     }
 
-    public PythonFile(String path, String info)
+    public PythonFile(String path, String lastError, String lastErrorDate)
     {
         this.path = path;
-        this.info = info;
+        this.lastError = lastError;
+        this.lastErrorDate = lastErrorDate;
         this.state = State.IDLE;
     }
 
     public String path;
-    public String info;
+    public String lastError;
+    public String lastErrorDate;
     public State state;
 
     public JSONObject serialize() throws JSONException
     {
         JSONObject obj = new JSONObject();
         obj.put("path", path);
-        byte[] data;
-        try
+
+        if(lastError != null)
         {
-            data = info.getBytes("UTF-8");
+            byte[] data;
+            try
+            {
+                data = lastError.getBytes("UTF-8");
+            }
+            catch (UnsupportedEncodingException e)
+            {
+                throw new IllegalArgumentException("can't encode lastError", e);
+            }
+            obj.put("lastError", Base64.encodeToString(data, Base64.DEFAULT));
         }
-        catch (UnsupportedEncodingException e)
+        if(lastErrorDate != null)
         {
-            throw new IllegalArgumentException("can't encode info", e);
+            obj.put("lastErrorDate", lastErrorDate);
         }
-        obj.put("info", Base64.encodeToString(data, Base64.DEFAULT));
         return obj;
     }
 
     public static PythonFile deserialize(JSONObject obj) throws JSONException
     {
-        String text;
-        try
+        String lastError = null;
+        String lastErrorDate = null;
+        if(obj.has("lastError"))
         {
-            text = new String(Base64.decode(obj.getString("info"), Base64.DEFAULT), "UTF-8");
+            try
+            {
+                lastError = new String(Base64.decode(obj.getString("lastError"), Base64.DEFAULT), "UTF-8");
+            }
+            catch (UnsupportedEncodingException e)
+            {
+                throw new IllegalArgumentException("can't encode lastError", e);
+            }
         }
-        catch (UnsupportedEncodingException e)
+        if(obj.has("lastErrorDate"))
         {
-            throw new IllegalArgumentException("can't encode info", e);
+            lastErrorDate = obj.getString("lastErrorDate");
         }
-        return new PythonFile(obj.getString("path"), text);
+        return new PythonFile(obj.getString("path"), lastError, lastErrorDate);
     }
 
     public static ArrayList<PythonFile> deserializeArray(String json)

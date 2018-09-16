@@ -69,9 +69,10 @@ public class Configurations
 
     public void resetKey(String widget, String key)
     {
+        boolean changed = false;
+        String serialized = null;
         synchronized (lock)
         {
-            boolean changed = false;
             HashMap<String, Pair<String, String>> configs = widgetConfigurations.get(widget);
             if(configs != null)
             {
@@ -88,16 +89,22 @@ public class Configurations
 
             if(changed)
             {
-                save();
+                serialized = serialize();
             }
+        }
+
+        if(changed)
+        {
+            save(serialized);
         }
     }
 
     public void resetWidget(String widget)
     {
+        boolean changed = false;
+        String serialized = null;
         synchronized (lock)
         {
-            boolean changed = false;
             HashMap<String, Pair<String, String>> configs = widgetConfigurations.get(widget);
             if(configs != null)
             {
@@ -117,8 +124,13 @@ public class Configurations
 
             if(changed)
             {
-                save();
+                serialized = serialize();
             }
+        }
+
+        if(changed)
+        {
+            save(serialized);
         }
     }
 
@@ -135,7 +147,7 @@ public class Configurations
 
         if(changed)
         {
-            save();
+            save(serialize());
         }
     }
 
@@ -143,7 +155,7 @@ public class Configurations
     {
         if(setConfig(widget, key, value, false))
         {
-            save();
+            save(serialize());
         }
     }
 
@@ -249,11 +261,11 @@ public class Configurations
         }
     }
 
-    private void save()
+    private void save(String serialized)
     {
         SharedPreferences sharedPref = context.getSharedPreferences("appy", Context.MODE_PRIVATE);
         SharedPreferences.Editor editor = sharedPref.edit();
-        editor.putString("configurations", serialize());
+        editor.putString("configurations", serialized);
         editor.apply();
 
         if(listener != null)

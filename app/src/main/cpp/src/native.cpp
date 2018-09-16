@@ -32,6 +32,7 @@ jmethodID inspect = NULL;
 jmethodID stringToBytes = NULL;
 jmethodID bytesToString = NULL;
 jmethodID createInterface = NULL;
+jmethodID formatException = NULL;
 
 //primitives
 jclass boolean_class = NULL;
@@ -170,35 +171,19 @@ public:
     {
         try
         {
-            jclass clazz = env->GetObjectClass(exception);
-            jmethodID getMessage = env->GetMethodID(clazz,
-                                                    "getMessage",
-                                                    "()Ljava/lang/String;");
+            if(reflection_class == NULL || formatException == NULL)
+            {
+                throw jni_exception("exception in exception");
+            }
+
+            jstring result = (jstring)env->CallStaticObjectMethod(reflection_class, formatException, exception);
             if(env->ExceptionCheck())
             {
                 env->ExceptionClear();
                 throw jni_exception("exception in exception");
             }
 
-            jclass clazzclazz = env->GetObjectClass(clazz);
-            jmethodID getName = env->GetMethodID(clazzclazz,
-                                                    "getName",
-                                                    "()Ljava/lang/String;");
-
-            if(env->ExceptionCheck())
-            {
-                env->ExceptionClear();
-                throw jni_exception("exception in exception");
-            }
-
-            jstring exc_name = (jstring)env->CallObjectMethod(clazz, getName);
-            if(env->ExceptionCheck())
-            {
-                env->ExceptionClear();
-                throw jni_exception("exception in exception");
-            }
-
-            jstring msg = (jstring)env->CallObjectMethod(exc, getMessage);
+            std::string strresult = get_string(env, result);
             if(env->ExceptionCheck())
             {
                 env->ExceptionClear();
@@ -208,7 +193,7 @@ public:
             char buf[16] = {};
             snprintf(buf, sizeof(buf) - 1, "%d", line);
 
-            message = get_string(env, exc_name) + ": " + get_string(env, msg) + " in line " + buf;
+            message = strresult + "\n in line " + buf;
         }
         catch(...)
         {
@@ -504,6 +489,11 @@ static void find_types(JNIEnv * env)
     if(createInterface == NULL)
     {
          createInterface = env->GetStaticMethodID(reflection_class, "createInterface", "(J[Ljava/lang/Class;)Ljava/lang/Object;");
+         CHECK_JAVA_EXC(env);
+    }
+    if(formatException == NULL)
+    {
+         formatException = env->GetStaticMethodID(reflection_class, "formatException", "(Ljava/lang/Throwable;)Ljava/lang/String;");
          CHECK_JAVA_EXC(env);
     }
     //---------primitive-accessors--------------------------
