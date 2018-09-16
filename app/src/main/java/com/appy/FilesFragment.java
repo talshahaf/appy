@@ -7,11 +7,14 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v7.app.AlertDialog;
+import android.text.method.ScrollingMovementMethod;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.EditText;
 import android.widget.GridView;
+import android.widget.ScrollView;
 import android.widget.TextView;
 
 import java.io.File;
@@ -123,7 +126,11 @@ public class FilesFragment extends MyFragment implements FileGridAdapter.ItemAct
 
         if(file.lastError != null)
         {
-            ((TextView) layout.findViewById(R.id.message)).setText(file.lastError);
+            TextView message = layout.findViewById(R.id.message);
+            message.setText(file.lastError+"\n\n");
+
+            ScrollView vertical = layout.findViewById(R.id.verticalscroll);
+            vertical.fullScroll(View.FOCUS_DOWN);
         }
 
         builder.setView(layout);

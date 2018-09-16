@@ -364,7 +364,7 @@ public class Reflection
 
     public static String formatException(Throwable t)
     {
-        return t.getClass().getName() + ":\n" + t.getMessage() + "\n" + Widget.getStacktrace(t);
+        return Stacktrace.stackTraceString(t);
     }
 
 }

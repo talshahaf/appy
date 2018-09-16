@@ -4,16 +4,21 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
 >
-    <ScrollView
-        android:id="@+id/scroller"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:background="@color/terminal_bg" android:scrollbars="vertical">
-        <TextView
-            android:id="@+id/logcat_view"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text=""
-            android:textColor="@android:color/white"/>
-    </ScrollView>
+    <HorizontalScrollView android:layout_width="match_parent"
+                          android:layout_height="match_parent"
+                          android:background="@color/terminal_bg">
+        <ScrollView
+            android:id="@+id/scroller"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:scrollbars="vertical">
+            <TextView
+                android:id="@+id/logcat_view"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text=""
+                android:scrollHorizontally="true"
+                android:textColor="@android:color/white"/>
+        </ScrollView>
+    </HorizontalScrollView>
 </android.support.constraint.ConstraintLayout>
