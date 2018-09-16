@@ -1950,7 +1950,7 @@ extern "C" JNIEXPORT jobject JNICALL Java_com_appy_Widget_pythonCall(JNIEnv * en
         {
             PyObject *type = NULL, *value = NULL, *traceback = NULL;
             PyErr_Fetch(&type, &value, &traceback);
-            const char * cstr = "python exception...";
+            const char * cstr = "Unknown python exception";
             if(value != NULL)
             {
                 PyObject * str = PyObject_Str(value);

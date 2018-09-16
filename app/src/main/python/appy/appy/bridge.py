@@ -493,7 +493,7 @@ def callback(arg):
         _, ref = prepare_value(value, primitive_codes['object'], primitive_codes['object'])
         return native_appy.new_global_ref(ref.ref.handle)
     except Exception:
-        raise Exception(traceback.format_exc())
+        raise Exception('Python Exception\n\nThe above exception was the direct cause of the following exception:\n\n' + traceback.format_exc())
 
 native_appy.set_callback(callback)
 

@@ -1,16 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
-              android:layout_width="wrap_content"
-              android:layout_height="wrap_content">
-    <LinearLayout android:orientation="vertical"
-                  android:scrollbars="vertical|horizontal"
-                  android:scrollbarAlwaysDrawVerticalTrack="true"
-                  android:layout_width="wrap_content"
-                  android:layout_height="wrap_content">
+<HorizontalScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+                      android:layout_width="wrap_content"
+                      android:layout_height="wrap_content">
+    <ScrollView android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:id="@+id/verticalscroll">
         <TextView
             android:id="@+id/message"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_margin="5dp"/>
-    </LinearLayout>
-</ScrollView>
+            android:layout_margin="5dp"
+            android:scrollHorizontally="true"/>
+    </ScrollView>
+</HorizontalScrollView>

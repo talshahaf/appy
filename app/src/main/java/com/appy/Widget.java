@@ -2147,7 +2147,7 @@ public class Widget extends RemoteViewsService
         {
             try
             {
-                updateListener.onError(widgetId, getStacktrace(error));
+                updateListener.onError(widgetId, Stacktrace.stackTraceString(error));
             }
             catch(Exception e)
             {
@@ -2373,7 +2373,7 @@ public class Widget extends RemoteViewsService
             catch(Exception e)
             {
                 file.lastErrorDate = new Date().toString();
-                file.lastError = getStacktrace(e);
+                file.lastError = Stacktrace.stackTraceString(e);
                 e.printStackTrace();
             }
 
@@ -2738,7 +2738,7 @@ public class Widget extends RemoteViewsService
         @Override
         public void uncaughtException(Thread t, Throwable e)
         {
-            String trace = getStacktrace(e);
+            String trace = Stacktrace.stackTraceString(e);
 
             BufferedWriter bw = null;
             try
@@ -2834,7 +2834,7 @@ public class Widget extends RemoteViewsService
         else if(widgetIntent != null)
         {
             if (AppWidgetManager.ACTION_APPWIDGET_RESTORED.equals(widgetIntent.getAction()))
-            { 
+            {
                 int[] oldWidgets = widgetIntent.getIntArrayExtra(AppWidgetManager.EXTRA_APPWIDGET_OLD_IDS);
                 int[] newWidgets = widgetIntent.getIntArrayExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS);
                 for(int i = 0; i < oldWidgets.length; i++)
@@ -3082,14 +3082,6 @@ public class Widget extends RemoteViewsService
             e.printStackTrace();
             Log.e("APPY", "tar exception: "+e);
         }
-    }
-
-    public static String getStacktrace(Throwable e)
-    {
-        StringWriter sw = new StringWriter();
-        PrintWriter pw = new PrintWriter(sw);
-        e.printStackTrace(pw);
-        return sw.toString();
     }
 
     protected static native void pythonInit(String pythonHome, String tmpPath, String pythonLibPath, String script, Object arg);
