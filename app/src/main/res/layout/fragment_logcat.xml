@@ -18,7 +18,8 @@
                 android:layout_height="wrap_content"
                 android:text=""
                 android:scrollHorizontally="true"
-                android:textColor="@android:color/white"/>
+                android:textColor="@android:color/white"
+                android:textIsSelectable="true"/>
         </ScrollView>
     </HorizontalScrollView>
 </android.support.constraint.ConstraintLayout>

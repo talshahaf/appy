@@ -64,6 +64,9 @@ class Widget:
     def clean_nonlocal(self):
         state.clean_nonlocal_state(self.name)
 
+    def clean_global(self):
+        state.clean_global_state()
+
     def set_absolute_timer(self, seconds, f, **captures):
         return self._set_timer(seconds, java.clazz.com.appy.Constants().TIMER_ABSOLUTE, f, captures)
 
