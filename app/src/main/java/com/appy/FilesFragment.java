@@ -11,8 +11,8 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
 import android.widget.GridView;
+import android.widget.TextView;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -65,7 +65,7 @@ public class FilesFragment extends MyFragment implements FileGridAdapter.ItemAct
             ArrayList<PythonFile> pythonFiles = new ArrayList<>();
             for(String file : files)
             {
-                pythonFiles.add(new PythonFile(file, ""));
+                pythonFiles.add(new PythonFile(file, "", ""));
             }
             getWidgetService().addPythonFiles(pythonFiles);
             adapter.setItems(getWidgetService().getPythonFiles());
@@ -114,9 +114,19 @@ public class FilesFragment extends MyFragment implements FileGridAdapter.ItemAct
     public void onInfo(PythonFile file)
     {
         AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
-        builder.setTitle(new File(file.path).getName())
-                .setMessage(file.info)
-                .setNeutralButton("OK", null);
+
+        builder.setTitle(new File(file.path).getName() + (file.lastErrorDate != null ? " from " + file.lastErrorDate : ""));
+
+        builder.setNeutralButton("OK", null);
+
+        View layout = LayoutInflater.from(getActivity()).inflate(R.layout.alert_error_view, null);
+
+        if(file.lastError != null)
+        {
+            ((TextView) layout.findViewById(R.id.message)).setText(file.lastError);
+        }
+
+        builder.setView(layout);
 
         AlertDialog alert = builder.create();
         alert.show();

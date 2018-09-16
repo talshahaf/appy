@@ -362,5 +362,10 @@ public class Reflection
         return Proxy.newProxyInstance(classes[0].getClassLoader(), classes, new ProxyListener(id));
     }
 
+    public static String formatException(Throwable t)
+    {
+        return t.getClass().getName() + ":\n" + t.getMessage() + "\n" + Widget.getStacktrace(t);
+    }
+
 }
 

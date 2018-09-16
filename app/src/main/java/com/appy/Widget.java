@@ -16,6 +16,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -24,7 +25,6 @@ import java.util.Random;
 import java.util.Set;
 import java.util.zip.GZIPInputStream;
 
-import android.Manifest;
 import android.app.AlarmManager;
 import android.app.PendingIntent;
 import android.appwidget.AppWidgetManager;
@@ -40,7 +40,6 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
-import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.preference.PreferenceManager;
 import android.system.ErrnoException;
@@ -1895,7 +1894,11 @@ public class Widget extends RemoteViewsService
 
     public void clearWidget(int widgetId)
     {
-        delete(widgetId);
+        cancelWidgetTimers(widgetId);
+        if(updateListener != null)
+        {
+            updateListener.onDelete(widgetId);
+        }
         update(widgetId);
     }
 
@@ -2337,13 +2340,14 @@ public class Widget extends RemoteViewsService
         }
     }
 
-    public void setFileInfo(String path, String info)
+    public void setFileLastError(String path, String lastError)
     {
         for(PythonFile file : getPythonFiles())
         {
             if(file.path.equals(path))
             {
-                file.info = info;
+                file.lastError = lastError;
+                file.lastErrorDate = new Date().toString();
             }
         }
         savePythonFiles();
@@ -2368,7 +2372,8 @@ public class Widget extends RemoteViewsService
             }
             catch(Exception e)
             {
-                file.info = getStacktrace(e);
+                file.lastErrorDate = new Date().toString();
+                file.lastError = getStacktrace(e);
                 e.printStackTrace();
             }
 
@@ -2829,7 +2834,7 @@ public class Widget extends RemoteViewsService
         else if(widgetIntent != null)
         {
             if (AppWidgetManager.ACTION_APPWIDGET_RESTORED.equals(widgetIntent.getAction()))
-            {
+            { 
                 int[] oldWidgets = widgetIntent.getIntArrayExtra(AppWidgetManager.EXTRA_APPWIDGET_OLD_IDS);
                 int[] newWidgets = widgetIntent.getIntArrayExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS);
                 for(int i = 0; i < oldWidgets.length; i++)

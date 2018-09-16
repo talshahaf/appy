@@ -473,7 +473,7 @@ def module_name(path):
     return f'{os.path.splitext(os.path.basename(path))[0]}_{int(hashlib.sha1(path.encode()).hexdigest(), 16) % (10 ** 8)}'
 
 def set_module_error(module, error):
-    java_widget_manager.setFileInfo(module.__file__, error)
+    java_widget_manager.setFileLastError(module.__file__, error)
 
 def load_module(path):
     __set_importing_module(path)
