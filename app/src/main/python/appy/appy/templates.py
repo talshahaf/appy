@@ -4,26 +4,28 @@ from . import java, widgets
 
 ##############refresh button##############################
 def reset_refresh_buttons_if_needed(widget, views):
-    for e in views.all():
-        if '__refresh_error' in e.tag and e.tag.__refresh_error:
-            e.visibility = java.clazz.android.view.View().VISIBLE
-            e.tag.__refresh_error = False
+    widget.locals('__refresh_error_id')
+    if '__refresh_error_id' in widget.state:
+        try:
+            btn = views.find_id(widget.state.__refresh_error_id)
+            btn.visibility = java.clazz.android.view.View().VISIBLE
+        except KeyError:
+            pass
+        del widget.state.__refresh_error_id
 
 def refresh_button_action(widget, views, on_click, id):
     try:
         widgets.call_general_function(on_click, widget=widget, views=views)
     except:
-        try:
-            btn = views.find_id(id)
-            btn.tag.__refresh_error = True
-        except KeyError:
-            pass
+        widget.locals('__refresh_error_id')
+        widget.state.__refresh_error_id = id
         raise
         
     try:
         btn = views.find_id(id)
         btn.visibility = java.clazz.android.view.View().VISIBLE
-        btn.tag.__refresh_error = False
+        widget.locals('__refresh_error_id')
+        del widget.state.__refresh_error_id
     except KeyError:
         pass
 
@@ -36,7 +38,6 @@ def refresh_button_click(widget, views, on_click, id, timer_id=None):
         if timer_id is not None:
             widget.cancel_timer(timer_id)
     if btn is not None:
-        btn.tag.__refreshing = True
         btn.visibility = java.clazz.android.view.View().INVISIBLE
     widget.post(refresh_button_action, on_click=on_click, id=id)
 
@@ -45,8 +46,6 @@ def refresh_button(on_click, name=None, initial_refresh=None, widget=None, timeo
     btn.click = (refresh_button_click, dict(on_click=on_click, id=btn.id))
     if name is not None:
         btn.name = name
-
-    btn.tag.__refreshing = False
 
     if (initial_refresh or interval or timeout) and not widget:
         raise ValueError('must supply widget argument when using initial_refresh, interval or timeout')
