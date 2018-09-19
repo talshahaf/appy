@@ -111,7 +111,7 @@ public class ControlFragment extends MyFragment
         switch(getWidgetService().getStartupState())
         {
             case IDLE:
-                startupStatus.setImageResource(android.R.drawable.presence_invisible);
+                startupStatus.setImageResource(R.drawable.idle_indicator);
                 startupProgress.setVisibility(View.INVISIBLE);
                 startupStatus.setVisibility(View.VISIBLE);
                 break;
@@ -120,12 +120,12 @@ public class ControlFragment extends MyFragment
                 startupStatus.setVisibility(View.INVISIBLE);
                 break;
             case ERROR:
-                startupStatus.setImageResource(android.R.drawable.presence_busy);
+                startupStatus.setImageResource(R.drawable.error_indicator);
                 startupProgress.setVisibility(View.INVISIBLE);
                 startupStatus.setVisibility(View.VISIBLE);
                 break;
             case COMPLETED:
-                startupStatus.setImageResource(android.R.drawable.presence_online);
+                startupStatus.setImageResource(R.drawable.success_indicator);
                 startupProgress.setVisibility(View.INVISIBLE);
                 startupStatus.setVisibility(View.VISIBLE);
                 break;
