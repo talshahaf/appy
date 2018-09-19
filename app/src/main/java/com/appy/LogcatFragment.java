@@ -2,6 +2,7 @@ package com.appy;
 
 import android.os.Bundle;
 import android.os.Handler;
+import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
@@ -10,6 +11,7 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Collection;
 
 /**
@@ -22,6 +24,7 @@ public class LogcatFragment extends MyFragment implements RunnerListener
     Handler handler;
     ScrollView scroller;
     boolean atEnd = true;
+    ArrayList<String> selectionBuffer = new ArrayList<>();
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
@@ -41,6 +44,7 @@ public class LogcatFragment extends MyFragment implements RunnerListener
                 return false;
             }
         });
+
         onShow();
         return layout;
     }
@@ -59,17 +63,31 @@ public class LogcatFragment extends MyFragment implements RunnerListener
                 @Override
                 public void run()
                 {
-                    logcatView.append("\n"+line);
-                    if (atEnd)
+                    // freeze when selecting
+                    if(logcatView.hasSelection())
                     {
-                        handler.post(new Runnable()
+                        selectionBuffer.add(line);
+                    }
+                    else
+                    {
+                        for(String bufferedLine : selectionBuffer)
                         {
-                            @Override
-                            public void run()
+                            logcatView.append("\n" + bufferedLine);
+                        }
+                        selectionBuffer.clear();
+
+                        logcatView.append("\n" + line);
+                        if (atEnd)
+                        {
+                            handler.post(new Runnable()
                             {
-                                scroller.fullScroll(View.FOCUS_DOWN);
-                            }
-                        });
+                                @Override
+                                public void run()
+                                {
+                                    scroller.fullScroll(View.FOCUS_DOWN);
+                                }
+                            });
+                        }
                     }
                 }
             });

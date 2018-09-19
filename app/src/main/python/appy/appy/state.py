@@ -117,12 +117,16 @@ def wipe_state():
     global_state = default_state()
     save()
 
-def clean_nonlocals_state(name):
+def clean_nonlocal_state(name):
     global_state.nonlocals.pop(name, None)
     save()
 
 def clean_local_state(widget_id):
     global_state.locals.pop(widget_id, None)
+    save()
+
+def clean_global_state():
+    global_state.globals.clear()
     save()
 
 init()

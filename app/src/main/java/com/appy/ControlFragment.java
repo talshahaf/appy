@@ -120,7 +120,7 @@ public class ControlFragment extends MyFragment
                 startupStatus.setVisibility(View.INVISIBLE);
                 break;
             case ERROR:
-                startupStatus.setImageResource(android.R.drawable.presence_offline);
+                startupStatus.setImageResource(android.R.drawable.presence_busy);
                 startupProgress.setVisibility(View.INVISIBLE);
                 startupStatus.setVisibility(View.VISIBLE);
                 break;
