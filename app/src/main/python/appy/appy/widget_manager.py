@@ -547,17 +547,22 @@ def widget_manager_create(widget, manager_state):
     #clear state
     manager_state.chosen[widget.widget_id] = None
 
+    bg = widgets.RelativeLayout(width=widget_dims.width, height=widget_dims.height)
+    bg.backgroundResource = java.clazz.com.appy.R.drawable().rect
+    bg.backgroundTint = widgets.color(r=0, g=0, b=0)
+    bg.backgroundAlpha = 100
+    
     restart_btn = widgets.ImageButton(style='danger_oval_pad', adjustViewBounds=True, click=widgets.restart, colorFilter=0xffffffff, width=140, height=140, right=0, bottom=0, imageResource=java.clazz.android.R.drawable().ic_lock_power_off)
 
     #calling java releases the gil and available_widgets might be changed while iterating it
     names = [name for name in available_widgets]
 
     if not available_widgets:
-        lst = widgets.TextView(text='No widgets')
+        lst = widgets.TextView(top=10, left=10, text='No widgets')
     else:
-        lst = widgets.ListView(children=[widgets.TextView(text=name, textSize=30,
-                                                                click=(choose_widget, dict(name=name))) for name in names])
-    return [lst, restart_btn]
+        lst = widgets.ListView(top=10, left=10, children=[widgets.TextView(text=name, textSize=30,
+                                                                            click=(choose_widget, dict(name=name))) for name in names])
+    return [bg, lst, restart_btn]
 
 def widget_manager_update(widget, manager_state, views):
     manager_state.chosen.setdefault(widget.widget_id, None)

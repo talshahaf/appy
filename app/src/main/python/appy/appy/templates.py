@@ -1,6 +1,6 @@
 import datetime
 from .widgets import ListView, TextView, Button, ImageButton, RelativeLayout
-from . import java, widgets
+from . import java, widgets, widget_manager
 
 ##############refresh button##############################
 def reset_refresh_buttons_if_needed(widget, views):
@@ -59,7 +59,7 @@ def refresh_button(on_click, name=None, initial_refresh=None, widget=None, timeo
     return btn
 
 ##################background####################################
-def background(widget, name=None, color=None, drawable=None):
+def background(name=None, color=None, drawable=None):
     if isinstance(color, dict):
         color = widgets.color(**color)
     elif isinstance(color, (list, tuple)):
@@ -75,7 +75,7 @@ def background(widget, name=None, color=None, drawable=None):
     if isinstance(drawable, str):
         drawable = getattr(java.clazz.com.appy.R.drawable(), drawable)
 
-    bg = RelativeLayout(width=widget.width, height=widget.height, backgroundResource=drawable)
+    bg = RelativeLayout(width=widget_manager.widget_dims.width, height=widget_manager.widget_dims.height, backgroundResource=drawable)
     bg.backgroundTint = color | 0xff000000
     bg.backgroundAlpha = (color >> 24) & 0xff
     if name is not None:
@@ -109,7 +109,7 @@ def updating_list_create(widget, initial_values, on_refresh, background_param, a
     
     views = widgets.elist()
     if background_param is not None and background_param is not False:
-        views.append(background(widget, color=None if background_param is True else background_param))
+        views.append(background(color=None if background_param is True else background_param))
 
     views.append(lst)
     if last_update is None or last_update:
@@ -154,7 +154,7 @@ def updating_text_create(widget, initial_value, on_refresh, background_param, ad
 
     views = widgets.elist()
     if background_param is not None and background_param is not False:
-        views.append(background(widget, color=None if background_param is True else background_param))
+        views.append(background(color=None if background_param is True else background_param))
 
     views.append(text)
     if last_update is None or last_update:

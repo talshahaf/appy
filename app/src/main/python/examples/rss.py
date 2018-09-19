@@ -63,7 +63,7 @@ def update(widget, views):
     views['flipper'].displayedChild = 0
     
     for item in items[:20]:
-        bg = background(widget)
+        bg = background()
         img = None
         if 'image' in item:
             img = ImageView(name='img', width=widget.width / 3, height=widget.width / 3, adjustViewBounds=True, left=10, top=10)

@@ -82,7 +82,7 @@ def on_refresh(widget, views):
         print('error fetching information')
     
 def create(widget):
-    bg = background(widget)
+    bg = background()
     refresh = refresh_button(on_refresh, widget=widget, initial_refresh=True, interval=4*3600)
     # moving refresh button
     del refresh.left
