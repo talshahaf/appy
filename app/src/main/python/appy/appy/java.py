@@ -343,9 +343,9 @@ def get_java_arg():
 #====================================
 def tests():
     def test1():
-        Test = clazz.com.appy.Test()
-        test = new.com.appy.Test()
-        Inner = clazz.com.appy.Test.Inner()
+        Test = clazz.appy.Test()
+        test = new.appy.Test()
+        Inner = clazz.appy.Test.Inner()
         test2 = Test()
         print(type(test2))
         print(test, test2)
@@ -353,7 +353,7 @@ def tests():
         assert(test.ins_value == 24)
         test.ins_value = 38
         assert(test.ins_value == 38)
-        assert((~test.test_value).name == 'com.appy.Test.Test2')
+        assert((~test.test_value).name == bridge.PACKAGE_NAME + '.Test.Test2')
         assert(test.test_value.ins_value == 11)
         test.test_value.ins_value = 59
         assert(test.test_value.ins_value == 59)
@@ -375,11 +375,11 @@ def tests():
         assert(arr == (tuple(range(50, 53 + 1)) + tuple(range(4, 10 + 1)) + (Null, Null)))
         assert(len(arr) == arr.length == 13)
 
-        arr = new.com.appy.Test[()](0)
+        arr = new.appy.Test[()](0)
         assert(len(arr) == 0)
-        arr = new.com.appy.Test[()]([new.com.appy.Test(), new.com.appy.Test()])
+        arr = new.appy.Test[()]([new.appy.Test(), new.appy.Test()])
         assert(len(arr) == 2)
-        arr = new.com.appy.Test[()][()]([new.com.appy.Test[()]([new.com.appy.Test(), new.com.appy.Test()])])
+        arr = new.appy.Test[()][()]([new.appy.Test[()]([new.appy.Test(), new.appy.Test()])])
         assert(len(arr) == 1)
         assert(len(arr[0]) == 2)
         assert(jlong(13) == 13)
@@ -395,12 +395,12 @@ def tests():
         assert(len((~test)[()]([test])) == 1)
 
     def test2():
-        class Receiver(implements(clazz.com.appy.BroadcastInterface())):
+        class Receiver(implements(clazz.appy.BroadcastInterface())):
             @override
             def onReceive(self, context, intent):
                 print('action ', intent.getAction())
 
-        receiver = new.com.appy.BroadcastInterfaceBridge(Receiver())
+        receiver = new.appy.BroadcastInterfaceBridge(Receiver())
 
         start_time = time.time()
         for _ in range(1):
@@ -414,7 +414,7 @@ def tests():
         obj = jstring('test')
         obj_cast = clazz.java.lang.CharSequence() << obj
         obj_cast2 = clazz.java.lang.CharSequence() << 'tes2t'
-        Test = clazz.com.appy.Test()
+        Test = clazz.appy.Test()
         assert(Test.cast_test(obj) == 'string')
         assert(Test.cast_test(obj_cast) == 'charsequence')
 

@@ -68,13 +68,13 @@ class Widget:
         state.clean_global_state()
 
     def set_absolute_timer(self, seconds, f, **captures):
-        return self._set_timer(seconds, java.clazz.com.appy.Constants().TIMER_ABSOLUTE, f, captures)
+        return self._set_timer(seconds, java.clazz.appy.Constants().TIMER_ABSOLUTE, f, captures)
 
     def set_timeout(self, seconds, f, **captures):
-        return self._set_timer(seconds, java.clazz.com.appy.Constants().TIMER_RELATIVE, f, captures)
+        return self._set_timer(seconds, java.clazz.appy.Constants().TIMER_RELATIVE, f, captures)
 
     def set_interval(self, seconds, f, **captures):
-        return self._set_timer(seconds, java.clazz.com.appy.Constants().TIMER_REPEATING, f, captures)
+        return self._set_timer(seconds, java.clazz.appy.Constants().TIMER_REPEATING, f, captures)
 
     def _set_timer(self, seconds, t, f, captures):
         return widget_manager.java_context().setTimer(int(seconds * 1000), t, self.widget_id, utils.dumps((f, captures)))

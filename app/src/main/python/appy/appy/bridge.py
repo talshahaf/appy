@@ -6,6 +6,9 @@ known_classes = {}
 known_methods = {}
 known_fields = {}
 
+PACKAGE_NAME = 'com.appy'
+SPECIAL_CLASSES = {'appy': PACKAGE_NAME}
+
 class jref:
     _slots__ = []
     def __init__(self, handle):
@@ -107,6 +110,10 @@ class jstring(jobjectbase):
         return jstring(jref(native_appy.make_string(str(v))))
 
 def find_class(path):
+    for key, value in SPECIAL_CLASSES.items():
+        if path.startswith(f'{key}.'):
+            path = f'{value}.{path[len(key) + 1:]}'
+            break
     return know_class(jclass(jref(native_appy.find_class(path.replace('.', '/')))))
 
 def array_of_class(clazz):
@@ -500,7 +507,7 @@ native_appy.set_callback(callback)
 def tests():
     print('=================================begin')
 
-    Test = find_class('com.appy.Test')
+    Test = find_class('appy.Test')
 
     def test1():
         test = call_method(Test, None, '', True, jbyte('b'),  jchar('c'),  10 ** 3, 2 * (10 ** 5), 3 * (10 ** 10), 1.1,  3.141529,

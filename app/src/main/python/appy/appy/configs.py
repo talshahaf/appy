@@ -4,7 +4,7 @@ from . import java
 
 global_configs = AttrDict()
 
-class ChangeListener(java.implements(java.clazz.com.appy.Configurations.ChangeListener())):
+class ChangeListener(java.implements(java.clazz.appy.Configurations.ChangeListener())):
     @java.override
     def onChange(self):
         sync()

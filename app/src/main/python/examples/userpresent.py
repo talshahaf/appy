@@ -4,7 +4,7 @@ from appy.widgets import java_context, register_widget, TextView, Widget, Button
 WIDGET_NAME = 'user present'
 
 # using java.implements to create a java object implementing BroadcastInterface
-class Receiver(java.implements(java.clazz.com.appy.BroadcastInterface())):   
+class Receiver(java.implements(java.clazz.appy.BroadcastInterface())):   
     @java.override
     def onReceive(*args, **kwargs):
         print('user present')
@@ -21,7 +21,7 @@ class Receiver(java.implements(java.clazz.com.appy.BroadcastInterface())):
             widget.post(update_counter)
 
 # wrap Receiver instance with BroadcastInterfaceBridge to pass to registerReceiver because BroadcastReceiver is an abstract class instead of an interface
-receiverBridge = java.new.com.appy.BroadcastInterfaceBridge(Receiver())
+receiverBridge = java.new.appy.BroadcastInterfaceBridge(Receiver())
 
 # will be called when this module is unloaded
 def __del__():
