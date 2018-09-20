@@ -1,2 +1,4 @@
-# appy
-python android widgets and applications
+# Appy
+Android widgets in Python
+
+See [[wiki]].
