@@ -2,27 +2,22 @@ package com.appy;
 
 import android.content.Context;
 import android.content.DialogInterface;
-import android.database.DataSetObserver;
 import android.os.Bundle;
-import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentTransaction;
 import android.support.v7.app.AlertDialog;
 import android.text.InputType;
-import android.util.JsonReader;
-import android.util.Log;
+import android.view.ContextMenu;
 import android.view.Gravity;
 import android.view.LayoutInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
 import android.widget.BaseAdapter;
 import android.widget.Button;
 import android.widget.EditText;
-import android.widget.ListAdapter;
 import android.widget.ListView;
 import android.widget.TextView;
-import android.widget.TwoLineListItem;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -31,7 +26,6 @@ import org.json.JSONObject;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Set;
 
 public class ConfigsFragment extends MyFragment
 {
@@ -62,7 +56,7 @@ public class ConfigsFragment extends MyFragment
         transaction.commit();
     }
 
-    public static class WidgetSelectFragment extends MyFragment implements AdapterView.OnItemClickListener, AdapterView.OnItemLongClickListener
+    public static class WidgetSelectFragment extends MyFragment implements AdapterView.OnItemClickListener
     {
         ConfigsFragment parent;
         ListView list;
@@ -115,7 +109,6 @@ public class ConfigsFragment extends MyFragment
             View layout = inflater.inflate(R.layout.fragment_configs_list, container, false);
             list = layout.findViewById(R.id.configs_list);
             list.setOnItemClickListener(this);
-            list.setOnItemLongClickListener(this);
             registerForContextMenu(list);
             refresh();
             return layout;
@@ -217,39 +210,108 @@ public class ConfigsFragment extends MyFragment
         }
 
         @Override
-        public boolean onItemLongClick(AdapterView<?> adapter, View view, int position, long id)
+        public void onCreateContextMenu(ContextMenu menu, View v,
+                                        ContextMenu.ContextMenuInfo menuInfo)
         {
-            final Item item = (Item)adapter.getItemAtPosition(position);
+            if(v == list)
+            {
+                getActivity().getMenuInflater().inflate(R.menu.config_actions, menu);
 
+                AdapterView.AdapterContextMenuInfo info = (AdapterView.AdapterContextMenuInfo) menuInfo;
+                Item item = (Item)list.getItemAtPosition(info.position);
+                menu.setHeaderTitle(item.key);
+            }
+            else
+            {
+                super.onCreateContextMenu(menu, v, menuInfo);
+            }
+        }
+
+        @Override
+        public boolean onContextItemSelected(MenuItem menuItem)
+        {
+            boolean delete_;
+            switch (menuItem.getItemId())
+            {
+                case R.id.action_reset:
+                {
+                    delete_ = false;
+                    break;
+                }
+                case R.id.action_delete:
+                {
+                    delete_ = true;
+                    break;
+                }
+                default:
+                {
+                    return super.onContextItemSelected(menuItem);
+                }
+            }
+
+            final boolean delete = delete_;
+
+            AdapterView.AdapterContextMenuInfo info = (AdapterView.AdapterContextMenuInfo) menuItem.getMenuInfo();
+            final Item item = (Item)list.getItemAtPosition(info.position);
             AlertDialog.Builder builder = new AlertDialog.Builder(getActivity())
                     .setIcon(android.R.drawable.ic_dialog_alert)
                     .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener()
-                    {
-                        public void onClick(DialogInterface dialog, int whichButton)
-                        {
-                            if(widget == null)
                             {
-                                getWidgetService().getConfigurations().resetWidget(item.key);
+                                public void onClick(DialogInterface dialog, int whichButton)
+                                {
+                                    if(widget == null)
+                                    {
+                                        if(delete)
+                                        {
+                                            getWidgetService().getConfigurations().deleteWidget(item.key);
+                                        }
+                                        else
+                                        {
+                                            getWidgetService().getConfigurations().resetWidget(item.key);
+                                        }
+                                    }
+                                    else
+                                    {
+                                        if(delete)
+                                        {
+                                            getWidgetService().getConfigurations().deleteKey(widget, item.key);
+                                        }
+                                        else
+                                        {
+                                            getWidgetService().getConfigurations().resetKey(widget, item.key);
+                                        }
+                                    }
+                                    refresh();
+                                }
                             }
-                            else
-                            {
-                                getWidgetService().getConfigurations().resetKey(widget, item.key);
-                            }
-                            refresh();
-                        }
-                    }
-                        )
+                    )
                     .setNegativeButton(android.R.string.no, null);
 
             if(widget == null)
             {
-                builder.setTitle("Reset all");
-                builder.setMessage("Reset all " + item.key + " configurations?");
+                if (delete)
+                {
+                    builder.setTitle("Delete all");
+                    builder.setMessage("Delete all " + item.key + " configurations?");
+                }
+                else
+                {
+                    builder.setTitle("Reset all");
+                    builder.setMessage("Reset all " + item.key + " configurations?");
+                }
             }
             else
             {
-                builder.setTitle("Reset configuration");
-                builder.setMessage("Reset " + item.key + "?");
+                if(delete)
+                {
+                    builder.setTitle("Delete configuration");
+                    builder.setMessage("Delete " + item.key + "?");
+                }
+                else
+                {
+                    builder.setTitle("Reset configuration");
+                    builder.setMessage("Reset " + item.key + "?");
+                }
             }
             builder.show();
             return true;

@@ -134,6 +134,50 @@ public class Configurations
         }
     }
 
+    public void deleteKey(String widget, String key)
+    {
+        boolean changed = false;
+        String serialized = null;
+        synchronized (lock)
+        {
+            HashMap<String, Pair<String, String>> configs = widgetConfigurations.get(widget);
+            if(configs != null)
+            {
+                if(configs.containsKey(key))
+                {
+                    configs.remove(key);
+                    changed = true;
+                    serialized = serialize();
+                }
+            }
+        }
+
+        if(changed)
+        {
+            save(serialized);
+        }
+    }
+
+    public void deleteWidget(String widget)
+    {
+        boolean changed = false;
+        String serialized = null;
+        synchronized (lock)
+        {
+            if(widgetConfigurations.containsKey(widget))
+            {
+                widgetConfigurations.remove(widget);
+                changed = true;
+                serialized = serialize();
+            }
+        }
+
+        if(changed)
+        {
+            save(serialized);
+        }
+    }
+
     public void setDefaultConfig(String widget, String[] keys, String[] values)
     {
         boolean changed = false;
