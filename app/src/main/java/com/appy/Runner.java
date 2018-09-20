@@ -1,11 +1,11 @@
 package com.appy;
 
-import org.apache.tools.ant.types.Commandline;
-
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.util.ArrayList;
+import java.util.StringTokenizer;
 
 /**
  * Created by Tal on 23/03/2018.
@@ -88,13 +88,82 @@ public class Runner implements Runnable
         }
     }
 
+    private static String[] translateCommandline(String toProcess) {
+        if (toProcess == null || toProcess.length() == 0) {
+            // no command? no string
+            return new String[0];
+        }
+
+        // parse with a simple finite state machine
+
+        final int normal = 0;
+        final int inQuote = 1;
+        final int inDoubleQuote = 2;
+
+        int state = normal;
+        StringTokenizer tok = new StringTokenizer(toProcess, "\"\' ", true);
+        ArrayList<String> list = new ArrayList<>();
+        StringBuilder current = new StringBuilder();
+        boolean lastTokenHasBeenQuoted = false;
+
+        while (tok.hasMoreTokens()) {
+            String nextTok = tok.nextToken();
+            switch (state) {
+                case inQuote:
+                    if ("\'".equals(nextTok)) {
+                        lastTokenHasBeenQuoted = true;
+                        state = normal;
+                    } else {
+                        current.append(nextTok);
+                    }
+                    break;
+                case inDoubleQuote:
+                    if ("\"".equals(nextTok)) {
+                        lastTokenHasBeenQuoted = true;
+                        state = normal;
+                    } else {
+                        current.append(nextTok);
+                    }
+                    break;
+                default:
+                    if ("\'".equals(nextTok)) {
+                        state = inQuote;
+                    } else if ("\"".equals(nextTok)) {
+                        state = inDoubleQuote;
+                    } else if (" ".equals(nextTok)) {
+                        if (lastTokenHasBeenQuoted || current.length() != 0) {
+                            list.add(current.toString());
+                            current = new StringBuilder();
+                        }
+                    } else {
+                        current.append(nextTok);
+                    }
+                    lastTokenHasBeenQuoted = false;
+                    break;
+            }
+        }
+
+        if (lastTokenHasBeenQuoted || current.length() != 0) {
+            list.add(current.toString());
+        }
+
+        if (state == inQuote || state == inDoubleQuote) {
+            throw new IllegalArgumentException("Unbalanced quotes in "
+                    + toProcess);
+        }
+
+        String[] args = new String[list.size()];
+        return list.toArray(args);
+    }
+
+
     @Override
     public void run()
     {
         Integer exitCode = null;
         try
         {
-            process = Runtime.getRuntime().exec(Commandline.translateCommandline(command), null, cwd);
+            process = Runtime.getRuntime().exec(translateCommandline(command), null, cwd);
             BufferedReader bufferedOut = new BufferedReader(new InputStreamReader(process.getInputStream()));
             BufferedReader bufferedErr = new BufferedReader(new InputStreamReader(process.getErrorStream()));
 
