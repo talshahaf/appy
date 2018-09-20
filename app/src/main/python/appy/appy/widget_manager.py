@@ -16,7 +16,7 @@ def json_loads(s):
 
 @functools.lru_cache(maxsize=128, typed=True)
 def validate_type(type):
-    return java.clazz.com.appy.Constants().typeToClass.containsKey(type)
+    return java.clazz.appy.Constants().typeToClass.containsKey(type)
 
 def method_from_attr(attr):
     return f'set{cap(attr)}'
@@ -24,12 +24,12 @@ def method_from_attr(attr):
 @functools.lru_cache(maxsize=128, typed=True)
 def get_param_setter(type, attr):
     method = method_from_attr(attr)
-    setter = java.clazz.com.appy.Constants().getSetterMethod(type, method)
+    setter = java.clazz.appy.Constants().getSetterMethod(type, method)
     return setter if setter != java.Null else None, method
 
 @functools.lru_cache(maxsize=128, typed=True)
 def validate_remoteviews_method(method):
-    return java.clazz.com.appy.RemoteMethodCall().remoteViewMethods.containsKey(method)
+    return java.clazz.appy.RemoteMethodCall().remoteViewMethods.containsKey(method)
 
 @functools.lru_cache(maxsize=128, typed=True)
 def unit_constants():
@@ -196,7 +196,7 @@ def deserialize_arg(arg):
         return arg['value']
 
     #gotta go to java
-    return java.clazz.com.appy.Serializer().deserializeString(json_dumps(arg))
+    return java.clazz.appy.Serializer().deserializeString(json_dumps(arg))
 
 def serialize_arg(arg):
     #probably already serialized
@@ -210,7 +210,7 @@ def serialize_arg(arg):
         return AttrDict(type='primitive', value=arg)
 
     #gotta go to java
-    return json_loads(java.clazz.com.appy.Serializer().serializeToString(arg))
+    return json_loads(java.clazz.appy.Serializer().serializeToString(arg))
 
 
 class Element:
@@ -548,7 +548,7 @@ def widget_manager_create(widget, manager_state):
     manager_state.chosen[widget.widget_id] = None
 
     bg = widgets.RelativeLayout(width=widget_dims.width, height=widget_dims.height)
-    bg.backgroundResource = java.clazz.com.appy.R.drawable().rect
+    bg.backgroundResource = java.clazz.appy.R.drawable().rect
     bg.backgroundTint = widgets.color(r=0, g=0, b=0)
     bg.backgroundAlpha = 100
     
@@ -608,7 +608,7 @@ def refresh_managers():
         if chosen is None:
             widgets.Widget(widget_id, None).invalidate()
 
-class Handler(java.implements(java.clazz.com.appy.WidgetUpdateListener())):
+class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
     def export(self, input, output):
         state.save() #flushing changes
         if not output:
