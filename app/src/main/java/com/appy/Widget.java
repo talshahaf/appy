@@ -1980,7 +1980,7 @@ public class Widget extends RemoteViewsService
 
     public Uri getUriForPath(String path)
     {
-        return com.appy.FileProvider.getUriForFile(this, "com.appy.fileprovider", new File(path));
+        return FileProvider.getUriForFile(this, "com.appy.fileprovider", new File(path));
     }
 
     public int generateRequestCode()
