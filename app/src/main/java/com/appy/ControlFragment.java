@@ -1,7 +1,9 @@
 package com.appy;
 
+import android.content.DialogInterface;
 import android.os.Bundle;
 import android.os.Handler;
+import android.support.v7.app.AlertDialog;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -42,30 +44,66 @@ public class ControlFragment extends MyFragment
         clearWidgets.setOnClickListener(new View.OnClickListener()
         {
             @Override
-            public void onClick(View v)
+            public void onClick(final View v)
             {
-                getWidgetService().resetWidgets();
-                debounce(v);
+                AlertDialog.Builder builder = new AlertDialog.Builder(getActivity())
+                        .setIcon(android.R.drawable.ic_dialog_alert)
+                        .setTitle("Clear widgets")
+                        .setMessage("Clear all widgets?")
+                        .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener()
+                        {
+                            public void onClick(DialogInterface dialog, int whichButton)
+                            {
+                                getWidgetService().resetWidgets();
+                                debounce(v);
+                            }
+                        })
+                        .setNegativeButton(android.R.string.no, null);
+                builder.show();
             }
         });
 
         clearTimers.setOnClickListener(new View.OnClickListener()
         {
             @Override
-            public void onClick(View v)
+            public void onClick(final View v)
             {
-                getWidgetService().cancelAllTimers();
-                debounce(v);
+                AlertDialog.Builder builder = new AlertDialog.Builder(getActivity())
+                        .setIcon(android.R.drawable.ic_dialog_alert)
+                        .setTitle("Clear timers")
+                        .setMessage("Clear all timers?")
+                        .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener()
+                                {
+                                    public void onClick(DialogInterface dialog, int whichButton)
+                                    {
+                                        getWidgetService().cancelAllTimers();
+                                        debounce(v);
+                                    }
+                                })
+                        .setNegativeButton(android.R.string.no, null);
+                builder.show();
             }
         });
 
         clearState.setOnClickListener(new View.OnClickListener()
         {
             @Override
-            public void onClick(View v)
+            public void onClick(final View v)
             {
-                getWidgetService().resetState();
-                debounce(v);
+                AlertDialog.Builder builder = new AlertDialog.Builder(getActivity())
+                        .setIcon(android.R.drawable.ic_dialog_alert)
+                        .setTitle("Clear state")
+                        .setMessage("Clear state?")
+                        .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener()
+                        {
+                            public void onClick(DialogInterface dialog, int whichButton)
+                            {
+                                getWidgetService().resetState();
+                                debounce(v);
+                            }
+                        })
+                        .setNegativeButton(android.R.string.no, null);
+                builder.show();
             }
         });
 

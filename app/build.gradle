@@ -115,7 +115,6 @@ dependencies {
     implementation 'org.kamranzafar:jtar:2.3'
     implementation 'com.android.support:design:27.1.1'
     implementation 'com.android.support:preference-v7:27.1.1'
-    implementation 'org.apache.ant:ant:1.9.13'
     testImplementation 'junit:junit:4.12'
     androidTestImplementation 'com.android.support.test:runner:1.0.2'
     androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.2'

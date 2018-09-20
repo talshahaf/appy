@@ -1,4 +1,4 @@
 # Appy
 Android widgets in Python
 
-See [Wiki](wiki).
+See [wiki](https://github.com/talshahaf/appy/wiki).

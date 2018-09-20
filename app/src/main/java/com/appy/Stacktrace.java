@@ -97,7 +97,6 @@ public class Stacktrace
             }
             for (int i = lastUniqueFrame; i >= 0; i--)
             {
-
                 if(prevElement != null && prevElement.equals(stack[i]))
                 {
                     identicalPrev++;
@@ -112,6 +111,10 @@ public class Stacktrace
                 sb.append("\n");
                 prevElement = stack[i];
                 identicalPrev = 0;
+            }
+            if(identicalPrev > 0)
+            {
+                sb.append("  [Previous line repeated ").append(identicalPrev).append(" more times]\n");
             }
         }
         sb.append(t.getClass().getName());
