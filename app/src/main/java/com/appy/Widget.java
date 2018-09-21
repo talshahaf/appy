@@ -64,7 +64,7 @@ import org.kamranzafar.jtar.TarInputStream;
 public class Widget extends RemoteViewsService
 {
     private final IBinder mBinder = new LocalBinder();
-    public static final int PYTHON_VERSION = 37;
+    public static final double PYTHON_VERSION = 37.01;
 
     WidgetUpdateListener updateListener = null;
     StatusListener statusListener = null;
@@ -1964,18 +1964,25 @@ public class Widget extends RemoteViewsService
         return configurations;
     }
 
-    public void setPythonUnpacked(int version)
+    public void setPythonUnpacked(double version)
     {
         SharedPreferences sharedPref = getSharedPreferences("appy", Context.MODE_PRIVATE);
         SharedPreferences.Editor editor = sharedPref.edit();
-        editor.putInt("unpacked_version", version);
+        editor.putFloat("unpacked_version", (float)version);
         editor.apply();
     }
 
-    public int getPythonUnpacked()
+    public double getPythonUnpacked()
     {
         SharedPreferences sharedPref = getSharedPreferences("appy", Context.MODE_PRIVATE);
-        return sharedPref.getInt("unpacked_version", 0);
+        try
+        {
+            return sharedPref.getFloat("unpacked_version", 0);
+        }
+        catch(ClassCastException e)
+        {
+            return sharedPref.getInt("unpacked_version", 0);
+        }
     }
 
     public Uri getUriForPath(String path)
