@@ -31,22 +31,29 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/command"
         style="@style/secondary_btn"/>
-    <ScrollView
-        android:id="@+id/scroller"
-        android:layout_width="0dp"
-        android:layout_height="0dp"
-        android:layout_marginBottom="8dp"
-        android:layout_marginEnd="8dp" android:layout_marginStart="8dp"
-        android:layout_marginTop="150dp" android:background="@color/terminal_bg"
-        app:layout_constraintBottom_toBottomOf="parent" app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.0"
-        app:layout_constraintStart_toStartOf="parent" app:layout_constraintTop_toTopOf="@+id/command"
-        app:layout_constraintVertical_bias="0.0">
 
-        <TextView
-            android:id="@+id/output"
-            android:layout_width="match_parent"
+    <HorizontalScrollView android:layout_width="0dp"
+                          android:layout_height="0dp"
+                          android:layout_marginBottom="8dp"
+                          android:layout_marginEnd="8dp" android:layout_marginStart="8dp"
+                          android:layout_marginTop="150dp" android:background="@color/terminal_bg"
+                          app:layout_constraintBottom_toBottomOf="parent" app:layout_constraintEnd_toEndOf="parent"
+                          app:layout_constraintHorizontal_bias="0.0"
+                          app:layout_constraintStart_toStartOf="parent" app:layout_constraintTop_toTopOf="@+id/command"
+                          app:layout_constraintVertical_bias="0.0">
+        <ScrollView
+            android:id="@+id/scroller"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textColor="@android:color/white"/>
-    </ScrollView>
+            >
+            <TextView
+                android:id="@+id/output"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColor="@android:color/white"
+                android:text=""
+                android:scrollHorizontally="true"
+                android:textIsSelectable="true"/>
+        </ScrollView>
+    </HorizontalScrollView>
 </android.support.constraint.ConstraintLayout>

@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <stdlib.h>
+#include <dirent.h>
 #include <jni.h>
 #include <android/log.h>
 #include <type_traits>
@@ -2046,21 +2047,25 @@ PyMODINIT_FUNC PyInit_native_appy(void)
     return PyModule_Create(&native_appymodule);
 }
 
-extern "C" void android_get_LD_LIBRARY_PATH(char*, size_t);
-extern "C" void android_update_LD_LIBRARY_PATH(const char*);
-
-static void append_to_env(const char * env, const std::string & what)
+static void preload_libraries(const std::string & dirpath)
 {
-    std::string newenv;
-    char * prev_env = getenv(env);
-    if(prev_env != NULL)
+    DIR * dir = opendir(dirpath.c_str());
+    if (dir != NULL)
     {
-        newenv = prev_env;
-        newenv += ":";
+        struct dirent * ent = NULL;
+        while ((ent = readdir(dir)) != NULL)
+        {
+            // no links
+            if (ent->d_type == DT_REG)
+            {
+                std::string path = dirpath + "/" + ent->d_name;
+                void * handle = dlopen(path.c_str(), RTLD_LAZY);
+                LOG("pre loaded library: %s (%p)", path.c_str(), handle);
+                //not dlclosing but i really want to.
+            }
+        }
+        closedir (dir);
     }
-
-    newenv += what;
-    setenv(env, newenv.c_str(), 1);
 }
 
 extern "C" JNIEXPORT void JNICALL Java_com_appy_Widget_pythonInit(JNIEnv * env, jclass clazz, jstring j_pythonhome, jstring j_cachepath, jstring j_pythonlib, jstring j_scriptpath, jobject j_arg)
@@ -2110,21 +2115,8 @@ extern "C" JNIEXPORT void JNICALL Java_com_appy_Widget_pythonInit(JNIEnv * env, 
         setenv("SHELL", "/system/bin/sh", 1);
         setenv("TMP", cachepath.c_str(), 1);
 
-        append_to_env("LD_LIBRARY_PATH", pythonhome + "/lib");
-        append_to_env("PATH", pythonhome + "/bin");
-
         //LD_LIBRARY_PATH hack
-        char buffer[1024] = {};
-        ((decltype(&android_get_LD_LIBRARY_PATH))dlsym(RTLD_DEFAULT, "android_get_LD_LIBRARY_PATH"))(buffer, sizeof(buffer) - 1);
-
-        std::string library_path(buffer);
-        if(!library_path.empty())
-        {
-            library_path += ":";
-        }
-        library_path += pythonhome + "/lib";
-
-        ((decltype(&android_update_LD_LIBRARY_PATH))dlsym(RTLD_DEFAULT, "android_update_LD_LIBRARY_PATH"))(library_path.c_str());
+        preload_libraries(pythonhome + "/lib");
         //--------------------
 
         LOG("registering python module");

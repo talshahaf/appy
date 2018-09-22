@@ -64,7 +64,7 @@ public class LogcatFragment extends MyFragment implements RunnerListener
                 public void run()
                 {
                     // freeze when selecting
-                    if(logcatView.hasSelection())
+                    if(logcatView.hasSelection() || !atEnd)
                     {
                         selectionBuffer.add(line);
                     }
@@ -77,17 +77,14 @@ public class LogcatFragment extends MyFragment implements RunnerListener
                         selectionBuffer.clear();
 
                         logcatView.append("\n" + line);
-                        if (atEnd)
+                        handler.post(new Runnable()
                         {
-                            handler.post(new Runnable()
+                            @Override
+                            public void run()
                             {
-                                @Override
-                                public void run()
-                                {
-                                    scroller.fullScroll(View.FOCUS_DOWN);
-                                }
-                            });
-                        }
+                                scroller.fullScroll(View.FOCUS_DOWN);
+                            }
+                        });
                     }
                 }
             });
@@ -112,7 +109,7 @@ public class LogcatFragment extends MyFragment implements RunnerListener
     public void startLogcat()
     {
         stopLogcat();
-        logcat = new Runner("logcat -b main -v time -T "+INITIAL_LOGCAT_LINES, null, this);
+        logcat = new Runner(new String[]{"logcat", "-b", "main", "-v", "time", "-T", ""+INITIAL_LOGCAT_LINES}, null, null, this);
         logcat.start();
         if(handler != null)
         {

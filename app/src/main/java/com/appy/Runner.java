@@ -12,8 +12,9 @@ import java.util.StringTokenizer;
  */
 public class Runner implements Runnable
 {
-    private String command;
+    private String[] command;
     private File cwd;
+    private String[] envp;
 
     private RunnerListener callback;
     private Thread thread;
@@ -25,10 +26,11 @@ public class Runner implements Runnable
         return !shouldStop && thread.isAlive();
     }
 
-    public Runner(String command, File cwd, RunnerListener cb)
+    public Runner(String[] command, File cwd, String[] envp, RunnerListener cb)
     {
         this.command = command;
         this.cwd = cwd;
+        this.envp = envp;
 
         callback = cb;
         thread = new Thread(this);
@@ -88,7 +90,7 @@ public class Runner implements Runnable
         }
     }
 
-    private static String[] translateCommandline(String toProcess) {
+    public static String[] translateCommandline(String toProcess) {
         if (toProcess == null || toProcess.length() == 0) {
             // no command? no string
             return new String[0];
@@ -163,7 +165,7 @@ public class Runner implements Runnable
         Integer exitCode = null;
         try
         {
-            process = Runtime.getRuntime().exec(translateCommandline(command), null, cwd);
+            process = Runtime.getRuntime().exec(command, envp, cwd);
             BufferedReader bufferedOut = new BufferedReader(new InputStreamReader(process.getInputStream()));
             BufferedReader bufferedErr = new BufferedReader(new InputStreamReader(process.getErrorStream()));
 

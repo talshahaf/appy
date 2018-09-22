@@ -11,6 +11,9 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Created by Tal on 19/03/2018.
@@ -29,6 +32,7 @@ public class PipFragment extends MyFragment implements RunnerListener
     Handler handler;
 
     File cwd = null;
+    File lib = null;
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
@@ -48,6 +52,7 @@ public class PipFragment extends MyFragment implements RunnerListener
         handler = new Handler();
 
         cwd = new File(System.getenv("PYTHONHOME"), "bin");
+        lib = new File(System.getenv("PYTHONHOME"), "lib");
 
         run.setOnClickListener(new View.OnClickListener()
         {
@@ -59,7 +64,7 @@ public class PipFragment extends MyFragment implements RunnerListener
                     runner.stop();
                 }
                 output.setText("Running...\n\n");
-                runner = new Runner(command.getText().toString(), cwd, PipFragment.this);
+                runner = new Runner(Runner.translateCommandline(command.getText().toString()), cwd, null, PipFragment.this);
                 runner.start();
 
                 v.setEnabled(false);
