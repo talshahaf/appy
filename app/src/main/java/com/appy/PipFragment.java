@@ -11,6 +11,9 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Created by Tal on 19/03/2018.
@@ -29,6 +32,33 @@ public class PipFragment extends MyFragment implements RunnerListener
     Handler handler;
 
     File cwd = null;
+    File lib = null;
+
+    public static String join(Iterable<String> arr, String delim)
+    {
+        StringBuilder sb = new StringBuilder();
+        boolean first = true;
+        for(String a : arr)
+        {
+            if(first)
+            {
+                sb.append(delim);
+            }
+            sb.append(a);
+            first = false;
+        }
+        return sb.toString();
+    }
+
+    private ArrayList<String> findBinFiles()
+    {
+        ArrayList<String> out = new ArrayList<>();
+        for(File f : cwd.listFiles())
+        {
+            out.add(f.getName());
+        }
+        return out;
+    }
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
@@ -48,6 +78,7 @@ public class PipFragment extends MyFragment implements RunnerListener
         handler = new Handler();
 
         cwd = new File(System.getenv("PYTHONHOME"), "bin");
+        lib = new File(System.getenv("PYTHONHOME"), "lib");
 
         run.setOnClickListener(new View.OnClickListener()
         {
@@ -59,7 +90,32 @@ public class PipFragment extends MyFragment implements RunnerListener
                     runner.stop();
                 }
                 output.setText("Running...\n\n");
-                runner = new Runner(command.getText().toString(), cwd, PipFragment.this);
+                String[] arguments = Runner.translateCommandline(command.getText().toString());
+
+                ArrayList<String> binFiles = findBinFiles();
+                HashMap<String, String> env = new HashMap<>(System.getenv());
+                env.put("LD_LIB_FIX_KEY", join(binFiles, ","));
+                env.put("LD_LIB_FIX_VALUE", lib.getAbsolutePath());
+
+                if(binFiles.contains(new File(arguments[0]).getName()))
+                {
+                    env.put("LD_LIBRARY_PATH", lib.getAbsolutePath());
+                    arguments[0] = new File(cwd, new File(arguments[0]).getName()).getAbsolutePath();
+                }
+                else
+                {
+                    env.remove("LD_LIBRARY_PATH");
+                }
+
+                String[] envp = new String[env.size()];
+                int i = 0;
+                for(Map.Entry entry : env.entrySet())
+                {
+                    envp[i] = entry.getKey() + "=" + entry.getValue();
+                    i++;
+                }
+
+                runner = new Runner(arguments, cwd, envp, PipFragment.this);
                 runner.start();
 
                 v.setEnabled(false);

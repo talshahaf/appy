@@ -64,7 +64,7 @@ import org.kamranzafar.jtar.TarInputStream;
 public class Widget extends RemoteViewsService
 {
     private final IBinder mBinder = new LocalBinder();
-    public static final double PYTHON_VERSION = 37.01;
+    public static final int PYTHON_VERSION = 3700;
 
     WidgetUpdateListener updateListener = null;
     StatusListener statusListener = null;
@@ -1964,25 +1964,18 @@ public class Widget extends RemoteViewsService
         return configurations;
     }
 
-    public void setPythonUnpacked(double version)
+    public void setPythonUnpacked(int version)
     {
         SharedPreferences sharedPref = getSharedPreferences("appy", Context.MODE_PRIVATE);
         SharedPreferences.Editor editor = sharedPref.edit();
-        editor.putFloat("unpacked_version", (float)version);
+        editor.putInt("unpacked_version", version);
         editor.apply();
     }
 
-    public double getPythonUnpacked()
+    public int getPythonUnpacked()
     {
         SharedPreferences sharedPref = getSharedPreferences("appy", Context.MODE_PRIVATE);
-        try
-        {
-            return sharedPref.getFloat("unpacked_version", 0);
-        }
-        catch(ClassCastException e)
-        {
-            return sharedPref.getInt("unpacked_version", 0);
-        }
+        return sharedPref.getInt("unpacked_version", 0);
     }
 
     public Uri getUriForPath(String path)
@@ -2265,6 +2258,7 @@ public class Widget extends RemoteViewsService
             {
                 if(getPythonUnpacked() != PYTHON_VERSION)
                 {
+                    Log.d("APPY", "python version mismatch: " + getPythonUnpacked() + ", " + PYTHON_VERSION);
                     deleteDir(new File(pythonHome));
                     Log.d("APPY", "unpacking python");
                     untar(getAssets().open("python.targz"), pythonHome);

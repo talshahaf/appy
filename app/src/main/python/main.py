@@ -44,6 +44,15 @@ def execute(command, kill_phrases=None):
 
 exe_dir = os.path.join(os.environ['PYTHONHOME'], 'bin')
 exe = os.path.join(exe_dir, 'python3.7')
+lib_dir = os.path.join(os.environ['PYTHONHOME'], 'lib')
+
+if os.environ['PATH']:
+    os.environ['PATH'] += ':'
+os.environ['PATH'] += exe_dir
+
+# for 64bit fix patch
+os.environ['LD_LIB_FIX_KEY'] = ','.join(f for f in os.listdir(exe_dir))
+os.environ['LD_LIB_FIX_VALUE'] = lib_dir
 
 #TODO offline initialization
 try:
