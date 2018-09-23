@@ -49,10 +49,7 @@ lib_dir = os.path.join(os.environ['PYTHONHOME'], 'lib')
 if os.environ['PATH']:
     os.environ['PATH'] += ':'
 os.environ['PATH'] += exe_dir
-
-# for 64bit fix patch
-os.environ['LD_LIB_FIX_KEY'] = ','.join(f for f in os.listdir(exe_dir))
-os.environ['LD_LIB_FIX_VALUE'] = lib_dir
+os.environ['LD_LIBRARY_PATH'] = lib_dir
 
 #TODO offline initialization
 try:

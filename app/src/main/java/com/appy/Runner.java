@@ -165,7 +165,7 @@ public class Runner implements Runnable
         Integer exitCode = null;
         try
         {
-            process = Runtime.getRuntime().exec(command, this.envp, cwd);
+            process = Runtime.getRuntime().exec(command, envp, cwd);
             BufferedReader bufferedOut = new BufferedReader(new InputStreamReader(process.getInputStream()));
             BufferedReader bufferedErr = new BufferedReader(new InputStreamReader(process.getErrorStream()));
 

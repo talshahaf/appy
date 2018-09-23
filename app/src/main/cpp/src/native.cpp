@@ -2047,20 +2047,6 @@ PyMODINIT_FUNC PyInit_native_appy(void)
     return PyModule_Create(&native_appymodule);
 }
 
-static void append_to_env(const char * env, const std::string & what)
-{
-    std::string newenv;
-    char * prev_env = getenv(env);
-    if(prev_env != NULL)
-    {
-        newenv = prev_env;
-        newenv += ":";
-    }
-
-    newenv += what;
-    setenv(env, newenv.c_str(), 1);
-}
-
 static void preload_libraries(const std::string & dirpath)
 {
     DIR * dir = opendir(dirpath.c_str());
