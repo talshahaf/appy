@@ -64,7 +64,7 @@ import org.kamranzafar.jtar.TarInputStream;
 public class Widget extends RemoteViewsService
 {
     private final IBinder mBinder = new LocalBinder();
-    public static final int PYTHON_VERSION = 3700;
+    public static final int PYTHON_VERSION = 3701;
 
     WidgetUpdateListener updateListener = null;
     StatusListener statusListener = null;

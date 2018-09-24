@@ -9,8 +9,7 @@
                                           android:layout_height="wrap_content"
                                           android:orientation="horizontal"
                                           app:layout_constraintGuide_percent="0.5"/>
-    <ScrollView
-        android:id="@+id/scroller"
+    <HorizontalScrollView
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:layout_marginTop="8dp"
@@ -22,15 +21,22 @@
         app:layout_constraintBottom_toBottomOf="@+id/guideline"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent">
-        <TextView
-            android:id="@+id/java_crash"
-            android:layout_width="match_parent"
+        <ScrollView
+            android:id="@+id/scroller"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text=""
-            android:textColor="@android:color/white"/>
-    </ScrollView>
-    <ScrollView
-        android:id="@+id/scroller2"
+            >
+            <TextView
+                android:id="@+id/java_crash"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text=""
+                android:textColor="@android:color/white"
+                android:scrollHorizontally="true"
+                android:textIsSelectable="true"/>
+        </ScrollView>
+    </HorizontalScrollView>
+    <HorizontalScrollView
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:layout_marginTop="8dp"
@@ -43,12 +49,20 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent">
-        <TextView
-            android:id="@+id/python_crash"
-            android:layout_width="match_parent"
+        <ScrollView
+            android:id="@+id/scroller2"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text=""
-            android:textColor="@android:color/white"/>
-    </ScrollView>
+            >
+            <TextView
+                android:id="@+id/python_crash"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text=""
+                android:textColor="@android:color/white"
+                android:scrollHorizontally="true"
+                android:textIsSelectable="true"/>
+        </ScrollView>
+    </HorizontalScrollView>
 
 </android.support.constraint.ConstraintLayout>
