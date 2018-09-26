@@ -1,19 +1,11 @@
 package com.appy;
 
+import android.app.AlertDialog;
+import android.content.DialogInterface;
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.support.v7.preference.CheckBoxPreference;
 import android.support.v7.preference.Preference;
-import android.support.v7.preference.PreferenceFragmentCompat;
-import android.support.v7.preference.PreferenceScreen;
-import android.view.LayoutInflater;
-import android.view.View;
-import android.view.ViewGroup;
-import android.widget.TextView;
-
-import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
-import java.util.Date;
 
 /**
  * Created by Tal on 19/03/2018.
@@ -21,10 +13,38 @@ import java.util.Date;
 
 public class SettingsFragment extends MySettingsFragment implements SharedPreferences.OnSharedPreferenceChangeListener
 {
+    CheckBoxPreference foregroundPreference;
     @Override
     public void onCreatePreferences(Bundle savedInstanceState, String rootKey)
     {
         addPreferencesFromResource(R.xml.pref);
+
+        foregroundPreference = (CheckBoxPreference)getPreferenceScreen().findPreference("foreground_service");
+
+        foregroundPreference.setDefaultValue(Widget.needForeground());
+
+        foregroundPreference.setOnPreferenceChangeListener(new Preference.OnPreferenceChangeListener()
+        {
+            @Override
+            public boolean onPreferenceChange(Preference preference, Object newValue)
+            {
+                if(newValue instanceof Boolean && !((boolean)newValue) && Widget.needForeground())
+                {
+                    new AlertDialog.Builder(getActivity())
+                            .setTitle("Foreground Service")
+                            .setMessage("Turning off foreground service causes problems in android 8+. Are you sure?")
+                            .setIcon(android.R.drawable.ic_dialog_alert)
+                            .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
+                                public void onClick(DialogInterface dialog, int whichButton) {
+                                    foregroundPreference.setChecked(false);
+                                }})
+                            .setNegativeButton(android.R.string.no, null)
+                            .show();
+                    return false;
+                }
+                return true;
+            }
+        });
     }
 
     @Override
@@ -44,15 +64,15 @@ public class SettingsFragment extends MySettingsFragment implements SharedPrefer
     @Override
     public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key)
     {
-        updateCorrectionFactors();
+        updateConfig();
     }
 
     public void onBound()
     {
-        updateCorrectionFactors();
+        updateConfig();
     }
 
-    public void updateCorrectionFactors()
+    public void updateConfig()
     {
         if(getWidgetService() == null)
         {
@@ -60,5 +80,6 @@ public class SettingsFragment extends MySettingsFragment implements SharedPrefer
         }
 
         getWidgetService().loadCorrectionFactors(false);
+        getWidgetService().loadForeground();
     }
 }

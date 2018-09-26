@@ -10,8 +10,6 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.PrintWriter;
-import java.io.StringWriter;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -26,6 +24,9 @@ import java.util.Set;
 import java.util.zip.GZIPInputStream;
 
 import android.app.AlarmManager;
+import android.app.Notification;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.appwidget.AppWidgetManager;
 import android.content.ComponentName;
@@ -36,6 +37,7 @@ import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Binder;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
@@ -65,6 +67,7 @@ public class Widget extends RemoteViewsService
 {
     private final IBinder mBinder = new LocalBinder();
     public static final int PYTHON_VERSION = 3701;
+    public static final int NOTIFICATION_ID = 100;
 
     WidgetUpdateListener updateListener = null;
     StatusListener statusListener = null;
@@ -1512,6 +1515,60 @@ public class Widget extends RemoteViewsService
         }
     }
 
+    public static boolean needForeground()
+    {
+        return Build.VERSION.SDK_INT >= Build.VERSION_CODES.O;
+    }
+
+    public static boolean getForeground(Context context)
+    {
+        SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(context);
+        return sharedPref.getBoolean("foreground_service", needForeground());
+    }
+
+    public void loadForeground()
+    {
+        boolean foreground = getForeground(this);
+        if(foreground)
+        {
+            Log.d("APPY", "foreground is on");
+
+            Notification.Builder builder;
+            if(needForeground())
+            {
+                final String CHANNEL = "notifications";
+                NotificationChannel channel_none = new NotificationChannel(CHANNEL, CHANNEL, NotificationManager.IMPORTANCE_NONE);
+                channel_none.setSound(null, null);
+                channel_none.enableVibration(false);
+                ((NotificationManager)getSystemService(Context.NOTIFICATION_SERVICE)).createNotificationChannel(channel_none);
+                builder = new Notification.Builder(this, CHANNEL);
+            }
+            else
+            {
+                builder = new Notification.Builder(this);
+            }
+
+            Intent intent = new Intent(this, MainActivity.class);
+            intent.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            PendingIntent contentIntent = PendingIntent.getActivity(this, 0,
+                    intent, PendingIntent.FLAG_UPDATE_CURRENT);
+
+            Notification notification = builder.setContentTitle ("Appy")
+                    .setContentText("Appy is running")
+                    .setSmallIcon(R.mipmap.ic_launcher_foreground)
+                    .setPriority(Notification.PRIORITY_MIN)
+                    .setContentIntent(contentIntent)
+                    .build();
+            startForeground(NOTIFICATION_ID, notification);
+        }
+        else
+        {
+            Log.d("APPY", "foreground is off");
+
+            stopForeground(true);
+        }
+    }
+
     public long generateTimerId()
     {
         synchronized (lock)
@@ -2688,6 +2745,7 @@ public class Widget extends RemoteViewsService
 
             loadPythonFiles();
             loadCorrectionFactors(true);
+            loadForeground();
             loadWidgets();
             loadTimers();
             configurations.load();

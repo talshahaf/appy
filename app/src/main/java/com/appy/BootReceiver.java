@@ -17,7 +17,18 @@ public class BootReceiver extends BroadcastReceiver
         if(Intent.ACTION_BOOT_COMPLETED.equals(intent.getAction()))
         {
             Log.d("APPY", "boot onReceive intent");
-            context.startService(new Intent(context, Widget.class));
+            // this has nothing to do with the actual foregroundness of the service, but startService will fail if needForeground().
+            if(Widget.needForeground())
+            {
+                if(Widget.getForeground(context))
+                {
+                    context.startForegroundService(new Intent(context, Widget.class));
+                }
+            }
+            else
+            {
+                context.startService(new Intent(context, Widget.class));
+            }
         }
     }
 }
