@@ -1,6 +1,5 @@
 package com.appy;
 
-import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 

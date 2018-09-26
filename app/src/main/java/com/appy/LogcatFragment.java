@@ -2,17 +2,13 @@ package com.appy;
 
 import android.os.Bundle;
 import android.os.Handler;
-import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ScrollView;
 import android.widget.TextView;
-
-import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Collection;
 
 /**
  * Created by Tal on 19/03/2018.

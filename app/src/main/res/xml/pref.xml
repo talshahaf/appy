@@ -17,4 +17,6 @@
         android:inputType="numberDecimal" android:key="height_correction"
         android:selectAllOnFocus="true" android:singleLine="true"
         android:title="Height Correction"/>
+    <CheckBoxPreference
+        android:key="foreground_service" android:title="Foreground Service"/>
 </PreferenceScreen>

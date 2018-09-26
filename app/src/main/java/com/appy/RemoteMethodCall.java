@@ -1,7 +1,5 @@
 package com.appy;
 
-import android.util.Log;
-import android.util.Pair;
 import android.widget.RemoteViews;
 
 import org.json.JSONArray;
