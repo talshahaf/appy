@@ -21,7 +21,7 @@ public class SettingsFragment extends MySettingsFragment implements SharedPrefer
 
         foregroundPreference = (CheckBoxPreference)getPreferenceScreen().findPreference("foreground_service");
 
-        foregroundPreference.setDefaultValue(Widget.needForeground());
+        foregroundPreference.setChecked(Widget.getForeground(getActivity()));
 
         foregroundPreference.setOnPreferenceChangeListener(new Preference.OnPreferenceChangeListener()
         {
