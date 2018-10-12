@@ -71,8 +71,8 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
         toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
-        preset_names = new String[]{"app files dir", "app cache dir", "examples"};
-        preset_paths = new String[]{getFilesDir().getAbsolutePath(), getCacheDir().getAbsolutePath(), new File(getFilesDir(), "examples").getAbsolutePath()};
+        preset_names = new String[]{"app files dir", "app cache dir", "examples", "storage"};
+        preset_paths = new String[]{getFilesDir().getAbsolutePath(), getCacheDir().getAbsolutePath(), new File(getFilesDir(), "examples").getAbsolutePath(), Environment.getExternalStorageDirectory().getPath()};
 
         // Here, thisActivity is the current activity
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED ||

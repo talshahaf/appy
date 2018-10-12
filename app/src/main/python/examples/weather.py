@@ -89,7 +89,7 @@ def create(widget):
     refresh.right = 0
     #                               width and height are 60% of the widget's height but no more than 200 pixels 
     img = ImageView(name='img', width=AttributeFunction.min(200, widget.height * 0.6), height=AttributeFunction.min(200, widget.height * 0.6), adjustViewBounds=True, hcenter=widget.hcenter, top=10)
-    text = TextView(name='temp', top=img.ibottom, hcenter=widget.hcenter, textSize=30)
+    text = TextView(name='temp', top=img.ibottom, hcenter=widget.hcenter, textColor=0xb3ffffff, textSize=30)
     # bg is first
     return [bg, img, text, refresh]
     

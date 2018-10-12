@@ -558,9 +558,9 @@ def widget_manager_create(widget, manager_state):
     names = [name for name in available_widgets]
 
     if not available_widgets:
-        lst = widgets.TextView(top=10, left=10, text='No widgets')
+        lst = widgets.TextView(top=10, left=10, text='No widgets', textColor=0xb3ffffff, textSize=15)
     else:
-        lst = widgets.ListView(top=10, left=10, children=[widgets.TextView(text=name, textSize=30,
+        lst = widgets.ListView(top=10, left=10, children=[widgets.TextView(text=name, textSize=30, textColor=0xb3ffffff,
                                                                             click=(choose_widget, dict(name=name))) for name in names])
     return [bg, lst, restart_btn]
 
