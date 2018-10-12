@@ -70,9 +70,9 @@ def update(widget, views):
             # used later when downloading
             # using the element's tag
             img.tag.url = item['image']['url']
-        title = TextView(text=item['title'], textSize=15, lines=3, top=img.top if img is not None else 10, left=(img.iright + 20) if img is not None else 10, right=20)
-        desc  = TextView(text=item['description'], lines=30, top=title.ibottom + 10, left=title.left, right=20)
-        date  = TextView(text=item['date'], right=20, bottom=0)
+        title = TextView(text=item['title'], textColor=0xb3ffffff, textSize=15, lines=3, top=img.top if img is not None else 10, left=(img.iright + 20) if img is not None else 10, right=20)
+        desc  = TextView(text=item['description'], textColor=0xb3ffffff, textSize=14, lines=30, top=title.ibottom + 10, left=title.left, right=20)
+        date  = TextView(text=item['date'], textColor=0xb3ffffff, textSize=14, right=20, bottom=0)
 
         # bg is the first child
         children = [bg, title, desc, date]

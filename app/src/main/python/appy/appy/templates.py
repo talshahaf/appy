@@ -84,7 +84,7 @@ def background(name=None, color=None, drawable=None):
 
 ##############list template###############################
 def call_list_adapter(widget, adapter, value, **kwargs):
-    view = widgets.elist([TextView(textSize=15)])
+    view = widgets.elist([TextView(textSize=15, textColor=0xb3ffffff)])
     if adapter is not None:
         widgets.call_general_function(adapter, widget=widget, view=view, value=value, **kwargs)
     else:
@@ -113,7 +113,7 @@ def updating_list_create(widget, initial_values, on_refresh, background_param, a
 
     views.append(lst)
     if last_update is None or last_update:
-        views.append(TextView(name='last_update', bottom=0, right=20))
+        views.append(TextView(name='last_update', textSize=14, textColor=0xb3ffffff, bottom=0, right=20))
     views.append(btn)
     
     if create_hook is not None:
@@ -144,7 +144,7 @@ def updating_text_refresh_action(widget, views, on_refresh, adapter, update_hook
         widgets.call_general_function(update_hook, widget=widget, views=views)
 
 def updating_text_create(widget, initial_value, on_refresh, background_param, adapter, initial_refresh, timeout, interval, last_update, create_hook, update_hook):
-    text = TextView(name='content', text='', textSize=30)
+    text = TextView(name='content', text='', textSize=30, textColor=0xb3ffffff)
     text.hcenter = widget.hcenter
     text.vcenter  = widget.vcenter
     if initial_value is not None:
@@ -158,7 +158,7 @@ def updating_text_create(widget, initial_value, on_refresh, background_param, ad
 
     views.append(text)
     if last_update is None or last_update:
-        views.append(TextView(name='last_update', bottom=0, right=20)) 
+        views.append(TextView(name='last_update', textSize=14, textColor=0xb3ffffff, bottom=0, right=20))
     views.append(btn)
     
     if create_hook is not None:
@@ -203,7 +203,7 @@ def keyboard(widget, layout=None):
 
     layout_height = resolved_layout[-1][3] + resolved_layout[-1][2]
     btns = []
-    edit = TextView(name='output', text='', textSize=30)
+    edit = TextView(name='output', text='', textSize=30, textColor=0xb3ffffff)
     for resolved_line in resolved_layout:
         btn_line = []
         line, line_width, line_height, top = resolved_line

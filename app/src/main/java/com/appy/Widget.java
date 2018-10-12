@@ -293,59 +293,6 @@ public class Widget extends RemoteViewsService
         return ret;
     }
 
-    public ArrayList<DynamicView> initTestWidget(int widgetId)
-    {
-        Log.d("APPY", "initWidget " + widgetId);
-
-        ArrayList<DynamicView> views = new ArrayList<>();
-
-        DynamicView btn = new DynamicView("Button");
-        btn.methodCalls.add(new RemoteMethodCall("setText", false, Constants.getSetterMethod(btn.type, "setText"), "setText", "initial button"));
-
-        Attributes.AttributeValue _100px = attributeParse("100");
-        Attributes.AttributeValue halfWidth = attributeParse("w(p)*0.5");
-        Attributes.AttributeValue halfHeight = attributeParse("h(p)*0.5");
-
-        //btn.attributes.attributes.put(Attributes.Type.WIDTH, halfWidth);
-        //btn.attributes.attributes.put(Attributes.Type.HEIGHT, attributeParse("151"));
-
-        views.add(btn);
-
-        //DynamicView btn2 = new DynamicView("Button");
-        //btn2.attributes.attributes.put(Attributes.Type.TOP, halfHeight);
-        //btn2.attributes.attributes.put(Attributes.Type.WIDTH, attributeParse("w("+btn.getId()+")*0.5"));
-
-        //views.add(btn2);
-
-
-//        DynamicView lst = new DynamicView("ListView");
-//        for(int i = 0; i < 10; i++)
-//        {
-//            DynamicView txt = new DynamicView("TextView");
-//            txt.methodCalls.add(new RemoteMethodCall("setText", false, getSetterMethod(btn.type, "setText"), "setText", "text"+i));
-//            ArrayList<DynamicView> listItem = new ArrayList<>();
-//            listItem.add(txt);
-//            lst.children.add(listItem);
-//        }
-//
-//        lst.attributes.attributes.put(Attributes.Type.LEFT, halfWidth);
-//        lst.attributes.attributes.put(Attributes.Type.HEIGHT, _100px);
-//
-//        views.add(lst);
-
-        return views;
-    }
-
-    public ArrayList<DynamicView> updateTestWidget(int widgetId, ArrayList<DynamicView> root)
-    {
-        Log.d("APPY", "updateWidget " + widgetId);
-
-        DynamicView view = root.get(0);
-        view.methodCalls.add(new RemoteMethodCall("setText", false, Constants.getSetterMethod(view.type, "setText"), "setText", "" + new Random().nextInt(1000)));
-        view.methodCalls.add(new RemoteMethodCall("setTextViewTextSize", false, "setTextViewTextSize", TypedValue.COMPLEX_UNIT_SP, 30));
-        return root;
-    }
-
     public boolean isCollection(String type)
     {
         return "ListView".equals(type) ||
@@ -1165,90 +1112,6 @@ public class Widget extends RemoteViewsService
             }
         }
         return views;
-    }
-
-    private void java_widget()
-    {
-        registerOnWidgetUpdate(new WidgetUpdateListener()
-        {
-            @Override
-            public String onCreate(int widgetId)
-            {
-                ArrayList<DynamicView> out = initTestWidget(widgetId);
-                if (out != null)
-                {
-                    return DynamicView.toJSONString(out);
-                }
-                return null;
-            }
-
-            @Override
-            public String onUpdate(int widgetId, String views)
-            {
-                ArrayList<DynamicView> out = updateTestWidget(widgetId, DynamicView.fromJSONArray(views));
-                if (out != null)
-                {
-                    return DynamicView.toJSONString(out);
-                }
-                return null;
-            }
-
-            @Override
-            public void onDelete(int widgetId)
-            {
-
-            }
-
-            @Override
-            public Object[] onItemClick(int widgetId, String views, long collectionId, int position, long id)
-            {
-                Log.d("APPY", "on item click: " + collectionId + " " + position + " " + id);
-                return new Object[]{false, null};
-            }
-
-            @Override
-            public String onClick(int widgetId, String views, long id)
-            {
-                Log.d("APPY", "on click: " + id);
-                return null;
-            }
-
-            @Override
-            public String onTimer(long timerId, int widgetId, String views, String data)
-            {
-                return null;
-            }
-
-            @Override
-            public String onPost(int widgetId, String views, String data)
-            {
-                return null;
-            }
-
-            @Override
-            public void wipeStateRequest()
-            {
-
-            }
-
-            @Override
-            public void importFile(String path)
-            {
-
-            }
-
-            @Override
-            public void deimportFile(String path)
-            {
-
-            }
-
-            @Override
-            public void onError(int widgetId, String error)
-            {
-
-            }
-        });
     }
 
     @Override
@@ -2183,6 +2046,7 @@ public class Widget extends RemoteViewsService
 
         DynamicView textView = new DynamicView("TextView");
         textView.methodCalls.add(new RemoteMethodCall("setText", false, Constants.getSetterMethod(textView.type, "setText"), "setText", "Loading..."));
+        textView.methodCalls.add(new RemoteMethodCall("setTextColor", false, Constants.getSetterMethod(textView.type, "setTextColor"), "setTextColor", Constants.TEXT_COLOR));
 
         Attributes.AttributeValue wholeWidth = attributeParse("w(p)");
         Attributes.AttributeValue wholeHeight = attributeParse("h(p)");
@@ -2216,6 +2080,7 @@ public class Widget extends RemoteViewsService
 
         DynamicView textView = new DynamicView("TextView");
         textView.methodCalls.add(new RemoteMethodCall("setText", false, Constants.getSetterMethod(textView.type, "setText"), "setText", "Error"));
+        textView.methodCalls.add(new RemoteMethodCall("setTextColor", false, Constants.getSetterMethod(textView.type, "setTextColor"), "setTextColor", Constants.TEXT_COLOR));
 
         DynamicView restart = new DynamicView("ImageButton");
         restart.selectors.put("style", "danger_oval_pad");
