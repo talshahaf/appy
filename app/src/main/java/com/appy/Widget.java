@@ -1652,7 +1652,7 @@ public class Widget extends RemoteViewsService
         else
         {
             AlarmManager mgr = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
-            pendingIntent = PendingIntent.getService(Widget.this, 1, timerIntent, PendingIntent.FLAG_CANCEL_CURRENT);
+            pendingIntent = PendingIntent.getService(getApplicationContext(), 1, timerIntent, PendingIntent.FLAG_CANCEL_CURRENT);
             //clear previous alarm (if we crashed but no reboot)
             mgr.cancel(pendingIntent);
 
@@ -1857,7 +1857,7 @@ public class Widget extends RemoteViewsService
                          public void run()
                          {
                              Intent intent = new Intent(Widget.this, getClass());
-                             PendingIntent pendingIntent = PendingIntent.getService(Widget.this, 1, intent, PendingIntent.FLAG_CANCEL_CURRENT);
+                             PendingIntent pendingIntent = PendingIntent.getService(getApplicationContext(), 1, intent, PendingIntent.FLAG_CANCEL_CURRENT);
                              AlarmManager mgr = (AlarmManager)getSystemService(Context.ALARM_SERVICE);
                              mgr.set(AlarmManager.RTC, System.currentTimeMillis() + 100, pendingIntent);
                              System.exit(0);
