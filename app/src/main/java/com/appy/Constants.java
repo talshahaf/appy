@@ -52,6 +52,7 @@ public class Constants
     public static final int TIMER_REPEATING = 3;
     public static final int IMPORT_TASK_QUEUE = -1;
     public static final int TEXT_COLOR = 0xb3ffffff;
+    public static final int TIMER_MAX_HANDLER = 60 * 60 * 1000; //1 hour
 
     public enum StartupState
     {

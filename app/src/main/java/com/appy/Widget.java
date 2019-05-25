@@ -1619,7 +1619,7 @@ public class Widget extends RemoteViewsService
         }
         saveTimers();
 
-        if (type == Constants.TIMER_REPEATING && millis <= 10 * 60 * 1000)
+        if (type == Constants.TIMER_REPEATING && millis < Constants.TIMER_MAX_HANDLER)
         {
             Log.d("APPY", "setting short time timer");
             handler.post(new ArgRunnable(timerIntent, millis, timerId)
