@@ -1659,12 +1659,12 @@ public class Widget extends RemoteViewsService
             if (type == Constants.TIMER_REPEATING)
             {
                 Log.d("APPY", "setting long time timer: " + millis);
-                mgr.setRepeating(AlarmManager.RTC, System.currentTimeMillis() + millis, millis, pendingIntent);
+                mgr.setRepeating(AlarmManager.RTC_WAKEUP, System.currentTimeMillis() + millis, millis, pendingIntent);
             }
             else
             {
                 Log.d("APPY", "setting one time timer");
-                mgr.set(AlarmManager.RTC, millis, pendingIntent);
+                mgr.set(AlarmManager.RTC_WAKEUP, millis, pendingIntent);
             }
         }
 
