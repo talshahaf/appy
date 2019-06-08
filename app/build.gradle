@@ -116,7 +116,7 @@ android {
             dimension "abi"
             ndk {
                 abiFilter "armeabi-v7a"
-                versionCode = android.defaultConfig.versionCode
+                versionCode = 0     + android.defaultConfig.versionCode
             }
         }
         arm64 {
