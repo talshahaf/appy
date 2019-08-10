@@ -134,6 +134,14 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
         Arrays.sort(filesArray, new Comparator<File>() {
             @Override
             public int compare(File o1, File o2) {
+                if(o1.isDirectory() && !o2.isDirectory())
+                {
+                    return -1;
+                }
+                if(!o1.isDirectory() && o2.isDirectory())
+                {
+                    return 1;
+                }
                 return o1.getAbsolutePath().compareToIgnoreCase(o2.getAbsolutePath());
             }
         });
