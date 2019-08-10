@@ -32,7 +32,7 @@ WEATHER_ICONS = 'https://api.met.no/weatherapi/weathericon/1.1/?symbol={symbol}&
 # large responses might be trimmed using the simple requests api
 def large_get(url):
     buf = io.BytesIO()
-    r = requests.get(url, stream=True)
+    r = requests.get(url, stream=True, timeout=60)
     for chunk in r.iter_content(chunk_size=1024):
         if chunk:
             buf.write(chunk)
