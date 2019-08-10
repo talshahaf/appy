@@ -9,10 +9,10 @@ SPECIFIC = 'https://api.coinmarketcap.com/v2/ticker/{id}/?convert={currency}'
 IMAGE = 'https://s2.coinmarketcap.com/static/img/coins/32x32/{id}.png'
 
 def coin_list():
-    return {coin['symbol']: dict(id=coin['id'], name=coin['name'], symbol=coin['symbol']) for coin in json.loads(requests.get(COIN_LIST).text)['data']}
+    return {coin['symbol']: dict(id=coin['id'], name=coin['name'], symbol=coin['symbol']) for coin in json.loads(requests.get(COIN_LIST, timeout=60).text)['data']}
         
 def coin_value(id, currency):
-    data = json.loads(requests.get(SPECIFIC.format(id=id, currency=currency)).text)['data']['quotes'][currency]
+    data = json.loads(requests.get(SPECIFIC.format(id=id, currency=currency), timeout=60).text)['data']['quotes'][currency]
     return dict(price=data['price'], market_cap=data['market_cap'], percent_change_24h=data['percent_change_24h'])
 
 def coin_image(id):

@@ -10,7 +10,7 @@ def bit_on_refresh(widget):
     print(f'refreshing {widget.config}')
     try:
         # getting config values directly from widget.config each time to allow for quick config updates
-        ratio = float(json.loads(requests.get(BIT_TO_CURRENCY.format(currency=widget.config.currency)).text)['data']['quotes'][widget.config.currency]['price'])
+        ratio = float(json.loads(requests.get(BIT_TO_CURRENCY.format(currency=widget.config.currency), timeout=60).text)['data']['quotes'][widget.config.currency]['price'])
         total = (widget.config.btc_amount * ratio) - widget.config.currency_amount
         # returning int to adapter
         return total
