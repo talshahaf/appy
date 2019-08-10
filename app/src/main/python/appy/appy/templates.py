@@ -13,9 +13,9 @@ def reset_refresh_buttons_if_needed(widget, views):
             pass
         del widget.state.__refresh_error_id
 
-def refresh_button_action(widget, views, on_click, id):
+def refresh_button_action(widget, views, on_click, id, timer):
     try:
-        widgets.call_general_function(on_click, widget=widget, views=views)
+        widgets.call_general_function(on_click, widget=widget, views=views, timer=timer)
     except:
         widget.locals('__refresh_error_id')
         widget.state.__refresh_error_id = id
@@ -39,7 +39,7 @@ def refresh_button_click(widget, views, on_click, id, timer_id=None):
             widget.cancel_timer(timer_id)
     if btn is not None:
         btn.visibility = java.clazz.android.view.View().INVISIBLE
-    widget.post(refresh_button_action, on_click=on_click, id=id)
+    widget.post(refresh_button_action, on_click=on_click, id=id, timer=timer_id is not None)
 
 def refresh_button(on_click, name=None, initial_refresh=None, widget=None, timeout=None, interval=None):
     btn = ImageButton(style='dark_oval_pad', adjustViewBounds=True, colorFilter=0xffffffff, width=140, height=140, left=0, bottom=0, imageResource=java.clazz.appy.R.drawable().ic_action_refresh)
@@ -91,8 +91,8 @@ def call_list_adapter(widget, adapter, value, **kwargs):
         view[0].text = str(value)
     return view
 
-def updating_list_refresh_action(widget, views, on_refresh, adapter, update_hook):
-    values = widgets.call_general_function(on_refresh, widget=widget, views=views)
+def updating_list_refresh_action(widget, views, timer, on_refresh, adapter, update_hook):
+    values = widgets.call_general_function(on_refresh, widget=widget, views=views, timer=timer)
     if values is not None:
         views['list'].children = None if not values else [call_list_adapter(widget, adapter, value=v, index=i) for i, v in enumerate(values)]
         try:
@@ -131,8 +131,8 @@ def call_text_adapter(widget, adapter, value, view, **kwargs):
     else:
         view.text = str(value)
 
-def updating_text_refresh_action(widget, views, on_refresh, adapter, update_hook):
-    value = widgets.call_general_function(on_refresh, widget=widget, views=views)
+def updating_text_refresh_action(widget, views, timer, on_refresh, adapter, update_hook):
+    value = widgets.call_general_function(on_refresh, widget=widget, views=views, timer=timer)
     if value is not None:
         call_text_adapter(widget, adapter, value=value, view=views['content'])
         try:
