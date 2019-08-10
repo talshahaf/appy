@@ -152,5 +152,5 @@ def restart():
     widget_manager.java_context().restart()
 
 from .widget_manager import register_widget, java_context, elist, call_general_function, AttributeFunction
-from .utils import download_resource
+from .utils import download_resource, copy_resource
 from .state import wipe_state

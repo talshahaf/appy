@@ -99,3 +99,14 @@ def download_resource(url):
             if chunk:
                 f.write(chunk)
     return filename
+
+@functools.lru_cache(maxsize=128, typed=True)
+def copy_resource(external_path):
+    filename = generate_filename(external_path)
+    with open(external_path, 'rb') as src, open(filename, 'wb') as dst:
+        while True:
+            buf = src.read(1024)
+            if not buf:
+                break
+            dst.write(buf)
+    return filename
