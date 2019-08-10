@@ -146,6 +146,12 @@ public class FileBrowserAdapter extends BaseAdapter
             @Override
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked)
             {
+                if (!buttonView.isPressed())
+                {
+                    // Not from user!
+                    return;
+                }
+
                 item.checked = isChecked;
                 if(checkedListener != null)
                 {
