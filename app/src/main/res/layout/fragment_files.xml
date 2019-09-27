@@ -4,26 +4,37 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent" android:layout_height="match_parent">
+
     <GridView
         android:id="@+id/filegrid"
-        android:layout_width="0dp" android:layout_height="0dp"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
         android:clipToPadding="false"
         android:columnWidth="110dp"
         android:horizontalSpacing="5dp"
-        android:numColumns="auto_fit" android:padding="8dp"
+        android:numColumns="auto_fit"
+        android:padding="8dp"
         android:requiresFadingEdge="vertical"
         android:verticalSpacing="5dp"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.0"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.0" tools:listitem="@layout/filegrid_item"/>
+        tools:listitem="@layout/filegrid_item" />
+
     <android.support.design.widget.FloatingActionButton
         android:id="@+id/browse"
-        android:layout_width="60dp"
-        android:layout_height="60dp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:fabCustomSize="60dp"
         android:layout_margin="16dp"
-        android:scaleType="fitCenter" android:src="@drawable/ic_action_add"
-        app:layout_constraintBottom_toBottomOf="@+id/filegrid" app:layout_constraintEnd_toEndOf="parent"/>
+        android:scaleType="fitCenter"
+        android:src="@drawable/ic_action_add"
+        app:layout_constraintBottom_toBottomOf="@+id/filegrid"
+        app:layout_constraintEnd_toEndOf="parent" />
+    <android.support.design.widget.FloatingActionButton
+        android:id="@+id/unknown_info"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:fabCustomSize="60dp"
+        android:layout_margin="16dp"
+        android:scaleType="fitCenter"
+        android:src="@drawable/ic_action_info"
+        app:layout_constraintBottom_toBottomOf="@+id/filegrid" app:layout_constraintStart_toStartOf="parent"/>
 </android.support.constraint.ConstraintLayout>

@@ -84,6 +84,7 @@ public class Widget extends RemoteViewsService
     HashMap<Long, PendingIntent> activeTimersIntents = new HashMap<>();
     HashMap<Pair<Integer, Integer>, HashMap<Integer, ListFactory>> factories = new HashMap<>();
     ArrayList<PythonFile> pythonFiles = new ArrayList<>();
+    PythonFile unknownPythonFile = new PythonFile("Unknown file");
     HashSet<Integer> needUpdateWidgets = new HashSet<>();
     float widthCorrectionFactor = 1.0f;
     float heightCorrectionFactor = 1.0f;
@@ -1436,11 +1437,12 @@ public class Widget extends RemoteViewsService
     {
         synchronized (lock)
         {
-            long newId = 1;
-            if (!activeTimers.isEmpty())
-            {
-                newId = Collections.max(activeTimers.keySet()) + 1;
-            }
+            // long newId = 1;
+            // if (!activeTimers.isEmpty())
+            // {
+                // newId = Collections.max(activeTimers.keySet()) + 1;
+            // }
+            long newId = new Random().nextLong();
             activeTimers.put(newId, null); //save room
             return newId;
         }
@@ -1706,6 +1708,14 @@ public class Widget extends RemoteViewsService
                     pythonFiles = PythonFile.deserializeArray(pythonfilesString);
                 }
             }
+            String unknownPythonFileString = sharedPref.getString("unknownpythonfile", null);
+            if (unknownPythonFileString != null)
+            {
+                synchronized (lock)
+                {
+                    unknownPythonFile = PythonFile.deserializeSingle(unknownPythonFileString);
+                }
+            }
         }
         catch (Exception e)
         {
@@ -1720,6 +1730,7 @@ public class Widget extends RemoteViewsService
         synchronized (lock)
         {
             editor.putString("pythonfiles", PythonFile.serializeArray(pythonFiles));
+            editor.putString("unknownpythonfile", unknownPythonFile.serializeSingle());
         }
         editor.apply();
     }
@@ -2265,12 +2276,20 @@ public class Widget extends RemoteViewsService
 
     public void setFileLastError(String path, String lastError)
     {
-        for(PythonFile file : getPythonFiles())
+        if(path == null)
         {
-            if(file.path.equals(path))
+            unknownPythonFile.lastError = lastError;
+            unknownPythonFile.lastErrorDate = new Date().toString();
+        }
+        else
+        {
+            for (PythonFile file : getPythonFiles())
             {
-                file.lastError = lastError;
-                file.lastErrorDate = new Date().toString();
+                if (file.path.equals(path))
+                {
+                    file.lastError = lastError;
+                    file.lastErrorDate = new Date().toString();
+                }
             }
         }
         savePythonFiles();

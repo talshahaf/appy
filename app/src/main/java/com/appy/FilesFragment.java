@@ -25,6 +25,7 @@ import java.util.ArrayList;
 public class FilesFragment extends MyFragment implements FileGridAdapter.ItemActionListener
 {
     FloatingActionButton browse;
+    FloatingActionButton unknownInfo;
     GridView filegrid;
     FileGridAdapter adapter;
     Handler handler;
@@ -47,6 +48,16 @@ public class FilesFragment extends MyFragment implements FileGridAdapter.ItemAct
             }
         });
 
+        unknownInfo = layout.findViewById(R.id.unknown_info);
+        unknownInfo.setOnClickListener(new View.OnClickListener()
+        {
+            @Override
+            public void onClick(View v)
+            {
+                onInfo(getWidgetService().unknownPythonFile);
+            }
+        });
+
         filegrid = layout.findViewById(R.id.filegrid);
 
         adapter = new FileGridAdapter(getActivity(), this);
@@ -66,7 +77,7 @@ public class FilesFragment extends MyFragment implements FileGridAdapter.ItemAct
             ArrayList<PythonFile> pythonFiles = new ArrayList<>();
             for(String file : files)
             {
-                pythonFiles.add(new PythonFile(file, "", ""));
+                pythonFiles.add(new PythonFile(file));
             }
             getWidgetService().addPythonFiles(pythonFiles);
             adapter.setItems(getWidgetService().getPythonFiles());
@@ -116,19 +127,24 @@ public class FilesFragment extends MyFragment implements FileGridAdapter.ItemAct
     {
         AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
 
-        builder.setTitle(new File(file.path).getName() + (file.lastErrorDate != null ? " from " + file.lastErrorDate : ""));
+        builder.setTitle(new File(file.path).getName() + (!file.lastErrorDate.isEmpty() ? " from " + file.lastErrorDate : ""));
 
         builder.setNeutralButton("OK", null);
 
         View layout = LayoutInflater.from(getActivity()).inflate(R.layout.alert_error_view, null);
 
-        if(file.lastError != null)
+        if(!file.lastError.isEmpty())
         {
             TextView message = layout.findViewById(R.id.message);
             message.setText(file.lastError+"\n\n");
 
             ScrollView vertical = layout.findViewById(R.id.verticalscroll);
             vertical.fullScroll(View.FOCUS_DOWN);
+        }
+        else
+        {
+            TextView message = layout.findViewById(R.id.message);
+            message.setText("No errors\n\n");
         }
 
         builder.setView(layout);

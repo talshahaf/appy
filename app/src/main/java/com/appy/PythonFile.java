@@ -23,6 +23,11 @@ public class PythonFile
         FAILED,
     }
 
+    public PythonFile(String path)
+    {
+        this(path, "", "");
+    }
+
     public PythonFile(String path, String lastError, String lastErrorDate)
     {
         this.path = path;
@@ -81,6 +86,31 @@ public class PythonFile
             lastErrorDate = obj.getString("lastErrorDate");
         }
         return new PythonFile(obj.getString("path"), lastError, lastErrorDate);
+    }
+
+    public String serializeSingle()
+    {
+        try
+        {
+            return serialize().toString();
+        }
+        catch(JSONException e)
+        {
+            throw new IllegalArgumentException("json serialization failed", e);
+        }
+    }
+
+    public static PythonFile deserializeSingle(String json)
+    {
+        try
+        {
+            JSONObject obj = new JSONObject(json);
+            return deserialize(obj);
+        }
+        catch(JSONException e)
+        {
+            throw new IllegalArgumentException("json serialization failed", e);
+        }
     }
 
     public static ArrayList<PythonFile> deserializeArray(String json)

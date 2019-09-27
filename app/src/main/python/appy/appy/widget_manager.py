@@ -178,7 +178,7 @@ def call_function(func, captures, **kwargs):
     args, kwargs, has_vargs, has_vkwargs = get_args(func)
     try:
         return func(**{k:v for k,v in pass_args.items() if k in args or k in kwargs or has_vkwargs})
-    except Exception:
+    except:
         set_module_error(inspect.getmodule(func), traceback.format_exc())
         raise
 
@@ -475,6 +475,9 @@ def module_name(path):
 def set_module_error(module, error):
     java_widget_manager.setFileLastError(module.__file__, error)
 
+def set_unknown_error(error):
+    java_widget_manager.setFileLastError(None, error)
+
 def load_module(path):
     __set_importing_module(path)
     clear_module(path)
@@ -601,6 +604,8 @@ def set_error_to_widget_id(widget_id, error):
 
     if func is not None:
         set_module_error(inspect.getmodule(func), error)
+    else:
+        set_unknown_error(error)
 
 def refresh_managers():
     manager_state = create_manager_state()
