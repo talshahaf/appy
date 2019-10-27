@@ -337,15 +337,21 @@ class Element:
                 value = ChildrenList(value)
             self.d[key].set(value)
         elif key in ('tint', 'backgroundTint'):
-            prev_alpha = -1
-            if hasattr(self, 'drawableParameters'):
-                prev_alpha = self.drawableParameters[1]
-            self.drawableParameters = (key == 'backgroundTint', prev_alpha, value, java.clazz.android.graphics.PorterDuff.Mode().SRC_ATOP, -1)
+            if not validate_remoteviews_method('drawableParameters'):
+                # in android 9+, we only have drawableTint
+                self.drawableTint = (key == 'backgroundTint', value, java.clazz.android.graphics.PorterDuff.Mode().SRC_ATOP)
+            else:
+                prev_alpha = -1
+                if hasattr(self, 'drawableParameters'):
+                    prev_alpha = self.drawableParameters[1]
+                self.drawableParameters = (key == 'backgroundTint', prev_alpha, value, java.clazz.android.graphics.PorterDuff.Mode().SRC_ATOP, -1)
         elif key in ('alpha', 'backgroundAlpha'):
-            prev_color, prev_mode = -1, None
-            if hasattr(self, 'drawableParameters'):
-                prev_color, prev_mode = self.drawableParameters[2], self.drawableParameters[3]
-            self.drawableParameters = (key == 'backgroundAlpha', value & 0xff, prev_color, prev_mode, -1)
+            if validate_remoteviews_method('drawableParameters'):
+                # in android 9+, we only have drawableTint
+                prev_color, prev_mode = -1, None
+                if hasattr(self, 'drawableParameters'):
+                    prev_color, prev_mode = self.drawableParameters[2], self.drawableParameters[3]
+                self.drawableParameters = (key == 'backgroundAlpha', value & 0xff, prev_color, prev_mode, -1)
         else:
             param_setter, method = get_param_setter(self.d.type, key)
             if param_setter is not None:
@@ -363,7 +369,6 @@ class Element:
             if 'methodCalls' not in self.d:
                 self.d.methodCalls = []
 
-            #serialize_arg(arg.__raw__()..., i want to see where this breaks
             arguments = [serialize_arg(arg) for arg in arguments]
             self.d.methodCalls = [c for c in self.d.methodCalls if c.identifier != identifier] + [AttrDict(identifier=identifier, method=method, arguments=arguments)]
             
