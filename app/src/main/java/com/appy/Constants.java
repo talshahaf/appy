@@ -26,6 +26,7 @@ import android.widget.ViewFlipper;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
+import java.sql.Ref;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -581,7 +582,7 @@ public class Constants
         Class<?> clazz = typeToClass.get(type);
 
         HashMap<String, String> methods = new HashMap<>();
-        for (Method method : clazz.getMethods())
+        for (Method method : Reflection.getMethods(clazz))
         {
             Annotation[] annotations = method.getAnnotations();
             boolean remotable = false;
