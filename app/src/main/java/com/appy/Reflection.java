@@ -5,6 +5,7 @@ import android.util.Log;
 import java.io.UnsupportedEncodingException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Proxy;
@@ -45,8 +46,38 @@ public class Reflection
         enumTypes.put(null, 9); //constructors
     }
 
-    public static Object[] getField(Class<?> clazz, String field) throws NoSuchFieldException {
-        Field f = clazz.getField(field);
+    private static Method getFieldMethod;
+    private static Method getMethodMethod;
+    private static Method getMethodsMethod;
+    private static Method getConstructorMethod;
+    private static Method getConstructorsMethod;
+    static
+    {
+        try
+        {
+            getFieldMethod = Class.class.getMethod("getField", String.class);
+            getMethodMethod = Class.class.getMethod("getMethod", String.class, Class[].class);
+            getMethodsMethod = Class.class.getMethod("getMethods");
+            getConstructorMethod = Class.class.getMethod("getConstructor", Class[].class);
+            getConstructorsMethod = Class.class.getMethod("getConstructors");
+        }
+        catch(NoSuchMethodException e)
+        {
+            //everything is bad
+            throw new RuntimeException("could not reflect reflection");
+        }
+    }
+
+    public static Object[] getField(Class clazz, String field) throws NoSuchFieldException {
+        Field f;
+        try
+        {
+            f = (Field)getFieldMethod.invoke(clazz, field);
+        }
+        catch(IllegalAccessException|InvocationTargetException e)
+        {
+            throw new NoSuchFieldException(e.getMessage());
+        }
         Integer type = enumTypes.get(f.getType());
         boolean isStatic = Modifier.isStatic(f.getModifiers());
         if(isStatic)
@@ -61,6 +92,54 @@ public class Reflection
             }
         }
         return new Object[]{f, new int[]{type == null ? OBJECT_TYPE : type, unboxClassToEnum(f.getType())}, isStatic ? 1 : 0};
+    }
+
+    public static Method getMethod(Class<?> clazz, String method, Class<?>... parameterTypes) throws NoSuchMethodException
+    {
+        try
+        {
+            return (Method)getMethodMethod.invoke(clazz, method, (Object)parameterTypes);
+        }
+        catch(IllegalAccessException|InvocationTargetException e)
+        {
+            throw new NoSuchMethodException(e.getMessage());
+        }
+    }
+
+    public static Method[] getMethods(Class<?> clazz)
+    {
+        try
+        {
+            return (Method[])getMethodsMethod.invoke(clazz);
+        }
+        catch(IllegalAccessException|InvocationTargetException e)
+        {
+            throw new RuntimeException(e.getMessage());
+        }
+    }
+
+    public static Constructor getConstructor(Class<?> clazz, Class<?>... parameterTypes) throws NoSuchMethodException
+    {
+        try
+        {
+            return (Constructor)getConstructorMethod.invoke(clazz, (Object)parameterTypes);
+        }
+        catch(IllegalAccessException|InvocationTargetException e)
+        {
+            throw new NoSuchMethodException(e.getMessage());
+        }
+    }
+
+    public static Constructor[] getConstructors(Class<?> clazz)
+    {
+        try
+        {
+            return (Constructor[])getConstructorsMethod.invoke(clazz);
+        }
+        catch(IllegalAccessException|InvocationTargetException e)
+        {
+            throw new RuntimeException(e.getMessage());
+        }
     }
 
     public static void printFunc(Class<?> clazz, String method, Class<?>[] parameterTypes)
@@ -168,11 +247,11 @@ public class Reflection
         try {
             if(method == null)
             {
-                result = new CallableConstructor(clazz.getConstructor(parameterTypes));
+                result = new CallableConstructor(getConstructor(clazz, parameterTypes));
             }
             else
             {
-                result = new CallableMethod(clazz.getMethod(method, parameterTypes));
+                result = new CallableMethod(getMethod(clazz, method, parameterTypes));
             }
         } catch (NoSuchMethodException e) {
 
@@ -184,7 +263,7 @@ public class Reflection
             Callable[] methods;
             if(method == null)
             {
-                Constructor<?>[] _methods = clazz.getConstructors();
+                Constructor<?>[] _methods = getConstructors(clazz);
                 methods = new CallableConstructor[_methods.length];
                 for(int i = 0; i < methods.length; i++)
                 {
@@ -193,7 +272,7 @@ public class Reflection
             }
             else
             {
-                Method[] _methods = clazz.getMethods();
+                Method[] _methods = getMethods(clazz);
                 methods = new CallableMethod[_methods.length];
                 int c = 0;
                 for(int i = 0; i < methods.length; i++)

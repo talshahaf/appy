@@ -22,7 +22,7 @@ public class RemoteMethodCall
     public static HashMap<String, Method> remoteViewMethods = new HashMap<>();
     static
     {
-        Method[] methods = RemoteViews.class.getMethods();
+        Method[] methods = Reflection.getMethods(RemoteViews.class);
         for(Method method : methods)
         {
             remoteViewMethods.put(method.getName(), method);
