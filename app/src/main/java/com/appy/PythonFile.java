@@ -7,7 +7,10 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.UnsupportedEncodingException;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 
 /**
  * Created by Tal on 23/03/2018.
@@ -25,10 +28,10 @@ public class PythonFile
 
     public PythonFile(String path)
     {
-        this(path, "", "");
+        this(path, "", null);
     }
 
-    public PythonFile(String path, String lastError, String lastErrorDate)
+    public PythonFile(String path, String lastError, Date lastErrorDate)
     {
         this.path = path;
         this.lastError = lastError;
@@ -38,8 +41,10 @@ public class PythonFile
 
     public String path;
     public String lastError;
-    public String lastErrorDate;
+    public Date lastErrorDate;
     public State state;
+
+    public static SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ssZ");
 
     public JSONObject serialize() throws JSONException
     {
@@ -61,7 +66,7 @@ public class PythonFile
         }
         if(lastErrorDate != null)
         {
-            obj.put("lastErrorDate", lastErrorDate);
+            obj.put("lastErrorDate", dateFormat.format(lastErrorDate));
         }
         return obj;
     }
@@ -69,7 +74,7 @@ public class PythonFile
     public static PythonFile deserialize(JSONObject obj) throws JSONException
     {
         String lastError = null;
-        String lastErrorDate = null;
+        Date lastErrorDate = null;
         if(obj.has("lastError"))
         {
             try
@@ -83,7 +88,15 @@ public class PythonFile
         }
         if(obj.has("lastErrorDate"))
         {
-            lastErrorDate = obj.getString("lastErrorDate");
+            String serializedDate = obj.getString("lastErrorDate");
+            try
+            {
+                lastErrorDate = dateFormat.parse(serializedDate);
+            }
+            catch (ParseException e)
+            {
+                lastErrorDate = new Date();
+            }
         }
         return new PythonFile(obj.getString("path"), lastError, lastErrorDate);
     }

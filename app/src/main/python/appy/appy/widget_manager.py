@@ -337,7 +337,7 @@ class Element:
                 value = ChildrenList(value)
             self.d[key].set(value)
         elif key in ('tint', 'backgroundTint'):
-            if not validate_remoteviews_method('drawableParameters'):
+            if not validate_remoteviews_method('setDrawableParameters'):
                 # in android 9+, we only have drawableTint
                 self.drawableTint = (key == 'backgroundTint', value, java.clazz.android.graphics.PorterDuff.Mode().SRC_ATOP)
             else:
@@ -346,7 +346,7 @@ class Element:
                     prev_alpha = self.drawableParameters[1]
                 self.drawableParameters = (key == 'backgroundTint', prev_alpha, value, java.clazz.android.graphics.PorterDuff.Mode().SRC_ATOP, -1)
         elif key in ('alpha', 'backgroundAlpha'):
-            if validate_remoteviews_method('drawableParameters'):
+            if validate_remoteviews_method('setDrawableParameters'):
                 # in android 9+, we only have drawableTint
                 prev_color, prev_mode = -1, None
                 if hasattr(self, 'drawableParameters'):
