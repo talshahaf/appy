@@ -127,7 +127,7 @@ public class FilesFragment extends MyFragment implements FileGridAdapter.ItemAct
     {
         AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
 
-        builder.setTitle(new File(file.path).getName() + (!file.lastErrorDate.isEmpty() ? " from " + file.lastErrorDate : ""));
+        builder.setTitle(new File(file.path).getName() + (file.lastErrorDate != null ? " from " + file.lastErrorDate.toString() : ""));
 
         builder.setNeutralButton("OK", null);
 

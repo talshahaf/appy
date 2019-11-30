@@ -2278,8 +2278,7 @@ public class Widget extends RemoteViewsService
     {
         if(path == null)
         {
-            unknownPythonFile.lastError = lastError;
-            unknownPythonFile.lastErrorDate = new Date().toString();
+            setPythonFileLastError(unknownPythonFile, lastError);
         }
         else
         {
@@ -2287,11 +2286,27 @@ public class Widget extends RemoteViewsService
             {
                 if (file.path.equals(path))
                 {
-                    file.lastError = lastError;
-                    file.lastErrorDate = new Date().toString();
+                    setPythonFileLastError(file, lastError);
+                    break;
                 }
             }
         }
+    }
+
+    private void setPythonFileLastError(PythonFile pythonFile, String lastError)
+    {
+        Date now = new Date();
+
+        if(pythonFile.lastErrorDate != null && pythonFile.lastError != null && (now.getTime() - pythonFile.lastErrorDate.getTime()) <= Constants.ERROR_COALESCE_MILLI)
+        {
+            pythonFile.lastError += "\n\n" + lastError;
+        }
+        else
+        {
+            pythonFile.lastError = lastError;
+        }
+
+        pythonFile.lastErrorDate = new Date();
         savePythonFiles();
     }
 
@@ -2314,8 +2329,7 @@ public class Widget extends RemoteViewsService
             }
             catch(Exception e)
             {
-                file.lastErrorDate = new Date().toString();
-                file.lastError = Stacktrace.stackTraceString(e);
+                setPythonFileLastError(file, Stacktrace.stackTraceString(e));
                 e.printStackTrace();
             }
 
