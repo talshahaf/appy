@@ -2783,7 +2783,7 @@ public class Widget extends RemoteViewsService
                 }
             }
         }
-        else if (intent != null && intent.hasExtra("widgetId") && intent.hasExtra("timer"))
+        else if (intent != null && intent.getAction() != null && intent.getAction().startsWith("timer") && intent.hasExtra("widgetId") && intent.hasExtra("timer"))
         {
             Log.d("APPY", "timer fire");
             addTask(intent.getIntExtra("widgetId", -1), new Task<>(new CallTimerTask(), intent.getLongExtra("timer", -1), intent.getIntExtra("widgetId", -1), Gzip.decompress(intent.getByteArrayExtra("timerData"))));
