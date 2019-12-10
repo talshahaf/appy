@@ -44,6 +44,7 @@ public class Constants
     public static final String VIEW_ID_EXTRA = "VIEW_ID_EXTRA";
     public static final String WIDGET_ID_EXTRA = "WIDGET_ID_EXTRA";
     public static final String LOCAL_BIND_EXTRA = "LOCAL_BIND_EXTRA";
+    public static final String DEEP_LINK_BROADCAST = "com.appy.DeepLink";
     public static final int SPECIAL_WIDGET_ID = 100;
     public static final int SPECIAL_WIDGET_RESTART = 1;
     public static final int SPECIAL_WIDGET_CLEAR = 2;
