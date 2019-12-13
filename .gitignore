@@ -7,3 +7,6 @@
 /build
 /captures
 .externalNativeBuild
+xml_generator/*
+app/.cxx/*
+*.log

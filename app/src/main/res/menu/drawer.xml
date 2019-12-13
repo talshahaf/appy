@@ -22,6 +22,10 @@
             android:title="Configurations"
         />
         <item
+            android:id="@+id/navigation_state"
+            android:title="State"
+        />
+        <item
             android:id="@+id/navigation_crash"
             android:title="Crashes"
         />

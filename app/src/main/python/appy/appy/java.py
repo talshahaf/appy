@@ -158,17 +158,15 @@ class Object:
                     return UnknownField(self, attr)
                 else:
                     return obj
-                if type(obj) not in primitive_wraps:
-                    raise ValueError(f'primitive {type(obj)} does not have a wrapper')
-                obj = primitive_wraps[type(obj)](obj)
-                obj.__jparent__ = self
-                obj.__jattrname__ = attr
             else:
                 obj.__parent__ = self
                 obj.__attrname__ = attr
             return obj
         except RuntimeError:
-            return UnknownField(self, attr)
+            if is_calling():
+                return UnknownField(self, attr)
+            else:
+                raise KeyError(attr)
 
     def __call__(self, *args):
         return _call(self.__parent__, self.__attrname__, *args)
