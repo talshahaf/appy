@@ -1833,6 +1833,24 @@ public class Widget extends RemoteViewsService
         update(widgetId);
     }
 
+    public StateLayout getStateLayout()
+    {
+        if (updateListener == null)
+        {
+            return new StateLayout();
+        }
+
+        return StateLayout.deserialize(updateListener.getStateLayout());
+    }
+
+    public void cleanState(String scope, String widget, String key)
+    {
+        if (updateListener != null)
+        {
+            updateListener.cleanState(scope, widget, key);
+        }
+    }
+
     public void delete(int widgetId)
     {
         delete(widgetId, null);
@@ -2348,6 +2366,7 @@ public class Widget extends RemoteViewsService
         public void run(Integer... args)
         {
             int widget = args[0];
+            Log.d("APPY", "deleting "+widget);
             synchronized (lock)
             {
                 widgets.remove(widget);
@@ -2777,6 +2796,7 @@ public class Widget extends RemoteViewsService
                 }
                 Set<Integer> allWidgetIds = getAllWidgets();
                 allWidgetIds.removeAll(activeWidgetIds);
+                Log.d("APPY", "deleting inactive "+allWidgetIds.size());
                 for(int widgetId : allWidgetIds)
                 {
                     delete(widgetId);

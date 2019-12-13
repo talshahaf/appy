@@ -63,7 +63,7 @@ class State:
             v, found = self.__act__(getter, 'globals', self.__info__.scope_keys.globals, attr)
             if found:
                 return v
-        raise AttributeError()
+        raise AttributeError(attr)
 
     def __changeattr__(self, attr, **kwargs):
         if attr in self.__info__.scopes:
@@ -117,7 +117,20 @@ def init():
         global_state = AttrDict(loads(str(state)))
     else:
         global_state = default_state()
-
+        
+def state_layout():
+    global global_state
+    layout = {}
+    for scope_type, scope_dict in global_state.items():
+        layout.setdefault(scope_type, {})
+        for scope_key, scope_value in scope_dict.items():
+            if scope_value:
+                layout[scope_type].setdefault(scope_key, {})
+                for key, value in scope_value.items():
+                    layout[scope_type][scope_key][key] = repr(value)
+                
+    return layout
+    
 def print_state():
     pprint.pprint(global_state)
 
@@ -125,17 +138,42 @@ def wipe_state():
     global global_state
     global_state = default_state()
     save()
+    
+def clean_state(scope, widget, key):
+    if scope == 'globals':
+        if key is not None:
+            del global_state.globals[None][key]
+        else:
+            #delete all global
+            global_state.globals.clear()
+    elif scope == 'nonlocals':
+        if widget is not None and key is not None:
+            del global_state.nonlocals[widget][key]
+        elif widget is not None:
+            #delete all nonlocals of widget
+            global_state.nonlocals.pop(widget, None)
+        else:
+            raise ValueError(f'invalid operation: {scope} {widget} {key}')
+    elif scope == 'locals':
+        if widget is not None and key is not None:
+            del global_state.locals[widget][key]
+        elif widget is not None:
+            #delete all locals of widget id
+            global_state.locals.pop(widget, None)
+        else:
+            raise ValueError(f'invalid operation: {scope} {widget} {key}')
+    else:
+        raise ValueError(f'no such scope {scope}')
+        
+    save()
 
 def clean_nonlocal_state(name):
-    global_state.nonlocals.pop(name, None)
-    save()
+    clean_state('nonlocals', name, None)
 
 def clean_local_state(widget_id):
-    global_state.locals.pop(widget_id, None)
-    save()
+    clean_state('locals', widget_id, None)
 
 def clean_global_state():
-    global_state.globals.clear()
-    save()
+    clean_state('globals', None, None)
 
 init()

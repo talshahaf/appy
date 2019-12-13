@@ -713,6 +713,51 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
     def onError(self, widget_id, error):
         set_error_to_widget_id(widget_id, error)
 
+    @java.override
+    def getStateLayout(self):
+        layout = state.state_layout()
+        new_locals = {}
+        #convert locals[widget_id] to locals[widget][widget_id]
+        for widget_id, local_state in layout['locals'].items():
+            widget, manager_state = create_widget(widget_id)
+            
+            #dont include widget manager's state
+            if widget.name is not None:
+                new_locals.setdefault(widget.name, {})
+                new_locals[widget.name][str(widget_id)] = local_state
+            
+        layout['locals'] = new_locals
+        
+        #flatten globals
+        
+        if layout['globals']:
+            layout['globals'] = layout['globals'][None]
+        
+        #layout:
+        #  globals:
+        #     {key -> repr(value)}
+        #  nonlocals:
+        #     {widget_name -> {key -> repr(value)}}  
+        #  locals:
+        #     {widget_name -> {widget_id -> {key -> repr(value)}}}
+        return json_dumps(layout)
+    
+    @java.override
+    def cleanState(self, scope, widget, key):
+        if widget == java.Null:
+            widget = None
+        if key == java.Null:
+            key = None
+            
+        if scope == 'locals' and widget is not None:
+            widget = int(widget)
+            
+        try:
+            state.clean_state(scope, widget, key)
+        except KeyError:
+            # if can't delete, ignore
+            pass
+            
 java_widget_manager = None
 
 def init():

@@ -30,6 +30,8 @@ interface WidgetUpdateListener
     void importFile(String path);
     void deimportFile(String path);
     void onError(int widgetId, String error);
+    String getStateLayout();
+    void cleanState(String scope, String widget, String key);
 }
 
 interface RunnerListener

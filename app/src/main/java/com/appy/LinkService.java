@@ -22,6 +22,8 @@ public class LinkService extends Activity
 
             Intent broadcastIntent = new Intent(action);
             broadcastIntent.putExtras(intent);
+            broadcastIntent.putExtra("uri", intent.getData());
+            broadcastIntent.putExtra("mimetype", intent.getType());
             broadcastIntent.setPackage(getApplicationContext().getPackageName());
             sendBroadcast(broadcastIntent);
         }
