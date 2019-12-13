@@ -27,20 +27,18 @@ def is_calling():
             inline = False
         if inline:
             expr.append(instr)
-            
-    if expr[0].opname not in ('LOAD_ATTR', 'LOAD_METHOD'):
+    
+    if expr[0].opname == 'LOAD_METHOD':
+        #must be used with CALL_METHOD
+        return True
+        
+    if expr[0].opname != 'LOAD_ATTR':
         #shouldn't happen
         return False
-    #argnum is the source arg in LOAD_METHOD
-    argnum = None if expr[0].opname == 'LOAD_METHOD' else expr[0].arg
+    
+    #waiting to see which opcode uses our argnum
     for instr in expr[1:]:
-        if argnum is None:
-            #searching for CALL_METHOD until another LOAD_METHOD
-            if instr.opname == 'LOAD_METHOD':
-                return False
-            if instr.opname == 'CALL_METHOD':
-                return True
-        elif instr.arg == argnum:
+        if instr.arg == expr[0].arg:
             if instr.opname.startswith('CALL_FUNCTION'):
                 #found our call
                 return True
