@@ -2086,7 +2086,10 @@ public class Widget extends RemoteViewsService
 
         setWidget(androidWidgetId, Constants.SPECIAL_WIDGET_ID, views, true);
 
-        needUpdateWidgets.add(widgetId);
+        if(widgetId != -1)
+        {
+            needUpdateWidgets.add(widgetId);
+        }
     }
 
     public void setSpecificErrorWidget(int androidWidgetId, int widgetId, Throwable error)

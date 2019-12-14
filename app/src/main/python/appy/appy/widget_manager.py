@@ -719,12 +719,17 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
         new_locals = {}
         #convert locals[widget_id] to locals[widget][widget_id]
         for widget_id, local_state in layout['locals'].items():
-            widget, manager_state = create_widget(widget_id)
+            if widget_id == -1:
+                #dont include widget manager's state
+                continue
+                
+            try:
+                name = get_widget_name(widget_id)
+            except KeyError:
+                continue
             
-            #dont include widget manager's state
-            if widget.name is not None:
-                new_locals.setdefault(widget.name, {})
-                new_locals[widget.name][str(widget_id)] = local_state
+            new_locals.setdefault(name, {})
+            new_locals[name][str(widget_id)] = local_state
             
         layout['locals'] = new_locals
         
