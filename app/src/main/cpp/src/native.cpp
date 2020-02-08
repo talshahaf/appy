@@ -2068,7 +2068,7 @@ static void preload_libraries(const std::string & dirpath)
     }
 }
 
-extern "C" JNIEXPORT void JNICALL Java_com_appy_Widget_pythonInit(JNIEnv * env, jclass clazz, jstring j_pythonhome, jstring j_cachepath, jstring j_pythonlib, jstring j_scriptpath, jobject j_arg)
+extern "C" JNIEXPORT void JNICALL Java_com_appy_Widget_pythonInit(JNIEnv * env, jclass clazz, jstring j_pythonhome, jstring j_cachepath, jstring j_pythonlib, jstring j_scriptpath, jstring j_nativepath, jobject j_arg)
 {
     try
     {
@@ -2107,6 +2107,7 @@ extern "C" JNIEXPORT void JNICALL Java_com_appy_Widget_pythonInit(JNIEnv * env, 
         auto cachepath = get_string(env, j_cachepath);
         auto pythonlib = get_string(env, j_pythonlib);
         auto scriptpath = get_string(env, j_scriptpath);
+        auto nativepath = get_string(env, j_nativepath);
 
         LOG("setting env");
 
@@ -2114,6 +2115,7 @@ extern "C" JNIEXPORT void JNICALL Java_com_appy_Widget_pythonInit(JNIEnv * env, 
         setenv("HOME", pythonhome.c_str(), 1);
         setenv("SHELL", "/system/bin/sh", 1);
         setenv("TMP", cachepath.c_str(), 1);
+        setenv("NATIVELIBS", nativepath.c_str(), 1);
 
         //LD_LIBRARY_PATH hack
         preload_libraries(pythonhome + "/lib");

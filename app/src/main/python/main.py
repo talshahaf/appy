@@ -42,14 +42,24 @@ def execute(command, kill_phrases=None):
     else:
         raise subprocess.CalledProcessError(command, exitCode)
 
-exe_dir = os.path.join(os.environ['PYTHONHOME'], 'bin')
-exe = os.path.join(exe_dir, 'python3.7')
+exe_dir = os.environ['NATIVELIBS']
+exe = os.path.join(exe_dir, 'libpython3.7m.so')
 lib_dir = os.path.join(os.environ['PYTHONHOME'], 'lib')
+bin_dir = os.path.join(os.environ['PYTHONHOME'], 'bin')
 
 if os.environ['PATH']:
     os.environ['PATH'] += ':'
-os.environ['PATH'] += exe_dir
+os.environ['PATH'] += exe_dir + ":" + bin_dir
 os.environ['LD_LIBRARY_PATH'] = lib_dir
+
+python_links = ['python', 'python3', 'python3.7']
+for link in python_links:
+    try:
+        full = os.path.join(bin_dir, link)
+        os.unlink(full)
+        os.symlink(exe, full)
+    except OSError:
+        pass
 
 #TODO offline initialization
 try:
