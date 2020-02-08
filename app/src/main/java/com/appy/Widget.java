@@ -2235,7 +2235,7 @@ public class Widget extends RemoteViewsService
                 copyAsset(getAssets().open("appy.targz"), new File(cacheDir, "appy.tar.gz"));
                 System.load(pythonLib);
                 System.loadLibrary("native");
-                pythonInit(pythonHome, cacheDir, pythonLib, new File(cacheDir, "main.py").getAbsolutePath(), Widget.this);
+                pythonInit(pythonHome, cacheDir, pythonLib, new File(cacheDir, "main.py").getAbsolutePath(), getApplicationInfo().nativeLibraryDir, Widget.this);
                 //java_widget();
                 initAllPythonFiles();
             }
@@ -2658,6 +2658,7 @@ public class Widget extends RemoteViewsService
 
     private boolean pythonSetup()
     {
+        Log.d("APPY", "dir: " + getApplicationInfo().nativeLibraryDir);
         if(!startedAfterSetup && pythonSetupTask.getStatus() == AsyncTask.Status.PENDING)
         {
             startupState = Constants.StartupState.IDLE;
@@ -3064,6 +3065,6 @@ public class Widget extends RemoteViewsService
         }
     }
 
-    protected static native void pythonInit(String pythonHome, String tmpPath, String pythonLibPath, String script, Object arg);
+    protected static native void pythonInit(String pythonHome, String tmpPath, String pythonLibPath, String script, String nativepath, Object arg);
     protected static native Object pythonCall(Object... args) throws Throwable;
 }
