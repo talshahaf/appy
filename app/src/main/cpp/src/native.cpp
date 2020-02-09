@@ -2049,22 +2049,49 @@ PyMODINIT_FUNC PyInit_native_appy(void)
 
 static void preload_libraries(const std::string & dirpath)
 {
+    std::deque<std::string> unloaded;
     DIR * dir = opendir(dirpath.c_str());
     if (dir != NULL)
     {
         struct dirent * ent = NULL;
+
         while ((ent = readdir(dir)) != NULL)
         {
             // no links
             if (ent->d_type == DT_REG)
             {
                 std::string path = dirpath + "/" + ent->d_name;
-                void * handle = dlopen(path.c_str(), RTLD_LAZY);
-                LOG("pre loaded library: %s (%p)", path.c_str(), handle);
-                //not dlclosing but i really want to.
+                unloaded.push_back(path);
             }
         }
         closedir (dir);
+    }
+
+    unsigned int prevsize;
+    do
+    {
+        prevsize = unloaded.size();
+        auto it = unloaded.begin();
+        while(it != unloaded.end())
+        {
+            void * handle = dlopen(it->c_str(), RTLD_LAZY);
+            if(handle == NULL)
+            {
+                LOG("could not load library: %s (%s)", it->c_str(), dlerror());
+                it++;
+            }
+            else
+            {
+                LOG("pre loaded library: %s (%p)", it->c_str(), handle);
+                it = unloaded.erase(it);
+            }
+            //not dlclosing but i really want to.
+        }
+    } while(unloaded.size() != prevsize); //keep going if the list gets smaller
+
+    if(unloaded.size() != 0)
+    {
+        LOG("could not load %u libraries", unloaded.size());
     }
 }
 
