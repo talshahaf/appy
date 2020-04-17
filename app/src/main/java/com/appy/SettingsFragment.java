@@ -4,8 +4,8 @@ import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.content.SharedPreferences;
 import android.os.Bundle;
-import android.support.v7.preference.CheckBoxPreference;
-import android.support.v7.preference.Preference;
+import androidx.preference.CheckBoxPreference;
+import androidx.preference.Preference;
 
 /**
  * Created by Tal on 19/03/2018.

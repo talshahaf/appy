@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<android.support.constraint.ConstraintLayout
+<androidx.constraintlayout.widget.ConstraintLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
@@ -18,7 +18,7 @@
         android:verticalSpacing="5dp"
         tools:listitem="@layout/filegrid_item" />
 
-    <android.support.design.widget.FloatingActionButton
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/browse"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
@@ -28,7 +28,7 @@
         android:src="@drawable/ic_action_add"
         app:layout_constraintBottom_toBottomOf="@+id/filegrid"
         app:layout_constraintEnd_toEndOf="parent" />
-    <android.support.design.widget.FloatingActionButton
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/unknown_info"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
@@ -37,4 +37,4 @@
         android:scaleType="fitCenter"
         android:src="@drawable/ic_action_info"
         app:layout_constraintBottom_toBottomOf="@+id/filegrid" app:layout_constraintStart_toStartOf="parent"/>
-</android.support.constraint.ConstraintLayout>
+</androidx.constraintlayout.widget.ConstraintLayout>

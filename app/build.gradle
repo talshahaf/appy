@@ -1,7 +1,5 @@
 apply plugin: 'com.android.application'
 
-import com.android.build.OutputFile
-
 android {
     compileSdkVersion 29
 
@@ -21,9 +19,9 @@ android {
         applicationId "com.appy.app"
         minSdkVersion 21
         targetSdkVersion 29
-        versionCode 14
-        versionName "1.14"
-        testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+        versionCode 15
+        versionName "1.15"
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         externalNativeBuild {
             cmake {
                 cppFlags "-std=c++1z"
@@ -63,8 +61,8 @@ android {
 
     task pythonExamples(type: Tar, description: 'Pack the appy examples') {
         from '/src/main/python/examples'
-        archiveName = 'examples.targz'
-        destinationDir = file('src/main/assets')
+        archiveFileName = 'examples.targz'
+        destinationDirectory = file('src/main/assets')
         compression = Compression.GZIP
     }
 
@@ -115,12 +113,12 @@ android {
 
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
-    implementation 'com.android.support:appcompat-v7:28.0.0'
-    implementation 'com.android.support.constraint:constraint-layout:2.0.0-beta1'
+    implementation 'androidx.appcompat:appcompat:1.1.0'
+    implementation 'androidx.constraintlayout:constraintlayout:1.1.3'
     implementation 'org.kamranzafar:jtar:2.3'
-    implementation 'com.android.support:design:28.0.0'
-    implementation 'com.android.support:preference-v7:28.0.0'
-    testImplementation 'junit:junit:4.13-beta-3'
-    androidTestImplementation 'com.android.support.test:runner:1.0.2'
-    androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.2'
+    implementation 'com.google.android.material:material:1.1.0'
+    implementation 'androidx.preference:preference:1.1.1'
+    testImplementation 'junit:junit:4.13'
+    androidTestImplementation 'androidx.test.ext:junit:1.1.1'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.2.0'
 }

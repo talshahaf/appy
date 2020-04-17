@@ -4,15 +4,20 @@ from appy.widgets import ImageView, RelativeLayout
 from appy import widgets
 
 # see https://coinmarketcap.com/api/
-COIN_LIST = 'https://api.coinmarketcap.com/v2/listings/'
-SPECIFIC = 'https://api.coinmarketcap.com/v2/ticker/{id}/?convert={currency}'
+API_KEY = '398a40da-e7c2-4e58-bbb3-84b244b8a05e'
+
+COIN_LIST = 'https://pro-api.coinmarketcap.com/v1/cryptocurrency/map'
+SPECIFIC = 'https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest?id={id}&convert={currency}'
 IMAGE = 'https://s2.coinmarketcap.com/static/img/coins/32x32/{id}.png'
 
+def api_request(url):
+    return json.loads(requests.get(url, timeout=60, headers={'X-CMC_PRO_API_KEY': API_KEY}).text)
+
 def coin_list():
-    return {coin['symbol']: dict(id=coin['id'], name=coin['name'], symbol=coin['symbol']) for coin in json.loads(requests.get(COIN_LIST, timeout=60).text)['data']}
+    return {coin['symbol']: dict(id=coin['id'], name=coin['name'], symbol=coin['symbol']) for coin in api_request(COIN_LIST)['data']}
         
 def coin_value(id, currency):
-    data = json.loads(requests.get(SPECIFIC.format(id=id, currency=currency), timeout=60).text)['data']['quotes'][currency]
+    data = api_request(SPECIFIC.format(id=id, currency=currency))['data'][str(id)]['quote'][currency]
     return dict(price=data['price'], market_cap=data['market_cap'], percent_change_24h=data['percent_change_24h'])
 
 def coin_image(id):
