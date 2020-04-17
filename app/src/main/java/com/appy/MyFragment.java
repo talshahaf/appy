@@ -1,7 +1,7 @@
 package com.appy;
 
-import android.support.v4.app.Fragment;
-import android.support.v7.preference.PreferenceFragmentCompat;
+import androidx.fragment.app.Fragment;
+import androidx.preference.PreferenceFragmentCompat;
 
 /**
  * Created by Tal on 19/03/2018.
