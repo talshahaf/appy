@@ -81,7 +81,7 @@ public class Widget extends RemoteViewsService
     HashMap<Integer, Integer> androidToWidget = new HashMap<>();
     HashMap<Integer, Integer> widgetToAndroid = new HashMap<>();
     HashMap<Long, Timer> activeTimers = new HashMap<>();
-    HashMap<Long, PendingIntent> activeTimersIntents = new HashMap<>();
+    HashMap<Long, PendingIntent[]> activeTimersIntents = new HashMap<>();
     HashMap<Pair<Integer, Integer>, HashMap<Integer, ListFactory>> factories = new HashMap<>();
     ArrayList<PythonFile> pythonFiles = new ArrayList<>();
     PythonFile unknownPythonFile = new PythonFile("Unknown file");
@@ -1400,12 +1400,14 @@ public class Widget extends RemoteViewsService
             Notification.Builder builder;
             if(needForeground())
             {
-                final String CHANNEL = "notifications";
+                final String CHANNEL = "notifications2";
                 NotificationChannel channel_none = new NotificationChannel(CHANNEL, CHANNEL, NotificationManager.IMPORTANCE_NONE);
                 channel_none.setSound(null, null);
                 channel_none.enableVibration(false);
+                channel_none.setShowBadge(false);
                 ((NotificationManager)getSystemService(Context.NOTIFICATION_SERVICE)).createNotificationChannel(channel_none);
                 builder = new Notification.Builder(this, CHANNEL);
+                builder.setChannelId(CHANNEL);
             }
             else
             {
@@ -1422,6 +1424,9 @@ public class Widget extends RemoteViewsService
                     .setSmallIcon(R.mipmap.ic_launcher_foreground)
                     .setPriority(Notification.PRIORITY_MIN)
                     .setContentIntent(contentIntent)
+                    .setOngoing(true)
+                    .setAutoCancel(false)
+                    .setWhen(0)
                     .build();
             startForeground(NOTIFICATION_ID, notification);
         }
@@ -1450,9 +1455,10 @@ public class Widget extends RemoteViewsService
 
     static class Timer
     {
-        public Timer(int widgetId, long millis, int type, String data)
+        public Timer(int widgetId, long since, long millis, int type, String data)
         {
             this.widgetId = widgetId;
+            this.since = since;
             this.millis = millis;
             this.type = type;
             this.data = data;
@@ -1461,10 +1467,11 @@ public class Widget extends RemoteViewsService
         @Override
         public String toString()
         {
-            return widgetId + ", " + millis + ", " + type + ", " + data;
+            return widgetId + ", " + since + ", " + millis + ", " + type + ", " + data;
         }
 
         int widgetId;
+        long since;
         long millis;
         int type;
         String data;
@@ -1480,6 +1487,7 @@ public class Widget extends RemoteViewsService
             try
             {
                 obj.put("widgetId", timer.widgetId);
+                obj.put("since", timer.since);
                 obj.put("millis", timer.millis);
                 obj.put("type", timer.type);
                 obj.put("data", timer.data);
@@ -1498,6 +1506,7 @@ public class Widget extends RemoteViewsService
             try
             {
                 return new Timer(obj.getInt("widgetId"),
+                        obj.has("since") ? obj.getInt("since") : 0,
                         obj.getInt("millis"),
                         obj.getInt("type"),
                         obj.getString("data"));
@@ -1516,16 +1525,16 @@ public class Widget extends RemoteViewsService
 
     public void cancelTimer(long timerId, boolean save)
     {
-        PendingIntent pendingIntent;
+        PendingIntent[] pendingIntent;
         synchronized (lock)
         {
             activeTimers.remove(timerId);
             pendingIntent = activeTimersIntents.remove(timerId);
         }
-        if (pendingIntent != null)
+        if (pendingIntent != null && pendingIntent[0] != null)
         {
             AlarmManager mgr = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
-            mgr.cancel(pendingIntent);
+            mgr.cancel(pendingIntent[0]);
         }
 
         if (save)
@@ -1572,7 +1581,7 @@ public class Widget extends RemoteViewsService
         saveTimers();
     }
 
-    public abstract class ArgRunnable implements Runnable
+    public static abstract class ArgRunnable implements Runnable
     {
         Object[] args;
 
@@ -1591,14 +1600,20 @@ public class Widget extends RemoteViewsService
 
     public long setTimer(long millis, int type, int widgetId, String data)
     {
-        return setTimer(millis, type, widgetId, data, -1);
+        return setTimer(System.currentTimeMillis(), millis, type, widgetId, data, -1);
     }
 
-    public long setTimer(long millis, int type, int widgetId, String data, long timerId)
+    long timeToNext(long since, long interval)
     {
+        return interval - ((System.currentTimeMillis() - since) % interval);
+    }
+
+    public long setTimer(long since, long millis, int type, int widgetId, String data, long timerId)
+    {
+        long now = System.currentTimeMillis();
         if (type == Constants.TIMER_RELATIVE)
         {
-            millis += System.currentTimeMillis();
+            millis += now;
             type = Constants.TIMER_ABSOLUTE;
         }
 
@@ -1612,11 +1627,12 @@ public class Widget extends RemoteViewsService
         timerIntent.putExtra("timer", timerId);
         timerIntent.putExtra("timerData", Gzip.compress(data));
 
-        PendingIntent pendingIntent = null;
+        //trick to insert a reference to the hashmap to be populated later
+        PendingIntent[] pendingIntent = new PendingIntent[1];
 
         synchronized (lock)
         {
-            activeTimers.put(timerId, new Timer(widgetId, millis, type, data));
+            activeTimers.put(timerId, new Timer(widgetId, since, millis, type, data));
             activeTimersIntents.put(timerId, pendingIntent);
         }
         saveTimers();
@@ -1624,7 +1640,7 @@ public class Widget extends RemoteViewsService
         if (type == Constants.TIMER_REPEATING && millis <= Constants.TIMER_MAX_HANDLER)
         {
             Log.d("APPY", "setting short time timer");
-            handler.post(new ArgRunnable(timerIntent, millis, timerId)
+            handler.post(new ArgRunnable(timerIntent, since, millis, timerId)
             {
                 boolean first = true;
 
@@ -1637,7 +1653,7 @@ public class Widget extends RemoteViewsService
                         Widget.this.startService((Intent) args[0]);
                     }
                     first = false;
-                    long timer = (long) args[2];
+                    long timer = (long) args[3];
                     Timer obj;
                     synchronized (lock)
                     {
@@ -1646,7 +1662,9 @@ public class Widget extends RemoteViewsService
                     if (obj != null)
                     {
                         //timer still active
-                        handler.postDelayed(this, (long) args[1]);
+                        long interval = (long) args[2];
+                        long since = (long) args[1];
+                        handler.postDelayed(this, first ? timeToNext(since, interval) : interval);
                     }
                 }
             });
@@ -1654,19 +1672,20 @@ public class Widget extends RemoteViewsService
         else
         {
             AlarmManager mgr = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
-            pendingIntent = PendingIntent.getService(getApplicationContext(), 1, timerIntent, PendingIntent.FLAG_CANCEL_CURRENT);
+            pendingIntent[0] = PendingIntent.getService(getApplicationContext(), 1, timerIntent, PendingIntent.FLAG_CANCEL_CURRENT);
             //clear previous alarm (if we crashed but no reboot)
-            mgr.cancel(pendingIntent);
+            mgr.cancel(pendingIntent[0]);
 
             if (type == Constants.TIMER_REPEATING)
             {
-                Log.d("APPY", "setting long time timer: " + millis);
-                mgr.setRepeating(AlarmManager.RTC_WAKEUP, System.currentTimeMillis() + millis, millis, pendingIntent);
+                long toNext = timeToNext(since, millis);
+                Log.d("APPY", "setting long time timer: " + millis + ", next in " + toNext);
+                mgr.setRepeating(AlarmManager.RTC_WAKEUP, toNext + now, millis, pendingIntent[0]);
             }
             else
             {
                 Log.d("APPY", "setting one time timer");
-                mgr.set(AlarmManager.RTC_WAKEUP, millis, pendingIntent);
+                mgr.set(AlarmManager.RTC_WAKEUP, millis, pendingIntent[0]);
             }
         }
 
@@ -1685,7 +1704,7 @@ public class Widget extends RemoteViewsService
                 Log.d("APPY", "loaded " + loaded.size() + " timers");
                 for (Map.Entry<Long, Timer> timer : loaded.entrySet())
                 {
-                    setTimer(timer.getValue().millis, timer.getValue().type, timer.getValue().widgetId, timer.getValue().data, timer.getKey());
+                    setTimer(timer.getValue().since, timer.getValue().millis, timer.getValue().type, timer.getValue().widgetId, timer.getValue().data, timer.getKey());
                 }
             }
         }
@@ -2236,7 +2255,7 @@ public class Widget extends RemoteViewsService
                 System.load(pythonLib);
                 System.loadLibrary("native");
                 pythonInit(pythonHome, cacheDir, pythonLib, new File(cacheDir, "main.py").getAbsolutePath(), getApplicationInfo().nativeLibraryDir, Widget.this);
-                //java_widget();
+
                 initAllPythonFiles();
             }
             catch(Exception e)
@@ -2254,7 +2273,7 @@ public class Widget extends RemoteViewsService
                 @Override
                 public void run()
                 {
-                    startService(new Intent(Widget.this, Widget.class));
+                startService(new Intent(Widget.this, Widget.class));
                 }
             });
         }

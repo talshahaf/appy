@@ -19,8 +19,8 @@ android {
         applicationId "com.appy.app"
         minSdkVersion 21
         targetSdkVersion 29
-        versionCode 15
-        versionName "1.15"
+        versionCode 16
+        versionName "1.16"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         externalNativeBuild {
             cmake {
@@ -109,6 +109,7 @@ android {
             }
         }
     }
+    ndkVersion '21.0.6113669'
 }
 
 dependencies {
