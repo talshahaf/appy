@@ -1400,12 +1400,14 @@ public class Widget extends RemoteViewsService
             Notification.Builder builder;
             if(needForeground())
             {
-                final String CHANNEL = "notifications";
+                final String CHANNEL = "notifications2";
                 NotificationChannel channel_none = new NotificationChannel(CHANNEL, CHANNEL, NotificationManager.IMPORTANCE_NONE);
                 channel_none.setSound(null, null);
                 channel_none.enableVibration(false);
+                channel_none.setShowBadge(false);
                 ((NotificationManager)getSystemService(Context.NOTIFICATION_SERVICE)).createNotificationChannel(channel_none);
                 builder = new Notification.Builder(this, CHANNEL);
+                builder.setChannelId(CHANNEL);
             }
             else
             {
@@ -1422,6 +1424,9 @@ public class Widget extends RemoteViewsService
                     .setSmallIcon(R.mipmap.ic_launcher_foreground)
                     .setPriority(Notification.PRIORITY_MIN)
                     .setContentIntent(contentIntent)
+                    .setOngoing(true)
+                    .setAutoCancel(false)
+                    .setWhen(0)
                     .build();
             startForeground(NOTIFICATION_ID, notification);
         }
