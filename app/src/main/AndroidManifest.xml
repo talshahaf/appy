@@ -4,6 +4,7 @@
 
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
@@ -20,7 +21,7 @@
         android:label="@string/app_name"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
-        <activity android:name="com.appy.MainActivity">
+        <activity android:name="com.appy.MainActivity" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
 
@@ -28,13 +29,14 @@
             </intent-filter>
         </activity>
 
-        <activity android:name="com.appy.FileBrowserActivity"/>
-        <activity android:name="com.appy.PermissionActivity" android:theme="@android:style/Theme.Translucent.NoTitleBar"/>
+        <activity android:name="com.appy.FileBrowserActivity" android:exported="true"/>
+        <activity android:name="com.appy.PermissionActivity" android:theme="@android:style/Theme.Translucent.NoTitleBar" android:exported="true"/>
 
         <receiver
             android:icon="@mipmap/ic_launcher"
             android:label="Appy"
-            android:name="com.appy.WidgetReceiver" >
+            android:name="com.appy.WidgetReceiver"
+            android:exported="true">
             <intent-filter >
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>
@@ -44,7 +46,8 @@
                 android:resource="@xml/widget_info" />
         </receiver>
 
-        <receiver android:name="com.appy.BootReceiver" >
+        <receiver android:name="com.appy.BootReceiver"
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
             </intent-filter>
@@ -58,6 +61,7 @@
             android:noHistory="true"
             android:excludeFromRecents="true"
             android:theme="@style/Theme.Transparent"
+            android:exported="true"
             >
             <intent-filter>
                 <action android:name="android.intent.action.VIEW"></action>
