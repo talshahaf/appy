@@ -2,10 +2,8 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/Appy.iml" filepath="$PROJECT_DIR$/Appy.iml" group="Appy" />
-      <module fileurl="file://$PROJECT_DIR$/app/app.iml" filepath="$PROJECT_DIR$/app/app.iml" group="Appy/app" />
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/appy.iml" filepath="$PROJECT_DIR$/.idea/modules/appy.iml" group="appy" />
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/app/appy-app.iml" filepath="$PROJECT_DIR$/.idea/modules/app/appy-app.iml" group="appy/app" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/appy.iml" filepath="$PROJECT_DIR$/.idea/modules/appy.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/app/appy.app.iml" filepath="$PROJECT_DIR$/.idea/modules/app/appy.app.iml" />
     </modules>
   </component>
 </project>
