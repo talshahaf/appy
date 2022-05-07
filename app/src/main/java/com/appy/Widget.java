@@ -10,8 +10,10 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.lang.reflect.Array;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
@@ -700,7 +702,7 @@ public class Widget extends RemoteViewsService
                 {
                     clickIntent.putExtra(Constants.COLLECTION_ITEM_ID_EXTRA, layout.getId());
                     //request code has to be unique at any given time
-                    remoteView.setPendingIntentTemplate(layout.view_id, PendingIntent.getBroadcast(context, widgetId + ((int)layout.getId() << 10), clickIntent, PendingIntent.FLAG_UPDATE_CURRENT));
+                    remoteView.setPendingIntentTemplate(layout.view_id, PendingIntent.getBroadcast(context, widgetId + ((int)layout.getId() << 10), clickIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE));
 
                     //prepare factory
                     getFactory(context, widgetId, layout.xml_id, layout.view_id, layout.toJSON());
@@ -735,7 +737,7 @@ public class Widget extends RemoteViewsService
                         clickIntent.putExtra(Constants.COLLECTION_ITEM_ID_EXTRA, (long) collectionExtraData[0]);
                         clickIntent.putExtra(Constants.COLLECTION_POSITION_EXTRA, (int) collectionExtraData[1]);
                     }
-                    remoteView.setOnClickPendingIntent(layout.view_id, PendingIntent.getBroadcast(context, widgetId + ((int) layout.getId() << 10), clickIntent, PendingIntent.FLAG_UPDATE_CURRENT));
+                    remoteView.setOnClickPendingIntent(layout.view_id, PendingIntent.getBroadcast(context, widgetId + ((int) layout.getId() << 10), clickIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE));
                 }
             }
 
@@ -1417,7 +1419,7 @@ public class Widget extends RemoteViewsService
             Intent intent = new Intent(this, MainActivity.class);
             intent.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
             PendingIntent contentIntent = PendingIntent.getActivity(this, 0,
-                    intent, PendingIntent.FLAG_UPDATE_CURRENT);
+                    intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
             Notification notification = builder.setContentTitle ("Appy")
                     .setContentText("Appy is running")
@@ -1672,7 +1674,7 @@ public class Widget extends RemoteViewsService
         else
         {
             AlarmManager mgr = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
-            pendingIntent[0] = PendingIntent.getService(getApplicationContext(), 1, timerIntent, PendingIntent.FLAG_CANCEL_CURRENT);
+            pendingIntent[0] = PendingIntent.getService(getApplicationContext(), 1, timerIntent, PendingIntent.FLAG_CANCEL_CURRENT | PendingIntent.FLAG_IMMUTABLE);
             //clear previous alarm (if we crashed but no reboot)
             mgr.cancel(pendingIntent[0]);
 
@@ -1905,7 +1907,7 @@ public class Widget extends RemoteViewsService
                          public void run()
                          {
                              Intent intent = new Intent(Widget.this, getClass());
-                             PendingIntent pendingIntent = PendingIntent.getService(getApplicationContext(), 1, intent, PendingIntent.FLAG_CANCEL_CURRENT);
+                             PendingIntent pendingIntent = PendingIntent.getService(getApplicationContext(), 1, intent, PendingIntent.FLAG_CANCEL_CURRENT | PendingIntent.FLAG_IMMUTABLE);
                              AlarmManager mgr = (AlarmManager)getSystemService(Context.ALARM_SERVICE);
                              mgr.set(AlarmManager.RTC, System.currentTimeMillis() + 100, pendingIntent);
                              System.exit(0);
@@ -2173,10 +2175,39 @@ public class Widget extends RemoteViewsService
         needUpdateWidgets.add(widgetId);
     }
 
+    private boolean isBundleOptionBad(Bundle bundle, String option)
+    {
+        return bundle.containsKey(option) && bundle.getInt(option) == 0;
+    }
+
+    public int[] filterBadAndroidWidgets(int[] ids)
+    {
+        ArrayList<Integer> filtered = new ArrayList<>();
+        for (int id : ids)
+        {
+            Bundle bundle = AppWidgetManager.getInstance(this).getAppWidgetOptions(id);
+
+            if (bundle.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH, 0) != 0 &&
+                bundle.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, 0) != 0 &&
+                bundle.containsKey(AppWidgetManager.OPTION_APPWIDGET_SIZES))
+            {
+                filtered.add(id);
+            }
+        }
+
+        int[] out = new int[filtered.size()];
+        for (int i = 0; i < out.length; i++)
+        {
+            out[i] = filtered.get(i);
+        }
+        return out;
+    }
+
     public int[] requestAndroidWidgets()
     {
         ComponentName thisWidget = new ComponentName(this, WidgetReceiver.class);
-        return AppWidgetManager.getInstance(this).getAppWidgetIds(thisWidget);
+        int[] ids = AppWidgetManager.getInstance(this).getAppWidgetIds(thisWidget);
+        return filterBadAndroidWidgets(ids);
     }
 
     public void setAllWidgets(boolean error)

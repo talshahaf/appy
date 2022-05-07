@@ -76,8 +76,7 @@ def background(name=None, color=None, drawable=None):
         drawable = getattr(java.clazz.appy.R.drawable(), drawable)
 
     bg = RelativeLayout(width=widget_manager.widget_dims.width, height=widget_manager.widget_dims.height, backgroundResource=drawable)
-    bg.backgroundTint = color | 0xff000000
-    bg.backgroundAlpha = (color >> 24) & 0xff
+    bg.backgroundTint = color
     if name is not None:
         bg.name = name
     return bg

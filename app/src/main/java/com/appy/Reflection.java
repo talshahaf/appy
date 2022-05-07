@@ -349,13 +349,6 @@ public class Reflection
         return null;
     }
 
-    /**
-     * <p> Checks if a primitive type is assignable with a boxed type.</p>
-     *
-     * @param primitive a primitive class type
-     *
-     * @return true if primitive and boxed are assignment compatible
-     */
     public static Class<?> unboxClass(Class<?> primitive)
     {
         if(primitive == null)

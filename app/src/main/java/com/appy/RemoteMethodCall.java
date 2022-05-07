@@ -1,13 +1,18 @@
 package com.appy;
 
+import com.appy.Reflection;
+
+import android.util.Log;
 import android.widget.RemoteViews;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.lang.reflect.Array;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.HashMap;
 
 /**
@@ -25,7 +30,12 @@ public class RemoteMethodCall
         Method[] methods = Reflection.getMethods(RemoteViews.class);
         for(Method method : methods)
         {
-            remoteViewMethods.put(method.getName(), method);
+            Class<?>[] types = method.getParameterTypes();
+
+            if (!remoteViewMethods.containsKey(method.getName()) || (types.length == 3 && method.getName().toLowerCase().contains(types[2].getSimpleName().toLowerCase()))) //replace method with a better overload
+            {
+                remoteViewMethods.put(method.getName(), method);
+            }
         }
     }
 
@@ -74,48 +84,46 @@ public class RemoteMethodCall
             return obj;
         }
 
-        if(required == Byte.class)
+        if(required == Byte.class || required == Byte.TYPE)
         {
             return (byte)lng;
         }
-        else if(required == Short.class)
+        else if(required == Short.class || required == Short.TYPE)
         {
             return (short)lng;
         }
-        else if(required == Integer.class)
+        else if(required == Integer.class || required == Integer.TYPE)
         {
             return (int)lng;
         }
-        else if(required == Long.class)
+        else if(required == Long.class || required == Long.TYPE)
         {
             return lng;
         }
-        else if(required == Float.class)
+        else if(required == Float.class || required == Float.TYPE)
         {
             return (float)dbl;
         }
-        else if(required == Double.class)
+        else if(required == Double.class || required == Double.TYPE)
         {
             return dbl;
         }
         return (int)lng;
     }
 
-    public RemoteMethodCall(String identifier, boolean parentCall, String method, Object... args)
+    public RemoteMethodCall(String identifier, boolean parentCall, String methodName, Object... args)
     {
         this.identifier = identifier;
         this.parentCall = parentCall;
-        this.method = remoteViewMethods.get(method);
-        if(this.method == null)
-        {
-            throw new IllegalArgumentException("no remotable method "+method);
-        }
 
+        this.method = remoteViewMethods.get(methodName);
+        if (this.method == null) {
+            throw new IllegalArgumentException("no remotable method " + methodName + " " + identifier);
+        }
         Class<?>[] types = this.method.getParameterTypes();
-        arguments = new Object[args.length];
-        for(int i = 0; i < args.length; i++)
-        {
-            arguments[i] = cast(args[i], types[i]);
+        this.arguments = new Object[args.length];
+        for (int i = 0; i < args.length; i++) {
+            arguments[i] = cast(args[i], types[i + 1]);
         }
     }
 
@@ -184,7 +192,7 @@ public class RemoteMethodCall
         }
         catch(IllegalArgumentException e)
         {
-            throw new IllegalArgumentException("Illegal argument exception calling method " + identifier, e);
+            throw new IllegalArgumentException("Illegal argument exception calling method " + identifier +" "+ method.getName() +" "+ method.getParameterTypes().length, e);
         }
     }
 

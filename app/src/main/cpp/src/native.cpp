@@ -1951,17 +1951,30 @@ extern "C" JNIEXPORT jobject JNICALL Java_com_appy_Widget_pythonCall(JNIEnv * en
         {
             PyObject *type = NULL, *value = NULL, *traceback = NULL;
             PyErr_Fetch(&type, &value, &traceback);
-            const char * cstr = "Unknown python exception";
+            const char * default_msg = "Unknown python exception";
+            char * python_msg = NULL;
+
             if(value != NULL)
             {
                 PyObject * str = PyObject_Str(value);
-                cstr = PyUnicode_AsUTF8(str);
+                Py_ssize_t cstr_size = 0;
+                const char * python_cstr = PyUnicode_AsUTF8AndSize(str, &cstr_size);
+                if (python_cstr != NULL)
+                {
+                    python_msg = new char[cstr_size + 1];
+                    for (unsigned int i = 0; i < cstr_size; i++)
+                    {
+                        python_msg[i] = python_cstr[i] < 0x80 ? python_cstr[i] : '_';
+                    }
+                    python_msg[cstr_size] = 0;
+                }
                 Py_XDECREF(str);
             }
             Py_XDECREF(type);
             Py_XDECREF(value);
             Py_XDECREF(traceback);
-            env->ThrowNew(python_exception_class, cstr);
+            env->ThrowNew(python_exception_class, python_msg != NULL ? python_msg : default_msg);
+            delete[] python_msg;
             return NULL;
         }
 
