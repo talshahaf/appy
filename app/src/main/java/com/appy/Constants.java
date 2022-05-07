@@ -1,7 +1,9 @@
 package com.appy;
 
 import android.content.Intent;
+import android.content.res.ColorStateList;
 import android.graphics.Bitmap;
+import android.graphics.BlendMode;
 import android.graphics.drawable.Icon;
 import android.net.Uri;
 import android.os.Build;
@@ -20,13 +22,13 @@ import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.ProgressBar;
 import android.widget.RelativeLayout;
+import android.widget.RemoteViews;
 import android.widget.StackView;
 import android.widget.TextView;
 import android.widget.ViewFlipper;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
-import java.sql.Ref;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -77,6 +79,7 @@ public class Constants
     public static HashMap<String, Class<?>> typeToClass = new HashMap<>();
     public static HashMap<String, HashMap<String, String>> typeToRemotableMethod = new HashMap<>();
     public static HashMap<Class<?>, String> parameterToSetter = new HashMap<>();
+    public static HashMap<String, String> preferredSetter = new HashMap<>();
 
     static
     {
@@ -125,6 +128,22 @@ public class Constants
         {
             parameterToSetter.put(Icon.class, "setIcon");
         }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P)
+        {
+            parameterToSetter.put(ColorStateList.class, "setColorStateList");
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            parameterToSetter.put(BlendMode.class, "setBlendMode");
+        }
+
+        // TODO implement overloading?
+        preferredSetter.put("setText", "setCharSequence");
+        preferredSetter.put("setTextColor", "setInt");
+        preferredSetter.put("setFocusable", "setBoolean");
+        preferredSetter.put("setHint", "setCharSequence");
+        preferredSetter.put("setAlpha", "setInt");
 
         for (String type : typeToClass.keySet())
         {
@@ -599,11 +618,19 @@ public class Constants
 
             if (remotable)
             {
+
                 if (method.getParameterTypes().length != 1 || !parameterToSetter.containsKey(method.getParameterTypes()[0]))
                 {
                     continue;
                 }
-                methods.put(method.getName(), parameterToSetter.get(method.getParameterTypes()[0]));
+
+                String name = method.getName();
+                String setter = parameterToSetter.get(method.getParameterTypes()[0]);
+
+                if (!methods.containsKey(name) || (preferredSetter.containsKey(name) && preferredSetter.get(name).equals(setter)))
+                {
+                    methods.put(name, setter);
+                }
             }
         }
         return methods;

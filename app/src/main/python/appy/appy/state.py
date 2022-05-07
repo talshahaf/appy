@@ -1,4 +1,4 @@
-import pprint
+import pprint, copy
 from . import java
 from .utils import AttrDict, dumps, loads
 
@@ -14,7 +14,7 @@ def default_state():
 global_state = None
 
 def save():
-    java_widget_manager.saveState(dumps(global_state))
+    java_widget_manager.saveState(dumps(AttrDict({k: copy.deepcopy(v) for k,v in global_state.items()})))
 
 def setter(d, k, value=None, delete=None):
     if delete:

@@ -337,21 +337,26 @@ class Element:
                 value = ChildrenList(value)
             self.d[key].set(value)
         elif key in ('tint', 'backgroundTint'):
-            if not validate_remoteviews_method('setDrawableParameters'):
-                # in android 9+, we only have drawableTint
-                self.drawableTint = (key == 'backgroundTint', value, java.clazz.android.graphics.PorterDuff.Mode().SRC_ATOP)
-            else:
-                prev_alpha = -1
-                if hasattr(self, 'drawableParameters'):
-                    prev_alpha = self.drawableParameters[1]
-                self.drawableParameters = (key == 'backgroundTint', prev_alpha, value, java.clazz.android.graphics.PorterDuff.Mode().SRC_ATOP, -1)
-        elif key in ('alpha', 'backgroundAlpha'):
-            if validate_remoteviews_method('setDrawableParameters'):
-                # in android 9+, we only have drawableTint
-                prev_color, prev_mode = -1, None
-                if hasattr(self, 'drawableParameters'):
-                    prev_color, prev_mode = self.drawableParameters[2], self.drawableParameters[3]
-                self.drawableParameters = (key == 'backgroundAlpha', value & 0xff, prev_color, prev_mode, -1)
+            background = key == 'backgroundTint'
+
+            attr = 'backgroundTintList' if background else 'foregroundTintList'
+            mode_attr = 'backgroundTintBlendMode' if background else 'foregroundTintBlendMode'
+            param_setter, method = get_param_setter(self.d.type, attr)
+            if param_setter is not None:
+                 # android 9+
+                 setattr(self, attr, java.clazz.android.content.res.ColorStateList().valueOf(value))
+
+                 if get_param_setter(self.d.type, mode_attr)[0] is not None:
+                    # android 10+
+                    setattr(self, mode_attr, java.clazz.android.graphics.BlendMode().SRC)
+
+            elif validate_remoteviews_method('setDrawableParameters'):
+                # android 8-
+                self.drawableParameters = (background, (value >> 24) & 0xff, value & 0xffffff, java.clazz.android.graphics.PorterDuff.Mode().SRC_ATOP, -1)
+            elif validate_remoteviews_method('setDrawableTint'):
+                # android 9+
+                self.drawableTint = (background, value, java.clazz.android.graphics.PorterDuff.Mode().SRC)
+
         else:
             param_setter, method = get_param_setter(self.d.type, key)
             if param_setter is not None:
@@ -557,8 +562,7 @@ def widget_manager_create(widget, manager_state):
 
     bg = widgets.RelativeLayout(width=widget_dims.width, height=widget_dims.height)
     bg.backgroundResource = java.clazz.appy.R.drawable().rect
-    bg.backgroundTint = widgets.color(r=0, g=0, b=0)
-    bg.backgroundAlpha = 100
+    bg.backgroundTint = widgets.color(r=0, g=0, b=0, a=100)
     
     restart_btn = widgets.ImageButton(style='danger_oval_pad', adjustViewBounds=True, click=widgets.restart, colorFilter=0xffffffff, width=140, height=140, right=0, bottom=0, imageResource=java.clazz.android.R.drawable().ic_lock_power_off)
 
@@ -614,7 +618,7 @@ def set_error_to_widget_id(widget_id, error):
 
 def refresh_managers():
     manager_state = create_manager_state()
-    for widget_id, chosen in manager_state.chosen.items():
+    for widget_id, chosen in {widget_id: chosen for widget_id, chosen in manager_state.chosen.items()}.items():
         if chosen is None:
             widgets.Widget(widget_id, None).invalidate()
 
@@ -654,6 +658,7 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
         state.clean_local_state(widget_id)
         manager_state.chosen.pop(widget_id, None)
         last_func_for_widget_id.pop(widget_id, None)
+        state.save()
 
     @java.override
     def onItemClick(self, widget_id, views_str, collection_id, position, view_id):
@@ -699,14 +704,20 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
         state.wipe_state()
 
     @java.override
-    def importFile(self, path):
+    def importFile(self, path, skip_refresh):
         print(f'import file request called on {path}')
         load_module(path)
-        refresh_managers()
+        if not skip_refresh:
+            refresh_managers()
 
     @java.override
-    def deimportFile(self, path):
+    def deimportFile(self, path, skip_refresh):
         clear_module(path)
+        if not skip_refresh:
+            refresh_managers()
+
+    @java.override
+    def refreshManagers(self):
         refresh_managers()
 
     @java.override

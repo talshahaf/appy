@@ -1,14 +1,19 @@
 package com.appy;
 
 import android.content.Intent;
+import android.content.res.ColorStateList;
 import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Parcel;
+import android.util.Base64;
+import android.util.Log;
 import android.util.Pair;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+
 
 public class Serializer
 {
@@ -43,6 +48,17 @@ public class Serializer
             jsonobj.put("type", "complicated");
             jsonobj.put("class", obj.getClass().getName());
             jsonobj.put("value", obj.toString());
+            return jsonobj;
+        }
+
+        if (obj instanceof ColorStateList)
+        {
+            jsonobj.put("type", "complicated");
+            jsonobj.put("class", obj.getClass().getName());
+            Parcel parcel = Parcel.obtain();
+            ((ColorStateList) obj).writeToParcel(parcel, 0);
+            jsonobj.put("value", Base64.encodeToString(parcel.marshall(), Base64.DEFAULT));
+            parcel.recycle();
             return jsonobj;
         }
 
@@ -81,6 +97,16 @@ public class Serializer
                 if(Uri.class.isAssignableFrom(clazz))
                 {
                     return Uri.parse(value.getString("value"));
+                }
+                if (ColorStateList.class.isAssignableFrom(clazz))
+                {
+                    Parcel parcel = Parcel.obtain();
+                    byte[] b = Base64.decode(value.getString("value"), Base64.DEFAULT);
+                    parcel.unmarshall(b, 0, b.length);
+                    parcel.setDataPosition(0);
+                    ColorStateList out = ColorStateList.CREATOR.createFromParcel(parcel);
+                    parcel.recycle();
+                    return out;
                 }
             }
         }
