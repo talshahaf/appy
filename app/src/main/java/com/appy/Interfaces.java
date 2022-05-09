@@ -27,8 +27,9 @@ interface WidgetUpdateListener
     String onTimer(long timerId, int widgetId, String views, String data);
     String onPost(int widgetId, String views, String data);
     void wipeStateRequest();
-    void importFile(String path);
-    void deimportFile(String path);
+    void importFile(String path, boolean skipRefresh);
+    void deimportFile(String path, boolean skipRefresh);
+    void refreshManagers();
     void onError(int widgetId, String error);
     String getStateLayout();
     void cleanState(String scope, String widget, String key);

@@ -618,7 +618,7 @@ def set_error_to_widget_id(widget_id, error):
 
 def refresh_managers():
     manager_state = create_manager_state()
-    for widget_id, chosen in manager_state.chosen.items():
+    for widget_id, chosen in {widget_id: chosen for widget_id, chosen in manager_state.chosen.items()}.items():
         if chosen is None:
             widgets.Widget(widget_id, None).invalidate()
 
@@ -658,6 +658,7 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
         state.clean_local_state(widget_id)
         manager_state.chosen.pop(widget_id, None)
         last_func_for_widget_id.pop(widget_id, None)
+        state.save()
 
     @java.override
     def onItemClick(self, widget_id, views_str, collection_id, position, view_id):
@@ -703,14 +704,20 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
         state.wipe_state()
 
     @java.override
-    def importFile(self, path):
+    def importFile(self, path, skip_refresh):
         print(f'import file request called on {path}')
         load_module(path)
-        refresh_managers()
+        if not skip_refresh:
+            refresh_managers()
 
     @java.override
-    def deimportFile(self, path):
+    def deimportFile(self, path, skip_refresh):
         clear_module(path)
+        if not skip_refresh:
+            refresh_managers()
+
+    @java.override
+    def refreshManagers(self):
         refresh_managers()
 
     @java.override

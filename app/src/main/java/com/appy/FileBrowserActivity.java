@@ -75,15 +75,8 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
         preset_names = new String[]{"app files dir", "app cache dir", "examples", "storage"};
         preset_paths = new String[]{getFilesDir().getAbsolutePath(), getCacheDir().getAbsolutePath(), new File(getFilesDir(), "examples").getAbsolutePath(), Environment.getExternalStorageDirectory().getPath()};
 
-        String[] permissions;
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
-        {
-            permissions = new String[] {Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.MANAGE_EXTERNAL_STORAGE};
-        }
-        else
-        {
-            permissions = new String[] {Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE};
-        }
+        String[] permissions = new String[] {Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE};
+
         boolean all = true;
         for (String permission : permissions)
         {

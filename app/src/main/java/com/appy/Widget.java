@@ -1758,12 +1758,12 @@ public class Widget extends RemoteViewsService
 
     public void refreshPythonFile(PythonFile file)
     {
-        refreshPythonFile(file, true);
+        refreshPythonFile(file, true, false);
     }
 
-    public void refreshPythonFile(PythonFile file, boolean usePool)
+    public void refreshPythonFile(PythonFile file, boolean usePool, boolean skipRefresh)
     {
-        Task task = new Task<>(new CallImportTask(), file);
+        Task task = new Task<>(new CallImportTask(), file, skipRefresh);
         if (usePool)
         {
             addTask(Constants.IMPORT_TASK_QUEUE, task);
@@ -1779,7 +1779,10 @@ public class Widget extends RemoteViewsService
         ArrayList<PythonFile> files = getPythonFiles();
         for (PythonFile f : files)
         {
-            refreshPythonFile(f, false);
+            refreshPythonFile(f, false, true);
+        }
+        if (updateListener != null) {
+            updateListener.refreshManagers();
         }
     }
 
@@ -1820,7 +1823,7 @@ public class Widget extends RemoteViewsService
         if (updateListener != null)
         {
             //ok to be called on main thread
-            updateListener.deimportFile(file.path);
+            updateListener.deimportFile(file.path, false);
         }
         savePythonFiles();
     }
@@ -2187,9 +2190,11 @@ public class Widget extends RemoteViewsService
         {
             Bundle bundle = AppWidgetManager.getInstance(this).getAppWidgetOptions(id);
 
+            boolean hasSizes = Build.VERSION.SDK_INT < 31 || bundle.containsKey("appWidgetSizes");
+
             if (bundle.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH, 0) != 0 &&
                 bundle.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, 0) != 0 &&
-                bundle.containsKey(AppWidgetManager.OPTION_APPWIDGET_SIZES))
+                    hasSizes)
             {
                 filtered.add(id);
             }
@@ -2381,12 +2386,13 @@ public class Widget extends RemoteViewsService
         savePythonFiles();
     }
 
-    private class CallImportTask implements Runner<PythonFile>
+    private class CallImportTask implements Runner<Object>
     {
         @Override
-        public void run(PythonFile... args)
+        public void run(Object... args)
         {
-            PythonFile file = args[0];
+            PythonFile file = (PythonFile) args[0];
+            Boolean skipRefresh = (Boolean)args[1];
             file.state = PythonFile.State.RUNNING;
             callStatusChange(false);
 
@@ -2394,7 +2400,7 @@ public class Widget extends RemoteViewsService
             {
                 if (updateListener != null)
                 {
-                    updateListener.importFile(file.path);
+                    updateListener.importFile(file.path, skipRefresh);
                     file.state = PythonFile.State.ACTIVE;
                 }
             }
@@ -2846,6 +2852,7 @@ public class Widget extends RemoteViewsService
                     int widgetId = fromAndroidWidget(id, true);
                     activeWidgetIds.add(widgetId);
                     needUpdateWidgets.add(widgetId);
+
                     addTask(widgetId, new Task<>(new CallUpdateTask(), widgetId));
                 }
                 Set<Integer> allWidgetIds = getAllWidgets();
