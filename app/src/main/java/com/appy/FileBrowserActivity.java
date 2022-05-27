@@ -4,6 +4,7 @@ import android.Manifest;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
@@ -13,6 +14,8 @@ import androidx.core.content.ContextCompat;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
+
+import android.provider.Settings;
 import android.text.InputType;
 import android.util.Log;
 import android.util.TypedValue;
@@ -49,6 +52,7 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
 {
     public static final String RESULT_FILES = "RESULT_FILES";
     public static final int REQUEST_PERMISSION_STORAGE = 101;
+    public static final int REQUEST_ALL_STORAGE = 102;
 
     FileBrowserAdapter adapter;
     ListView list;
@@ -93,6 +97,19 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
         }
         else
         {
+            requestAllStorage();
+        }
+    }
+
+    public void requestAllStorage()
+    {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && !Environment.isExternalStorageManager()) {
+            Uri uri = Uri.parse("package:" + BuildConfig.APPLICATION_ID);
+            Intent intent = new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION, uri);
+            startActivityForResult(intent, REQUEST_ALL_STORAGE);
+        }
+        else
+        {
             getStartDir();
         }
     }
@@ -108,13 +125,24 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
     }
 
     @Override
+    public void onActivityResult(int requestCode, int resultCode, Intent data)
+    {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQUEST_ALL_STORAGE)
+        {
+            //either way, start everything
+            getStartDir();
+        }
+    }
+
+    @Override
     public void onRequestPermissionsResult(int requestCode,
                                            @NonNull String permissions[], @NonNull int[] grantResults) {
         switch (requestCode) {
             case REQUEST_PERMISSION_STORAGE: {
                 if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED)
                 {
-                    getStartDir();
+                    requestAllStorage();
                 }
                 else
                 {
