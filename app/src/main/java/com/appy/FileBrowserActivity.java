@@ -26,19 +26,14 @@ import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.EditText;
 import android.widget.FrameLayout;
-import android.widget.ListAdapter;
 import android.widget.ListView;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.lang.reflect.Array;
-import java.nio.file.Files;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -53,15 +48,20 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
     public static final String RESULT_FILES = "RESULT_FILES";
     public static final int REQUEST_PERMISSION_STORAGE = 101;
     public static final int REQUEST_ALL_STORAGE = 102;
+    public static final int SCOPED_STORAGE_INDEX = 3;
+    public static final int SHARED_STORAGE_INDEX = 4;
 
     FileBrowserAdapter adapter;
     ListView list;
     LinkedList<String> history = new LinkedList<>();
     Toolbar toolbar;
+    TextView bottomtext;
     boolean copying = false;
     boolean cutting = false;
     HashMap<String, File> selected = new HashMap<>();
     boolean selectingEnabled = true;
+
+    boolean cantViewSharedStorage;
 
     private String[] preset_names;
     private String[] preset_paths;
@@ -74,18 +74,20 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
 
         list = findViewById(R.id.filelist);
         toolbar = findViewById(R.id.toolbar);
+        bottomtext = findViewById(R.id.bottomtext);
+        bottomtext.setVisibility(View.INVISIBLE);
         setSupportActionBar(toolbar);
 
-        preset_names = new String[]{"app files dir", "app cache dir", "examples", "storage"};
-        preset_paths = new String[]{getFilesDir().getAbsolutePath(), getCacheDir().getAbsolutePath(), new File(getFilesDir(), "examples").getAbsolutePath(), Environment.getExternalStorageDirectory().getPath()};
+        preset_names = new String[]{"app files dir", "app cache dir", "examples", "app scoped storage", "shared storage"};
+        preset_paths = new String[]{getFilesDir().getAbsolutePath(), getCacheDir().getAbsolutePath(), new File(getFilesDir(), "examples").getAbsolutePath(), getExternalFilesDir(null).getAbsolutePath(), Environment.getExternalStorageDirectory().getPath()};
+
+        cantViewSharedStorage = !Constants.compiledWithManagerStorage(this) && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R;
 
         String[] permissions = new String[] {Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE};
 
         boolean all = true;
-        for (String permission : permissions)
-        {
-            if (ContextCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED)
-            {
+        for (String permission : permissions) {
+            if (ContextCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED) {
                 all = false;
                 break;
             }
@@ -103,7 +105,7 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
 
     public void requestAllStorage()
     {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && !Environment.isExternalStorageManager()) {
+        if (Constants.compiledWithManagerStorage(this) && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && !Environment.isExternalStorageManager()) {
             Uri uri = Uri.parse("package:" + BuildConfig.APPLICATION_ID);
             Intent intent = new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION, uri);
             startActivityForResult(intent, REQUEST_ALL_STORAGE);
@@ -116,10 +118,10 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
 
     public void getStartDir()
     {
-        startDir = Environment.getExternalStorageDirectory().getPath();
+        startDir = preset_paths[cantViewSharedStorage ? SCOPED_STORAGE_INDEX : SHARED_STORAGE_INDEX];
         if(!getDirFromRoot(startDir))
         {
-            startDir = getExternalFilesDir(null).getPath();
+            startDir = preset_paths[SCOPED_STORAGE_INDEX];
             getDirFromRoot(startDir);
         }
     }
@@ -485,6 +487,14 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
                             {
                                 public void onClick(DialogInterface dialog, int which)
                                 {
+                                    if (cantViewSharedStorage && which == SHARED_STORAGE_INDEX)
+                                    {
+                                        bottomtext.setVisibility(View.VISIBLE);
+                                    }
+                                    else
+                                    {
+                                        bottomtext.setVisibility(View.INVISIBLE);
+                                    }
                                     userNavigate(preset_paths[which]);
                                     dialog.dismiss();
                                 }
@@ -579,4 +589,6 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
         }
         updateMenu();
     }
+
+
 }
