@@ -128,28 +128,34 @@ public class FilesFragment extends MyFragment implements FileGridAdapter.ItemAct
         AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
 
         builder.setTitle(new File(file.path).getName() + (file.lastErrorDate != null ? " from " + file.lastErrorDate.toString() : ""));
-
         builder.setNeutralButton("OK", null);
+        builder.setNegativeButton("Clear", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                getWidgetService().clearFileError(file);
+            }
+        });
 
         View layout = LayoutInflater.from(getActivity()).inflate(R.layout.alert_error_view, null);
-
+        TextView message = layout.findViewById(R.id.message);
+        String error = "No errors\n\n";
         if(!file.lastError.isEmpty())
         {
-            TextView message = layout.findViewById(R.id.message);
-            message.setText(file.lastError+"\n\n");
+            error = file.lastError + "\n\n";
+        }
 
-            ScrollView vertical = layout.findViewById(R.id.verticalscroll);
-            vertical.fullScroll(View.FOCUS_DOWN);
-        }
-        else
-        {
-            TextView message = layout.findViewById(R.id.message);
-            message.setText("No errors\n\n");
-        }
+        message.setText(file.path+"\n\n"+error);
 
         builder.setView(layout);
 
         AlertDialog alert = builder.create();
+        alert.setOnShowListener(new DialogInterface.OnShowListener() {
+            @Override
+            public void onShow(DialogInterface dialog) {
+                ScrollView vertical = layout.findViewById(R.id.verticalscroll);
+                vertical.fullScroll(View.FOCUS_DOWN);
+            }
+        });
         alert.show();
     }
 

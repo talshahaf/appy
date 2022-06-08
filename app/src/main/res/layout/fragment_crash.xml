@@ -4,11 +4,22 @@
     xmlns:app="http://schemas.android.com/apk/res-auto" android:layout_width="match_parent"
     android:layout_height="match_parent"
 >
-    <androidx.constraintlayout.widget.Guideline android:id="@+id/guideline"
-                                          android:layout_width="wrap_content"
-                                          android:layout_height="wrap_content"
-                                          android:orientation="horizontal"
-                                          app:layout_constraintGuide_percent="0.5"/>
+
+    <androidx.constraintlayout.widget.Guideline
+        android:id="@+id/guideline"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        app:layout_constraintGuide_percent="0.46" />
+
+    <Button
+        android:id="@+id/crash_clear"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Clear all"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
     <HorizontalScrollView
         android:layout_width="0dp"
         android:layout_height="0dp"
@@ -36,32 +47,35 @@
                 android:textIsSelectable="true"/>
         </ScrollView>
     </HorizontalScrollView>
+
     <HorizontalScrollView
         android:layout_width="0dp"
         android:layout_height="0dp"
-        android:layout_marginTop="8dp"
-        android:layout_marginBottom="8dp"
-        android:layout_marginEnd="8dp"
         android:layout_marginStart="8dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginEnd="8dp"
         android:background="@color/terminal_bg"
         android:scrollbars="vertical"
-        app:layout_constraintTop_toTopOf="@+id/guideline"
-        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintBottom_toTopOf="@+id/crash_clear"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent">
+        app:layout_constraintHorizontal_bias="1.0"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="@+id/guideline"
+        app:layout_constraintVertical_bias="1.0">
+
         <ScrollView
             android:id="@+id/scroller2"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            >
+            android:layout_height="wrap_content">
+
             <TextView
                 android:id="@+id/python_crash"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:scrollHorizontally="true"
                 android:text=""
                 android:textColor="@android:color/white"
-                android:scrollHorizontally="true"
-                android:textIsSelectable="true"/>
+                android:textIsSelectable="true" />
         </ScrollView>
     </HorizontalScrollView>
 

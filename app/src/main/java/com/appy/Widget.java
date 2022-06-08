@@ -20,6 +20,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
@@ -30,20 +31,26 @@ import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
+import android.appwidget.AppWidgetHostView;
 import android.appwidget.AppWidgetManager;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.graphics.Rect;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Binder;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.FileObserver;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
+
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
 import androidx.preference.PreferenceManager;
 import android.system.ErrnoException;
@@ -91,6 +98,7 @@ public class Widget extends RemoteViewsService
     float widthCorrectionFactor = 1.0f;
     float heightCorrectionFactor = 1.0f;
     Configurations configurations = new Configurations(this);
+    MultipleFileObserver pythonFilesObserver = null;
 
     static class WidgetDestroyedException extends RuntimeException
     {
@@ -456,10 +464,14 @@ public class Widget extends RemoteViewsService
     public int[] getWidgetDimensions(AppWidgetManager appWidgetManager, int androidWidgetId)
     {
         Bundle bundle = appWidgetManager.getAppWidgetOptions(androidWidgetId);
+
+        float width = convertUnit(bundle.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH), TypedValue.COMPLEX_UNIT_DIP, TypedValue.COMPLEX_UNIT_PX);
+        float height = convertUnit(bundle.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT), TypedValue.COMPLEX_UNIT_DIP, TypedValue.COMPLEX_UNIT_PX);
+
         //only works on portrait
         return new int[]{
-                (int) (widthCorrectionFactor * convertUnit(bundle.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH),  TypedValue.COMPLEX_UNIT_DIP, TypedValue.COMPLEX_UNIT_PX)),
-                (int) (heightCorrectionFactor * convertUnit(bundle.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT), TypedValue.COMPLEX_UNIT_DIP, TypedValue.COMPLEX_UNIT_PX))
+                (int) (widthCorrectionFactor * width),
+                (int) (heightCorrectionFactor * height)
         };
     }
 
@@ -1402,7 +1414,7 @@ public class Widget extends RemoteViewsService
             Notification.Builder builder;
             if(needForeground())
             {
-                final String CHANNEL = "notifications2";
+                final String CHANNEL = "Service notification";
                 NotificationChannel channel_none = new NotificationChannel(CHANNEL, CHANNEL, NotificationManager.IMPORTANCE_NONE);
                 channel_none.setSound(null, null);
                 channel_none.enableVibration(false);
@@ -1716,6 +1728,116 @@ public class Widget extends RemoteViewsService
         }
     }
 
+    public static boolean getRefreshOnModify(Context context)
+    {
+        SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(context);
+        return sharedPref.getBoolean("refresh_on_modify", true);
+    }
+
+    public void onPythonFileModified(PythonFile pythonFile)
+    {
+        boolean refresh = getRefreshOnModify(this);
+        if (refresh)
+        {
+            Log.d("APPY", "File " + pythonFile.path + " modified, reloading");
+            refreshPythonFile(pythonFile, true, false);
+        }
+        else
+        {
+            Log.d("APPY", "File " + pythonFile.path + " modified, NOT reloading");
+        }
+    }
+
+    public abstract class MultipleFileObserver
+    {
+        class SingleFileObserver extends FileObserver
+        {
+            PythonFile file;
+            int mask;
+            MultipleFileObserver parent;
+            int index;
+            public SingleFileObserver(@NonNull PythonFile file, int mask, MultipleFileObserver parent, int index) {
+                super(file.path, mask);
+                this.file = file;
+                this.mask = mask;
+                this.parent = parent;
+                this.index = index;
+            }
+
+            @Override
+            public void onEvent(int event, @Nullable String path) {
+                this.parent.onSingleEvent(event, index);
+            }
+        }
+
+        ArrayList<SingleFileObserver> observers = new ArrayList<>();
+
+        public MultipleFileObserver(List<PythonFile> files, int mask)
+        {
+            for (PythonFile file : files)
+            {
+                observers.add(new SingleFileObserver(file, mask, this, observers.size()));
+            }
+        }
+
+        public void start()
+        {
+            for (SingleFileObserver observer : observers)
+            {
+                observer.startWatching();
+            }
+        }
+
+        public void stop()
+        {
+            for (SingleFileObserver observer : observers)
+            {
+                observer.stopWatching();
+            }
+        }
+
+        public void onSingleEvent(int event, int index)
+        {
+            handler.postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    //update observer
+                    SingleFileObserver ob = observers.get(index);
+                    ob.stopWatching();
+                    SingleFileObserver newob = new SingleFileObserver(ob.file, ob.mask, MultipleFileObserver.this, index);
+                    observers.set(index, newob);
+                    newob.startWatching();
+
+                    Log.d("APPY", "new watch on "+index+" "+newob.file.path+" "+newob.mask);
+
+                    onEvent(event, newob.file);
+                }
+            }, 300);
+        }
+
+        public abstract void onEvent(int event, PythonFile file);
+    }
+
+    public void updateObserver()
+    {
+        Log.d("APPY", "updating observers");
+        if (pythonFilesObserver != null)
+        {
+            pythonFilesObserver.stop();
+        }
+
+        pythonFilesObserver = new MultipleFileObserver(pythonFiles, FileObserver.CLOSE_WRITE) {
+            @Override
+            public void onEvent(int event, PythonFile file) {
+                Log.d("APPY", "inotify event: "+file.path);
+
+                onPythonFileModified(file);
+            }
+        };
+
+        pythonFilesObserver.start();
+    }
+
     public void loadPythonFiles()
     {
         try
@@ -1742,6 +1864,8 @@ public class Widget extends RemoteViewsService
         {
             e.printStackTrace();
         }
+
+        updateObserver();
     }
 
     public void savePythonFiles()
@@ -1807,11 +1931,31 @@ public class Widget extends RemoteViewsService
                 }
             }
         }
+
+        updateObserver();
         savePythonFiles();
         for (PythonFile file : files)
         {
             refreshPythonFile(file);
         }
+    }
+
+    public void clearFileError(PythonFile file)
+    {
+        synchronized (lock)
+        {
+            int idx = pythonFiles.indexOf(file);
+            if (idx != -1) {
+                pythonFiles.get(idx).lastError = "";
+                pythonFiles.get(idx).lastErrorDate = null;
+            }
+            else if (file.equals(unknownPythonFile))
+            {
+                unknownPythonFile.lastError = "";
+                unknownPythonFile.lastErrorDate = null;
+            }
+        }
+        savePythonFiles();
     }
 
     public void removePythonFile(PythonFile file)
@@ -1825,6 +1969,7 @@ public class Widget extends RemoteViewsService
             //ok to be called on main thread
             updateListener.deimportFile(file.path, false);
         }
+        updateObserver();
         savePythonFiles();
     }
 

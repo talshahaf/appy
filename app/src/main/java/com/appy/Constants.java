@@ -1,6 +1,10 @@
 package com.appy;
 
+import android.Manifest;
+import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
 import android.content.res.ColorStateList;
 import android.graphics.Bitmap;
 import android.graphics.BlendMode;
@@ -634,5 +638,38 @@ public class Constants
             }
         }
         return methods;
+    }
+
+    private static Boolean compiledWithManagerStorageResult = null;
+    public static boolean compiledWithManagerStorage(Context context)
+    {
+        if (compiledWithManagerStorageResult != null)
+        {
+            return compiledWithManagerStorageResult;
+        }
+
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R)
+        {
+            compiledWithManagerStorageResult = false;
+            return false;
+        }
+
+        try {
+            PackageInfo info = context.getPackageManager().getPackageInfo(context.getPackageName(), PackageManager.GET_PERMISSIONS);
+            String[] permissions = info.requestedPermissions;//This array contains the requested permissions.
+            for (String permission : permissions)
+            {
+                if (permission.equals(Manifest.permission.MANAGE_EXTERNAL_STORAGE))
+                {
+                    compiledWithManagerStorageResult = true;
+                    return true;
+                }
+            }
+        } catch (PackageManager.NameNotFoundException e) {
+            //Shouldn't ever reach here
+        }
+
+        compiledWithManagerStorageResult = false;
+        return false;
     }
 }
