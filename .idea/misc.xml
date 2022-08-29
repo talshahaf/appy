@@ -5,7 +5,14 @@
       <map>
         <entry key="..\:/projects/appy/app/src/main/res/drawable/rect.xml" value="0.1" />
         <entry key="..\:/projects/appy/app/src/main/res/drawable/rounded_rect.xml" value="0.1" />
+        <entry key="..\:/projects/appy/app/src/main/res/layout/alert_error_view.xml" value="0.22" />
         <entry key="..\:/projects/appy/app/src/main/res/layout/filebrowser.xml" value="0.22" />
+        <entry key="..\:/projects/appy/app/src/main/res/layout/fragment_app.xml" value="0.1609375" />
+        <entry key="..\:/projects/appy/app/src/main/res/layout/fragment_configs.xml" value="0.1" />
+        <entry key="..\:/projects/appy/app/src/main/res/layout/fragment_crash.xml" value="0.12454710144927536" />
+        <entry key="..\:/projects/appy/app/src/main/res/layout/fragment_files.xml" value="0.12454710144927536" />
+        <entry key="..\:/projects/appy/app/src/main/res/layout/fragment_logcat.xml" value="0.1" />
+        <entry key="..\:/projects/appy/app/src/main/res/xml/pref.xml" value="0.33" />
       </map>
     </option>
   </component>

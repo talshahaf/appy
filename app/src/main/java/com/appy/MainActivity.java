@@ -4,6 +4,8 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.ServiceConnection;
 import android.os.IBinder;
+
+import androidx.core.view.GravityCompat;
 import androidx.fragment.app.FragmentTransaction;
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
@@ -44,6 +46,7 @@ public class MainActivity extends AppCompatActivity implements StatusListener
         fragments.put(R.id.navigation_state, new Pair<Class<?>, Fragment>(StateFragment.class, null));
         fragments.put(R.id.navigation_crash, new Pair<Class<?>, Fragment>(CrashFragment.class, null));
         fragments.put(R.id.navigation_settings, new Pair<Class<?>, Fragment>(SettingsFragment.class, null));
+        fragments.put(R.id.navigation_app, new Pair<Class<?>, Fragment>(AppFragment.class, null));
 
         // Set a Toolbar to replace the ActionBar.
         toolbar = findViewById(R.id.toolbar);
@@ -93,7 +96,7 @@ public class MainActivity extends AppCompatActivity implements StatusListener
         // The action bar home/up action should open or close the drawer.
         switch (item.getItemId()) {
             case android.R.id.home:
-                drawer.openDrawer(Gravity.START);
+                drawer.openDrawer(GravityCompat.START);
                 return true;
         }
 

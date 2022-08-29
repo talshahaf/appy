@@ -6,8 +6,11 @@ import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
 import android.widget.ScrollView;
 import android.widget.TextView;
+
+import java.io.IOException;
 import java.util.ArrayList;
 
 /**
@@ -19,8 +22,10 @@ public class LogcatFragment extends MyFragment implements RunnerListener
     TextView logcatView;
     Handler handler;
     ScrollView scroller;
+    Button clearButton;
     boolean atEnd = true;
     ArrayList<String> selectionBuffer = new ArrayList<>();
+    static final String EMPTY_TEXT = "Loading...";
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
@@ -38,6 +43,20 @@ public class LogcatFragment extends MyFragment implements RunnerListener
             {
                 atEnd = scroller.getScrollY() == (logcatView.getBottom() + scroller.getPaddingBottom() - scroller.getHeight());
                 return false;
+            }
+        });
+
+        clearButton = layout.findViewById(R.id.logcat_clear);
+        clearButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                try
+                {
+                    Runtime.getRuntime().exec("logcat -c");
+                } catch (IOException e)
+                { }
+                selectionBuffer.clear();
+                logcatView.setText(EMPTY_TEXT);
             }
         });
 
@@ -114,7 +133,7 @@ public class LogcatFragment extends MyFragment implements RunnerListener
                 @Override
                 public void run()
                 {
-                    logcatView.setText("Loading...");
+                    logcatView.setText(EMPTY_TEXT);
                 }
             });
         }

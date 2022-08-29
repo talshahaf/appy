@@ -1,25 +1,43 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.constraintlayout.widget.ConstraintLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
 >
-    <HorizontalScrollView android:layout_width="match_parent"
-                          android:layout_height="match_parent"
-                          android:background="@color/terminal_bg">
+
+    <Button
+        android:id="@+id/logcat_clear"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Clear"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <HorizontalScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:background="@color/terminal_bg"
+        app:layout_constraintBottom_toTopOf="@+id/logcat_clear"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
+
         <ScrollView
             android:id="@+id/scroller"
             android:layout_width="wrap_content"
             android:layout_height="match_parent"
             android:scrollbars="vertical">
+
             <TextView
                 android:id="@+id/logcat_view"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text=""
                 android:scrollHorizontally="true"
+                android:text=""
                 android:textColor="@android:color/white"
-                android:textIsSelectable="true"/>
+                android:textIsSelectable="true" />
         </ScrollView>
     </HorizontalScrollView>
 </androidx.constraintlayout.widget.ConstraintLayout>

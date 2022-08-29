@@ -2104,7 +2104,7 @@ static void preload_libraries(const std::string & dirpath)
 
     if(unloaded.size() != 0)
     {
-        LOG("could not load %u libraries", unloaded.size());
+        LOG("could not load %lu libraries", unloaded.size());
     }
 }
 

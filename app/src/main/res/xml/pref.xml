@@ -19,4 +19,8 @@
         android:title="Height Correction"/>
     <CheckBoxPreference
         android:key="foreground_service" android:title="Foreground Service"/>
+    <CheckBoxPreference
+        android:defaultValue="true"
+        android:key="refresh_on_modify"
+        android:title="Auto reload python files" />
 </PreferenceScreen>

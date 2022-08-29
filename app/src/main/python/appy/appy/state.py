@@ -13,8 +13,23 @@ def default_state():
 
 global_state = None
 
+def safe_copy(d):
+    out = {}
+    for k in list(d.keys()):
+        try:
+            v = d[k]
+            if isinstance(v, AttrDict):
+                out[k] = AttrDict(safe_copy(v))
+            elif isinstance(v, dict):
+                out[k] = safe_copy(v)
+            else:
+                out[k] = copy.deepcopy(v)
+        except KeyError:
+            pass
+    return out
+
 def save():
-    java_widget_manager.saveState(dumps(AttrDict({k: copy.deepcopy(v) for k,v in global_state.items()})))
+    java_widget_manager.saveState(dumps(AttrDict({k: safe_copy(v) for k,v in global_state.items()})))
 
 def setter(d, k, value=None, delete=None):
     if delete:
