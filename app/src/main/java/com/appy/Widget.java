@@ -2537,6 +2537,17 @@ public class Widget extends RemoteViewsService
         public void run(Object... args)
         {
             PythonFile file = (PythonFile) args[0];
+
+            String newhash = Utils.hashFile(file.path);
+            if (newhash.equalsIgnoreCase(file.hash))
+            {
+                //file is exactly the same
+                Log.d("APPY", file.path+" hash is the same (" +newhash+"), not reloading");
+                return;
+            }
+
+            file.hash = newhash;
+
             Boolean skipRefresh = (Boolean)args[1];
             file.state = PythonFile.State.RUNNING;
             callStatusChange(false);
