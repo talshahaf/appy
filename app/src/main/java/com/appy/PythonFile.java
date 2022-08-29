@@ -43,6 +43,7 @@ public class PythonFile
     public String lastError;
     public Date lastErrorDate;
     public State state;
+    public String hash;
 
     public static SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ssZ");
 
