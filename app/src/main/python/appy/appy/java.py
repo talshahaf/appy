@@ -35,9 +35,14 @@ def is_calling():
     if expr[0].opname != 'LOAD_ATTR':
         #shouldn't happen
         return False
-    
+
+    load_nums = 1 #current opcode is LOAD_ATTR
     #waiting to see which opcode uses our argnum
     for instr in expr[1:]:
+        if instr.opname.startswith('LOAD_'):
+            load_nums += 1
+        if instr.opname == 'CALL' and instr.arg + 2 >= load_nums: #call argument is number of args + ((NULL, func) or (func, self))
+            return True
         if instr.arg == expr[0].arg:
             if instr.opname.startswith('CALL_FUNCTION'):
                 #found our call
@@ -71,7 +76,7 @@ def unwrap(obj):
         return obj.bridge
     if isinstance(obj, InterfaceBase):
         return obj.java_object.bridge
-    if isinstance(obj, UnknownField):
+    if isinstance(obj, MethodCaller):
         raise RuntimeError('field does not exists')
     return obj
 
@@ -130,7 +135,7 @@ def _call(parent, attrname, *args):
     else:
         return wrap(bridge.call_method(parent.bridge.clazz, parent.bridge, attrname, *unwrap_args(args)))[0]
 
-class UnknownField:
+class MethodCaller:
     def __init__(self, parent, attrname):
         self.parent = parent
         self.attrname = attrname
@@ -146,25 +151,35 @@ class Object:
         self.__dict__['__attrname__'] = None
 
     def __getattr__(self, attr):
-        try:
+        hint_is_field = None
+        if '·' in attr:
+            attr, hint_str = attr.split('·')
+            if hint_str not in ('field', 'method'):
+                raise AttributeError('middle point character hint must be "field" or "method"')
+            hint_is_field = hint_str == 'field'
+        
+        if hint_is_field is None:
+            #if we don't know, search
+            has_field, has_method = bridge.has_field_or_method(self.bridge if self.use_static else self.bridge.clazz, attr)
+            if has_field and has_method:
+                raise AttributeError(f'class has both field and method named {attr}, please use the middle point character (U+00B7) to specify:\n'+
+                                     f'.{attr}·field or .{attr}·method')
+            else:
+                hint_is_field = not has_method #if we don't have either, assume field and fail later (to be consistent with hint behaviour)
+        
+        if hint_is_field:
             if self.use_static:
-                obj, primitive = wrap(bridge.get_field(self.bridge, None, attr))
+                args = (self.bridge, None, attr)
             else:
-                obj, primitive = wrap(bridge.get_field(self.bridge.clazz, self.bridge, attr))
-            if primitive:
-                if is_calling():
-                    return UnknownField(self, attr)
-                else:
-                    return obj
-            else:
+                args = (self.bridge.clazz, self.bridge, attr)
+                
+            obj, primitive = wrap(bridge.get_field(*args))
+            if not primitive:
                 obj.__parent__ = self
                 obj.__attrname__ = attr
             return obj
-        except RuntimeError:
-            if is_calling():
-                return UnknownField(self, attr)
-            else:
-                raise KeyError(attr)
+        else:
+            return MethodCaller(self, attr)
 
     def __call__(self, *args):
         return _call(self.__parent__, self.__attrname__, *args)
@@ -182,6 +197,9 @@ class Object:
 
     def __repr__(self):
         return repr(self.bridge)
+
+    def __dir__(self):
+        return dir(self.bridge.clazz)
 
 
 class Null(Object):
@@ -222,6 +240,9 @@ class Class(Object):
     @property
     def name(self):
         return self.bridge.class_name
+
+    def __dir__(self):
+        return dir(self.bridge)
 
 def make_array(element_bridge_class, l):
     if not isinstance(l, int):
@@ -354,10 +375,10 @@ def tests():
         test.test_value.ins_value = 59
         assert(test.test_value.ins_value == 59)
 
-        assert(test.value == 18)
-        assert(test.value() == 85)
-        assert(Test.value == 18)
-        assert(Test.value() == 85)
+        assert(test.value·field == 18)
+        assert(test.value·method() == 85)
+        assert(Test.value·field == 18)
+        assert(Test.value·method() == 85)
 
         arr = test.test_integer_array(13)
         assert(arr == (Null,) * 13)

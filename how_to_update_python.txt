@@ -1,0 +1,7 @@
+replace python.targz file in arm64/assets/
+extract libpython*.so.* to cpp/lib/arm64-v8a/
+extract python include files to cpp/include/arm64-v8a/
+extract bin/python3.12 to cpp/exe/arm64-v8a/libpythonexe.so
+change "String pythonLib = ..." in Widget.java to point to the right so name
+change "python_links = ..." in main.py to point to the right python name
+change python version (twice) in CMakeLists.txt

@@ -21,11 +21,12 @@ def loads(data):
     return pickle.loads(base64.b64decode(data.encode()))
 
 def get_args(f):
-    args, varargs, varkw, defaults = inspect.getargspec(f)
+    args, varargs, varkw, defaults, kwonlyargs, kwonlydefaults, annotations = inspect.getfullargspec(f)
     kwargs = []
     if defaults:
         kwargs = args[-len(defaults):]
         args = args[:-len(defaults)]
+    kwargs += kwonlyargs
     return args, kwargs, varargs is not None, varkw is not None
 
 class AttrDict(dict):

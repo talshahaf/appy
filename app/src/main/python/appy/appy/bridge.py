@@ -36,7 +36,7 @@ def get_class(ref):
     return know_class(jclass(jref(native_appy.get_object_class(ref.handle))))
 
 def cast(obj, cast_class):
-    if not native_appy.castable(obj.clazz.ref.handle, cast_class.ref.handle):
+    if not native_appy.check_is_jclass_castable(obj.clazz.ref.handle, cast_class.ref.handle):
         raise ValueError(f'{obj.clazz} cannot be cast to {cast_class}')
 
     dup = jobject(obj.ref, obj.info)
@@ -80,6 +80,9 @@ class jclass(jobjectbase):
     def clazz(self):
         return find_class('java.lang.Class')
 
+    def __dir__(self):
+        return list(native_appy.inspect_class_content(self.ref.handle, False))
+
 
 class jstring(jobjectbase):
     def __init__(self, ref):
@@ -92,7 +95,7 @@ class jstring(jobjectbase):
     @property
     def value(self):
         if self._value is None:
-            self._value = native_appy.unbox_string(self.ref.handle)
+            self._value = native_appy.jstring_to_python_str(self.ref.handle)
         return self._value
 
     @property
@@ -107,7 +110,7 @@ class jstring(jobjectbase):
     def from_str(cls, v):
         if isinstance(v, bytes):
             v = v.decode()
-        return jstring(jref(native_appy.make_string(str(v))))
+        return jstring(jref(native_appy.python_str_to_jstring(str(v))))
 
 def find_class(path):
     for key, value in SPECIAL_CLASSES.items():
@@ -117,7 +120,7 @@ def find_class(path):
     return know_class(jclass(jref(native_appy.find_class(path.replace('.', '/')))))
 
 def array_of_class(clazz):
-    return know_class(jclass(jref(native_appy.array_of_class(clazz.ref.handle))))
+    return know_class(jclass(jref(native_appy.jclass_to_array_of_jclass(clazz.ref.handle))))
 
 def find_primitive_array(code):
     return primitive_code_to_array[code]
@@ -250,7 +253,7 @@ def auto_handle_wrapping(arg, needed_code, unboxed_needed_code):
 
     if isinstance(arg, jprimitive):
         if code_is_object(needed_code):
-            return jobject(jref(native_appy.box(arg.value, arg.code if code_is_object(unboxed_needed_code) else unboxed_needed_code)), 'arg')
+            return jobject(jref(native_appy.python_to_packed_java_primitive(arg.value, arg.code if code_is_object(unboxed_needed_code) else unboxed_needed_code)), 'arg')
         else:
             return arg.value
 
@@ -268,14 +271,14 @@ def box_python(val):
     if code == primitive_codes['object']:
         return arg
 
-    return jobject(jref(native_appy.box(arg, code)), 'boxed')
+    return jobject(jref(native_appy.python_to_packed_java_primitive(arg, code)), 'boxed')
 
 #convert python jtype to native jvalue
 #returns arg as well so it won't be freed until we call the method
 #this is only a problem with inner functions extracting handles from objects
 def prepare_value(arg, needed_code, unboxed_needed_code):
     arg = auto_handle_wrapping(arg, needed_code, unboxed_needed_code)
-    return native_appy.make_value(arg.ref.handle if isinstance(arg, jobjectbase) else arg, needed_code), arg
+    return native_appy.python_to_unpacked_jvalue(arg.ref.handle if isinstance(arg, jobjectbase) else arg, needed_code), arg
 
 #convert regular python type to our python jtypes
 def convert_arg(arg):
@@ -300,22 +303,33 @@ def convert_arg(arg):
             raise ValueError(f'cannot pass {type(arg)} to java: {arg}')
         return arg, arg.wrapper_class, arg.code
 
-def _get_method(clazz, name, arg_codes):
+def clear_known_cache():
+    known_classes.clear()
+    known_methods.clear()
+    known_fields.clear()
+    
+def get_methodid(clazz, name, arg_codes):
     key = clazz.class_name, name, arg_codes
     if key not in known_methods:
-        known_methods[key] = native_appy.get_method(clazz.ref.handle, name, arg_codes)
+        known_methods[key] = native_appy.get_methodid(clazz.ref.handle, name, arg_codes)
     return known_methods[key]
 
-def _get_field(clazz, name):
+def get_fieldid(clazz, name):
     key = clazz.class_name, name
     if key not in known_fields:
-        known_fields[key] = native_appy.get_field(clazz.ref.handle, name)
+        known_fields[key] = native_appy.get_fieldid(clazz.ref.handle, name)
     return known_fields[key]
 
+def has_field_or_method(clazz, name):
+    field_id, _, _, _, has_same_name_method = get_fieldid(clazz, name)
+    return (field_id is not None, has_same_name_method != 0)
+    
 def call_method(clazz, obj, name, *args):
     args, arg_classes, _ = zip(*(convert_arg(arg) for arg in args)) if args else ([], [], 0)
 
-    method_id, needed_codes, is_static = _get_method(clazz, name, tuple(arg.ref.handle for arg in arg_classes))
+    method_id, needed_codes, is_static, _ = get_methodid(clazz, name, tuple(arg.ref.handle for arg in arg_classes))
+    if method_id is None:
+        raise AttributeError(f'No method {name} found for the supplied signature')
 
     ret_code, _ = needed_codes[-1]
     needed_codes = needed_codes[:-1]
@@ -324,28 +338,34 @@ def call_method(clazz, obj, name, *args):
     args = tuple(arg for arg,_ in all_args)
 
     if is_static:
-        ret = native_appy.act(clazz.ref.handle, method_id, args, ret_code, OP_CALL_STATIC_METHOD)
+        ret = native_appy.call_jni_object_functions(clazz.ref.handle, method_id, args, ret_code, OP_CALL_STATIC_METHOD)
     else:
-        ret = native_appy.act(obj.ref.handle, method_id, args, ret_code, OP_CALL_METHOD)
+        ret = native_appy.call_jni_object_functions(obj.ref.handle, method_id, args, ret_code, OP_CALL_METHOD)
 
     return handle_ret(ret, ret_code)
 
 def get_field(clazz, obj, name):
-    field_id, (field_code, _), is_static = _get_field(clazz, name)
+    field_id, field_code, _, is_static, _ = get_fieldid(clazz, name)
+    if field_id is None:
+        raise AttributeError(f'No such field: {name}')
+        
     if is_static:
-        ret = native_appy.act(clazz.ref.handle, field_id, None, field_code, OP_GET_STATIC_FIELD)
+        ret = native_appy.call_jni_object_functions(clazz.ref.handle, field_id, None, field_code, OP_GET_STATIC_FIELD)
     else:
-        ret = native_appy.act(obj.ref.handle, field_id, None, field_code, OP_GET_FIELD)
+        ret = native_appy.call_jni_object_functions(obj.ref.handle, field_id, None, field_code, OP_GET_FIELD)
     return handle_ret(ret, field_code)
 
 def set_field(clazz, obj, name, value):
-    field_id, (field_code, unboxed_field_code), is_static = _get_field(clazz, name)
+    field_id, field_code, unboxed_field_code, is_static, _ = get_fieldid(clazz, name)
+    if field_id is None:
+        raise AttributeError(f'No such field: {name}')
+        
     value, _, _ = convert_arg(value)
     arg, ref = prepare_value(value, field_code, unboxed_field_code)
     if is_static:
-        native_appy.act(clazz.ref.handle, field_id, (arg,), field_code, OP_SET_STATIC_FIELD)
+        native_appy.call_jni_object_functions(clazz.ref.handle, field_id, (arg,), field_code, OP_SET_STATIC_FIELD)
     else:
-        native_appy.act(obj.ref.handle, field_id, (arg,), field_code, OP_SET_FIELD)
+        native_appy.call_jni_object_functions(obj.ref.handle, field_id, (arg,), field_code, OP_SET_FIELD)
 
 class array(jobjectbase):
     def __init__(self, ref, type_code, type_unboxed_code, element_class, length=None):
@@ -361,7 +381,7 @@ class array(jobjectbase):
     @property
     def length(self):
         if self._length is None:
-            self._length, _, _ = native_appy.array(self.ref.handle, tuple(), 0, self.type_code, OP_GET_ARRAY_LENGTH, JNULL.ref.handle)
+            self._length, _, _ = native_appy.call_jni_array_functions(self.ref.handle, tuple(), 0, self.type_code, OP_GET_ARRAY_LENGTH, JNULL.ref.handle)
         return self._length
 
     @property
@@ -390,7 +410,7 @@ class array(jobjectbase):
         args = tuple(convert_arg(item) for item in items)
         values = tuple(prepare_value(arg, self.type_code, t) for arg, _, t in args)
 
-        native_appy.array(self.ref.handle, tuple(v for v, _ in values), start, self.type_code, OP_SET_ITEMS, JNULL.ref.handle)
+        native_appy.call_jni_array_functions(self.ref.handle, tuple(v for v, _ in values), start, self.type_code, OP_SET_ITEMS, JNULL.ref.handle)
 
     #the tuple returned by native_appy.array will contain primitives, jobject or None to denote NULL
     def __getitem__(self, key):
@@ -407,7 +427,7 @@ class array(jobjectbase):
         else:
             raise IndexError('invalid index: {key}')
 
-        array_len, obj, elements = native_appy.array(self.ref.handle, (0,) * (stop - start), start, self.type_code, OP_GET_ITEMS, JNULL.ref.handle)
+        array_len, obj, elements = native_appy.call_jni_array_functions(self.ref.handle, (0,) * (stop - start), start, self.type_code, OP_GET_ITEMS, JNULL.ref.handle)
 
         if code_is_object(self.type_code):
             elements = tuple(upcast(jobject(jref(e), 'array element')) if e is not None else None for e in elements)
@@ -421,7 +441,7 @@ class array(jobjectbase):
 
 def make_array(l, type_code_or_clazz):
     if isinstance(type_code_or_clazz, jobjectbase):
-        type_unboxed_code = native_appy.unbox_class(type_code_or_clazz.ref.handle)
+        type_unboxed_code = native_appy.unpack_primitive_class(type_code_or_clazz.ref.handle)
         clazz_obj = type_code_or_clazz
         type_code = primitive_codes['object']
     elif type_code_or_clazz in primitive_code_to_array:
@@ -431,7 +451,7 @@ def make_array(l, type_code_or_clazz):
     else:
         raise ValueError('must be primitive code or class')
 
-    array_len, obj, elements = native_appy.array(JNULL.ref.handle, (None,) * l, 0, type_code, OP_NEW_ARRAY, clazz_obj.ref.handle)
+    array_len, obj, elements = native_appy.call_jni_array_functions(JNULL.ref.handle, (None,) * l, 0, type_code, OP_NEW_ARRAY, clazz_obj.ref.handle)
     return array(jref(obj), type_code, type_unboxed_code, clazz_obj, array_len)
 
 def upcast(obj):
@@ -449,7 +469,7 @@ def upcast(obj):
         return arr
 
     if not code_is_object(obj.clazz.code):
-        return native_appy.unbox(obj.ref.handle, obj.clazz.code)
+        return native_appy.packed_java_primitive_to_python(obj.ref.handle, obj.clazz.code)
 
     if obj.clazz.class_name == 'java.lang.String':
         return jstring(obj.ref).value
@@ -466,10 +486,10 @@ def make_interface(self, classes):
     classes = list(classes)
     arr = make_array(len(classes), CLASS_CLASS)
     arr[:] = classes
-    return upcast(jobject(jref(native_appy.create_interface(key, arr.ref.handle)), 'interface'))
+    return upcast(jobject(jref(native_appy.create_java_interface(key, arr.ref.handle)), 'interface'))
 
 def get_java_arg():
-    return upcast(jobject(jref(native_appy.get_java_arg()), 'java arg'))
+    return upcast(jobject(jref(native_appy.get_java_init_arg()), 'java arg'))
 
 def callback(arg):
     try:
@@ -502,7 +522,7 @@ def callback(arg):
     except Exception:
         raise Exception('Python Exception\n\nThe above exception was the direct cause of the following exception:\n\n' + traceback.format_exc())
 
-native_appy.set_callback(callback)
+native_appy.set_python_callback(callback)
 
 def tests():
     print('=================================begin')

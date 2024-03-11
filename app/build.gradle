@@ -90,13 +90,13 @@ android {
     flavorDimensions "abi"
 
     productFlavors {
-        arm {
+        /*arm {
             dimension "abi"
             ndk {
                 abiFilter "armeabi-v7a"
                 versionCode = 0     + android.defaultConfig.versionCode
             }
-        }
+        }*/
         arm64 {
             dimension "abi"
             ndk {

@@ -632,7 +632,7 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
         out = [e.dict(do_copy=False) for e in output]
         if input is not None and input == out:
             return None
-        return json_dumps(out) #c json fucks up because we're not a regular dict, indent=* causes python to use the python implementation
+        return json_dumps(out)
 
     def import_(self, s):
         d = json_loads(s)
