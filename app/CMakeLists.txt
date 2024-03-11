@@ -31,10 +31,10 @@ add_library( # Specifies the name of the library.
 
 add_library(pythonlib SHARED IMPORTED)
 set_target_properties(pythonlib PROPERTIES IMPORTED_LOCATION
-    ${CMAKE_SOURCE_DIR}/src/main/cpp/lib/${ANDROID_ABI}/libpython3.7m.so.1.0)
+    ${CMAKE_SOURCE_DIR}/src/main/cpp/lib/${ANDROID_ABI}/libpython3.12.so.1.0)
 
 include_directories(src/main/cpp/inc/)
-include_directories(src/main/cpp/inc/${ANDROID_ABI}/python3.7m)
+include_directories(src/main/cpp/inc/${ANDROID_ABI}/python3.12)
 
 target_link_libraries( # Specifies the target library.
                        native

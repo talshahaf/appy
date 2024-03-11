@@ -2,8 +2,8 @@ import faulthandler
 faulthandler.enable()
 
 import logcat
+
 import subprocess, os, sys, traceback, time, email, tarfile
-from distutils.version import StrictVersion
 
 def tar_version(path):
     with tarfile.open(path) as tar:
@@ -42,8 +42,9 @@ def execute(command, kill_phrases=None):
     else:
         raise subprocess.CalledProcessError(command, exitCode)
 
+#replace all bins and replace with symlinks to our own python3 binary because android forbids executing from app data dir
 exe_dir = os.environ['NATIVELIBS']
-exe = os.path.join(exe_dir, 'libpython3.7m.so')
+exe = os.path.join(exe_dir, 'libpythonexe.so')
 lib_dir = os.path.join(os.environ['PYTHONHOME'], 'lib')
 bin_dir = os.path.join(os.environ['PYTHONHOME'], 'bin')
 
@@ -51,14 +52,18 @@ if os.environ['PATH']:
     os.environ['PATH'] += ':'
 os.environ['PATH'] += exe_dir + ":" + bin_dir
 os.environ['LD_LIBRARY_PATH'] = lib_dir
+os.chdir(bin_dir)
 
-python_links = ['python', 'python3', 'python3.7']
+python_links = ['python', 'python3', 'python3.12']
 for link in python_links:
     try:
         full = os.path.join(bin_dir, link)
-        os.unlink(full)
+        try:
+            os.unlink(full)
+        except OSError as e:
+            pass
         os.symlink(exe, full)
-    except OSError:
+    except OSError as e:
         pass
 
 #TODO offline initialization
@@ -83,8 +88,8 @@ upgrade = False
 tar = os.path.join(os.environ['TMP'], 'appy.tar.gz')
 try:
     import appy
-    existing_version = StrictVersion(appy.__version__)
-    available_version = StrictVersion(tar_version(tar))
+    existing_version = appy.__version__
+    available_version = tar_version(tar)
     print(f'versions - existing: {existing_version}, available: {available_version}')
     if existing_version != available_version:
         upgrade = True

@@ -83,7 +83,13 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
 
         cantViewSharedStorage = !Constants.compiledWithManagerStorage(this) && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R;
 
-        String[] permissions = new String[] {Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE};
+        String[] permissions;
+        if (Build.VERSION.SDK_INT <= 32)
+        {
+            permissions = new String[] {Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE};
+        } else {
+            permissions = new String[] {Manifest.permission.READ_MEDIA_AUDIO, Manifest.permission.READ_MEDIA_VIDEO, Manifest.permission.READ_MEDIA_IMAGES};
+        }
 
         boolean all = true;
         for (String permission : permissions) {
@@ -140,14 +146,12 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
     @Override
     public void onRequestPermissionsResult(int requestCode,
                                            @NonNull String permissions[], @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         switch (requestCode) {
             case REQUEST_PERMISSION_STORAGE: {
-                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED)
-                {
+                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                     requestAllStorage();
-                }
-                else
-                {
+                } else {
                     Toast.makeText(this, "Cannot open file browser", Toast.LENGTH_SHORT).show();
                     finish();
                 }

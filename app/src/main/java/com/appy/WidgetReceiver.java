@@ -16,7 +16,7 @@ public class WidgetReceiver extends AppWidgetProvider
         Log.d("APPY", "onReceive intent: "+intent.getAction());
         Intent serviceIntent = new Intent(context, Widget.class);
         serviceIntent.putExtra(Constants.WIDGET_INTENT, intent);
-        context.startService(serviceIntent);
+        Widget.startService(context, serviceIntent);
         super.onReceive(context, intent);
     }
 }

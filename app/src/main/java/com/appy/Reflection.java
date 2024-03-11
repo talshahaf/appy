@@ -9,7 +9,9 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Proxy;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.stream.Stream;
 
 /**
  * Created by Tal on 15/12/2017.
@@ -47,6 +49,7 @@ public class Reflection
     }
 
     private static Method getFieldMethod;
+    private static Method getFieldsMethod;
     private static Method getMethodMethod;
     private static Method getMethodsMethod;
     private static Method getConstructorMethod;
@@ -56,6 +59,7 @@ public class Reflection
         try
         {
             getFieldMethod = Class.class.getMethod("getField", String.class);
+            getFieldsMethod = Class.class.getMethod("getFields");
             getMethodMethod = Class.class.getMethod("getMethod", String.class, Class[].class);
             getMethodsMethod = Class.class.getMethod("getMethods");
             getConstructorMethod = Class.class.getMethod("getConstructor", Class[].class);
@@ -68,7 +72,33 @@ public class Reflection
         }
     }
 
-    public static Object[] getField(Class clazz, String field) throws NoSuchFieldException {
+    public static Object[] getField(Class clazz, String field, boolean checkSameNameMethods) {
+        boolean hasSameNameMethod = false;
+        if (checkSameNameMethods)
+        {
+            Method[] methods = getMethods(clazz);
+            Constructor[] constructors = getConstructors(clazz);
+            for (Method method : methods)
+            {
+                if (method.getName().equals(field))
+                {
+                    hasSameNameMethod = true;
+                    break;
+                }
+            }
+            if (!hasSameNameMethod)
+            {
+                for (Constructor method : constructors)
+                {
+                    if (method.getName().equals(field))
+                    {
+                        hasSameNameMethod = true;
+                        break;
+                    }
+                }
+            }
+        }
+
         Field f;
         try
         {
@@ -76,7 +106,8 @@ public class Reflection
         }
         catch(IllegalAccessException|InvocationTargetException e)
         {
-            throw new NoSuchFieldException(e.getMessage());
+            //no such field
+            return new Object[]{null, null, 0, hasSameNameMethod ? 1 : 0};
         }
         Integer type = enumTypes.get(f.getType());
         boolean isStatic = Modifier.isStatic(f.getModifiers());
@@ -86,12 +117,25 @@ public class Reflection
             {
                 f.get(null);
             }
-            catch (IllegalAccessException e)
+            catch (IllegalAccessException ignored)
             {
 
             }
         }
-        return new Object[]{f, new int[]{type == null ? OBJECT_TYPE : type, unboxClassToEnum(f.getType())}, isStatic ? 1 : 0};
+
+        return new Object[]{f, new int[]{type == null ? OBJECT_TYPE : type, unboxClassToEnum(f.getType())}, isStatic ? 1 : 0, hasSameNameMethod ? 1 : 0};
+    }
+
+    public static Field[] getFields(Class<?> clazz)
+    {
+        try
+        {
+            return (Field[])getFieldsMethod.invoke(clazz);
+        }
+        catch(IllegalAccessException|InvocationTargetException e)
+        {
+            throw new RuntimeException(e.getMessage());
+        }
     }
 
     public static Method getMethod(Class<?> clazz, String method, Class<?>... parameterTypes) throws NoSuchMethodException
@@ -328,6 +372,8 @@ public class Reflection
                 }
             }
         }
+
+        boolean hasSameNameField = getField(clazz, method, false)[0] != null;
         if(result != null)
         {
             //printFunc(clazz, method, result.getParameterTypes());
@@ -342,11 +388,12 @@ public class Reflection
             Integer t = enumTypes.get(result.getReturnType());
             args[args.length - 1] = new int[]{t == null ? OBJECT_TYPE : t, unboxClassToEnum(result.getReturnType())};
 
-            return new Object[]{result.get(), result.isStatic() ? 1 : 0, args};
+
+            return new Object[]{result.get(), result.isStatic() ? 1 : 0, hasSameNameField ? 1 : 0, args};
         }
 
         Log.d("APPY", "no such func "+method);
-        return null;
+        return new Object[]{null, 0, hasSameNameField ? 1 : 0, null};
     }
 
     public static Class<?> unboxClass(Class<?> primitive)
@@ -393,7 +440,7 @@ public class Reflection
         return t == null ? OBJECT_TYPE : t;
     }
 
-    public static Object[] inspect(Class<?> clazz)
+    public static Object[] inspectClass(Class<?> clazz)
     {
         int unboxedEnumType = unboxClassToEnum(clazz);
         int isArray = clazz.isArray() ? 1 : 0;
@@ -402,6 +449,34 @@ public class Reflection
         int componentEnumType = t == null ? OBJECT_TYPE : t;
         int unboxedComponentEnumType = unboxClassToEnum(component);
         return new Object[] {clazz.getCanonicalName(), unboxedEnumType, isArray, component, componentEnumType, unboxedComponentEnumType};
+    }
+
+
+    public static Object[] inspectClassContent(Class<?> clazz, boolean withargs, boolean onearray)
+    {
+        Object[] outMethods = Arrays.stream(getMethods(clazz)).map(method -> {
+            String fullmethod = method.toString();
+            return method.getName() + (withargs ? fullmethod.substring(fullmethod.indexOf('(') - 1, fullmethod.indexOf(')') + 1) : "");
+        }).toArray();
+
+        Constructor[] constructors = getConstructors(clazz);
+        Object[] outConstructors = withargs ? (Arrays.stream(constructors).map(method -> {
+            String fullmethod = method.toString();
+            return "<init>" + fullmethod.substring(fullmethod.indexOf('(') - 1, fullmethod.indexOf(')') + 1);
+        }).toArray()) : (constructors.length == 0 ? new Object[]{} : new Object[]{"<init>"});
+
+        Object[] outFields = Arrays.stream(getFields(clazz)).map(field -> {
+            return field.getName();
+        }).toArray();
+
+        if (onearray)
+        {
+            return Stream.of(outFields, outMethods, outConstructors).flatMap(Stream::of).toArray();
+        }
+        else
+        {
+            return new Object[]{outFields, outMethods, outConstructors};
+        }
     }
 
     public static byte[] stringToBytes(String s) throws UnsupportedEncodingException

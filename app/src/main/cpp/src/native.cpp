@@ -1,3 +1,4 @@
+#define PY_SSIZE_T_CLEAN
 #include "Python.h"
 #include <stdio.h>
 #include <dlfcn.h>
@@ -21,6 +22,8 @@
 #define LOG(fmt, ...) __android_log_print(ANDROID_LOG_DEBUG, "APPY", fmt, ##__VA_ARGS__)
 #define PYTHON_CALL
 
+int populate_common_java_objects_stage = 0;
+
 JavaVM * vm = NULL;
 jobject g_java_arg = NULL;
 jclass class_class = NULL;
@@ -29,7 +32,8 @@ jclass python_exception_class = NULL;
 jmethodID compatibleMethod = NULL;
 jmethodID getField = NULL;
 jmethodID unboxClassToEnum = NULL;
-jmethodID inspect = NULL;
+jmethodID inspectClass = NULL;
+jmethodID inspectClassContent = NULL;
 jmethodID stringToBytes = NULL;
 jmethodID bytesToString = NULL;
 jmethodID createInterface = NULL;
@@ -117,9 +121,9 @@ private:
 static void check_java_exc(JNIEnv * env, int line);
 #define CHECK_JAVA_EXC(env) check_java_exc(env, __LINE__)
 
-static void find_types(JNIEnv * env);
+static void populate_common_java_objects(JNIEnv * env);
 
-static std::string get_string(JNIEnv * env, jstring str)
+static std::string jstring_to_stdstring(JNIEnv * env, jstring str)
 {
     if(str == NULL)
     {
@@ -136,25 +140,25 @@ static std::string get_string(JNIEnv * env, jstring str)
     return path;
 }
 
-static int get_integer(JNIEnv * env, jobject integer)
+static int jinteger_to_int(JNIEnv * env, jobject integer)
 {
-    find_types(env);
+    populate_common_java_objects(env);
     int i = env->CallIntMethod(integer, intValueMethod);
     CHECK_JAVA_EXC(env);
     return i;
 }
 
-#define GET_ENV_WITHOUT_SCOPES() \
-JNIEnv * env = _get_env(); \
+#define GET_JNI_ENV_WITHOUT_SCOPES() \
+JNIEnv * env = _get_jni_env(); \
 env->PushLocalFrame(15); \
 CHECK_JAVA_EXC(env); \
 onexit += [env]{ env->PopLocalFrame(NULL); };
 
-#define GET_ENV() \
+#define GET_JNI_ENV() \
 scope_guards onexit; \
-GET_ENV_WITHOUT_SCOPES()
+GET_JNI_ENV_WITHOUT_SCOPES()
 
-JNIEnv * _get_env()
+JNIEnv * _get_jni_env()
 {
     JNIEnv * env = NULL;
     if(vm->AttachCurrentThread(&env, NULL) != JNI_OK)
@@ -174,27 +178,27 @@ public:
         {
             if(reflection_class == NULL || formatException == NULL)
             {
-                throw jni_exception("exception in exception");
+                throw jni_exception(("exception in exception, jni constants are null: " + std::to_string(populate_common_java_objects_stage)).c_str());
             }
 
             jstring result = (jstring)env->CallStaticObjectMethod(reflection_class, formatException, exception);
             if(env->ExceptionCheck())
             {
                 env->ExceptionClear();
-                throw jni_exception("exception in exception");
+                throw jni_exception("exception in exception, in call formatException");
             }
 
-            std::string strresult = get_string(env, result);
+            std::string strresult = jstring_to_stdstring(env, result);
             if(env->ExceptionCheck())
             {
                 env->ExceptionClear();
-                throw jni_exception("exception in exception");
+                throw jni_exception("exception in exception: jstring to stdstring");
             }
 
-            char buf[16] = {};
-            snprintf(buf, sizeof(buf) - 1, "%d", line);
-
-            message = strresult + "\n in line " + buf;
+            message = strresult + "\n in line " + std::to_string(line);
+        }
+        catch(jni_exception & e) {
+            message = std::string("exception while getting info for exception: ")+e.what();
         }
         catch(...)
         {
@@ -254,6 +258,7 @@ void check_java_exc(JNIEnv * env, int line)
     if(env->ExceptionCheck() == JNI_TRUE)
     {
         jthrowable local_exc = (jthrowable)env->ExceptionOccurred();
+        //env->ExceptionDescribe();
         env->ExceptionClear();
         jthrowable exc = (jthrowable)env->NewGlobalRef(local_exc);
         env->DeleteLocalRef(local_exc);
@@ -265,7 +270,7 @@ void check_java_exc(JNIEnv * env, int line)
     }
 }
 
-#define CASE(TYPE, Type, union_name, refcode) \
+#define JNI_FUNCTIONS_CASE(TYPE, Type, union_name, refcode) \
 case TYPE: \
 { \
    switch(op) \
@@ -308,7 +313,7 @@ case TYPE: \
    break; \
 }
 
-static jobject make_global_ref(JNIEnv * env, jobject local)
+static jobject make_global_java_ref(JNIEnv * env, jobject local)
 {
     if(local == NULL)
     {
@@ -324,21 +329,21 @@ static jobject make_global_ref(JNIEnv * env, jobject local)
     return glob;
 }
 
-jvalue act_raw(JNIEnv * env, jobject self, void * id, jvalue * values, int returnType, int op)
+jvalue call_jni_object_functions_impl(JNIEnv * env, jobject self, void * id, jvalue * values, int returnType, int op)
 {
     jvalue ret;
 
     switch(returnType)
     {
-    CASE(BOOLEAN, Boolean, z,)
-    CASE(BYTE, Byte, b,)
-    CASE(CHARACTER, Char, c,)
-    CASE(SHORT, Short, s,)
-    CASE(INTEGER, Int, i,)
-    CASE(LONG, Long, j,)
-    CASE(FLOAT, Float, f,)
-    CASE(DOUBLE, Double, d,)
-    CASE(OBJECT, Object, l, ret.l = ret.l == NULL ? NULL : make_global_ref(env, ret.l))
+    JNI_FUNCTIONS_CASE(BOOLEAN, Boolean, z,)
+    JNI_FUNCTIONS_CASE(BYTE, Byte, b,)
+    JNI_FUNCTIONS_CASE(CHARACTER, Char, c,)
+    JNI_FUNCTIONS_CASE(SHORT, Short, s,)
+    JNI_FUNCTIONS_CASE(INTEGER, Int, i,)
+    JNI_FUNCTIONS_CASE(LONG, Long, j,)
+    JNI_FUNCTIONS_CASE(FLOAT, Float, f,)
+    JNI_FUNCTIONS_CASE(DOUBLE, Double, d,)
+    JNI_FUNCTIONS_CASE(OBJECT, Object, l, ret.l = ret.l == NULL ? NULL : make_global_java_ref(env, ret.l))
 
     case VOID:
     {
@@ -373,7 +378,7 @@ jvalue act_raw(JNIEnv * env, jobject self, void * id, jvalue * values, int retur
         {
             throw jni_exception("failed to create new object");
         }
-        ret.l = make_global_ref(env, ret.l);
+        ret.l = make_global_java_ref(env, ret.l);
         break;
     }
 
@@ -387,116 +392,134 @@ jvalue act_raw(JNIEnv * env, jobject self, void * id, jvalue * values, int retur
     return ret;
 }
 
-static void find_types(JNIEnv * env)
+static void populate_common_java_objects(JNIEnv * env)
 {
     if(class_class == NULL)
     {
         jclass local_class_class = env->FindClass("java/lang/Class");
         CHECK_JAVA_EXC(env);
-        class_class = (jclass)make_global_ref(env, (jobject)local_class_class);
+        class_class = (jclass)make_global_java_ref(env, (jobject)local_class_class);
     }
+    populate_common_java_objects_stage = 1;
     if(reflection_class == NULL)
     {
         jclass local_reflection = env->FindClass("com/appy/Reflection");
         CHECK_JAVA_EXC(env);
-        reflection_class = (jclass)make_global_ref(env, (jobject)local_reflection);
+        reflection_class = (jclass)make_global_java_ref(env, (jobject)local_reflection);
     }
+    populate_common_java_objects_stage = 2;
     if(python_exception_class == NULL)
     {
         jclass local_python_exception = env->FindClass("com/appy/PythonException");
         CHECK_JAVA_EXC(env);
-        python_exception_class = (jclass)make_global_ref(env, (jobject)local_python_exception);
+        python_exception_class = (jclass)make_global_java_ref(env, (jobject)local_python_exception);
     }
+    populate_common_java_objects_stage = 3;
+    if(formatException == NULL)
+    {
+         formatException = env->GetStaticMethodID(reflection_class, "formatException", "(Ljava/lang/Throwable;)Ljava/lang/String;");
+         CHECK_JAVA_EXC(env);
+    }
+    populate_common_java_objects_stage = 4;
     //-------primitives-----------------
     if(boolean_class == NULL)
     {
         jclass local = env->FindClass("java/lang/Boolean");
         CHECK_JAVA_EXC(env);
-        boolean_class = (jclass)make_global_ref(env, (jobject)local);
+        boolean_class = (jclass)make_global_java_ref(env, (jobject)local);
     }
     if(byte_class == NULL)
     {
         jclass local = env->FindClass("java/lang/Byte");
         CHECK_JAVA_EXC(env);
-        byte_class = (jclass)make_global_ref(env, (jobject)local);
+        byte_class = (jclass)make_global_java_ref(env, (jobject)local);
     }
     if(character_class == NULL)
     {
         jclass local = env->FindClass("java/lang/Character");
         CHECK_JAVA_EXC(env);
-        character_class = (jclass)make_global_ref(env, (jobject)local);
+        character_class = (jclass)make_global_java_ref(env, (jobject)local);
     }
     if(short_class == NULL)
     {
         jclass local = env->FindClass("java/lang/Short");
         CHECK_JAVA_EXC(env);
-        short_class = (jclass)make_global_ref(env, (jobject)local);
+        short_class = (jclass)make_global_java_ref(env, (jobject)local);
     }
     if(integer_class == NULL)
     {
         jclass local = env->FindClass("java/lang/Integer");
         CHECK_JAVA_EXC(env);
-        integer_class = (jclass)make_global_ref(env, (jobject)local);
+        integer_class = (jclass)make_global_java_ref(env, (jobject)local);
     }
     if(long_class == NULL)
     {
         jclass local = env->FindClass("java/lang/Long");
         CHECK_JAVA_EXC(env);
-        long_class = (jclass)make_global_ref(env, (jobject)local);
+        long_class = (jclass)make_global_java_ref(env, (jobject)local);
     }
     if(float_class == NULL)
     {
         jclass local = env->FindClass("java/lang/Float");
         CHECK_JAVA_EXC(env);
-        float_class = (jclass)make_global_ref(env, (jobject)local);
+        float_class = (jclass)make_global_java_ref(env, (jobject)local);
     }
     if(double_class == NULL)
     {
         jclass local = env->FindClass("java/lang/Double");
         CHECK_JAVA_EXC(env);
-        double_class = (jclass)make_global_ref(env, (jobject)local);
+        double_class = (jclass)make_global_java_ref(env, (jobject)local);
     }
+    populate_common_java_objects_stage = 5;
     //----------------------------------
     if(compatibleMethod == NULL)
     {
         compatibleMethod = env->GetStaticMethodID(reflection_class, "getCompatibleMethod", "(Ljava/lang/Class;Ljava/lang/String;[Ljava/lang/Class;)[Ljava/lang/Object;");
         CHECK_JAVA_EXC(env);
     }
+    populate_common_java_objects_stage = 6;
     if(getField == NULL)
     {
-        getField = env->GetStaticMethodID(reflection_class, "getField", "(Ljava/lang/Class;Ljava/lang/String;)[Ljava/lang/Object;");
+        getField = env->GetStaticMethodID(reflection_class, "getField", "(Ljava/lang/Class;Ljava/lang/String;Z)[Ljava/lang/Object;");
         CHECK_JAVA_EXC(env);
     }
+    populate_common_java_objects_stage = 7;
     if(unboxClassToEnum == NULL)
     {
         unboxClassToEnum = env->GetStaticMethodID(reflection_class, "unboxClassToEnum", "(Ljava/lang/Class;)I");
         CHECK_JAVA_EXC(env);
     }
-    if(inspect == NULL)
+    populate_common_java_objects_stage = 8;
+    if(inspectClass == NULL)
     {
-        inspect = env->GetStaticMethodID(reflection_class, "inspect", "(Ljava/lang/Class;)[Ljava/lang/Object;");
+        inspectClass = env->GetStaticMethodID(reflection_class, "inspectClass", "(Ljava/lang/Class;)[Ljava/lang/Object;");
         CHECK_JAVA_EXC(env);
     }
+    populate_common_java_objects_stage = 9;
+    if(inspectClassContent == NULL)
+    {
+        inspectClassContent = env->GetStaticMethodID(reflection_class, "inspectClassContent", "(Ljava/lang/Class;ZZ)[Ljava/lang/Object;");
+        CHECK_JAVA_EXC(env);
+    }
+    populate_common_java_objects_stage = 10;
     if(stringToBytes == NULL)
     {
         stringToBytes = env->GetStaticMethodID(reflection_class, "stringToBytes", "(Ljava/lang/String;)[B");
         CHECK_JAVA_EXC(env);
     }
+    populate_common_java_objects_stage = 11;
     if(bytesToString == NULL)
     {
         bytesToString = env->GetStaticMethodID(reflection_class, "bytesToString", "([B)Ljava/lang/String;");
         CHECK_JAVA_EXC(env);
     }
+    populate_common_java_objects_stage = 12;
     if(createInterface == NULL)
     {
          createInterface = env->GetStaticMethodID(reflection_class, "createInterface", "(J[Ljava/lang/Class;)Ljava/lang/Object;");
          CHECK_JAVA_EXC(env);
     }
-    if(formatException == NULL)
-    {
-         formatException = env->GetStaticMethodID(reflection_class, "formatException", "(Ljava/lang/Throwable;)Ljava/lang/String;");
-         CHECK_JAVA_EXC(env);
-    }
+    populate_common_java_objects_stage = 13;
     //---------primitive-accessors--------------------------
     if(booleanCtor == NULL)
     {
@@ -538,6 +561,7 @@ static void find_types(JNIEnv * env)
         doubleCtor = env->GetMethodID(double_class, "<init>", "(D)V");
         CHECK_JAVA_EXC(env);
     }
+    populate_common_java_objects_stage = 14;
     if(booleanValueMethod == NULL)
     {
         booleanValueMethod = env->GetMethodID(boolean_class, "booleanValue", "()Z");
@@ -578,45 +602,56 @@ static void find_types(JNIEnv * env)
         doubleValueMethod = env->GetMethodID(double_class, "doubleValue", "()D");
         CHECK_JAVA_EXC(env);
     }
+    populate_common_java_objects_stage = 15;
     //------------------------------------------------------
 }
 
-jfieldID get_field_raw(JNIEnv * env, jclass clazz, const char * field, Parameter * out_type, int * out_static)
+jfieldID get_fieldid_impl(JNIEnv * env, jclass clazz, const char * field, Parameter * out_type, int * out_static, int * out_has_same_name_method)
 {
-    find_types(env);
+    populate_common_java_objects(env);
 
     jstring field_str = env->NewStringUTF(field);
     CHECK_JAVA_EXC(env);
-    jobjectArray result = (jobjectArray)env->CallStaticObjectMethod(reflection_class, getField, clazz, field_str);
+    jobjectArray result = (jobjectArray)env->CallStaticObjectMethod(reflection_class, getField, clazz, field_str, true);
     CHECK_JAVA_EXC(env);
 
     jfieldID fieldID = NULL;
     if(result != NULL)
     {
-        fieldID = env->FromReflectedField(env->GetObjectArrayElement(result, 0));
+        jobject fieldIdReflected = env->GetObjectArrayElement(result, 0);
+        if (fieldIdReflected != NULL)
+        {
+            fieldID = env->FromReflectedField(fieldIdReflected);
+        }
 
         jintArray parameter = (jintArray)env->GetObjectArrayElement(result, 1);
         CHECK_JAVA_EXC(env);
-        jint * paramarr = env->GetIntArrayElements(parameter, NULL);
-        if(paramarr == NULL)
+        if (parameter != NULL)
         {
-            throw jni_exception("failed to GetIntArrayElements after finding compatible method");
+            jint * paramarr = env->GetIntArrayElements(parameter, NULL);
+            if(paramarr == NULL)
+            {
+                throw jni_exception("failed to GetIntArrayElements after finding compatible method");
+            }
+            out_type->type = paramarr[0];
+            out_type->real_type = paramarr[1];
+            env->ReleaseIntArrayElements(parameter, paramarr, JNI_ABORT);
         }
-        out_type->type = paramarr[0];
-        out_type->real_type = paramarr[1];
-        env->ReleaseIntArrayElements(parameter, paramarr, JNI_ABORT);
 
         jobject staticInteger = env->GetObjectArrayElement(result, 2);
         CHECK_JAVA_EXC(env);
+        jobject hasSameNameMethodInteger = env->GetObjectArrayElement(result, 3);
+        CHECK_JAVA_EXC(env);
 
-        *out_static = get_integer(env, staticInteger);
+        *out_static = jinteger_to_int(env, staticInteger);
+        *out_has_same_name_method = jinteger_to_int(env, hasSameNameMethodInteger);
     }
     return fieldID;
 }
 
-jmethodID get_method_raw(JNIEnv * env, jclass clazz, const char * method, int n, jobjectArray type_arr, Parameter * outTypes, int * outStatic)
+jmethodID get_methodid_impl(JNIEnv * env, jclass clazz, const char * method, int n, jobjectArray type_arr, Parameter * outTypes, int * outStatic, int * outHasSameNameField)
 {
-    find_types(env);
+    populate_common_java_objects(env);
 
     jobjectArray result = NULL;
     if(method == NULL || strlen(method) == 0)
@@ -634,36 +669,46 @@ jmethodID get_method_raw(JNIEnv * env, jclass clazz, const char * method, int n,
     jmethodID methodID = NULL;
     if(result != NULL)
     {
-        methodID = env->FromReflectedMethod(env->GetObjectArrayElement(result, 0));
+        jobject methodIdReflected = env->GetObjectArrayElement(result, 0);
+        if (methodIdReflected != NULL)
+        {
+            methodID = env->FromReflectedMethod(methodIdReflected);
+        }
         jobject staticInteger = env->GetObjectArrayElement(result, 1);
         CHECK_JAVA_EXC(env);
-
-        *outStatic = get_integer(env, staticInteger);
-
-        jobjectArray realTypes = (jobjectArray)env->GetObjectArrayElement(result, 2);
+        jobject hasSameNameFieldInteger = env->GetObjectArrayElement(result, 2);
         CHECK_JAVA_EXC(env);
 
-        for(size_t i = 0; i < n + 1; i++)
-        {
-            jintArray parameter = (jintArray)env->GetObjectArrayElement(realTypes, i);
-            CHECK_JAVA_EXC(env);
-            jint * paramarr = env->GetIntArrayElements(parameter, NULL);
-            if(paramarr == NULL)
-            {
-                throw jni_exception("failed to GetIntArrayElements after finding compatible method");
-            }
-            outTypes[i].type = paramarr[0];
-            outTypes[i].real_type = paramarr[1];
+        *outStatic = jinteger_to_int(env, staticInteger);
+        *outHasSameNameField = jinteger_to_int(env, hasSameNameFieldInteger);
 
-            env->ReleaseIntArrayElements(parameter, paramarr, JNI_ABORT);
+        jobjectArray realTypes = (jobjectArray)env->GetObjectArrayElement(result, 3);
+        CHECK_JAVA_EXC(env);
+
+        if (realTypes != NULL)
+        {
+            for(size_t i = 0; i < n + 1; i++)
+            {
+                jintArray parameter = (jintArray)env->GetObjectArrayElement(realTypes, i);
+                CHECK_JAVA_EXC(env);
+                jint * paramarr = env->GetIntArrayElements(parameter, NULL);
+                if(paramarr == NULL)
+                {
+                    throw jni_exception("failed to GetIntArrayElements after finding compatible method");
+                }
+                outTypes[i].type = paramarr[0];
+                outTypes[i].real_type = paramarr[1];
+
+                env->ReleaseIntArrayElements(parameter, paramarr, JNI_ABORT);
+            }
         }
     }
     return methodID;
 }
 
-static jvalue unbox_raw(JNIEnv * env, jobject obj, int value_type)
+static jvalue unpack_java_primitive_impl(JNIEnv * env, jobject obj, int value_type)
 {
-    find_types(env);
+    populate_common_java_objects(env);
     jvalue ret;
     switch(value_type)
     {
@@ -715,9 +760,9 @@ static jvalue unbox_raw(JNIEnv * env, jobject obj, int value_type)
     return ret;
 }
 
-static jobject box_raw(JNIEnv * env, jvalue value, int value_type)
+static jobject pack_java_primitive_impl(JNIEnv * env, jvalue value, int value_type)
 {
-    find_types(env);
+    populate_common_java_objects(env);
     jobject obj = NULL;
     switch(value_type)
     {
@@ -771,10 +816,10 @@ static jobject box_raw(JNIEnv * env, jvalue value, int value_type)
     {
         throw jni_exception("failed to create new object");
     }
-    return make_global_ref(env, obj);
+    return make_global_java_ref(env, obj);
 }
 
-static PyObject * unpack_value(jvalue v, int t)
+static PyObject * unpacked_jvalue_to_python(jvalue v, int t)
 {
     switch(t)
     {
@@ -825,7 +870,7 @@ static PyObject * unpack_value(jvalue v, int t)
     return NULL;
 }
 
-static PyObject * act(PyObject *self, PyObject *args)
+static PyObject * call_jni_object_functions(PyObject *self, PyObject *args)
 {
     try
     {
@@ -874,14 +919,14 @@ static PyObject * act(PyObject *self, PyObject *args)
         }
 
         jvalue ret;
-        GET_ENV_WITHOUT_SCOPES();
+        GET_JNI_ENV_WITHOUT_SCOPES();
 
         std::exception_ptr exc = nullptr;
 
         Py_BEGIN_ALLOW_THREADS
         try
         {
-            ret = act_raw(env, (jobject)self, (void *)method, jvalues, return_type, op);
+            ret = call_jni_object_functions_impl(env, (jobject)self, (void *)method, jvalues, return_type, op);
         }
         catch(...)
         {
@@ -906,7 +951,7 @@ static PyObject * act(PyObject *self, PyObject *args)
                 Py_RETURN_NONE;
             }
         }
-        return unpack_value(ret, return_type);
+        return unpacked_jvalue_to_python(ret, return_type);
     }
     catch(java_exception & e)
     {
@@ -919,7 +964,7 @@ static PyObject * act(PyObject *self, PyObject *args)
     return NULL;
 }
 
-static PyObject * get_method(PyObject *self, PyObject *args)
+static PyObject * get_methodid(PyObject *self, PyObject *args)
 {
     try
     {
@@ -939,8 +984,8 @@ static PyObject * get_method(PyObject *self, PyObject *args)
 
         Py_ssize_t type_num = PyTuple_Size(types);
 
-        GET_ENV();
-        find_types(env);
+        GET_JNI_ENV();
+        populate_common_java_objects(env);
 
         jobjectArray type_arr = env->NewObjectArray(type_num, class_class, NULL);
         CHECK_JAVA_EXC(env);
@@ -965,11 +1010,12 @@ static PyObject * get_method(PyObject *self, PyObject *args)
         onexit += [&out_types]{ if(out_types != NULL) { delete[] out_types; out_types = NULL; } };
 
         int out_static = 0;
-        jmethodID res = get_method_raw(env, (jclass)clazz, method, type_num, type_arr, out_types, &out_static);
+        int out_has_same_name_field = 0;
+        jmethodID res = get_methodid_impl(env, (jclass)clazz, method, type_num, type_arr, out_types, &out_static, &out_has_same_name_field);
         if(res == NULL)
         {
-            PyErr_Format(PyExc_RuntimeError, "Method %s() not found", method);
-            return NULL;
+            //no such method, still return same_name_field
+            return Py_BuildValue("sssi", NULL, NULL, NULL, out_has_same_name_field);
         }
 
         PyObject * out_types_tuple = PyTuple_New(type_num + 1);
@@ -977,15 +1023,17 @@ static PyObject * get_method(PyObject *self, PyObject *args)
         {
             return NULL;
         }
-        for (Py_ssize_t i = 0; i < type_num + 1; ++i) {
+        for (Py_ssize_t i = 0; i < type_num + 1; ++i)
+        {
             PyObject * t = Py_BuildValue("ii", out_types[i].type, out_types[i].real_type);
             if(t == NULL)
             {
+                Py_XDECREF(out_types_tuple);
                 return NULL;
             }
             PyTuple_SET_ITEM(out_types_tuple, i, t);
         }
-        return Py_BuildValue("kNi", (unsigned long)res, out_types_tuple, out_static);
+        return Py_BuildValue("kNii", (unsigned long)res, out_types_tuple, out_static, out_has_same_name_field);
     }
     catch(java_exception & e)
     {
@@ -998,7 +1046,7 @@ static PyObject * get_method(PyObject *self, PyObject *args)
     return NULL;
 }
 
-static PyObject * get_field(PyObject *self, PyObject *args)
+static PyObject * get_fieldid(PyObject *self, PyObject *args)
 {
     try
     {
@@ -1011,15 +1059,16 @@ static PyObject * get_field(PyObject *self, PyObject *args)
 
         Parameter out_type;
         int out_static = 0;
-        GET_ENV();
-        jfieldID res = get_field_raw(env, (jclass)clazz, field, &out_type, &out_static);
+        int out_has_same_name_method = 0;
+        GET_JNI_ENV();
+        jfieldID res = get_fieldid_impl(env, (jclass)clazz, field, &out_type, &out_static, &out_has_same_name_method);
         if(res == NULL)
         {
-            PyErr_SetString(PyExc_RuntimeError, "Field not found");
-            return NULL;
+            //no such field
+            return Py_BuildValue("ssssi", NULL, NULL, NULL, NULL, out_has_same_name_method);
         }
 
-        return Py_BuildValue("k(ii)i", (unsigned long)res, out_type.type, out_type.real_type, out_static);
+        return Py_BuildValue("kiiii", (unsigned long)res, out_type.type, out_type.real_type, out_static, out_has_same_name_method);
     }
     catch(java_exception & e)
     {
@@ -1042,10 +1091,10 @@ static PyObject * find_class(PyObject *self, PyObject *args)
             return NULL;
         }
 
-        GET_ENV();
+        GET_JNI_ENV();
         jclass local_clazz = env->FindClass(clazz);
         CHECK_JAVA_EXC(env);
-        return PyLong_FromUnsignedLong((unsigned long)make_global_ref(env, (jobject)local_clazz));
+        return PyLong_FromUnsignedLong((unsigned long)make_global_java_ref(env, (jobject)local_clazz));
     }
     catch(java_exception & e)
     {
@@ -1058,7 +1107,7 @@ static PyObject * find_class(PyObject *self, PyObject *args)
     return NULL;
 }
 
-static PyObject * unbox_class(PyObject *self, PyObject *args)
+static PyObject * unpack_primitive_class(PyObject *self, PyObject *args)
 {
     try
     {
@@ -1068,8 +1117,8 @@ static PyObject * unbox_class(PyObject *self, PyObject *args)
             return NULL;
         }
 
-        GET_ENV();
-        find_types(env);
+        GET_JNI_ENV();
+        populate_common_java_objects(env);
         jint e = env->CallStaticIntMethod(reflection_class, unboxClassToEnum, (jobject)object);
         CHECK_JAVA_EXC(env);
         return PyLong_FromLong(e);
@@ -1095,10 +1144,10 @@ static PyObject * get_object_class(PyObject *self, PyObject *args)
             return NULL;
         }
 
-        GET_ENV();
+        GET_JNI_ENV();
         jclass local_clazz = env->GetObjectClass((jobject)object);
         CHECK_JAVA_EXC(env);
-        return PyLong_FromUnsignedLong((unsigned long)make_global_ref(env, (jobject)local_clazz));
+        return PyLong_FromUnsignedLong((unsigned long)make_global_java_ref(env, (jobject)local_clazz));
     }
     catch(java_exception & e)
     {
@@ -1111,7 +1160,7 @@ static PyObject * get_object_class(PyObject *self, PyObject *args)
     return NULL;
 }
 
-static bool make_value_raw(PyObject * object, int type, jvalue * result)
+static bool python_to_unpacked_jvalue_impl(PyObject * object, int type, jvalue * result)
 {
     switch(type)
     {
@@ -1200,7 +1249,7 @@ static bool make_value_raw(PyObject * object, int type, jvalue * result)
     return true;
 }
 
-static PyObject * make_value(PyObject *self, PyObject *args)
+static bool python_to_unpacked_jvalue_helper(PyObject *self, PyObject *args, jvalue * outresult, int * outtype)
 {
     static_assert(sizeof(jvalue) == sizeof(unsigned long long));
 
@@ -1208,14 +1257,29 @@ static PyObject * make_value(PyObject *self, PyObject *args)
     int type = 0;
     if(!PyArg_ParseTuple(args, "Oi", &object, &type))
     {
-        return NULL;
+        return false;
     }
 
-    jvalue result;
-    result.j = 0; //easier for debugging
-    if(!make_value_raw(object, type, &result))
+    if (outtype != NULL)
+    {
+        *outtype = type;
+    }
+
+    outresult->j = 0; //easier for debugging
+    if(!python_to_unpacked_jvalue_impl(object, type, outresult))
     {
         PyErr_SetString(PyExc_ValueError, "type mismatch");
+        return false;
+    }
+    
+    return true;
+}
+
+static PyObject * python_to_unpacked_jvalue(PyObject *self, PyObject *args)
+{
+    jvalue result;
+    if(!python_to_unpacked_jvalue_helper(self, args, &result, NULL))
+    {
         return NULL;
     }
 
@@ -1224,29 +1288,19 @@ static PyObject * make_value(PyObject *self, PyObject *args)
     return PyLong_FromUnsignedLongLong(ret);
 }
 
-static PyObject * box(PyObject *self, PyObject *args)
+static PyObject * python_to_packed_java_primitive(PyObject *self, PyObject *args)
 {
     try
     {
-        static_assert(sizeof(jvalue) == sizeof(unsigned long long));
-
-        PyObject * object = NULL;
+        jvalue result;
         int type = 0;
-        if (!PyArg_ParseTuple(args, "Oi", &object, &type))
+        if(!python_to_unpacked_jvalue_helper(self, args, &result, &type))
         {
             return NULL;
         }
 
-        jvalue value;
-        value.j = 0; //easy for debugging
-        if(!make_value_raw(object, type, &value))
-        {
-            PyErr_SetString(PyExc_ValueError, "type mismatch");
-            return NULL;
-        }
-
-        GET_ENV();
-        return PyLong_FromLong((unsigned long)box_raw(env, value, type));
+        GET_JNI_ENV();
+        return PyLong_FromLong((unsigned long)pack_java_primitive_impl(env, result, type));
     }
     catch(java_exception & e)
     {
@@ -1259,7 +1313,7 @@ static PyObject * box(PyObject *self, PyObject *args)
     return NULL;
 }
 
-static PyObject * unbox(PyObject *self, PyObject *args)
+static PyObject * packed_java_primitive_to_python(PyObject *self, PyObject *args)
 {
     try
     {
@@ -1270,10 +1324,10 @@ static PyObject * unbox(PyObject *self, PyObject *args)
             return NULL;
         }
 
-        GET_ENV();
-        find_types(env);
-        jvalue v = unbox_raw(env, (jobject)object, unboxed_type);
-        return unpack_value(v, unboxed_type);
+        GET_JNI_ENV();
+        populate_common_java_objects(env);
+        jvalue v = unpack_java_primitive_impl(env, (jobject)object, unboxed_type);
+        return unpacked_jvalue_to_python(v, unboxed_type);
     }
     catch(java_exception & e)
     {
@@ -1286,13 +1340,13 @@ static PyObject * unbox(PyObject *self, PyObject *args)
     return NULL;
 }
 
-struct Optional
+struct OptionalJValue
 {
     jvalue value;
     bool exists;
 };
 
-#define ARRAY_CASE(TYPE, Type, jtype, union_name) \
+#define JNI_ARRAY_FUNCTIONS_CASE(TYPE, Type, jtype, union_name) \
 case TYPE: \
 { \
     jint array_len = 0; \
@@ -1348,24 +1402,24 @@ case TYPE: \
     } \
     if(op == NEW_ARRAY) \
     { \
-        return make_global_ref(env, array); \
+        return make_global_java_ref(env, array); \
     } \
     return NULL; \
 }
 
-static jobject array_raw(JNIEnv * env, jobject array, int type, Optional * values, int values_start, int values_len, int op, int * out_array_len, jclass objectclass)
+static jobject call_jni_array_functions_impl(JNIEnv * env, jobject array, int type, OptionalJValue * values, int values_start, int values_len, int op, int * out_array_len, jclass objectclass)
 {
 
     switch(type)
     {
-        ARRAY_CASE(BOOLEAN, Boolean, jboolean, z)
-        ARRAY_CASE(BYTE, Byte, jbyte, b)
-        ARRAY_CASE(CHARACTER, Char, jchar, c)
-        ARRAY_CASE(SHORT, Short, jshort, s)
-        ARRAY_CASE(INTEGER, Int, jint, i)
-        ARRAY_CASE(LONG, Long, jlong, j)
-        ARRAY_CASE(FLOAT, Float, jfloat, f)
-        ARRAY_CASE(DOUBLE, Double, jdouble, d)
+        JNI_ARRAY_FUNCTIONS_CASE(BOOLEAN, Boolean, jboolean, z)
+        JNI_ARRAY_FUNCTIONS_CASE(BYTE, Byte, jbyte, b)
+        JNI_ARRAY_FUNCTIONS_CASE(CHARACTER, Char, jchar, c)
+        JNI_ARRAY_FUNCTIONS_CASE(SHORT, Short, jshort, s)
+        JNI_ARRAY_FUNCTIONS_CASE(INTEGER, Int, jint, i)
+        JNI_ARRAY_FUNCTIONS_CASE(LONG, Long, jlong, j)
+        JNI_ARRAY_FUNCTIONS_CASE(FLOAT, Float, jfloat, f)
+        JNI_ARRAY_FUNCTIONS_CASE(DOUBLE, Double, jdouble, d)
         case OBJECT:
         {
             jint array_len = 0;
@@ -1418,7 +1472,7 @@ static jobject array_raw(JNIEnv * env, jobject array, int type, Optional * value
                         }
                         else
                         {
-                            values[i - values_start].value.l = make_global_ref(env, l);
+                            values[i - values_start].value.l = make_global_java_ref(env, l);
                             values[i - values_start].exists = true;
                         }
                     }
@@ -1426,7 +1480,7 @@ static jobject array_raw(JNIEnv * env, jobject array, int type, Optional * value
             }
             if(op == NEW_ARRAY)
             {
-                return make_global_ref(env, array);
+                return make_global_java_ref(env, array);
             }
             return NULL;
         }
@@ -1434,13 +1488,13 @@ static jobject array_raw(JNIEnv * env, jobject array, int type, Optional * value
     throw jni_exception("unknown type");
 }
 
-static PyObject * array(PyObject *self, PyObject *args)
+static PyObject * call_jni_array_functions(PyObject *self, PyObject *args)
 {
     try
     {
         static_assert(sizeof(jvalue) == sizeof(unsigned long long));
 
-        Optional * jvalues = NULL;
+        OptionalJValue * jvalues = NULL;
         scope_guards onexit;
 
         unsigned long obj = 0;
@@ -1466,7 +1520,7 @@ static PyObject * array(PyObject *self, PyObject *args)
             value_num = PyTuple_Size(values);
             if(value_num > 0)
             {
-                jvalues = new Optional[value_num];
+                jvalues = new OptionalJValue[value_num];
                 onexit += [&jvalues]{ if(jvalues != NULL) { delete[] jvalues; jvalues = NULL; } };
 
                 for(Py_ssize_t i = 0; i < value_num; i++)
@@ -1498,14 +1552,14 @@ static PyObject * array(PyObject *self, PyObject *args)
             return NULL;
         }
 
-        GET_ENV_WITHOUT_SCOPES();
+        GET_JNI_ENV_WITHOUT_SCOPES();
         int out_array_len = 0;
-        jobject ret = array_raw(env, (jobject)obj, type, jvalues, start, value_num, op, &out_array_len, (jclass)objclass);
+        jobject ret = call_jni_array_functions_impl(env, (jobject)obj, type, jvalues, start, value_num, op, &out_array_len, (jclass)objclass);
 
         for (Py_ssize_t i = 0; i < value_num; ++i) {
             if(jvalues[i].exists)
             {
-                PyTuple_SET_ITEM(out_tuple, i, unpack_value(jvalues[i].value, type));
+                PyTuple_SET_ITEM(out_tuple, i, unpacked_jvalue_to_python(jvalues[i].value, type));
             }
             else
             {
@@ -1544,7 +1598,7 @@ static PyObject * delete_global_ref(PyObject *self, PyObject *args)
          jobject ref = (jobject)ref_lng;
          if(ref != NULL)
          {
-             GET_ENV();
+             GET_JNI_ENV();
              env->DeleteGlobalRef(ref);
          }
          Py_RETURN_NONE;
@@ -1570,7 +1624,7 @@ static PyObject * delete_global_ref(PyObject *self, PyObject *args)
          jobject global_ref = NULL;
          if(ref != NULL)
          {
-             GET_ENV();
+             GET_JNI_ENV();
              global_ref = env->NewGlobalRef(ref);
              if(global_ref == NULL)
              {
@@ -1586,35 +1640,35 @@ static PyObject * delete_global_ref(PyObject *self, PyObject *args)
      return NULL;
  }
 
-static std::string inspect_class_raw(JNIEnv * env, jclass ref, int * enum_type, int * is_array, jclass * out_component, int * component_enum_type, int * unboxed_component_enum_type)
+static std::string inspect_class_impl(JNIEnv * env, jclass ref, int * enum_type, int * is_array, jclass * out_component, int * component_enum_type, int * unboxed_component_enum_type)
 {
-    find_types(env);
+    populate_common_java_objects(env);
 
-    jobjectArray result = (jobjectArray)env->CallStaticObjectMethod(reflection_class, inspect, ref);
+    jobjectArray result = (jobjectArray)env->CallStaticObjectMethod(reflection_class, inspectClass, ref);
     CHECK_JAVA_EXC(env);
 
     jstring className = (jstring)env->GetObjectArrayElement(result, 0);
     CHECK_JAVA_EXC(env);
-    std::string class_name = get_string(env, className);
+    std::string class_name = jstring_to_stdstring(env, className);
 
     jobject enumType = env->GetObjectArrayElement(result, 1);
     CHECK_JAVA_EXC(env);
-    *enum_type = get_integer(env, enumType);
+    *enum_type = jinteger_to_int(env, enumType);
 
     jobject isArray = env->GetObjectArrayElement(result, 2);
     CHECK_JAVA_EXC(env);
-    *is_array = get_integer(env, isArray);
+    *is_array = jinteger_to_int(env, isArray);
 
     jclass component = (jclass)env->GetObjectArrayElement(result, 3);
     CHECK_JAVA_EXC(env);
 
     jobject componentEnumType = env->GetObjectArrayElement(result, 4);
     CHECK_JAVA_EXC(env);
-    *component_enum_type = get_integer(env, componentEnumType);
+    *component_enum_type = jinteger_to_int(env, componentEnumType);
 
     jobject unboxedComponentEnumType = env->GetObjectArrayElement(result, 5);
     CHECK_JAVA_EXC(env);
-    *unboxed_component_enum_type = get_integer(env, unboxedComponentEnumType);
+    *unboxed_component_enum_type = jinteger_to_int(env, unboxedComponentEnumType);
 
     if(component == NULL)
     {
@@ -1622,7 +1676,7 @@ static std::string inspect_class_raw(JNIEnv * env, jclass ref, int * enum_type, 
     }
     else
     {
-        *out_component = (jclass)make_global_ref(env, component);
+        *out_component = (jclass)make_global_java_ref(env, component);
     }
     return class_name;
 }
@@ -1638,13 +1692,13 @@ static PyObject * inspect_class(PyObject *self, PyObject *args)
         }
 
         jclass ref = (jclass)ref_lng;
-        GET_ENV();
+        GET_JNI_ENV();
         int enum_type = 0;
         int is_array = 0;
         jclass component = NULL;
         int component_enum_type = 0;
         int unboxed_component_enum_type = 0;
-        std::string class_name = inspect_class_raw(env, ref, &enum_type, &is_array, &component, &component_enum_type, &unboxed_component_enum_type);
+        std::string class_name = inspect_class_impl(env, ref, &enum_type, &is_array, &component, &component_enum_type, &unboxed_component_enum_type);
         return Py_BuildValue("siikii", class_name.c_str(), enum_type, is_array, (unsigned long)component, component_enum_type, unboxed_component_enum_type);
     }
     catch(java_exception & e)
@@ -1658,10 +1712,75 @@ static PyObject * inspect_class(PyObject *self, PyObject *args)
     return NULL;
 }
 
-static jstring make_string_raw(const char * str, int len)
+static std::vector<std::string> inspect_class_content_impl(JNIEnv * env, jclass ref, bool withargs)
 {
-    GET_ENV();
-    find_types(env);
+    populate_common_java_objects(env);
+
+    jobjectArray result = (jobjectArray)env->CallStaticObjectMethod(reflection_class, inspectClassContent, ref, withargs, true);
+    CHECK_JAVA_EXC(env);
+
+    jint array_len = env->GetArrayLength(result);
+
+    std::vector<std::string> out;
+    for (int i = 0; i < array_len; i++)
+    {
+        jstring s = (jstring)env->GetObjectArrayElement(result, i);
+        CHECK_JAVA_EXC(env);
+
+        out.push_back(jstring_to_stdstring(env, s));
+    }
+
+    return out;
+}
+
+static PyObject * inspect_class_content(PyObject *self, PyObject *args)
+{
+    try
+    {
+        unsigned long ref_lng = 0;
+        int withargs = 0;
+        if (!PyArg_ParseTuple(args, "ki", &ref_lng, &withargs))
+        {
+            return NULL;
+        }
+
+        jclass ref = (jclass)ref_lng;
+        GET_JNI_ENV();
+        std::vector<std::string> content = inspect_class_content_impl(env, ref, withargs);
+
+        PyObject * out_tuple = PyTuple_New(content.size());
+        if(out_tuple == NULL)
+        {
+            return NULL;
+        }
+        for (Py_ssize_t i = 0; i < content.size(); ++i)
+        {
+            PyObject * s = Py_BuildValue("s#", content[i].data(), content[i].size());
+            if(s == NULL)
+            {
+                Py_XDECREF(out_tuple);
+                return NULL;
+            }
+            PyTuple_SET_ITEM(out_tuple, i, s);
+        }
+
+        return out_tuple;
+    }
+    catch(java_exception & e)
+    {
+        PyErr_SetString(PyExc_RuntimeError, e.what());
+    }
+    catch(jni_exception & e)
+    {
+        PyErr_SetString(PyExc_RuntimeError, e.what());
+    }
+    return NULL;
+}
+
+static jstring char_array_to_jstring(const char * str, int len)
+{
+    GET_JNI_ENV();
+    populate_common_java_objects(env);
 
     jbyteArray barr = env->NewByteArray(len);
     if(barr == NULL) \
@@ -1681,10 +1800,10 @@ static jstring make_string_raw(const char * str, int len)
     jstring jstr = (jstring)env->CallStaticObjectMethod(reflection_class, bytesToString, barr);
     CHECK_JAVA_EXC(env);
 
-    return (jstring)make_global_ref(env, jstr);
+    return (jstring)make_global_java_ref(env, jstr);
 }
 
-static PyObject * make_string(PyObject *self, PyObject *args)
+static PyObject * python_str_to_jstring(PyObject *self, PyObject *args)
 {
     try
     {
@@ -1695,7 +1814,7 @@ static PyObject * make_string(PyObject *self, PyObject *args)
             return NULL;
         }
 
-        return Py_BuildValue("k", (unsigned long)make_string_raw(str, len));
+        return Py_BuildValue("k", (unsigned long)char_array_to_jstring(str, len));
     }
     catch(java_exception & e)
     {
@@ -1708,10 +1827,10 @@ static PyObject * make_string(PyObject *self, PyObject *args)
     return NULL;
 }
 
-static std::vector<char> unbox_string_raw(jstring jstr)
+static std::vector<char> jstring_to_char_array(jstring jstr)
 {
-    GET_ENV();
-    find_types(env);
+    GET_JNI_ENV();
+    populate_common_java_objects(env);
 
     jbyteArray barr = (jbyteArray)env->CallStaticObjectMethod(reflection_class, stringToBytes, jstr);
     jsize len = env->GetArrayLength(barr);
@@ -1728,7 +1847,7 @@ static std::vector<char> unbox_string_raw(jstring jstr)
     return str;
 }
 
-static PyObject * unbox_string(PyObject *self, PyObject *args)
+static PyObject * jstring_to_python_str(PyObject *self, PyObject *args)
 {
     try
     {
@@ -1738,7 +1857,7 @@ static PyObject * unbox_string(PyObject *self, PyObject *args)
             return NULL;
         }
 
-        std::vector<char> str = unbox_string_raw((jstring)jstr);
+        std::vector<char> str = jstring_to_char_array((jstring)jstr);
         return Py_BuildValue("s#", str.data(), str.size());
     }
     catch(java_exception & e)
@@ -1752,9 +1871,9 @@ static PyObject * unbox_string(PyObject *self, PyObject *args)
     return NULL;
 }
 
-static jclass array_of_class_raw(jclass clazz)
+static jclass jclass_to_array_of_jclass_impl(jclass clazz)
 {
-    GET_ENV();
+    GET_JNI_ENV();
 
     jobjectArray arr = env->NewObjectArray(0, clazz, NULL);
     CHECK_JAVA_EXC(env);
@@ -1764,10 +1883,10 @@ static jclass array_of_class_raw(jclass clazz)
     }
     jclass local_clazz = env->GetObjectClass(arr);
     CHECK_JAVA_EXC(env);
-    return (jclass)make_global_ref(env, local_clazz);
+    return (jclass)make_global_java_ref(env, local_clazz);
 }
 
-static PyObject * array_of_class(PyObject *self, PyObject *args)
+static PyObject * jclass_to_array_of_jclass(PyObject *self, PyObject *args)
 {
     try
     {
@@ -1777,7 +1896,7 @@ static PyObject * array_of_class(PyObject *self, PyObject *args)
             return NULL;
         }
 
-        return Py_BuildValue("k", array_of_class_raw((jclass)ref_lng));
+        return Py_BuildValue("k", jclass_to_array_of_jclass_impl((jclass)ref_lng));
     }
     catch(java_exception & e)
     {
@@ -1790,10 +1909,10 @@ static PyObject * array_of_class(PyObject *self, PyObject *args)
     return NULL;
 }
 
-static jobject create_interface_raw(jlong id, jobjectArray classes)
+static jobject create_java_interface_impl(jlong id, jobjectArray classes)
 {
-    GET_ENV();
-    find_types(env);
+    GET_JNI_ENV();
+    populate_common_java_objects(env);
 
     jobject iface = env->CallStaticObjectMethod(reflection_class, createInterface, id, classes);
     CHECK_JAVA_EXC(env);
@@ -1801,10 +1920,10 @@ static jobject create_interface_raw(jlong id, jobjectArray classes)
     {
         throw jni_exception("failed to create interface");
     }
-    return make_global_ref(env, iface);
+    return make_global_java_ref(env, iface);
 }
 
-static PyObject * create_interface(PyObject *self, PyObject *args)
+static PyObject * create_java_interface(PyObject *self, PyObject *args)
 {
     try
     {
@@ -1815,7 +1934,7 @@ static PyObject * create_interface(PyObject *self, PyObject *args)
             return NULL;
         }
 
-        return Py_BuildValue("k", (unsigned long)create_interface_raw((jlong)id, (jobjectArray)classes));
+        return Py_BuildValue("k", (unsigned long)create_java_interface_impl((jlong)id, (jobjectArray)classes));
     }
     catch(java_exception & e)
     {
@@ -1829,7 +1948,7 @@ static PyObject * create_interface(PyObject *self, PyObject *args)
 }
 
 static PyObject * callback = NULL;
-static PyObject * set_callback(PyObject *self, PyObject *args)
+static PyObject * set_python_callback(PyObject *self, PyObject *args)
 {
     PyObject * temp = NULL;
     if (!PyArg_ParseTuple(args, "O", &temp))
@@ -1848,7 +1967,7 @@ static PyObject * set_callback(PyObject *self, PyObject *args)
     Py_RETURN_NONE;
 }
 
-static PyObject * get_java_arg(PyObject *self, PyObject *args)
+static PyObject * get_java_init_arg(PyObject *self, PyObject *args)
 {
     try
     {
@@ -1857,7 +1976,7 @@ static PyObject * get_java_arg(PyObject *self, PyObject *args)
             PyErr_SetString(PyExc_SystemError, "no java arg available");
             return NULL;
         }
-        GET_ENV();
+        GET_JNI_ENV();
         jobject ref = env->NewGlobalRef(g_java_arg);
         if(ref == NULL)
         {
@@ -1876,7 +1995,7 @@ static PyObject * get_java_arg(PyObject *self, PyObject *args)
     return NULL;
 }
 
-static PyObject * castable(PyObject *self, PyObject *args)
+static PyObject * check_is_jclass_castable(PyObject *self, PyObject *args)
 {
     try
     {
@@ -1887,7 +2006,7 @@ static PyObject * castable(PyObject *self, PyObject *args)
             return NULL;
         }
 
-        GET_ENV();
+        GET_JNI_ENV();
         jboolean ret = env->IsAssignableFrom((jclass)src, (jclass)dest);
         if(ret == JNI_TRUE)
         {
@@ -1913,7 +2032,7 @@ extern "C" JNIEXPORT jobject JNICALL Java_com_appy_Widget_pythonCall(JNIEnv * en
 {
     try
     {
-        find_types(env);
+        populate_common_java_objects(env);
 
         if(callback == NULL)
         {
@@ -1995,8 +2114,17 @@ extern "C" JNIEXPORT jobject JNICALL Java_com_appy_Widget_pythonCall(JNIEnv * en
             return local;
         }
     }
+    catch(java_exception & e)
+    {
+        env->ThrowNew(python_exception_class, e.what());
+    }
+    catch(jni_exception & e)
+    {
+        env->ThrowNew(python_exception_class, e.what());
+    }
     catch(std::exception & e)
     {
+        LOG("exception: %s %s", typeid(e).name(), e.what());
         env->ThrowNew(python_exception_class, e.what());
     }
     catch(...)
@@ -2022,26 +2150,27 @@ static PyObject * logcat_write(PyObject *self, PyObject *args)
 }
 
 static PyMethodDef native_appy_methods[] = {
-        {"act",  act, METH_VARARGS, "Interacts with java"},
-        {"get_method",  get_method, METH_VARARGS, "Finds a java method"},
-        {"get_field",  get_field, METH_VARARGS, "Finds a java field"},
+        {"call_jni_object_functions",  call_jni_object_functions, METH_VARARGS, "Interacts with java objects"},
+        {"get_methodid",  get_methodid, METH_VARARGS, "Finds a java method id"},
+        {"get_fieldid",  get_fieldid, METH_VARARGS, "Finds a java field id"},
         {"find_class",  find_class, METH_VARARGS, "Finds a java class"},
         {"get_object_class",  get_object_class, METH_VARARGS, "Retrieves the object's class"},
-        {"box",  box, METH_VARARGS, "Performs boxing of a value"},
-        {"unbox", unbox, METH_VARARGS, "Performs unboxing of a value"},
-        {"make_value", make_value, METH_VARARGS, "Makes values"},
-        {"array", array, METH_VARARGS, "everything array related"},
-        {"unbox_class", unbox_class, METH_VARARGS, "unbox object class"},
+        {"python_to_packed_java_primitive",  python_to_packed_java_primitive, METH_VARARGS, "Turns a python object into a corresponding java object"},
+        {"packed_java_primitive_to_python", packed_java_primitive_to_python, METH_VARARGS, "Turns a java object into the corresponding python object"},
+        {"python_to_unpacked_jvalue", python_to_unpacked_jvalue, METH_VARARGS, "Turns a python object into a corresponding jvalue"},
+        {"call_jni_array_functions", call_jni_array_functions, METH_VARARGS, "Interacts with java arrays"},
+        {"unpack_primitive_class", unpack_primitive_class, METH_VARARGS, "unpacks a java primitive class to a java type (Integer -> int)"},
         {"delete_global_ref",  delete_global_ref, METH_VARARGS, "Delete a java reference"},
         {"new_global_ref", new_global_ref, METH_VARARGS, "created a new global reference (should be used only on callbacks)"},
-        {"inspect_class",  inspect_class, METH_VARARGS, "inspects a java class"},
-        {"make_string", make_string, METH_VARARGS, "makes jstring from str"},
-        {"unbox_string", unbox_string, METH_VARARGS, "unbox string"},
-        {"array_of_class", array_of_class, METH_VARARGS, "gets the class which is the array of a given class"},
-        {"set_callback", set_callback, METH_VARARGS, "sets callback to be called from java"},
-        {"create_interface", create_interface, METH_VARARGS, "creates interface"},
-        {"get_java_arg", get_java_arg, METH_VARARGS, "gets the arg passed from java"},
-        {"castable", castable, METH_VARARGS, "checks whether an object can be cast into class"},
+        {"inspect_class",  inspect_class, METH_VARARGS, "inspects a java class, returns if its primitive, array, etc"},
+        {"inspect_class_content",  inspect_class_content, METH_VARARGS, "returns a list of all accessible fields, methods and constructors in class"},
+        {"python_str_to_jstring", python_str_to_jstring, METH_VARARGS, "makes jstring from str"},
+        {"jstring_to_python_str", jstring_to_python_str, METH_VARARGS, "makes str from jstring"},
+        {"jclass_to_array_of_jclass", jclass_to_array_of_jclass, METH_VARARGS, "gets the class which is the array of a given class"},
+        {"set_python_callback", set_python_callback, METH_VARARGS, "sets python callback to be called from java"},
+        {"create_java_interface", create_java_interface, METH_VARARGS, "creates java interface that implements given classes"},
+        {"get_java_init_arg", get_java_init_arg, METH_VARARGS, "gets the arg passed from java on init"},
+        {"check_is_jclass_castable", check_is_jclass_castable, METH_VARARGS, "checks whether an object can be cast into class"},
         {"logcat_write", logcat_write, METH_VARARGS, "writes to logcat"},
         {NULL, NULL, 0, NULL}        /* Sentinel */
 };
@@ -2060,7 +2189,8 @@ PyMODINIT_FUNC PyInit_native_appy(void)
     return PyModule_Create(&native_appymodule);
 }
 
-static void preload_libraries(const std::string & dirpath)
+//we do this so that we control the path our libraries are loaded from (for example, get our own libssl)
+static void preload_shared_libraries(const std::string & dirpath)
 {
     std::deque<std::string> unloaded;
     DIR * dir = opendir(dirpath.c_str());
@@ -2087,7 +2217,7 @@ static void preload_libraries(const std::string & dirpath)
         auto it = unloaded.begin();
         while(it != unloaded.end())
         {
-            void * handle = dlopen(it->c_str(), RTLD_LAZY);
+            void * handle = dlopen(it->c_str(), RTLD_LAZY | RTLD_GLOBAL);
             if(handle == NULL)
             {
                 LOG("could not load library: %s (%s)", it->c_str(), dlerror());
@@ -2134,7 +2264,7 @@ extern "C" JNIEXPORT void JNICALL Java_com_appy_Widget_pythonInit(JNIEnv * env, 
 
         LOG("python init");
 
-        find_types(env);
+        populate_common_java_objects(env);
 
         int ret = env->GetJavaVM(&vm);
         if(ret != 0)
@@ -2143,11 +2273,13 @@ extern "C" JNIEXPORT void JNICALL Java_com_appy_Widget_pythonInit(JNIEnv * env, 
             return;
         }
 
-        auto pythonhome = get_string(env, j_pythonhome);
-        auto cachepath = get_string(env, j_cachepath);
-        auto pythonlib = get_string(env, j_pythonlib);
-        auto scriptpath = get_string(env, j_scriptpath);
-        auto nativepath = get_string(env, j_nativepath);
+        auto pythonhome = jstring_to_stdstring(env, j_pythonhome);
+        auto cachepath = jstring_to_stdstring(env, j_cachepath);
+        auto pythonlib = jstring_to_stdstring(env, j_pythonlib);
+        auto scriptpath = jstring_to_stdstring(env, j_scriptpath);
+        auto nativepath = jstring_to_stdstring(env, j_nativepath);
+
+        auto exepath = pythonhome + "/bin/python3";
 
         LOG("setting env");
 
@@ -2158,7 +2290,7 @@ extern "C" JNIEXPORT void JNICALL Java_com_appy_Widget_pythonInit(JNIEnv * env, 
         setenv("NATIVELIBS", nativepath.c_str(), 1);
 
         //LD_LIBRARY_PATH hack
-        preload_libraries(pythonhome + "/lib");
+        preload_shared_libraries(pythonhome + "/lib");
         //--------------------
 
         LOG("registering python module");
@@ -2169,15 +2301,15 @@ extern "C" JNIEXPORT void JNICALL Java_com_appy_Widget_pythonInit(JNIEnv * env, 
             return;
         }
 
-        wchar_t * pythonlib_w = Py_DecodeLocale(pythonlib.c_str(), NULL);
-        if(pythonlib_w == NULL)
+        wchar_t * pythonexe_w = Py_DecodeLocale(exepath.c_str(), NULL);
+        if(pythonexe_w == NULL)
         {
             env->ThrowNew(python_exception_class, "Py_DecodeLocale failed");
             return;
         }
 
         LOG("running python");
-        Py_SetProgramName(pythonlib_w);
+        Py_SetProgramName(pythonexe_w);
         Py_InitializeEx(0);
 
         if(j_arg != NULL)
@@ -2211,7 +2343,24 @@ extern "C" JNIEXPORT void JNICALL Java_com_appy_Widget_pythonInit(JNIEnv * env, 
 
         LOG("executing init script");
 
+        setvbuf(stdout, 0, _IONBF, 0); // make stdout line-buffered
+        setvbuf(stderr, 0, _IONBF, 0); // make stderr unbuffered
+
+        int stds[2];
+        /* create the pipe and redirect stdout and stderr */
+        pipe(stds);
+        dup2(stds[1], STDOUT_FILENO);
+        dup2(stds[1], STDERR_FILENO);
+
         ret = PyRun_SimpleFileExFlags(fh, scriptpath.c_str(), 1, NULL);
+
+        static char buf[256] = {};
+        int readret = 0;
+        while((readret = read(stds[0], buf, sizeof(buf) - 1)) == (sizeof(buf) - 1))
+        {
+            buf[readret] = 0;
+            LOG("%s", buf);
+        }
 
         LOG("done executing init script");
         PyEval_InitThreads();
@@ -2228,15 +2377,21 @@ extern "C" JNIEXPORT void JNICALL Java_com_appy_Widget_pythonInit(JNIEnv * env, 
         LOG("python init done");
         return;
     }
-    catch(std::exception & e)
+    catch(java_exception & e)
     {
         env->ThrowNew(python_exception_class, e.what());
-        return;
+    }
+    catch(jni_exception & e)
+    {
+        env->ThrowNew(python_exception_class, e.what());
+    }
+    catch(std::exception & e)
+    {
+        LOG("exception: %s %s", typeid(e).name(), e.what());
+        env->ThrowNew(python_exception_class, e.what());
     }
     catch(...)
     {
         env->ThrowNew(python_exception_class, "exception was thrown from pythonInit");
-        return;
     }
 }
-

@@ -27,6 +27,7 @@ import java.util.Set;
 import java.util.zip.GZIPInputStream;
 
 import android.app.AlarmManager;
+import android.app.ForegroundServiceStartNotAllowedException;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -38,6 +39,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.content.pm.ServiceInfo;
 import android.graphics.Rect;
 import android.net.Uri;
 import android.os.AsyncTask;
@@ -64,6 +66,7 @@ import android.view.ViewGroup;
 import android.widget.RelativeLayout;
 import android.widget.RemoteViews;
 import android.widget.RemoteViewsService;
+import android.widget.Toast;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -75,7 +78,7 @@ import org.kamranzafar.jtar.TarInputStream;
 public class Widget extends RemoteViewsService
 {
     private final IBinder mBinder = new LocalBinder();
-    public static final int PYTHON_VERSION = 3701;
+    public static final int PYTHON_VERSION = 31210;
     public static final int NOTIFICATION_ID = 100;
 
     WidgetUpdateListener updateListener = null;
@@ -714,7 +717,7 @@ public class Widget extends RemoteViewsService
                 {
                     clickIntent.putExtra(Constants.COLLECTION_ITEM_ID_EXTRA, layout.getId());
                     //request code has to be unique at any given time
-                    remoteView.setPendingIntentTemplate(layout.view_id, PendingIntent.getBroadcast(context, widgetId + ((int)layout.getId() << 10), clickIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE));
+                    remoteView.setPendingIntentTemplate(layout.view_id, PendingIntent.getBroadcast(context, widgetId + ((int)layout.getId() << 10), clickIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE));
 
                     //prepare factory
                     getFactory(context, widgetId, layout.xml_id, layout.view_id, layout.toJSON());
@@ -749,7 +752,7 @@ public class Widget extends RemoteViewsService
                         clickIntent.putExtra(Constants.COLLECTION_ITEM_ID_EXTRA, (long) collectionExtraData[0]);
                         clickIntent.putExtra(Constants.COLLECTION_POSITION_EXTRA, (int) collectionExtraData[1]);
                     }
-                    remoteView.setOnClickPendingIntent(layout.view_id, PendingIntent.getBroadcast(context, widgetId + ((int) layout.getId() << 10), clickIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE));
+                    remoteView.setOnClickPendingIntent(layout.view_id, PendingIntent.getBroadcast(context, widgetId + ((int) layout.getId() << 10), clickIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE));
                 }
             }
 
@@ -1404,6 +1407,22 @@ public class Widget extends RemoteViewsService
         return sharedPref.getBoolean("foreground_service", needForeground());
     }
 
+    public static void startService(Context context, Intent intent)
+    {
+        // this has nothing to do with the actual foregroundness of the service, but startService will fail if needForeground().
+        if(needForeground())
+        {
+            if(getForeground(context))
+            {
+                context.startForegroundService(intent);
+            }
+        }
+        else
+        {
+            context.startService(intent);
+        }
+    }
+
     public void loadForeground()
     {
         boolean foreground = getForeground(this);
@@ -1431,7 +1450,7 @@ public class Widget extends RemoteViewsService
             Intent intent = new Intent(this, MainActivity.class);
             intent.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
             PendingIntent contentIntent = PendingIntent.getActivity(this, 0,
-                    intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+                    intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE);
 
             Notification notification = builder.setContentTitle ("Appy")
                     .setContentText("Appy is running")
@@ -1442,7 +1461,15 @@ public class Widget extends RemoteViewsService
                     .setAutoCancel(false)
                     .setWhen(0)
                     .build();
-            startForeground(NOTIFICATION_ID, notification);
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION);
+                } else {
+                    startForeground(NOTIFICATION_ID, notification);
+                }
+            } catch (RuntimeException e) {
+                Toast.makeText(this, "Could not start Appy because it is lacking permissions.", Toast.LENGTH_LONG);
+            }
         }
         else
         {
@@ -1686,7 +1713,7 @@ public class Widget extends RemoteViewsService
         else
         {
             AlarmManager mgr = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
-            pendingIntent[0] = PendingIntent.getService(getApplicationContext(), 1, timerIntent, PendingIntent.FLAG_CANCEL_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+            pendingIntent[0] = PendingIntent.getService(getApplicationContext(), 1, timerIntent, PendingIntent.FLAG_CANCEL_CURRENT | PendingIntent.FLAG_MUTABLE);
             //clear previous alarm (if we crashed but no reboot)
             mgr.cancel(pendingIntent[0]);
 
@@ -2055,7 +2082,7 @@ public class Widget extends RemoteViewsService
                          public void run()
                          {
                              Intent intent = new Intent(Widget.this, getClass());
-                             PendingIntent pendingIntent = PendingIntent.getService(getApplicationContext(), 1, intent, PendingIntent.FLAG_CANCEL_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+                             PendingIntent pendingIntent = PendingIntent.getService(getApplicationContext(), 1, intent, PendingIntent.FLAG_CANCEL_CURRENT | PendingIntent.FLAG_MUTABLE);
                              AlarmManager mgr = (AlarmManager)getSystemService(Context.ALARM_SERVICE);
                              mgr.set(AlarmManager.RTC, System.currentTimeMillis() + 100, pendingIntent);
                              System.exit(0);
@@ -2405,7 +2432,7 @@ public class Widget extends RemoteViewsService
 
             error = false;
             String pythonHome = new File(getFilesDir(), "python").getAbsolutePath();
-            String pythonLib = new File(pythonHome, "/lib/libpython3.7m.so").getAbsolutePath(); //must be without
+            String pythonLib = new File(pythonHome, "/lib/libpython3.12.so").getAbsolutePath(); //must be without
             String cacheDir = getCacheDir().getAbsolutePath();
             String exampleDir = new File(getFilesDir(), "examples").getAbsolutePath();
             try
@@ -2720,7 +2747,7 @@ public class Widget extends RemoteViewsService
 
                 if(collectionItemId != 0)
                 {
-                    Log.d("APPY", "calling listener onItemClick");
+                    Log.d("APPY", "calling listener onItemClick with "+collectionItemId+", "+collectionPosition+", "+itemId);
                     Object[] ret = updateListener.onItemClick(widgetId, current, collectionItemId, collectionPosition, itemId);
                     boolean handled = (boolean)ret[0];
                     fromItemClick = (String)ret[1];
@@ -3106,6 +3133,7 @@ public class Widget extends RemoteViewsService
                     }
                     else
                     {
+                        Log.d("APPY", "calling event task: item id: " + widgetIntent.hasExtra(Constants.ITEM_ID_EXTRA) + ", collection item id: " + widgetIntent.hasExtra(Constants.COLLECTION_ITEM_ID_EXTRA)+" , collection item position: "+widgetIntent.hasExtra(Constants.COLLECTION_POSITION_EXTRA));
                         addTask(eventWidgetId, new Task<>(new CallEventTask(), (long)eventWidgetId, widgetIntent.getLongExtra(Constants.ITEM_ID_EXTRA, 0), widgetIntent.getLongExtra(Constants.COLLECTION_ITEM_ID_EXTRA, 0), (long)widgetIntent.getIntExtra(Constants.COLLECTION_POSITION_EXTRA, -1)));
                     }
                 }

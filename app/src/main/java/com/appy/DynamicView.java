@@ -32,9 +32,13 @@ public class DynamicView
     private static long genId()
     {
         long id = 0;
-        while(id == 0 || id == -1)
+        while(id == 0)
         {
             id = random.nextLong();
+            if (id < 0)
+            {
+                id = -id;
+            }
         }
         return id;
     }
