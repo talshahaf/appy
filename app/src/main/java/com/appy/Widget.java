@@ -78,6 +78,8 @@ import org.kamranzafar.jtar.TarInputStream;
 public class Widget extends RemoteViewsService
 {
     private final IBinder mBinder = new LocalBinder();
+    private static boolean mIsRunning = false;
+
     public static final int PYTHON_VERSION = 31210;
     public static final int NOTIFICATION_ID = 100;
 
@@ -1459,6 +1461,11 @@ public class Widget extends RemoteViewsService
                 builder = new Notification.Builder(this);
             }
 
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
+            {
+                builder.setForegroundServiceBehavior(Notification.FOREGROUND_SERVICE_IMMEDIATE);
+            }
+
             Intent intent = new Intent(this, MainActivity.class);
             intent.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
             PendingIntent contentIntent = PendingIntent.getActivity(this, 0,
@@ -1473,13 +1480,19 @@ public class Widget extends RemoteViewsService
                     .setAutoCancel(false)
                     .setWhen(0)
                     .build();
-            try {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION);
-                } else {
+            try
+            {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
+                {
+                    startForeground(NOTIFICATION_ID, notification,  ServiceInfo.FOREGROUND_SERVICE_TYPE_MANIFEST);
+                }
+                else
+                {
                     startForeground(NOTIFICATION_ID, notification);
                 }
-            } catch (RuntimeException e) {
+            }
+            catch (RuntimeException e)
+            {
                 Toast.makeText(this, "Could not start Appy because it is lacking permissions.", Toast.LENGTH_LONG);
             }
         }
@@ -1703,7 +1716,7 @@ public class Widget extends RemoteViewsService
                     if (!first)
                     {
                         Log.d("APPY", "short time timer fire");
-                        startService((Intent) args[0]);
+                        Widget.startService(Widget.this, (Intent) args[0]);
                     }
                     first = false;
                     long timer = (long) args[3];
@@ -2900,8 +2913,21 @@ public class Widget extends RemoteViewsService
     @Override
     public int onStartCommand(Intent intent, int flags, int startId)
     {
+        mIsRunning = true;
         handleStartCommand(intent);
         return super.onStartCommand(intent, flags, startId);
+    }
+
+    @Override
+    public void onDestroy()
+    {
+        mIsRunning = false;
+        super.onDestroy();
+    }
+
+    public static boolean isRunning()
+    {
+        return mIsRunning;
     }
 
     public class LocalBinder extends Binder
@@ -2982,7 +3008,7 @@ public class Widget extends RemoteViewsService
 
             loadPythonFiles();
             loadCorrectionFactors(true);
-            loadForeground();
+            //loadForeground();
             loadWidgets();
             loadTimers();
             configurations.load();
@@ -3079,6 +3105,8 @@ public class Widget extends RemoteViewsService
             //not ours
             Thread.setDefaultUncaughtExceptionHandler(new CrashHandler(new File(getCacheDir(), "javacrash.txt").getAbsolutePath(), handler));
         }
+
+        loadForeground();
 
         if(!pythonSetup())
         {
