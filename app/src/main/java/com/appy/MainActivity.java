@@ -64,7 +64,7 @@ public class MainActivity extends AppCompatActivity implements StatusListener
                     @Override
                     public boolean onNavigationItemSelected(@NonNull MenuItem menuItem) {
                         Log.d("APPY", "onNavigationItemSelected");
-                        selectDrawerItem(menuItem);
+                        selectDrawerItem(menuItem, null);
                         return true;
                     }
                 });
@@ -85,10 +85,20 @@ public class MainActivity extends AppCompatActivity implements StatusListener
             }
         });
 
-        startService(new Intent(this, Widget.class));
+        Widget.startService(this, new Intent(this, Widget.class));
         doBindService();
 
-        selectDrawerItem(navView.getMenu().getItem(0));
+        String startingFragment = getIntent().getStringExtra(Constants.FRAGMENT_NAME_EXTRA);
+        int startingFragmentIndex = 0;
+        for (int i = 0; i < navView.getMenu().size(); i++)
+        {
+            if (navView.getMenu().getItem(i).getTitle().toString().equalsIgnoreCase(startingFragment))
+            {
+                startingFragmentIndex = i;
+                break;
+            }
+        }
+        selectDrawerItem(navView.getMenu().getItem(startingFragmentIndex), getIntent().getBundleExtra(Constants.FRAGMENT_ARG_EXTRA));
     }
 
     @Override
@@ -108,7 +118,7 @@ public class MainActivity extends AppCompatActivity implements StatusListener
         super.onActivityResult(requestCode, resultCode, data);
     }
 
-    public void selectDrawerItem(@NonNull MenuItem menuItem)
+    public void selectDrawerItem(@NonNull MenuItem menuItem, Bundle fragmentArg)
     {
         // Create a new fragment and specify the fragment to show based on nav item clicked
         int itemId = menuItem.getItemId();
@@ -140,6 +150,7 @@ public class MainActivity extends AppCompatActivity implements StatusListener
         {
             return;
         }
+        fragment.setArgument(fragmentArg);
 
         MyFragmentInterface prev = (MyFragmentInterface) getSupportFragmentManager().findFragmentByTag(FRAGMENT_TAG);
 
@@ -161,7 +172,7 @@ public class MainActivity extends AppCompatActivity implements StatusListener
             {
                 transaction.addToBackStack(null);
             }
-            transaction.commit();
+            transaction.commitAllowingStateLoss();
             fragment.onShow();
         }
 

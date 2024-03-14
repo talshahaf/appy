@@ -212,7 +212,7 @@ def serialize_arg(arg):
     #gotta go to java
     return json_loads(java.clazz.appy.Serializer().serializeToString(arg))
 
-
+element_event_hooks = {} #global for all
 class Element:
     __slots__ = ('d',)
     def __init__(self, d):
@@ -234,6 +234,9 @@ class Element:
         self.init(state)
 
     def __event__(self, key, **kwargs):
+        event_hook = element_event_hooks.get(self.d.type, {}).get(key)
+        if event_hook:
+            event_hook(kwargs)
         if 'tag' in self.d and key in self.d.tag:
             func, captures = loads(self.d.tag[key])
             return call_function(func, captures, **kwargs)
@@ -268,6 +271,8 @@ class Element:
             return getattr(self.d, item)
         if item in ('style', 'alignment'):
             return getattr(self.d.selectors, item)
+        if item == 'checked':
+            return self.compoundButtonChecked
         if item in ('tag',):
             if 'tag' not in self.d:
                 self.d.tag = {}
@@ -356,7 +361,8 @@ class Element:
             elif validate_remoteviews_method('setDrawableTint'):
                 # android 9+
                 self.drawableTint = (background, value, java.clazz.android.graphics.PorterDuff.Mode().SRC)
-
+        elif key == 'checked':
+            self.compoundButtonChecked = value
         else:
             param_setter, method = get_param_setter(self.d.type, key)
             if param_setter is not None:
@@ -382,6 +388,10 @@ class Element:
         e = cls(dict(type=type))
         [setattr(e, k, v) for k,v in kwargs.items()]
         return e
+
+    @classmethod
+    def set_event_hooks(cls, type, event_hooks):
+        element_event_hooks[type] = event_hooks
 
     def dict(self, do_copy, without_id=None):
         if 'tag' in self.d and 'tag' in self.d.tag and not isinstance(self.d.tag['tag'], str):
@@ -672,12 +682,12 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
         return java.new.java.lang.Object[()]([handled, self.export(input, views)])
 
     @java.override
-    def onClick(self, widget_id, views_str, view_id):
-        print(f'python got on click {widget_id} {view_id}')
+    def onClick(self, widget_id, views_str, view_id, checked):
+        print(f'python got on click {widget_id} {view_id} {checked}')
         input, views = self.import_(views_str)
         v = views.find_id(view_id)
         widget, manager_state = create_widget(widget_id)
-        v.__event__('click', widget=widget, views=views, view=v)
+        v.__event__('click', widget=widget, views=views, view=v, checked=checked)
         return self.export(input, views)
 
     @java.override

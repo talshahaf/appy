@@ -65,7 +65,7 @@ public class StateFragment extends MyFragment
         {
             transaction.addToBackStack(null);
         }
-        transaction.commit();
+        transaction.commitAllowingStateLoss();
     }
 
     public static class WidgetSelectFragment extends MyFragment implements AdapterView.OnItemClickListener

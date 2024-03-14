@@ -315,6 +315,12 @@ public class Widget extends RemoteViewsService
                 "AdapterViewFlipper".equals(type);
     }
 
+    public boolean isCheckableInsteadOfClickable(String type)
+    {
+        return "CheckBox".equals(type) ||
+                "Switch".equals(type);
+    }
+
     public ListFactory getFactory(Context context, int widgetId, int xml, int view, String list)
     {
         Pair<Integer, Integer> key = new Pair<>(widgetId, xml);
@@ -752,7 +758,16 @@ public class Widget extends RemoteViewsService
                         clickIntent.putExtra(Constants.COLLECTION_ITEM_ID_EXTRA, (long) collectionExtraData[0]);
                         clickIntent.putExtra(Constants.COLLECTION_POSITION_EXTRA, (int) collectionExtraData[1]);
                     }
-                    remoteView.setOnClickPendingIntent(layout.view_id, PendingIntent.getBroadcast(context, widgetId + ((int) layout.getId() << 10), clickIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE));
+
+                    PendingIntent pendingIntent = PendingIntent.getBroadcast(context, widgetId + ((int) layout.getId() << 10), clickIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE);
+                    if (isCheckableInsteadOfClickable(layout.type))
+                    {
+                        remoteView.setOnCheckedChangeResponse(layout.view_id, RemoteViews.RemoteResponse.fromPendingIntent(pendingIntent));
+                    }
+                    else
+                    {
+                        remoteView.setOnClickPendingIntent(layout.view_id, pendingIntent);
+                    }
                 }
             }
 
@@ -1410,12 +1425,9 @@ public class Widget extends RemoteViewsService
     public static void startService(Context context, Intent intent)
     {
         // this has nothing to do with the actual foregroundness of the service, but startService will fail if needForeground().
-        if(needForeground())
+        if(needForeground() && getForeground(context))
         {
-            if(getForeground(context))
-            {
-                context.startForegroundService(intent);
-            }
+            context.startForegroundService(intent);
         }
         else
         {
@@ -1691,7 +1703,7 @@ public class Widget extends RemoteViewsService
                     if (!first)
                     {
                         Log.d("APPY", "short time timer fire");
-                        Widget.this.startService((Intent) args[0]);
+                        startService((Intent) args[0]);
                     }
                     first = false;
                     long timer = (long) args[3];
@@ -1713,7 +1725,14 @@ public class Widget extends RemoteViewsService
         else
         {
             AlarmManager mgr = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
-            pendingIntent[0] = PendingIntent.getService(getApplicationContext(), 1, timerIntent, PendingIntent.FLAG_CANCEL_CURRENT | PendingIntent.FLAG_MUTABLE);
+            if(needForeground() && getForeground(getApplicationContext()))
+            {
+                pendingIntent[0] = PendingIntent.getForegroundService(getApplicationContext(), 1, timerIntent, PendingIntent.FLAG_CANCEL_CURRENT | PendingIntent.FLAG_MUTABLE);
+            }
+            else
+            {
+                pendingIntent[0] = PendingIntent.getService(getApplicationContext(), 1, timerIntent, PendingIntent.FLAG_CANCEL_CURRENT | PendingIntent.FLAG_MUTABLE);
+            }
             //clear previous alarm (if we crashed but no reboot)
             mgr.cancel(pendingIntent[0]);
 
@@ -2077,17 +2096,25 @@ public class Widget extends RemoteViewsService
         saveWidgets();
         saveWidgetMapping();
         handler.post(new Runnable()
-                     {
-                         @Override
-                         public void run()
-                         {
-                             Intent intent = new Intent(Widget.this, getClass());
-                             PendingIntent pendingIntent = PendingIntent.getService(getApplicationContext(), 1, intent, PendingIntent.FLAG_CANCEL_CURRENT | PendingIntent.FLAG_MUTABLE);
-                             AlarmManager mgr = (AlarmManager)getSystemService(Context.ALARM_SERVICE);
-                             mgr.set(AlarmManager.RTC, System.currentTimeMillis() + 100, pendingIntent);
-                             System.exit(0);
-                         }
-                     });
+         {
+             @Override
+             public void run()
+             {
+                 Intent intent = new Intent(Widget.this, getClass());
+                 PendingIntent pendingIntent;
+                 if(needForeground() && getForeground(getApplicationContext()))
+                 {
+                     pendingIntent = PendingIntent.getForegroundService(getApplicationContext(), 1, intent, PendingIntent.FLAG_CANCEL_CURRENT | PendingIntent.FLAG_MUTABLE);
+                 }
+                 else
+                 {
+                     pendingIntent = PendingIntent.getService(getApplicationContext(), 1, intent, PendingIntent.FLAG_CANCEL_CURRENT | PendingIntent.FLAG_MUTABLE);
+                 }
+                 AlarmManager mgr = (AlarmManager)getSystemService(Context.ALARM_SERVICE);
+                 mgr.set(AlarmManager.RTC, System.currentTimeMillis() + 100, pendingIntent);
+                 System.exit(0);
+             }
+         });
     }
 
     public void saveState(String state)
@@ -2141,7 +2168,7 @@ public class Widget extends RemoteViewsService
             return newId;
         }
     }
-    HashMap<Integer, Pair<String[], int[]>> activeRequests = new HashMap<>();
+    HashMap<Integer, Object> activeRequests = new HashMap<>();
     final Object notifier = new Object();
 
     public static Pair<int[], Boolean> getPermissionState(Context context, String[] permissions)
@@ -2160,27 +2187,9 @@ public class Widget extends RemoteViewsService
         return new Pair<>(granted, !hasDenied);
     }
 
-    public Pair<String[], int[]> requestPermissions(String[] permissions, boolean request, int timeoutMilli)
+    public Object waitForAsyncReport(int requestCode, int timeoutMilli)
     {
-        Pair<int[], Boolean> state = getPermissionState(this, permissions);
-        if(state.second || !request) //if all was granted or we should not request any, return the current state
-        {
-            return new Pair<>(permissions, state.first);
-        }
-
-        if(Looper.myLooper() != null)
-        {
-            throw new IllegalStateException("requestPermissions must be called on a Task thread");
-        }
-
-        int requestCode = generateRequestCode();
-        Intent intent = new Intent(this, PermissionActivity.class);
-        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_MULTIPLE_TASK);
-        intent.putExtra(PermissionActivity.EXTRA_REQUEST_CODE, requestCode);
-        intent.putExtra(PermissionActivity.EXTRA_PERMISSIONS, permissions);
-        startActivity(intent);
-
-        Pair<String[], int[]> result;
+        Object result = null;
         synchronized (notifier)
         {
             boolean hasTimeout = timeoutMilli >= 0;
@@ -2214,16 +2223,84 @@ public class Widget extends RemoteViewsService
         return result;
     }
 
-    public void reportRequestPermission(int requestCode, String[] permission, int[] granted)
+    public Pair<String[], int[]> requestPermissions(String[] permissions, boolean request, int timeoutMilli)
+    {
+        Pair<int[], Boolean> state = getPermissionState(this, permissions);
+        if(state.second || !request) //if all was granted or we should not request any, return the current state
+        {
+            return new Pair<>(permissions, state.first);
+        }
+
+        if(Looper.myLooper() != null)
+        {
+            throw new IllegalStateException("requestPermissions must be called on a Task thread");
+        }
+
+        int requestCode = generateRequestCode();
+        Intent intent = new Intent(this, PermissionActivity.class);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_MULTIPLE_TASK);
+        intent.putExtra(PermissionActivity.EXTRA_REQUEST_CODE, requestCode);
+        intent.putExtra(PermissionActivity.EXTRA_PERMISSIONS, permissions);
+        startActivity(intent);
+
+        return (Pair<String[], int[]>)waitForAsyncReport(requestCode, timeoutMilli);
+    }
+
+    public void asyncReport(int requestCode, @NonNull Object result)
     {
         synchronized (notifier)
         {
             if(activeRequests.containsKey(requestCode))
             {
-                activeRequests.put(requestCode, new Pair<>(permission, granted));
+                activeRequests.put(requestCode, result);
                 notifier.notify();
             }
         }
+    }
+
+    public void startMainActivity(String fragment, Bundle arg)
+    {
+        Intent intent = new Intent(this, MainActivity.class);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_MULTIPLE_TASK);
+        if (fragment != null)
+        {
+            intent.putExtra(Constants.FRAGMENT_NAME_EXTRA, fragment);
+        }
+        if (arg != null)
+        {
+            intent.putExtra(Constants.FRAGMENT_ARG_EXTRA, arg);
+        }
+        startActivity(intent);
+    }
+
+    public void startConfigFragment(String widget)
+    {
+        Bundle bundle = new Bundle();
+        bundle.putString(Constants.FRAGMENT_ARG_WIDGET, widget);
+        startMainActivity("Configurations", bundle);
+    }
+
+    public boolean requestConfigChange(String widget, String config, int timeoutMilli)
+    {
+        if(Looper.myLooper() != null)
+        {
+            throw new IllegalStateException("requestConfigChange must be called on a Task thread");
+        }
+
+        int requestCode = generateRequestCode();
+        Bundle bundle = new Bundle();
+        bundle.putString(Constants.FRAGMENT_ARG_WIDGET, widget);
+        bundle.putString(Constants.FRAGMENT_ARG_CONFIG, config);
+        bundle.putInt(Constants.FRAGMENT_ARG_REQUESTCODE, requestCode);
+
+        startMainActivity("Configurations", bundle);
+
+        return waitForAsyncReport(requestCode, timeoutMilli) != null;
+    }
+
+    public void reportSetConfig(int requestCode)
+    {
+
     }
 
     public void setWidget(final int androidWidgetId, final int widgetId, final ArrayList<DynamicView> views, final boolean errorOnFailure)
@@ -2481,7 +2558,7 @@ public class Widget extends RemoteViewsService
                 @Override
                 public void run()
                 {
-                startService(new Intent(Widget.this, Widget.class));
+                    Widget.startService(Widget.this, new Intent(Widget.this, Widget.class));
                 }
             });
         }
@@ -2500,7 +2577,7 @@ public class Widget extends RemoteViewsService
         @Override
         public void run(Long... args)
         {
-            callEventWidget(args[0].intValue(), args[1], args[2], args[3].intValue());
+            callEventWidget(args[0].intValue(), args[1], args[2], args[3].intValue(), args[4] != 0);
         }
     }
 
@@ -2727,7 +2804,7 @@ public class Widget extends RemoteViewsService
         return false;
     }
 
-    public void callEventWidget(int eventWidgetId, final long itemId, final long collectionItemId, final int collectionPosition)
+    public void callEventWidget(int eventWidgetId, final long itemId, final long collectionItemId, final int collectionPosition, final boolean checked)
     {
         Log.d("APPY", "got event intent: " + eventWidgetId + " " + itemId);
 
@@ -2747,7 +2824,7 @@ public class Widget extends RemoteViewsService
 
                 if(collectionItemId != 0)
                 {
-                    Log.d("APPY", "calling listener onItemClick with "+collectionItemId+", "+collectionPosition+", "+itemId);
+                    Log.d("APPY", "calling listener onItemClick with "+collectionItemId+", "+collectionPosition+", "+itemId+", "+checked);
                     Object[] ret = updateListener.onItemClick(widgetId, current, collectionItemId, collectionPosition, itemId);
                     boolean handled = (boolean)ret[0];
                     fromItemClick = (String)ret[1];
@@ -2759,7 +2836,7 @@ public class Widget extends RemoteViewsService
                 }
 
                 Log.d("APPY", "calling listener onClick");
-                String newwidget = updateListener.onClick(widgetId, fromItemClick != null ? fromItemClick : current, itemId);
+                String newwidget = updateListener.onClick(widgetId, fromItemClick != null ? fromItemClick : current, itemId, checked);
                 Log.d("APPY", "called listener onClick");
                 if(newwidget != null)
                 {
@@ -3133,8 +3210,8 @@ public class Widget extends RemoteViewsService
                     }
                     else
                     {
-                        Log.d("APPY", "calling event task: item id: " + widgetIntent.hasExtra(Constants.ITEM_ID_EXTRA) + ", collection item id: " + widgetIntent.hasExtra(Constants.COLLECTION_ITEM_ID_EXTRA)+" , collection item position: "+widgetIntent.hasExtra(Constants.COLLECTION_POSITION_EXTRA));
-                        addTask(eventWidgetId, new Task<>(new CallEventTask(), (long)eventWidgetId, widgetIntent.getLongExtra(Constants.ITEM_ID_EXTRA, 0), widgetIntent.getLongExtra(Constants.COLLECTION_ITEM_ID_EXTRA, 0), (long)widgetIntent.getIntExtra(Constants.COLLECTION_POSITION_EXTRA, -1)));
+                        Log.d("APPY", "calling event task: item id: " + widgetIntent.hasExtra(Constants.ITEM_ID_EXTRA) + ", collection item id: " + widgetIntent.hasExtra(Constants.COLLECTION_ITEM_ID_EXTRA)+" , collection item position: "+widgetIntent.hasExtra(Constants.COLLECTION_POSITION_EXTRA)+" checked: "+widgetIntent.getBooleanExtra(RemoteViews.EXTRA_CHECKED, false));
+                        addTask(eventWidgetId, new Task<>(new CallEventTask(), (long)eventWidgetId, widgetIntent.getLongExtra(Constants.ITEM_ID_EXTRA, 0), widgetIntent.getLongExtra(Constants.COLLECTION_ITEM_ID_EXTRA, 0), (long)widgetIntent.getIntExtra(Constants.COLLECTION_POSITION_EXTRA, -1), (long)(widgetIntent.getBooleanExtra(RemoteViews.EXTRA_CHECKED, false) ? 1 : 0)));
                     }
                 }
             }

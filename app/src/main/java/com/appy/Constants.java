@@ -16,6 +16,7 @@ import android.util.Log;
 import android.widget.AdapterViewFlipper;
 import android.widget.AnalogClock;
 import android.widget.Button;
+import android.widget.CheckBox;
 import android.widget.Chronometer;
 import android.widget.FrameLayout;
 import android.widget.GridLayout;
@@ -28,6 +29,7 @@ import android.widget.ProgressBar;
 import android.widget.RelativeLayout;
 import android.widget.RemoteViews;
 import android.widget.StackView;
+import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.ViewFlipper;
 
@@ -50,6 +52,11 @@ public class Constants
     public static final String VIEW_ID_EXTRA = "VIEW_ID_EXTRA";
     public static final String WIDGET_ID_EXTRA = "WIDGET_ID_EXTRA";
     public static final String LOCAL_BIND_EXTRA = "LOCAL_BIND_EXTRA";
+    public static final String FRAGMENT_NAME_EXTRA = "FRAGMENT_NAME_EXTRA";
+    public static final String FRAGMENT_ARG_EXTRA = "FRAGMENT_ARG_EXTRA";
+    public static final String FRAGMENT_ARG_WIDGET = "FRAGMENT_ARG_WIDGET";
+    public static final String FRAGMENT_ARG_CONFIG = "FRAGMENT_ARG_CONFIG";
+    public static final String FRAGMENT_ARG_REQUESTCODE = "FRAGMENT_ARG_REQUESTCODE";
     public static final String DEEP_LINK_BROADCAST = "com.appy.DeepLink";
     public static final int SPECIAL_WIDGET_ID = 100;
     public static final int SPECIAL_WIDGET_RESTART = 1;
@@ -93,10 +100,12 @@ public class Constants
         typeToClass.put("GridLayout", GridLayout.class);
         typeToClass.put("AnalogClock", AnalogClock.class);
         typeToClass.put("Button", Button.class);
+        typeToClass.put("CheckBox", CheckBox.class);
         typeToClass.put("Chronometer", Chronometer.class);
         typeToClass.put("ImageButton", ImageButton.class);
         typeToClass.put("ImageView", ImageView.class);
         typeToClass.put("ProgressBar", ProgressBar.class);
+        typeToClass.put("Switch", Switch.class);
         typeToClass.put("TextView", TextView.class);
         typeToClass.put("ViewFlipper", ViewFlipper.class);
         typeToClass.put("ListView", ListView.class);
@@ -386,6 +395,8 @@ public class Constants
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_dark_oval_pad, "style", "outline_dark_oval_pad"));
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_dark_oval_nopad, "style", "dark_oval_nopad"));
         element_map.get("Button").add(new SelectorElement(R.layout.element_button_style_outline_dark_oval_nopad, "style", "outline_dark_oval_nopad"));
+        element_map.put("CheckBox", new ArrayList<SelectorElement>());
+        element_map.get("CheckBox").add(new SelectorElement(R.layout.element_checkbox, "", ""));
         element_map.put("Chronometer", new ArrayList<SelectorElement>());
         element_map.get("Chronometer").add(new SelectorElement(R.layout.element_chronometer, "", ""));
         element_map.put("ImageButton", new ArrayList<SelectorElement>());
@@ -554,6 +565,8 @@ public class Constants
         element_map.get("ImageView").add(new SelectorElement(R.layout.element_imageview, "", ""));
         element_map.put("ProgressBar", new ArrayList<SelectorElement>());
         element_map.get("ProgressBar").add(new SelectorElement(R.layout.element_progressbar, "", ""));
+        element_map.put("Switch", new ArrayList<SelectorElement>());
+        element_map.get("Switch").add(new SelectorElement(R.layout.element_switch, "", ""));
         element_map.put("TextView", new ArrayList<SelectorElement>());
         element_map.get("TextView").add(new SelectorElement(R.layout.element_textview, "", ""));
         element_map.get("TextView").add(new SelectorElement(R.layout.element_textview_alignment_left, "alignment", "left"));

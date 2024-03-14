@@ -6,6 +6,7 @@ import android.os.Bundle;
 import androidx.fragment.app.FragmentTransaction;
 import androidx.appcompat.app.AlertDialog;
 import android.text.InputType;
+import android.util.Log;
 import android.view.ContextMenu;
 import android.view.Gravity;
 import android.view.LayoutInflater;
@@ -31,16 +32,72 @@ public class ConfigsFragment extends MyFragment
 {
     public static final String FRAGMENT_TAG = "FRAGMENT";
 
+    public Bundle fragmentArg = null;
+
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState)
     {
         View layout = inflater.inflate(R.layout.fragment_configs, container, false);
-        switchTo(new WidgetSelectFragment());
+        onShow();
         return layout;
     }
 
-    public void switchTo(WidgetSelectFragment fragment)
+    public void tryStart()
+    {
+        if (getActivity() == null)
+        {
+            return;
+        }
+        if (getWidgetService() == null)
+        {
+            return;
+        }
+        if (fragmentArg == null)
+        {
+            switchTo(new WidgetSelectFragment(), false);
+            return;
+        }
+
+        String widget = fragmentArg.getString(Constants.FRAGMENT_ARG_WIDGET);
+        HashMap<String, String> configs = getWidgetService().getConfigurations().getValues(widget);
+        if (configs.isEmpty())
+        {
+            switchTo(new WidgetSelectFragment(), true);
+            return;
+        }
+
+        WidgetSelectFragment fragment = new WidgetSelectFragment();
+        fragment.setWidget(widget);
+        String config = fragmentArg.getString(Constants.FRAGMENT_ARG_CONFIG);
+        if (configs.containsKey(config)) {
+            fragment.setConfig(config);
+            fragment.setRequestCode(fragmentArg.getInt(Constants.FRAGMENT_ARG_REQUESTCODE, 0));
+        }
+        switchTo(fragment, true);
+    }
+
+    public void onBound()
+    {
+        tryStart();
+    }
+    public void onShow()
+    {
+        tryStart();
+    }
+
+    public void onHide()
+    {
+        setArgument(null);
+    }
+
+    @Override
+    public void setArgument(Bundle fragmentArg)
+    {
+        this.fragmentArg = fragmentArg;
+    }
+
+    public void switchTo(WidgetSelectFragment fragment, boolean noBackStack)
     {
         fragment.setParent(this);
 
@@ -49,11 +106,19 @@ public class ConfigsFragment extends MyFragment
                 R.animator.slide_in_from_right, R.animator.slide_out_to_left,
                 R.animator.slide_in_from_left, R.animator.slide_out_to_right);
         transaction.replace(R.id.configs_container, fragment, FRAGMENT_TAG);
-        if(getChildFragmentManager().findFragmentByTag(FRAGMENT_TAG) != null)
+        if(getChildFragmentManager().findFragmentByTag(FRAGMENT_TAG) != null && noBackStack)
         {
             transaction.addToBackStack(null);
         }
-        transaction.commit();
+        transaction.commitAllowingStateLoss();
+    }
+
+    public void finishActivity()
+    {
+        if (getActivity() != null)
+        {
+            getActivity().finish();
+        }
     }
 
     public static class WidgetSelectFragment extends MyFragment implements AdapterView.OnItemClickListener
@@ -61,6 +126,8 @@ public class ConfigsFragment extends MyFragment
         ConfigsFragment parent;
         ListView list;
         String widget = null;
+        String config = null;
+        int requestCode = 0;
 
         static class Item
         {
@@ -83,6 +150,7 @@ public class ConfigsFragment extends MyFragment
         public void refresh()
         {
             ArrayList<Item> adapterList = new ArrayList<>();
+            Item selectedConfigItem = null;
             if(widget == null)
             {
                 HashMap<String, Integer> widgets = getWidgetService().getConfigurations().listWidgets();
@@ -96,10 +164,19 @@ public class ConfigsFragment extends MyFragment
                 HashMap<String, String> values = getWidgetService().getConfigurations().getValues(widget);
                 for(Map.Entry<String, String> item : values.entrySet())
                 {
-                    adapterList.add(new Item(item.getKey(), item.getValue()));
+                    Item listitem = new Item(item.getKey(), item.getValue());
+                    if (config != null && item.getKey().equals(config))
+                    {
+                        selectedConfigItem = listitem;
+                    }
+                    adapterList.add(listitem);
                 }
             }
             list.setAdapter(new ItemAdapter(getActivity(), adapterList));
+            if (selectedConfigItem != null)
+            {
+                showEditor(selectedConfigItem, true);
+            }
         }
 
         @Override
@@ -123,12 +200,12 @@ public class ConfigsFragment extends MyFragment
                 //select that widget
                 WidgetSelectFragment fragment = new WidgetSelectFragment();
                 fragment.setWidget(item.key);
-                parent.switchTo(fragment);
+                parent.switchTo(fragment, false);
             }
             else
             {
                 //pop value editor
-                showEditor(item);
+                showEditor(item, false);
             }
         }
 
@@ -146,7 +223,7 @@ public class ConfigsFragment extends MyFragment
             return true;
         }
 
-        public void showEditor(final Item item)
+        public void showEditor(final Item item, final boolean dieAfter)
         {
             AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
             builder.setTitle(widget + "." + item.key);
@@ -168,13 +245,27 @@ public class ConfigsFragment extends MyFragment
 
             builder.setPositiveButton("Ok", null);
 
-            builder.setNegativeButton("Cancel",
-                    new DialogInterface.OnClickListener() {
-                        @Override
-                        public void onClick(DialogInterface dialog, int which) {
-                            dialog.dismiss();
+            final DialogInterface.OnClickListener onDismiss = new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialog, int which) {
+                    if (dieAfter)
+                    {
+                        if (requestCode != 0)
+                        {
+                            getWidgetService().asyncReport(requestCode, item.value);
                         }
-                    });
+                        parent.finishActivity();
+                    }
+                    dialog.dismiss();
+                }
+            };
+            builder.setNegativeButton("Cancel", onDismiss);
+            builder.setOnCancelListener(new DialogInterface.OnCancelListener() {
+                @Override
+                public void onCancel(DialogInterface dialog) {
+                    onDismiss.onClick(dialog, 0);
+                }
+            });
 
             final AlertDialog alert = builder.create();
 
@@ -192,7 +283,18 @@ public class ConfigsFragment extends MyFragment
                             if(isValidJSON(newValue))
                             {
                                 getWidgetService().getConfigurations().setConfig(widget, item.key, newValue);
-                                refresh();
+                                if (dieAfter)
+                                {
+                                    if (requestCode != 0)
+                                    {
+                                        getWidgetService().asyncReport(requestCode, newValue);
+                                    }
+                                    parent.finishActivity();
+                                }
+                                else
+                                {
+                                    refresh();
+                                }
                                 alert.dismiss();
                             }
                             else
@@ -325,6 +427,14 @@ public class ConfigsFragment extends MyFragment
         public void setWidget(String widget)
         {
             this.widget = widget;
+        }
+        public void setConfig(String config)
+        {
+            this.config = config;
+        }
+        public void setRequestCode(int requestCode)
+        {
+            this.requestCode = requestCode;
         }
 
         static class ItemAdapter extends BaseAdapter
