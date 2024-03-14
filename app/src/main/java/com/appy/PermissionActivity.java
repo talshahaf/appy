@@ -73,7 +73,7 @@ public class PermissionActivity extends Activity
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         if(widgetService != null)
         {
-            widgetService.reportRequestPermission(requestCode, permissions, grantResults);
+            widgetService.asyncReport(requestCode, new Pair<>(permissions, grantResults));
         }
         finish();
     }

@@ -1,5 +1,7 @@
 package com.appy;
 
+import android.os.Bundle;
+
 import androidx.fragment.app.Fragment;
 import androidx.preference.PreferenceFragmentCompat;
 
@@ -15,6 +17,7 @@ interface MyFragmentInterface
     Widget getWidgetService();
     void setMenuId(int id);
     int getMenuId();
+    void setArgument(Bundle arg);
 }
 
 abstract class MyFragment extends Fragment implements MyFragmentInterface
@@ -48,6 +51,11 @@ abstract class MyFragment extends Fragment implements MyFragmentInterface
     {
         return menuId;
     }
+
+    public void setArgument(Bundle arg)
+    {
+
+    }
 }
 
 abstract class MySettingsFragment extends PreferenceFragmentCompat implements MyFragmentInterface
@@ -80,5 +88,10 @@ abstract class MySettingsFragment extends PreferenceFragmentCompat implements My
     public int getMenuId()
     {
         return menuId;
+    }
+
+    public void setArgument(Bundle arg)
+    {
+
     }
 }

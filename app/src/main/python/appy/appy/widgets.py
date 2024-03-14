@@ -1,18 +1,27 @@
 from . import java, state, widget_manager, utils, configs
 
-AnalogClock    = lambda *args, **kwargs: widget_manager.Element.create('AnalogClock',    *args, **kwargs)
-Button         = lambda *args, **kwargs: widget_manager.Element.create('Button',         *args, **kwargs)
-Chronometer    = lambda *args, **kwargs: widget_manager.Element.create('Chronometer',    *args, **kwargs)
-ImageButton    = lambda *args, **kwargs: widget_manager.Element.create('ImageButton',    *args, **kwargs)
-ImageView      = lambda *args, **kwargs: widget_manager.Element.create('ImageView',      *args, **kwargs)
-ProgressBar    = lambda *args, **kwargs: widget_manager.Element.create('ProgressBar',    *args, **kwargs)
-TextView       = lambda *args, **kwargs: widget_manager.Element.create('TextView',       *args, **kwargs)
-RelativeLayout = lambda *args, **kwargs: widget_manager.Element.create('RelativeLayout', *args, **kwargs)
+def checkable_click_hook(kwargs):
+    if 'checked' in kwargs:
+        kwargs['view'].checked = kwargs['checked']
 
-ListView           = lambda *args, **kwargs: widget_manager.Element.create('ListView',           *args, **kwargs)
-GridView           = lambda *args, **kwargs: widget_manager.Element.create('GridView',           *args, **kwargs)
-StackView          = lambda *args, **kwargs: widget_manager.Element.create('StackView',          *args, **kwargs)
-AdapterViewFlipper = lambda *args, **kwargs: widget_manager.Element.create('AdapterViewFlipper', *args, **kwargs)
+widget_manager.Element.set_event_hooks('CheckBox', dict(click=checkable_click_hook))
+widget_manager.Element.set_event_hooks('Switch', dict(click=checkable_click_hook))
+
+AnalogClock    = lambda **kwargs: widget_manager.Element.create('AnalogClock',    **kwargs)
+Button         = lambda **kwargs: widget_manager.Element.create('Button',         **kwargs)
+CheckBox       = lambda **kwargs: widget_manager.Element.create('CheckBox',       **kwargs)
+Chronometer    = lambda **kwargs: widget_manager.Element.create('Chronometer',    **kwargs)
+ImageButton    = lambda **kwargs: widget_manager.Element.create('ImageButton',    **kwargs)
+ImageView      = lambda **kwargs: widget_manager.Element.create('ImageView',      **kwargs)
+ProgressBar    = lambda **kwargs: widget_manager.Element.create('ProgressBar',    **kwargs)
+Switch         = lambda **kwargs: widget_manager.Element.create('Switch',         **kwargs)
+TextView       = lambda **kwargs: widget_manager.Element.create('TextView',       **kwargs)
+RelativeLayout = lambda **kwargs: widget_manager.Element.create('RelativeLayout', **kwargs)
+
+ListView           = lambda **kwargs: widget_manager.Element.create('ListView',           **kwargs)
+GridView           = lambda **kwargs: widget_manager.Element.create('GridView',           **kwargs)
+StackView          = lambda **kwargs: widget_manager.Element.create('StackView',          **kwargs)
+AdapterViewFlipper = lambda **kwargs: widget_manager.Element.create('AdapterViewFlipper', **kwargs)
     
 class Widget:
     def __init__(self, widget_id, widget_name):
@@ -97,6 +106,17 @@ class Widget:
     def size(self):
         size_arr = widget_manager.java_context().getWidgetDimensions(self.widget_id)
         return int(size_arr[0]), int(size_arr[1])
+
+    def start_activity(self, screen=None):
+        widget_manager.java_context().startMainActivity(screen, None)
+
+    def start_config_activity(self):
+        widget_manager.java_context().startConfigFragment(self.name)
+
+    def request_config_change(self, config, timeout=None):
+        completed = widget_manager.java_context().requestConfigChange(self.name, config, timeout if timeout is not None else -1)
+        if not completed:
+            raise RuntimeError('timeout')
 
     @staticmethod
     def click_invoker(element_id, views, **kwargs):
