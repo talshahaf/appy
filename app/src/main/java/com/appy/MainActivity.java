@@ -1,10 +1,15 @@
 package com.appy;
 
+import android.Manifest;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.ServiceConnection;
+import android.content.pm.PackageManager;
+import android.os.Build;
 import android.os.IBinder;
 
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import androidx.core.view.GravityCompat;
 import androidx.fragment.app.FragmentTransaction;
 import androidx.annotation.NonNull;
@@ -22,6 +27,8 @@ import android.util.Log;
 import android.util.Pair;
 import android.view.Gravity;
 import android.view.MenuItem;
+import android.widget.Toast;
+
 import java.util.HashMap;
 
 public class MainActivity extends AppCompatActivity implements StatusListener
@@ -31,6 +38,7 @@ public class MainActivity extends AppCompatActivity implements StatusListener
     private NavigationView navView;
     private HashMap<Integer, Pair<Class<?>, Fragment>> fragments = new HashMap<>();
     public static final String FRAGMENT_TAG = "FRAGMENT";
+    public static final int REQUEST_PERMISSION_FOREGROUND = 102;
 
     @Override
     protected void onCreate(Bundle savedInstanceState)
@@ -99,6 +107,56 @@ public class MainActivity extends AppCompatActivity implements StatusListener
             }
         }
         selectDrawerItem(navView.getMenu().getItem(startingFragmentIndex), getIntent().getBundleExtra(Constants.FRAGMENT_ARG_EXTRA));
+        requestForegroundPermissionsIfNeeded();
+    }
+
+    public void foregroundPermissionsResult(boolean granted)
+    {
+        if (!granted)
+        {
+            Toast.makeText(this, "All time location access denied, appy might have trouble running (because android kills it)", Toast.LENGTH_LONG).show();
+        }
+    }
+
+    public static final String[] foregroundPermissions = new String[]{Manifest.permission.ACCESS_BACKGROUND_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION};
+
+    public boolean checkForegroundPermissions()
+    {
+        for (String permission : foregroundPermissions) {
+            if (ContextCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public void requestForegroundPermissionsIfNeeded()
+    {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && !checkForegroundPermissions())
+        {
+            ActivityCompat.requestPermissions(this, foregroundPermissions, REQUEST_PERMISSION_FOREGROUND);
+        }
+        else
+        {
+            foregroundPermissionsResult(true);
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults)
+    {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+
+        boolean allGranted = true;
+        for (int granted : grantResults)
+        {
+            if (granted != PackageManager.PERMISSION_GRANTED)
+            {
+                allGranted = false;
+                break;
+            }
+        }
+        foregroundPermissionsResult(allGranted);
     }
 
     @Override

@@ -20,10 +20,12 @@
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.BACKGROUND_SERVICE" />
     <uses-permission android:name="android.permission.BIND_APPWIDGET"
         tools:ignore="ProtectedPermissions" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
 
     <application
         android:allowBackup="true"
@@ -42,6 +44,7 @@
 
         <activity android:name="com.appy.FileBrowserActivity" android:exported="true"/>
         <activity android:name="com.appy.PermissionActivity" android:theme="@android:style/Theme.Translucent.NoTitleBar" android:exported="true"/>
+        <activity android:name="com.appy.ForegroundActivity" android:theme="@android:style/Theme.Translucent.NoTitleBar" android:exported="true"/>
 
         <receiver
             android:icon="@mipmap/ic_launcher"
@@ -70,7 +73,9 @@
 
         <service android:name="com.appy.Widget"
                  android:permission="android.permission.BIND_REMOTEVIEWS"
-                 android:foregroundServiceType="location"/>
+            android:foregroundServiceType="location"
+            android:stopWithTask="false">
+        </service>
 
         <activity android:name="com.appy.LinkService"
             android:launchMode="singleInstance"
