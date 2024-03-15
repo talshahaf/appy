@@ -317,6 +317,14 @@ public class Widget extends RemoteViewsService
                 "AdapterViewFlipper".equals(type);
     }
 
+    public boolean clickShouldUseViewId(String type)
+    {
+        return "CheckBox".equals(type) ||
+                "Switch".equals(type) ||
+                "Button".equals(type) ||
+                "ImageButton".equals(type);
+    }
+
     public boolean isCheckableInsteadOfClickable(String type)
     {
         return "CheckBox".equals(type) ||
@@ -410,7 +418,19 @@ public class Widget extends RemoteViewsService
                             fillIntent.putExtra(Constants.ITEM_ID_EXTRA, list.children.get(position).get(0).getId());
                         }
                         fillIntent.putExtra(Constants.COLLECTION_POSITION_EXTRA, position);
-                        remoteView.setOnClickFillInIntent(R.id.collection_root, fillIntent);
+
+                        RemoteViews.RemoteResponse responseIntent = RemoteViews.RemoteResponse.fromFillInIntent(fillIntent);
+
+                        int elementId = clickShouldUseViewId(list.children.get(position).get(0).type) ? R.id.e0 : R.id.collection_root;
+
+                        if (isCheckableInsteadOfClickable(list.children.get(position).get(0).type))
+                        {
+                            remoteView.setOnCheckedChangeResponse(elementId, responseIntent);
+                        }
+                        else
+                        {
+                            remoteView.setOnClickResponse(elementId, responseIntent);
+                        }
                         return remoteView;
                     }
                 }
@@ -439,7 +459,7 @@ public class Widget extends RemoteViewsService
         @Override
         public int getViewTypeCount()
         {
-            return getCount();
+            return getCount() * 3;
         }
 
         @Override
@@ -745,30 +765,29 @@ public class Widget extends RemoteViewsService
             {
                 if (!forMeasurement)
                 {
-                    clickIntent.putExtra(Constants.ITEM_ID_EXTRA, layout.getId());
-                    if (layout.tag instanceof Integer)
+                    // Should we check this?
+                    // Doing this gives a warning in logcat, but not doing this might cause some clicks to not register
+                    //if (!inCollection)
                     {
-                        clickIntent.putExtra(Constants.ITEM_TAG_EXTRA, (Integer) layout.tag);
-                    }
-                    else if (layout.tag instanceof Long)
-                    {
-                        clickIntent.putExtra(Constants.ITEM_TAG_EXTRA, (Long) layout.tag);
-                    }
+                        clickIntent.putExtra(Constants.ITEM_ID_EXTRA, layout.getId());
+                        if (layout.tag instanceof Integer) {
+                            clickIntent.putExtra(Constants.ITEM_TAG_EXTRA, (Integer) layout.tag);
+                        } else if (layout.tag instanceof Long) {
+                            clickIntent.putExtra(Constants.ITEM_TAG_EXTRA, (Long) layout.tag);
+                        }
 
-                    if (inCollection)
-                    {
-                        clickIntent.putExtra(Constants.COLLECTION_ITEM_ID_EXTRA, (long) collectionExtraData[0]);
-                        clickIntent.putExtra(Constants.COLLECTION_POSITION_EXTRA, (int) collectionExtraData[1]);
-                    }
+                        if (inCollection) {
+                            clickIntent.putExtra(Constants.COLLECTION_ITEM_ID_EXTRA, (long) collectionExtraData[0]);
+                            clickIntent.putExtra(Constants.COLLECTION_POSITION_EXTRA, (int) collectionExtraData[1]);
+                        }
 
-                    PendingIntent pendingIntent = PendingIntent.getBroadcast(context, widgetId + ((int) layout.getId() << 10), clickIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE);
-                    if (isCheckableInsteadOfClickable(layout.type))
-                    {
-                        remoteView.setOnCheckedChangeResponse(layout.view_id, RemoteViews.RemoteResponse.fromPendingIntent(pendingIntent));
-                    }
-                    else
-                    {
-                        remoteView.setOnClickPendingIntent(layout.view_id, pendingIntent);
+                        PendingIntent pendingIntent = PendingIntent.getBroadcast(context, widgetId + ((int) layout.getId() << 10), clickIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE);
+
+                        if (isCheckableInsteadOfClickable(layout.type)) {
+                            remoteView.setOnCheckedChangeResponse(layout.view_id, RemoteViews.RemoteResponse.fromPendingIntent(pendingIntent));
+                        } else {
+                            remoteView.setOnClickPendingIntent(layout.view_id, pendingIntent);
+                        }
                     }
                 }
             }

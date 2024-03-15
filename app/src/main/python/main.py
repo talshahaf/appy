@@ -3,7 +3,7 @@ faulthandler.enable()
 
 import logcat
 
-import subprocess, os, sys, traceback, time, email, tarfile
+import subprocess, os, sys, traceback, time, email, tarfile, importlib
 
 def tar_version(path):
     with tarfile.open(path) as tar:
@@ -87,13 +87,21 @@ except Exception:
 upgrade = False
 tar = os.path.join(os.environ['TMP'], 'appy.tar.gz')
 try:
-    import appy
-    existing_version = appy.__version__
+    module_spec = importlib.util.find_spec('appy')
+    if not module_spec:
+        raise ImportError('appy is not installed')
+
+    version_file = os.path.join(os.path.dirname(module_spec.origin), '__version__.py')
+    out_locals = {}
+    exec(open(version_file, 'r').read(), {}, out_locals)
+    existing_version = out_locals['__version__']
+
     available_version = tar_version(tar)
     print(f'versions - existing: {existing_version}, available: {available_version}')
     if existing_version != available_version:
         upgrade = True
         raise ImportError('outdated version')
+    import appy
 except Exception as e:
     print('error importing appy: ', traceback.format_exc())
     print('installing appy')
