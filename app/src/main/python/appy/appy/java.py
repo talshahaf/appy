@@ -155,14 +155,14 @@ class Object:
         if '·' in attr:
             attr, hint_str = attr.split('·')
             if hint_str not in ('field', 'method'):
-                raise AttributeError('middle point character hint must be "field" or "method"')
+                raise AttributeError('middle dot character hint must be "field" or "method"')
             hint_is_field = hint_str == 'field'
         
         if hint_is_field is None:
             #if we don't know, search
             has_field, has_method = bridge.has_field_or_method(self.bridge if self.use_static else self.bridge.clazz, attr)
             if has_field and has_method:
-                raise AttributeError(f'class has both field and method named {attr}, please use the middle point character (U+00B7) to specify:\n'+
+                raise AttributeError(f'class has both field and method named {attr}, please use the middle dot character (U+00B7) to specify:\n'+
                                      f'.{attr}·field or .{attr}·method')
             else:
                 hint_is_field = not has_method #if we don't have either, assume field and fail later (to be consistent with hint behaviour)
