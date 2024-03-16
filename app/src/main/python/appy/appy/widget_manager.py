@@ -646,7 +646,8 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
 
     def import_(self, s):
         d = json_loads(s)
-        return d, elist(Element(e) for e in d)
+        d2 = json_loads(s)
+        return d, elist(Element(e) for e in d2)
 
     @java.override
     def onCreate(self, widget_id):

@@ -331,6 +331,16 @@ public class Widget extends RemoteViewsService
                 "Switch".equals(type);
     }
 
+    public boolean allowMethodCallInMeasurement(RemoteMethodCall methodCall)
+    {
+        // setCompoundButtonChecked triggers animation which we cannot do in our measurement thread
+        if (methodCall.getIdentifier().equals("setCompoundButtonChecked"))
+        {
+            return false;
+        }
+        return true;
+    }
+
     public ListFactory getFactory(Context context, int widgetId, int xml, int view, String list)
     {
         Pair<Integer, Integer> key = new Pair<>(widgetId, xml);
@@ -722,7 +732,10 @@ public class Widget extends RemoteViewsService
             for (RemoteMethodCall methodCall : layout.methodCalls)
             {
 //                Log.d("APPY", "calling method "+methodCall.toString());
-                methodCall.call(remoteView, methodCall.isParentCall() ? layout.container_id : layout.view_id);
+                if (!forMeasurement || allowMethodCallInMeasurement(methodCall))
+                {
+                    methodCall.call(remoteView, methodCall.isParentCall() ? layout.container_id : layout.view_id);
+                }
             }
 
             if (forMeasurement)
