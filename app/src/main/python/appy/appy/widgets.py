@@ -15,6 +15,7 @@ ImageButton    = lambda **kwargs: widget_manager.Element.create('ImageButton',  
 ImageView      = lambda **kwargs: widget_manager.Element.create('ImageView',      **kwargs)
 ProgressBar    = lambda **kwargs: widget_manager.Element.create('ProgressBar',    **kwargs)
 Switch         = lambda **kwargs: widget_manager.Element.create('Switch',         **kwargs)
+TextClock      = lambda **kwargs: widget_manager.Element.create('TextClock',      **kwargs)
 TextView       = lambda **kwargs: widget_manager.Element.create('TextView',       **kwargs)
 RelativeLayout = lambda **kwargs: widget_manager.Element.create('RelativeLayout', **kwargs)
 
@@ -141,6 +142,7 @@ class Widget:
     @staticmethod
     def by_name(name):
         return [Widget(widget_id, name) for widget_id in widget_manager.get_widgets_by_name(name)]
+
    
 def file_uri(path):
     return widget_manager.java_context().getUriForPath(path)

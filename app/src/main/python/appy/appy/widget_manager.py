@@ -273,6 +273,11 @@ class Element:
             return getattr(self.d.selectors, item)
         if item == 'checked':
             return self.compoundButtonChecked
+        if self.d.type == 'Chronometer' and item in ('base', 'format', 'started'):
+            try:
+                return self.chronometer[('base', 'format', 'started').index(item)]
+            except AttributeError:
+                raise AttributeError(item)
         if item in ('tag',):
             if 'tag' not in self.d:
                 self.d.tag = {}
@@ -363,6 +368,12 @@ class Element:
                 self.drawableTint = (background, value, java.clazz.android.graphics.PorterDuff.Mode().SRC)
         elif key == 'checked':
             self.compoundButtonChecked = value
+        elif self.d.type == 'Chronometer' and key in ('base', 'format', 'started'):
+            try:
+                old_base, old_format, old_started = self.chronometer
+            except AttributeError:
+                old_base, old_format, old_started = 0, None, False
+            self.chronometer = (value if key == 'base' else old_base, value if key == 'format' else old_format, value if key == 'started' else old_started)
         else:
             param_setter, method = get_param_setter(self.d.type, key)
             if param_setter is not None:
