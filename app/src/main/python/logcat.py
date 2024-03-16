@@ -8,6 +8,8 @@ class LogcatWriter:
     WARN = 5
     ERROR = 6
     FATAL = 7
+
+    MAX_LINE = 100
     
     def __init__(self, lvl, std):
         self.lvl = lvl
@@ -28,6 +30,10 @@ class LogcatWriter:
         self.buf = self.buf + s
         while True:
             i = self.buf.find(b'\n')
+            if i > self.MAX_LINE:
+                i = self.MAX_LINE
+            if i == -1 and len(self.buf) >= self.MAX_LINE:
+                i = self.MAX_LINE
             if i == -1:
                 break
             b = self.buf[:i]
