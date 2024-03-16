@@ -63,6 +63,7 @@ import android.util.Pair;
 import android.util.TypedValue;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Chronometer;
 import android.widget.RelativeLayout;
 import android.widget.RemoteViews;
 import android.widget.RemoteViewsService;
@@ -741,6 +742,10 @@ public class Widget extends RemoteViewsService
             if (forMeasurement)
             {
                 remoteView.setCharSequence(layout.view_id, "setContentDescription", layout.getId() + "");
+                if (layout.type.equals("Chronometer"))
+                {
+                    remoteView.setCharSequence(layout.view_id, "setHint", layout.getId() + "");
+                }
             }
 
             Intent clickIntent = null;
@@ -1078,7 +1083,19 @@ public class Widget extends RemoteViewsService
                 {
                     continue;
                 }
-                DynamicView dynamicView = find(dynamicList, Long.parseLong(view.getContentDescription().toString()));
+
+                long dynamicViewId = -1;
+                //Chronometer overrides getContentDescription, we can't freely set it, we use hint instead (not visible in chronometer?)
+                if (view.getClass() == Chronometer.class)
+                {
+                    dynamicViewId = Long.parseLong(((Chronometer) view).getHint().toString());
+                }
+                else
+                {
+                    dynamicViewId = Long.parseLong(view.getContentDescription().toString());
+                }
+
+                DynamicView dynamicView = find(dynamicList, dynamicViewId);
 
                 double viewWidth = view.getMeasuredWidth();
                 double viewHeight = view.getMeasuredHeight();
@@ -1694,6 +1711,18 @@ public class Widget extends RemoteViewsService
     public void setPost(int widgetId, String data)
     {
         addTask(widgetId, new Task<>(new CallPostTask(), widgetId, data));
+    }
+
+    public void configurationUpdate(String widget, String key)
+    {
+        if (updateListener != null)
+        {
+            int[] widgetIds = updateListener.findWidgetsByMame(widget);
+            for (int widgetId : widgetIds)
+            {
+                addTask(widgetId, new Task<>(new CallConfigTask(), widgetId, key));
+            }
+        }
     }
 
     public long setTimer(long millis, int type, int widgetId, String data)
@@ -2771,6 +2800,27 @@ public class Widget extends RemoteViewsService
             public String call(int widgetId, String current)
             {
                 return updateListener.onPost(widgetId, current, data);
+            }
+        });
+    }
+
+    private class CallConfigTask implements Runner<Object>
+    {
+        @Override
+        public void run(Object... args)
+        {
+            callConfigWidget((int)args[0], (String)args[1]);
+        }
+    }
+
+    public void callConfigWidget(int widgetId, final String key)
+    {
+        callWidgetChangingCallback(widgetId, new CallbackCaller()
+        {
+            @Override
+            public String call(int widgetId, String current)
+            {
+                return updateListener.onConfig(widgetId, current, key);
             }
         });
     }

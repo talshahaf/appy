@@ -40,7 +40,7 @@ def refresh_button_click(widget, views, on_click, id, timer_id=None):
     if btn is not None:
         btn.visibility = java.clazz.android.view.View().INVISIBLE
     widget.post(refresh_button_action, on_click=on_click, id=id, timer=timer_id is not None)
-
+    
 def refresh_button(on_click, name=None, initial_refresh=None, widget=None, timeout=None, interval=None):
     btn = ImageButton(style='dark_oval_pad', adjustViewBounds=True, colorFilter=0xffffffff, width=140, height=140, left=0, bottom=0, imageResource=java.clazz.appy.R.drawable().ic_action_refresh)
     btn.click = (refresh_button_click, dict(on_click=on_click, id=btn.id))
@@ -119,9 +119,13 @@ def updating_list_create(widget, initial_values, on_refresh, background_param, a
         widgets.call_general_function(create_hook, widget=widget, views=views)
     
     return views
+    
+def on_config_change(widget, views):
+    if 'refresh_button' in views:
+        widget.invoke_click(views['refresh_button'])
 
 def updating_list(name, initial_values=None, on_refresh=None, background=None, adapter=None, initial_refresh=None, timeout=None, interval=None, last_update=None, config=None, create_hook=None, update_hook=None):
-    widgets.register_widget(name, (updating_list_create, dict(initial_values=initial_values, on_refresh=on_refresh, background_param=background, adapter=adapter, initial_refresh=initial_refresh, timeout=timeout, interval=interval, last_update=last_update, create_hook=create_hook, update_hook=update_hook)), update=reset_refresh_buttons_if_needed, config=config)
+    widgets.register_widget(name, (updating_list_create, dict(initial_values=initial_values, on_refresh=on_refresh, background_param=background, adapter=adapter, initial_refresh=initial_refresh, timeout=timeout, interval=interval, last_update=last_update, create_hook=create_hook, update_hook=update_hook)), update=reset_refresh_buttons_if_needed, config=config, on_config=on_config_change)
 
 ##############text template############################
 def call_text_adapter(widget, adapter, value, view, **kwargs):
@@ -166,7 +170,7 @@ def updating_text_create(widget, initial_value, on_refresh, background_param, ad
     return views
 
 def updating_text(name, initial_value=None, on_refresh=None, background=None, adapter=None, initial_refresh=None, timeout=None, interval=None, last_update=None, config=None, create_hook=None, update_hook=None):
-    widgets.register_widget(name, (updating_text_create, dict(initial_value=initial_value, on_refresh=on_refresh, background_param=background, adapter=adapter, initial_refresh=initial_refresh, timeout=timeout, interval=interval, last_update=last_update, create_hook=create_hook, update_hook=update_hook)), reset_refresh_buttons_if_needed, config=config)
+    widgets.register_widget(name, (updating_text_create, dict(initial_value=initial_value, on_refresh=on_refresh, background_param=background, adapter=adapter, initial_refresh=initial_refresh, timeout=timeout, interval=interval, last_update=last_update, create_hook=create_hook, update_hook=update_hook)), reset_refresh_buttons_if_needed, config=config, on_config=on_config_change)
 
 #################keyboard###############################
 def key_backspace_click(output):

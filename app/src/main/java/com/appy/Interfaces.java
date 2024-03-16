@@ -26,6 +26,7 @@ interface WidgetUpdateListener
     String onClick(int widgetId, String views, long id, boolean checked);
     String onTimer(long timerId, int widgetId, String views, String data);
     String onPost(int widgetId, String views, String data);
+    String onConfig(int widgetId, String views, String key);
     void wipeStateRequest();
     void importFile(String path, boolean skipRefresh);
     void deimportFile(String path, boolean skipRefresh);
@@ -33,6 +34,7 @@ interface WidgetUpdateListener
     void onError(int widgetId, String error);
     String getStateLayout();
     void cleanState(String scope, String widget, String key);
+    int[] findWidgetsByMame(String name);
 }
 
 interface RunnerListener
