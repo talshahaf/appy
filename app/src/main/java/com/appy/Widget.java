@@ -67,6 +67,8 @@ import android.widget.Chronometer;
 import android.widget.RelativeLayout;
 import android.widget.RemoteViews;
 import android.widget.RemoteViewsService;
+import android.widget.TextClock;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import org.json.JSONException;
@@ -742,7 +744,7 @@ public class Widget extends RemoteViewsService
             if (forMeasurement)
             {
                 remoteView.setCharSequence(layout.view_id, "setContentDescription", layout.getId() + "");
-                if (layout.type.equals("Chronometer"))
+                if (layout.type.equals("Chronometer") || layout.type.equals("TextClock"))
                 {
                     remoteView.setCharSequence(layout.view_id, "setHint", layout.getId() + "");
                 }
@@ -1085,10 +1087,10 @@ public class Widget extends RemoteViewsService
                 }
 
                 long dynamicViewId = -1;
-                //Chronometer overrides getContentDescription, we can't freely set it, we use hint instead (not visible in chronometer?)
-                if (view.getClass() == Chronometer.class)
+                //Chronometer and TextClock override getContentDescription, we can't freely set it, we use hint instead (which should never be visible?)
+                if (view.getClass() == Chronometer.class || view.getClass() == TextClock.class)
                 {
-                    dynamicViewId = Long.parseLong(((Chronometer) view).getHint().toString());
+                    dynamicViewId = Long.parseLong(((TextView) view).getHint().toString());
                 }
                 else
                 {
