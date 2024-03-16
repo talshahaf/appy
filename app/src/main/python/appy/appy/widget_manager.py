@@ -439,6 +439,19 @@ class elist(list):
         except TypeError:
             return self.find_name(item)
 
+    def __contains__(self, item):
+        try:
+            if super().__contains__(item):
+                return True
+        except TypeError:
+            pass
+        try:
+            self.find_name(item)
+            return True
+        except KeyError:
+            pass
+        return False
+
 #children is list of lists
 class ChildrenList(elist):
     def adapt(self, item):
@@ -603,6 +616,15 @@ def widget_manager_update(widget, manager_state, views):
             return views
     return widget_manager_create(widget, manager_state) #maybe present error widget
 
+def widget_manager_config(widget, manager_state, views, key):
+    chosen = manager_state.chosen[widget.widget_id]
+    if chosen is not None and chosen.name is not None and chosen.inited:
+        available_widget = available_widgets[chosen.name]
+        on_config = available_widget['on_config']
+        if on_config:
+            call_general_function(on_config, widget=widget, views=views, key=key)
+    return views
+
 def set_error_to_widget_id(widget_id, error):
     #try to get the last call_function
     func = last_func_for_widget_id.get(widget_id)
@@ -710,6 +732,13 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
         return self.export(input, views)
 
     @java.override
+    def onConfig(self, widget_id, views_str, key):
+        print('config called')
+        input, views = self.import_(views_str)
+        widget, manager_state = create_widget(widget_id)
+        return self.export(input, widget_manager_config(widget, manager_state, views, key))
+
+    @java.override
     def wipeStateRequest(self):
         print('wipe state request called')
         state.wipe_state()
@@ -784,6 +813,12 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
         except KeyError:
             # if can't delete, ignore
             pass
+
+    @java.override
+    def findWidgetsByMame(self, name):
+        widgets = get_widgets_by_name(name)
+        return java.jint[()](widgets)
+
             
 java_widget_manager = None
 
@@ -798,7 +833,7 @@ def init():
 def java_context():
     return java_widget_manager
     
-def register_widget(name, create, update=None, config=None):
+def register_widget(name, create, update=None, config=None, on_config=None):
     path = getattr(__importing_module, 'path', None)
     if path is None:
         raise ValueError('register_widget can only be called on import')
@@ -808,7 +843,8 @@ def register_widget(name, create, update=None, config=None):
 
     dumps(create)
     dumps(update)
+    dumps(on_config)
 
-    available_widgets[name] = dict(pythonfile=path, create=create, update=update)
+    available_widgets[name] = dict(pythonfile=path, create=create, update=update, on_config=on_config)
     if config is not None:
         configs.set_defaults(name, config)

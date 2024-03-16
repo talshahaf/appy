@@ -283,6 +283,7 @@ public class ConfigsFragment extends MyFragment
                             if(isValidJSON(newValue))
                             {
                                 getWidgetService().getConfigurations().setConfig(widget, item.key, newValue);
+                                getWidgetService().configurationUpdate(widget, item.key);
                                 if (dieAfter)
                                 {
                                     if (requestCode != 0)
@@ -371,6 +372,7 @@ public class ConfigsFragment extends MyFragment
                                         {
                                             getWidgetService().getConfigurations().resetWidget(item.key);
                                         }
+                                        getWidgetService().configurationUpdate(item.key, null);
                                     }
                                     else
                                     {
@@ -382,7 +384,9 @@ public class ConfigsFragment extends MyFragment
                                         {
                                             getWidgetService().getConfigurations().resetKey(widget, item.key);
                                         }
+                                        getWidgetService().configurationUpdate(widget, item.key);
                                     }
+
                                     refresh();
                                 }
                             }
