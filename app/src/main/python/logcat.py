@@ -16,6 +16,9 @@ class LogcatWriter:
         self.buf = b''
         self.crash_handler = None
         self.std = std
+
+    def chunksplit(self, s, size):
+        return [s[i : i + size] for i in range(0, len(s), size)]
         
     def write(self, s):
         if self.std is not None:
@@ -28,17 +31,25 @@ class LogcatWriter:
         if isinstance(s, str):
             s = s.encode()
         self.buf = self.buf + s
-        while True:
-            i = self.buf.find(b'\n')
-            if i > self.MAX_LINE:
-                i = self.MAX_LINE
-            if i == -1 and len(self.buf) >= self.MAX_LINE:
-                i = self.MAX_LINE
-            if i == -1:
-                break
-            b = self.buf[:i]
-            native_appy.logcat_write(self.lvl, b'APPY', b)
-            self.buf = self.buf[i + 1:]
+
+        if not self.buf:
+            return
+
+        lines = self.buf.split(b'\n')
+        for line in lines[:-1]:
+            for chunk in self.chunksplit(line, self.MAX_LINE):
+                if chunk:
+                    native_appy.logcat_write(self.lvl, b'APPY', chunk)
+        #last line
+        if lines[-1]:
+            last_chunks = self.chunksplit(lines[-1], self.MAX_LINE)
+            for chunk in last_chunks[:-1]:
+                if chunk:
+                    native_appy.logcat_write(self.lvl, b'APPY', chunk)
+
+            self.buf = last_chunks[-1]
+        else:
+            self.buf = b''
 
     @property
     def fileno(self):

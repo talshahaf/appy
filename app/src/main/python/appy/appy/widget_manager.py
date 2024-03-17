@@ -10,7 +10,7 @@ def gen_id():
 
 def json_dumps(d):
     #c json fucks up because we're not a regular dict, indent=* causes python to use the python implementation
-    return json.dumps(d, indent=2)
+    return json.dumps(d)
 def json_loads(s):
     return json.loads(s)
 
@@ -673,6 +673,7 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
         if not isinstance(output, (list, tuple)):
             output = [output]
         out = [e.dict(do_copy=False) for e in output]
+
         if input is not None and input == out:
             return None
         return json_dumps(out)

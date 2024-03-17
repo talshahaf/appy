@@ -32,35 +32,19 @@ def get_args(f):
 class AttrDict(dict):
     def __init__(self, *args, **kwargs):
         if len(args) == 1 and isinstance(args[0], AttrDict):
-            self.__dict__ = {k:v for k,v in args[0].items()}
+            super().__init__({k:v for k,v in args[0].items()})
         else:
-            self.__dict__ = dict(*args, **kwargs)
+            super().__init__(*args, **kwargs)
 
-    def __iter__(self, *args, **kwargs):
-        return self.__dict__.__iter__(*args, **kwargs)
-    def keys(self, *args, **kwargs):
-        return self.__dict__.keys(*args, **kwargs)
-    def values(self, *args, **kwargs):
-        return self.__dict__.values(*args, **kwargs)
-    def items(self, *args, **kwargs):
-        return self.__dict__.items(*args, **kwargs)
-    def __len__(self, *args, **kwargs):
-        return self.__dict__.__len__(*args, **kwargs)
-    def __str__(self, *args, **kwargs):
-        return self.__dict__.__str__(*args, **kwargs)
-    def __repr__(self, *args, **kwargs):
-        return self.__dict__.__repr__(*args, **kwargs)
-    def __getitem__(self, *args, **kwargs):
-        return self.__dict__.__getitem__(*args, **kwargs)
-    def __setitem__(self, *args, **kwargs):
-        return self.__dict__.__setitem__(*args, **kwargs)
-    def __delitem__(self, *args, **kwargs):
-        return self.__dict__.__delitem__(*args, **kwargs)
-    def __contains__(self, *args, **kwargs):
-        return self.__dict__.__contains__(*args, **kwargs)
-    def __eq__(self, *args, **kwargs):
-        return self.__dict__.__eq__(*args, **kwargs)
-    
+    def __getattr__(self, key):
+        return self.__getitem__(key)
+
+    def __delattr__(self, key):
+        return self.__delitem__(key)
+
+    def __setattr__(self, key, value):
+        return self.__setitem__(key, value)
+
     @classmethod
     def make(cls, d):
         if isinstance(d, AttrDict):

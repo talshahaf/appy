@@ -43,7 +43,7 @@ def getter(d, k):
 
 class State:
     def __init__(self, widget_name, widget_id):
-        self.__dict__['__info__'] = AttrDict(AttrDict(scope_keys=AttrDict(locals=widget_id, nonlocals=widget_name, globals=None), scopes={}))
+        self.__dict__['__info__'] = AttrDict(scope_keys=AttrDict(locals=widget_id, nonlocals=widget_name, globals=None), scopes={})
     
     def __getscope__(self, scope_name, scope_key):
         return global_state[scope_name].setdefault(scope_key, {}) if scope_key is not None else global_state[scope_name]
@@ -53,38 +53,38 @@ class State:
         
     def nonlocals(self, *attrs):
         for attr in attrs:
-            self.__info__.scopes[attr] = 'nonlocals'
+            self.__info__['scopes'][attr] = 'nonlocals'
         
     def globals(self, *attrs):
         for attr in attrs:
-            self.__info__.scopes[attr] = 'globals'
+            self.__info__['scopes'][attr] = 'globals'
         
     def locals(self, *attrs):
         for attr in attrs:
-            self.__info__.scopes[attr] = 'locals'
+            self.__info__['scopes'][attr] = 'locals'
 
     def __getattr__(self, attr):
-        scope = self.__info__.scopes.get(attr, 'locals')
+        scope = self.__info__['scopes'].get(attr, 'locals')
         
         if scope is None or scope == 'locals':
-            v, found = self.__act__(getter, 'locals', self.__info__.scope_keys.locals, attr)
+            v, found = self.__act__(getter, 'locals', self.__info__['scope_keys']['locals'], attr)
             if found:
                 return v
         if scope is None or scope == 'nonlocals':
-            v, found = self.__act__(getter, 'nonlocals', self.__info__.scope_keys.nonlocals, attr)
+            v, found = self.__act__(getter, 'nonlocals', self.__info__['scope_keys']['nonlocals'], attr)
             if found:
                 return v
         if scope is None or scope == 'globals':
-            v, found = self.__act__(getter, 'globals', self.__info__.scope_keys.globals, attr)
+            v, found = self.__act__(getter, 'globals', self.__info__['scope_keys']['globals'], attr)
             if found:
                 return v
         raise AttributeError(attr)
 
     def __changeattr__(self, attr, **kwargs):
-        if attr in self.__info__.scopes:
-            self.__act__(setter, self.__info__.scopes[attr], self.__info__.scope_keys[self.__info__.scopes[attr]], attr, **kwargs)
+        if attr in self.__info__['scopes']:
+            self.__act__(setter, self.__info__['scopes'][attr], self.__info__['scope_keys'][self.__info__['scopes'][attr]], attr, **kwargs)
         else:
-            self.__act__(setter, 'locals', self.__info__.scope_keys.locals, attr, **kwargs)
+            self.__act__(setter, 'locals', self.__info__['scope_keys']['locals'], attr, **kwargs)
         
     def __setattr__(self, attr, value):
         self.__changeattr__(attr, value=value)
@@ -103,9 +103,9 @@ class State:
         
     def __dir__(self):
         return list(
-                        set(self.__getscope__('locals', self.__info__.scope_keys.locals).keys()) |
-                        set(self.__getscope__('nonlocals', self.__info__.scope_keys.nonlocals).keys()) |
-                        set(self.__getscope__('globals', self.__info__.scope_keys.globals).keys())
+                        set(self.__getscope__('locals', self.__info__['scope_keys']['locals']).keys()) |
+                        set(self.__getscope__('nonlocals', self.__info__['scope_keys']['nonlocals']).keys()) |
+                        set(self.__getscope__('globals', self.__info__['scope_keys']['globals']).keys())
                     )
 
     def __contains__(self, attr):
