@@ -161,6 +161,10 @@ public class FilesFragment extends MyFragment implements FileGridAdapter.ItemAct
 
     public void onPythonFileStatusChange()
     {
+        if(getActivity() == null)
+        {
+            return;
+        }
         if(getWidgetService() == null)
         {
             return;

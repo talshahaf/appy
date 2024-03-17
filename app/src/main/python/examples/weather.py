@@ -47,6 +47,10 @@ def on_refresh(widget, views):
         views['img'].imageURI = widgets.file_uri(widgets.download_resource(WEATHER_ICONS.format(code=icon_code)))
     except OSError:
         print('error fetching information')
+
+# Refresh on lat/lon change        
+def on_config(widget, views):
+    on_refresh(widget, views)
     
 def create(widget):
     bg = background()
@@ -62,4 +66,4 @@ def create(widget):
     return [bg, img, temp_text, location_text, refresh]
     
 # no custom update callback is needed, just recover refresh button on error,    location is configurable in configurations tab
-register_widget('weather', create, reset_refresh_buttons_if_needed, config=dict(lat=32.08, lon=34.78))
+register_widget('weather', create, reset_refresh_buttons_if_needed, config=dict(lat=32.08, lon=34.78), on_config=on_config)
