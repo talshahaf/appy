@@ -228,7 +228,7 @@ def ping_click(widget):
     if widget.config.true_for_html_false_for_notification:
         display_page(widget.widget_id, str(widget.state.counter + 1))
     else:
-        notification_permission = 'android.permission.POST_NOTIFICATIONS'
+        notification_permission = 'POST_NOTIFICATIONS'
         if notification_permission not in request_permissions(notification_permission)[0]:
             print('no perms')
             return None
