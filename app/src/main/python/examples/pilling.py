@@ -15,7 +15,7 @@ def make_image(rays):
     ray_end = 200
     text_color_options = ((255, 255, 255), (255, 255, 0), (255, 0, 255), (0, 255, 255), (255, 0, 0), (0, 255, 0), (0, 0, 255))
     text_color = random.choice(text_color_options)
-    text_x, text_y = 0, 100
+    text_x, text_y = 0, 130
     
     # RESOURCE_CACHE_DIR is the preferred directory for resources (used by ui elements or external apps)
     image_path = os.path.join(RESOURCE_CACHE_DIR, 'happy.png')
