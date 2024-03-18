@@ -1,5 +1,5 @@
-import json, functools, copy, traceback, inspect, threading, os, collections, importlib.util, sys, hashlib, struct, re
-from .utils import AttrDict, dumps, loads, cap, get_args, prepare_image_cache_dir
+import json, functools, copy, traceback, inspect, threading, os, collections, importlib.util, sys, hashlib, struct, re, time
+from .utils import AttrDict, dumps, loads, cap, get_args, prepare_image_cache_dir, timeit
 from . import widgets, java, state, configs
 
 def gen_id():
@@ -228,7 +228,7 @@ class Element:
             self.d.children = ChildrenList()
 
     def __getstate__(self):
-        return self.dict(do_copy=False)
+        return self.dict(do_copy=True)
 
     def __setstate__(self, state):
         self.init(state)
@@ -415,7 +415,7 @@ class Element:
         return Element(self.dict(do_copy=True, without_id=True))
 
     def __repr__(self):
-        return repr(self.dict(do_copy=False))
+        return repr(self.dict(do_copy=True))
 
 class elist(list):
     @classmethod
@@ -667,15 +667,16 @@ def refresh_managers():
 
 class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
     def export(self, input, output):
-        state.save() #flushing changes
+        #TODO save state
         if not output:
             return None
         if not isinstance(output, (list, tuple)):
             output = [output]
-        out = [e.dict(do_copy=False) for e in output]
 
+        out = [e.dict(do_copy=True) for e in output]
         if input is not None and input == out:
             return None
+
         return json_dumps(out)
 
     def import_(self, s):
@@ -830,6 +831,10 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
     def findWidgetsByMame(self, name):
         widgets = get_widgets_by_name(name)
         return java.jint[()](widgets)
+
+    @java.override
+    def dumpState(self):
+        return state.dumps_state()
 
             
 java_widget_manager = None

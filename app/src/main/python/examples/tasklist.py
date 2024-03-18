@@ -1,4 +1,4 @@
-from appy.widgets import register_widget, RelativeLayout, ImageButton, ImageView, ListView, CheckBox
+from appy.widgets import register_widget, ImageView, ListView, CheckBox
 from appy.templates import background
 from appy import java
 
@@ -20,10 +20,12 @@ def update_list(widget, views):
     # Parse list configuration and make it CheckBoxes
     for item in widget.config.list.split(','):
         text = item.strip()
-        children.append(CheckBox(text=text, textColor=0xb3ffffff, 
-                                buttonTintList=java.clazz.android.content.res.ColorStateList().valueOf(0xb3ffffff), 
-                                textSize=20, 
-                                checked=widget.state.get(text, False), 
+        checked = widget.state.get(text, False)
+        children.append(CheckBox(text=text, textColor=0xb3ffffff,
+                                buttonTintList=java.clazz.android.content.res.ColorStateList().valueOf(0xb3ffffff),
+                                textSize=20,
+                                paintFlags=strikethrough_flags if checked else normal_flags,
+                                checked=checked,
                                 click=on_check))
     views['list'].children = children
 
