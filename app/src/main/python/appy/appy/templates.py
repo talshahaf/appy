@@ -186,7 +186,7 @@ def key_click(widget, views, output_id, key=None, handler=None):
 keyboard_english = ['qwertyuiop',
                     'asdfghjkl',
                     list('zxcvbnm') + [dict(label='←', handler=key_backspace_click)],
-                    [dict(label='space', key=' ', width=600, height=150)]]
+                    [dict(label='space', key=' ', width=600, height=80)]]
 
 def keyboard(widget, layout=None):
     if layout is None:
@@ -196,10 +196,10 @@ def keyboard(widget, layout=None):
         resolved_line = []
         for key_dict in line:
             if isinstance(key_dict, dict):
-                key_dict.setdefault('width', 150)
-                key_dict.setdefault('height', 150)
+                key_dict.setdefault('width', 80)
+                key_dict.setdefault('height', 80)
             else:
-                key_dict = dict(label=key_dict, width=150, height=150)
+                key_dict = dict(label=key_dict, width=80, height=80)
             resolved_line.append((key_dict, resolved_line[-1][1] + resolved_line[-1][0]['width'] if resolved_line else 0))
 
         resolved_layout.append((resolved_line, resolved_line[-1][1] + resolved_line[-1][0]['width'], max(x[0]['height'] for x in resolved_line), resolved_layout[-1][3] + resolved_layout[-1][2] if resolved_layout else 0))

@@ -1,4 +1,4 @@
-import pprint, copy
+import pprint, copy, time
 from . import java
 from .utils import AttrDict, dumps, loads
 
@@ -28,8 +28,11 @@ def safe_copy(d):
             pass
     return out
 
+def dumps_state():
+    return dumps(AttrDict({k: safe_copy(v) for k,v in global_state.items()}))
+
 def save():
-    java_widget_manager.saveState(dumps(AttrDict({k: safe_copy(v) for k,v in global_state.items()})))
+    java_widget_manager.saveState(dumps_state())
 
 def setter(d, k, value=None, delete=None):
     if delete:

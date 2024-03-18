@@ -1,5 +1,5 @@
 import time, datetime
-from appy.widgets import register_widget, RelativeLayout, Button, Chronometer, AnalogClock
+from appy.widgets import register_widget, Chronometer
 from appy.templates import background
 from appy import java
 

@@ -1,5 +1,5 @@
 import os
-from appy.widgets import register_widget, RelativeLayout, TextView, Button, java_context, file_uri, Widget, request_permissions
+from appy.widgets import register_widget, TextView, Button, java_context, file_uri, Widget, request_permissions
 from appy.utils import RESOURCE_CACHE_DIR
 from appy.templates import background
 from appy import java

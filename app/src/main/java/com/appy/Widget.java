@@ -432,17 +432,24 @@ public class Widget extends RemoteViewsService
                         }
                         fillIntent.putExtra(Constants.COLLECTION_POSITION_EXTRA, position);
 
-                        RemoteViews.RemoteResponse responseIntent = RemoteViews.RemoteResponse.fromFillInIntent(fillIntent);
-
                         int elementId = clickShouldUseViewId(list.children.get(position).get(0).type) ? R.id.e0 : R.id.collection_root;
 
-                        if (isCheckableInsteadOfClickable(list.children.get(position).get(0).type))
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
                         {
-                            remoteView.setOnCheckedChangeResponse(elementId, responseIntent);
+                            RemoteViews.RemoteResponse responseIntent = RemoteViews.RemoteResponse.fromFillInIntent(fillIntent);
+
+                            if (isCheckableInsteadOfClickable(list.children.get(position).get(0).type))
+                            {
+                                remoteView.setOnCheckedChangeResponse(elementId, responseIntent);
+                            }
+                            else
+                            {
+                                remoteView.setOnClickResponse(elementId, responseIntent);
+                            }
                         }
                         else
                         {
-                            remoteView.setOnClickResponse(elementId, responseIntent);
+                            remoteView.setOnClickFillInIntent(elementId, fillIntent);
                         }
                         return remoteView;
                     }
@@ -803,7 +810,7 @@ public class Widget extends RemoteViewsService
 
                         PendingIntent pendingIntent = PendingIntent.getBroadcast(context, widgetId + ((int) layout.getId() << 10), clickIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE);
 
-                        if (isCheckableInsteadOfClickable(layout.type)) {
+                        if (isCheckableInsteadOfClickable(layout.type) && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                             remoteView.setOnCheckedChangeResponse(layout.view_id, RemoteViews.RemoteResponse.fromPendingIntent(pendingIntent));
                         } else {
                             remoteView.setOnClickPendingIntent(layout.view_id, pendingIntent);

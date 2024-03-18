@@ -35,6 +35,7 @@ interface WidgetUpdateListener
     String getStateLayout();
     void cleanState(String scope, String widget, String key);
     int[] findWidgetsByMame(String name);
+    String dumpState();
 }
 
 interface RunnerListener

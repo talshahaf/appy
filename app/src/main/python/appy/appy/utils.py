@@ -37,13 +37,23 @@ class AttrDict(dict):
             super().__init__(*args, **kwargs)
 
     def __getattr__(self, key):
-        return self.__getitem__(key)
+        try:
+            return self.__getitem__(key)
+        except KeyError as e:
+            raise AttributeError from e
 
     def __delattr__(self, key):
-        return self.__delitem__(key)
+        try:
+            return self.__delitem__(key)
+        except KeyError as e:
+            raise AttributeError from e
 
     def __setattr__(self, key, value):
-        return self.__setitem__(key, value)
+        try:
+            return self.__setitem__(key, value)
+        except KeyError as e:
+            raise AttributeError from e
+
 
     @classmethod
     def make(cls, d):
