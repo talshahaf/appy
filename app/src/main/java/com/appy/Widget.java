@@ -1,4 +1,5 @@
 package com.appy;
+
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
@@ -10,10 +11,8 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.lang.reflect.Array;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
@@ -27,12 +26,10 @@ import java.util.Set;
 import java.util.zip.GZIPInputStream;
 
 import android.app.AlarmManager;
-import android.app.ForegroundServiceStartNotAllowedException;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
-import android.appwidget.AppWidgetHostView;
 import android.appwidget.AppWidgetManager;
 import android.content.ComponentName;
 import android.content.Context;
@@ -40,7 +37,6 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.content.pm.ServiceInfo;
-import android.graphics.Rect;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Binder;
@@ -1165,12 +1161,14 @@ public class Widget extends RemoteViewsService
                     dynamicView.attributes.attributes.get(Attributes.Type.RIGHT).resolvedValue.intValue());
             Pair<Integer, Integer> ver = new Pair<>(dynamicView.attributes.attributes.get(Attributes.Type.TOP).resolvedValue.intValue(),
                     dynamicView.attributes.attributes.get(Attributes.Type.BOTTOM).resolvedValue.intValue());
+            Pair<Integer, Integer> dims = new Pair<>(dynamicView.attributes.attributes.get(Attributes.Type.WIDTH).resolvedValue.intValue(),
+                    dynamicView.attributes.attributes.get(Attributes.Type.HEIGHT).resolvedValue.intValue());
 
             // saving each collection view size in it so that collection children will know their parent's size
             if(collectionLayout == Constants.CollectionLayout.NOT_COLLECTION)
             {
-                dynamicView.actualWidth = dynamicView.attributes.attributes.get(Attributes.Type.WIDTH).resolvedValue.intValue();
-                dynamicView.actualHeight = dynamicView.attributes.attributes.get(Attributes.Type.HEIGHT).resolvedValue.intValue();
+                dynamicView.actualWidth = dims.first;
+                dynamicView.actualHeight = dims.second;
             }
 
 //            Log.d("APPY", "resolved attributes: ");
@@ -1180,11 +1178,29 @@ public class Widget extends RemoteViewsService
 //            }
 //            Log.d("APPY", "selected pad for "+dynamicView.getId()+" "+dynamicView.type+": left:"+hor.first+", right:"+hor.second+", top:"+ver.first+", bottom:"+ver.second);
 
-            dynamicView.methodCalls.add(new RemoteMethodCall("setViewPadding", true, "setViewPadding",
-                    hor.first,
-                    ver.first,
-                    hor.second,
-                    ver.second));
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
+            {
+                //We can finally set width/height!
+
+                dynamicView.methodCalls.add(new RemoteMethodCall("setViewLayoutWidth", true,
+                                            "setViewLayoutWidth", hor.first + dims.first, TypedValue.COMPLEX_UNIT_PX));
+                dynamicView.methodCalls.add(new RemoteMethodCall("setViewLayoutHeight", true,
+                                            "setViewLayoutHeight", ver.first + dims.second, TypedValue.COMPLEX_UNIT_PX));
+                dynamicView.methodCalls.add(new RemoteMethodCall("setViewPadding", true, "setViewPadding",
+                        hor.first,
+                        ver.first,
+                        0,
+                        0));
+            }
+            else
+            {
+                //Old method sucks
+                dynamicView.methodCalls.add(new RemoteMethodCall("setViewPadding", true, "setViewPadding",
+                        hor.first,
+                        ver.first,
+                        hor.second,
+                        ver.second));
+            }
         }
 
         Pair<RemoteViews, HashSet<Integer>> views = generate(context, widgetId, dynamicList, false, collectionLayout, collectionExtras);
@@ -1732,6 +1748,11 @@ public class Widget extends RemoteViewsService
                 addTask(widgetId, new Task<>(new CallConfigTask(), widgetId, key));
             }
         }
+    }
+
+    public void deferredStateDump()
+    {
+        addTask(Constants.IMPORT_TASK_QUEUE, new Task<>(new StateDumpTask()));
     }
 
     public long setTimer(long millis, int type, int widgetId, String data)
@@ -2822,6 +2843,25 @@ public class Widget extends RemoteViewsService
         }
     }
 
+    private class StateDumpTask implements Runner<Object>
+    {
+        @Override
+        public void run(Object... args)
+        {
+            callStateDump();
+        }
+    }
+
+    public void callStateDump()
+    {
+        if (updateListener != null)
+        {
+            String state = updateListener.dumpState();
+            // Log.d("APPY", "dumping state: "+state.length()+" bytes");
+            saveState(state);
+        }
+    }
+
     public void callConfigWidget(int widgetId, final String key)
     {
         callWidgetChangingCallback(widgetId, new CallbackCaller()
@@ -2903,6 +2943,10 @@ public class Widget extends RemoteViewsService
             Log.d("APPY", "error in caller");
             setSpecificErrorWidget(androidWidgetId, widgetId, e);
             return true;
+        }
+        finally
+        {
+            deferredStateDump();
         }
 
         return false;
