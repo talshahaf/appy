@@ -3,6 +3,7 @@ package com.appy;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.util.Log;
 
 public class BroadcastInterfaceBridge extends BroadcastReceiver
 {
@@ -23,7 +24,7 @@ public class BroadcastInterfaceBridge extends BroadcastReceiver
         }
         catch(Exception e)
         {
-            e.printStackTrace();
+            Log.e("APPY", "Exception on onReceive", e);
         }
     }
 }

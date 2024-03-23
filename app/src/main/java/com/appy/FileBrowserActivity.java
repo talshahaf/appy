@@ -88,7 +88,8 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
         {
             permissions = new String[] {Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE};
         } else {
-            permissions = new String[] {Manifest.permission.READ_MEDIA_AUDIO, Manifest.permission.READ_MEDIA_VIDEO, Manifest.permission.READ_MEDIA_IMAGES};
+            permissions = new String[] {};
+            //Manifest.permission.READ_MEDIA_AUDIO, Manifest.permission.READ_MEDIA_VIDEO, Manifest.permission.READ_MEDIA_IMAGES};
         }
 
         boolean all = true;

@@ -198,7 +198,7 @@ public class MainActivity extends AppCompatActivity implements StatusListener
             }
             catch (Exception e)
             {
-                e.printStackTrace();
+                Log.e("APPY", "Exception on selectDrawerItem", e);
             }
 
             fragments.put(itemId, new Pair<Class<?>, Fragment>(cls.first, (Fragment)fragment));
