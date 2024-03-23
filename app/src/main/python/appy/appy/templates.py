@@ -1,5 +1,5 @@
 import datetime
-from .widgets import ListView, TextView, Button, ImageButton, RelativeLayout
+from .widgets import ListView, TextView, Button, ImageButton, RelativeLayout, background
 from . import java, widgets, widget_manager
 
 ##############refresh button##############################
@@ -57,29 +57,6 @@ def refresh_button(on_click, name=None, initial_refresh=None, widget=None, timeo
     if timeout:
         widget.set_timeout(timeout, widget.click_invoker, element_id=btn.id)
     return btn
-
-##################background####################################
-def background(name=None, color=None, drawable=None):
-    if isinstance(color, dict):
-        color = widgets.color(**color)
-    elif isinstance(color, (list, tuple)):
-        color = widgets.color(*color)
-    elif isinstance(color, int):
-        color = color
-    else:
-        color = widgets.color(r=0, g=0, b=0, a=100)
-
-    if drawable is None:
-        drawable = java.clazz.appy.R.drawable().rounded_rect
-        
-    if isinstance(drawable, str):
-        drawable = getattr(java.clazz.appy.R.drawable(), drawable)
-
-    bg = RelativeLayout(width=widget_manager.widget_dims.width, height=widget_manager.widget_dims.height, backgroundResource=drawable)
-    bg.backgroundTint = color
-    if name is not None:
-        bg.name = name
-    return bg
 
 ##############list template###############################
 def call_list_adapter(widget, adapter, value, **kwargs):

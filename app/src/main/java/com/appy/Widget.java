@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.zip.GZIPInputStream;
 
 import android.app.AlarmManager;
@@ -49,6 +50,7 @@ import android.os.Looper;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.annotation.RequiresApi;
 import androidx.core.content.ContextCompat;
 import androidx.preference.PreferenceManager;
 import android.system.ErrnoException;
@@ -102,7 +104,7 @@ public class Widget extends RemoteViewsService
     float widthCorrectionFactor = 1.0f;
     float heightCorrectionFactor = 1.0f;
     Configurations configurations = new Configurations(this);
-    MultipleFileObserver pythonFilesObserver = null;
+    MultipleFileObserverBase pythonFilesObserver = null;
 
     static class WidgetDestroyedException extends RuntimeException
     {
@@ -453,14 +455,14 @@ public class Widget extends RemoteViewsService
             }
             catch(Exception e)
             {
-                e.printStackTrace();
+                Log.e("APPY", "Exception on ListFactory", e);
                 try
                 {
                     setSpecificErrorWidget(getAndroidWidget(widgetId), widgetId, e);
                 }
                 catch(WidgetDestroyedException e2)
                 {
-                    e2.printStackTrace();
+                    Log.e("APPY", "Exception on ListFactory", e2);
                 }
             }
             return new RemoteViews(context.getPackageName(), R.layout.root);
@@ -1395,7 +1397,7 @@ public class Widget extends RemoteViewsService
         }
         catch (Exception e)
         {
-            e.printStackTrace();
+            Log.e("APPY", "Exception on loadWidgets", e);
         }
     }
 
@@ -1474,7 +1476,7 @@ public class Widget extends RemoteViewsService
         }
         catch(Exception e)
         {
-            e.printStackTrace();
+            Log.e("APPY", "Exception on loadCorrectionFactors", e);
         }
 
         widthCorrectionFactor = widthCorrection;
@@ -1874,7 +1876,7 @@ public class Widget extends RemoteViewsService
         }
         catch (Exception e)
         {
-            e.printStackTrace();
+            Log.e("APPY", "Exception on loadTimers", e);
         }
     }
 
@@ -1898,15 +1900,66 @@ public class Widget extends RemoteViewsService
         }
     }
 
-    public abstract class MultipleFileObserver
+    public interface MultipleFileObserverBase {
+        void start();
+        void stop();
+    }
+
+    public abstract class MultipleFileObserver extends FileObserver implements MultipleFileObserverBase
+    {
+        List<PythonFile> pythonFiles;
+        @RequiresApi(api = Build.VERSION_CODES.Q)
+        public MultipleFileObserver(List<PythonFile> pythonFiles, int mask)
+        {
+            super(pythonFiles.stream().map(pythonFile -> {
+                return new File(pythonFile.path).getParentFile();
+            }).collect(Collectors.toList()), mask);
+
+            this.pythonFiles = new ArrayList<>(pythonFiles);
+        }
+
+        public void start()
+        {
+            startWatching();
+        }
+
+        public void stop()
+        {
+            stopWatching();
+        }
+
+        @Override
+        public void onEvent(final int event, @Nullable final String path)
+        {
+            handler.postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    Log.d("APPY", "got base inotify: "+path+" "+event);
+                    for (PythonFile file : pythonFiles)
+                    {
+                        if (new File(file.path).getName().equals(path))
+                        {
+                            onEvent(event, file);
+                        }
+                    }
+                }
+            }, 100);
+        }
+
+        public abstract void onEvent(int event, PythonFile file);
+    }
+
+    public abstract class OldMultipleFileObserver implements MultipleFileObserverBase
     {
         class SingleFileObserver extends FileObserver
         {
             PythonFile file;
             int mask;
-            MultipleFileObserver parent;
+            OldMultipleFileObserver parent;
             int index;
-            public SingleFileObserver(@NonNull PythonFile file, int mask, MultipleFileObserver parent, int index) {
+
+            public SingleFileObserver(@NonNull PythonFile file, int mask, OldMultipleFileObserver parent, int index)
+            {
                 super(file.path, mask);
                 this.file = file;
                 this.mask = mask;
@@ -1914,51 +1967,46 @@ public class Widget extends RemoteViewsService
                 this.index = index;
             }
 
+
             @Override
-            public void onEvent(int event, @Nullable String path) {
+            public void onEvent(int event, @Nullable String path)
+            {
                 this.parent.onSingleEvent(event, index);
             }
         }
 
         ArrayList<SingleFileObserver> observers = new ArrayList<>();
 
-        public MultipleFileObserver(List<PythonFile> files, int mask)
-        {
-            for (PythonFile file : files)
-            {
+        public OldMultipleFileObserver(List<PythonFile> files, int mask) {
+            for (PythonFile file : files) {
                 observers.add(new SingleFileObserver(file, mask, this, observers.size()));
             }
         }
 
-        public void start()
-        {
-            for (SingleFileObserver observer : observers)
-            {
+        public void start() {
+            for (SingleFileObserver observer : observers) {
                 observer.startWatching();
             }
         }
 
-        public void stop()
-        {
-            for (SingleFileObserver observer : observers)
-            {
+        public void stop() {
+            for (SingleFileObserver observer : observers) {
                 observer.stopWatching();
             }
         }
 
-        public void onSingleEvent(int event, int index)
-        {
+        public void onSingleEvent(int event, int index) {
             handler.postDelayed(new Runnable() {
                 @Override
                 public void run() {
                     //update observer
                     SingleFileObserver ob = observers.get(index);
                     ob.stopWatching();
-                    SingleFileObserver newob = new SingleFileObserver(ob.file, ob.mask, MultipleFileObserver.this, index);
+                    SingleFileObserver newob = new SingleFileObserver(ob.file, ob.mask, OldMultipleFileObserver.this, index);
                     observers.set(index, newob);
                     newob.startWatching();
 
-                    Log.d("APPY", "new watch on "+index+" "+newob.file.path+" "+newob.mask);
+                    Log.d("APPY", "new watch on " + index + " " + newob.file.path + " " + newob.mask);
 
                     onEvent(event, newob.file);
                 }
@@ -1976,14 +2024,37 @@ public class Widget extends RemoteViewsService
             pythonFilesObserver.stop();
         }
 
-        pythonFilesObserver = new MultipleFileObserver(pythonFiles, FileObserver.CLOSE_WRITE) {
-            @Override
-            public void onEvent(int event, PythonFile file) {
-                Log.d("APPY", "inotify event: "+file.path);
 
-                onPythonFileModified(file);
-            }
-        };
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
+        {
+            pythonFilesObserver = new MultipleFileObserver(pythonFiles, FileObserver.CLOSE_WRITE)
+            {
+                @Override
+                public void onEvent(int event, PythonFile file)
+                {
+                    if (file != null)
+                    {
+                        Log.d("APPY", "inotify event: " + file.path);
+                        onPythonFileModified(file);
+                    }
+                }
+            };
+        }
+        else
+        {
+            pythonFilesObserver = new OldMultipleFileObserver(pythonFiles, FileObserver.CLOSE_WRITE)
+            {
+                @Override
+                public void onEvent(int event, PythonFile file)
+                {
+                    if (file != null)
+                    {
+                        Log.d("APPY", "inotify event: " + file.path);
+                        onPythonFileModified(file);
+                    }
+                }
+            };
+        }
 
         pythonFilesObserver.start();
     }
@@ -2012,7 +2083,7 @@ public class Widget extends RemoteViewsService
         }
         catch (Exception e)
         {
-            e.printStackTrace();
+            Log.e("APPY", "Exception on loadPythonFiles", e);
         }
 
         updateObserver();
@@ -2431,7 +2502,7 @@ public class Widget extends RemoteViewsService
                 }
                 catch(Exception e)
                 {
-                    e.printStackTrace();
+                    Log.e("APPY", "Exception on setWidget", e);
                     if(errorOnFailure)
                     {
                         setSpecificErrorWidget(androidWidgetId, widgetId, e);
@@ -2481,7 +2552,7 @@ public class Widget extends RemoteViewsService
             }
             catch(Exception e)
             {
-                e.printStackTrace();
+                Log.e("APPY", "Exception on onError", e);
             }
         }
 
@@ -2649,7 +2720,7 @@ public class Widget extends RemoteViewsService
             }
             catch(Exception e)
             {
-                Log.e("APPY", "exception", e);
+                Log.e("APPY", "Exception on pythonSetup", e);
                 error = true;
             }
             return null;
@@ -2771,7 +2842,7 @@ public class Widget extends RemoteViewsService
             catch(Exception e)
             {
                 setPythonFileLastError(file, Stacktrace.stackTraceString(e));
-                e.printStackTrace();
+                Log.e("APPY", "Exception on import task", e);
             }
 
             if(file.state == PythonFile.State.RUNNING)
@@ -2939,8 +3010,7 @@ public class Widget extends RemoteViewsService
         }
         catch (Exception e)
         {
-            e.printStackTrace();
-            Log.d("APPY", "error in caller");
+            Log.e("APPY", "Exception in python", e);
             setSpecificErrorWidget(androidWidgetId, widgetId, e);
             return true;
         }
@@ -3207,7 +3277,7 @@ public class Widget extends RemoteViewsService
             }
             catch (IOException e1)
             {
-                e1.printStackTrace();
+                Log.e("APPY", "Exception on uncaught exception", e1);
             }
             finally
             {
@@ -3426,7 +3496,7 @@ public class Widget extends RemoteViewsService
         }
         catch (IOException e)
         {
-            e.printStackTrace();
+            Log.e("APPY", "Exception on printAll", e);
         }
     }
 
@@ -3541,8 +3611,7 @@ public class Widget extends RemoteViewsService
             tis.close();
         }
         catch(IOException e) {
-            e.printStackTrace();
-            Log.e("APPY", "tar exception: "+e);
+            Log.e("APPY", "tar exception", e);
         }
     }
 

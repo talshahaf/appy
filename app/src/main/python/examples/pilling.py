@@ -29,7 +29,7 @@ def make_image(rays):
     
     # Rays
     for i in range(0, rays):
-        angle = i * 2*math.pi/rays
+        angle = i * 2*math.pi/rays + math.pi / rays
         draw.line((w / 2 + ray_start * math.cos(angle) + sun_x,
                     h / 2 + ray_start * math.sin(angle) + sun_y,
                     w / 2 + ray_end * math.cos(angle) + sun_x,

@@ -1,5 +1,7 @@
 package com.appy;
 
+import android.util.Log;
+
 import java.util.ArrayList;
 
 public class Stacktrace
@@ -34,7 +36,7 @@ public class Stacktrace
         }
         catch(Exception e)
         {
-            e.printStackTrace();
+            Log.e("APPY", "Exception while handling exception", e);
             return "Exception while handling exception.";
         }
     }

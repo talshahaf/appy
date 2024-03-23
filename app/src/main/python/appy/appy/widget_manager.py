@@ -587,6 +587,15 @@ def choose_widget(widget, name):
     widget.set_loading()
     widget.invalidate()
 
+def debug_button_click(widget):
+    print('debug button click')
+    manager_state = create_manager_state()
+    if widget.widget_id in manager_state.chosen:
+        chosen = manager_state.chosen[widget.widget_id]
+        chosen.inited = False
+        widget.invalidate()
+
+
 def widget_manager_create(widget, manager_state):
     print('widget_manager_create')
     widget.cancel_all_timers()
@@ -615,11 +624,18 @@ def widget_manager_update(widget, manager_state, views):
     chosen = manager_state.chosen[widget.widget_id]
     if chosen is not None and chosen.name is not None:
         available_widget = available_widgets[chosen.name]
-        on_create, on_update = available_widget['create'], available_widget['update']
+        on_create, on_update, debug = available_widget['create'], available_widget['update'], available_widget['debug']
         if not chosen.inited:
             chosen.inited = True
             if on_create:
-                return call_general_function(on_create, widget=widget)
+                elements = call_general_function(on_create, widget=widget)
+                if debug:
+                    debug_button = widgets.Button(click=debug_button_click, backgroundTint=0xffff0000, style='success_oval_nopad', width=40, height=40, top=10, right=10)
+                    if isinstance(elements, list):
+                        elements.append(debug_button)
+                    elif isinstance(elements, tuple):
+                        elements = elements + (debug_button,)
+                return elements
             return None
         else:
             if on_update:
@@ -850,7 +866,7 @@ def init():
 def java_context():
     return java_widget_manager
     
-def register_widget(name, create, update=None, config=None, on_config=None):
+def register_widget(name, create, update=None, config=None, on_config=None, debug=False):
     path = getattr(__importing_module, 'path', None)
     if path is None:
         raise ValueError('register_widget can only be called on import')
@@ -862,6 +878,6 @@ def register_widget(name, create, update=None, config=None, on_config=None):
     dumps(update)
     dumps(on_config)
 
-    available_widgets[name] = dict(pythonfile=path, create=create, update=update, on_config=on_config)
+    available_widgets[name] = dict(pythonfile=path, create=create, update=update, on_config=on_config, debug=bool(debug))
     if config is not None:
         configs.set_defaults(name, config)

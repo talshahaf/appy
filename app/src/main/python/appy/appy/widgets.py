@@ -173,6 +173,31 @@ def restart():
     print('restarting')
     widget_manager.java_context().restart()
 
+def color_(**kwargs):
+    return color(**kwargs)
+    
+def background(name=None, color=None, drawable=None):
+    if isinstance(color, dict):
+        color = color_(**color)
+    elif isinstance(color, (list, tuple)):
+        color = color_(*color)
+    elif isinstance(color, int):
+        color = color
+    else:
+        color = color_(r=0, g=0, b=0, a=100)
+
+    if drawable is None:
+        drawable = java.clazz.appy.R.drawable().rounded_rect
+
+    if isinstance(drawable, str):
+        drawable = getattr(java.clazz.appy.R.drawable(), drawable)
+
+    bg = RelativeLayout(width=widget_manager.widget_dims.width, height=widget_manager.widget_dims.height, backgroundResource=drawable)
+    bg.backgroundTint = color
+    if name is not None:
+        bg.name = name
+    return bg
+
 from .widget_manager import register_widget, java_context, elist, call_general_function, AttributeFunction
 from .utils import download_resource, copy_resource
 from .state import wipe_state

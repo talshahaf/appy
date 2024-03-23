@@ -1,5 +1,7 @@
 package com.appy;
 
+import android.util.Log;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
@@ -57,7 +59,7 @@ public class Runner implements Runnable
             }
             catch (Exception e)
             {
-                e.printStackTrace();
+                Log.e("APPY", "Exception on kill", e);
             }
         }
     }
@@ -85,7 +87,7 @@ public class Runner implements Runnable
             }
             catch (IOException e)
             {
-                e.printStackTrace();
+                Log.e("APPY", "Exception on writeToStdin", e);
             }
         }
     }
@@ -229,7 +231,7 @@ public class Runner implements Runnable
                         }
                         catch (InterruptedException e)
                         {
-                            e.printStackTrace();
+                            Log.e("APPY", "Sleep interrupted", e);
                         }
                     }
                 }
@@ -237,7 +239,7 @@ public class Runner implements Runnable
         }
         catch (IOException e)
         {
-            e.printStackTrace();
+            Log.e("APPY", "Exception on run", e);
         }
         finally
         {
