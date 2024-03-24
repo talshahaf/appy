@@ -173,15 +173,18 @@ def restart():
     print('restarting')
     widget_manager.java_context().restart()
 
-def background(name=None, colour=None, drawable=None):
-    if isinstance(colour, dict):
-        colour = color(**colour)
-    elif isinstance(colour, (list, tuple)):
-        colour = color(*colour)
-    elif isinstance(colour, int):
-        colour = colour
+def color_(**kwargs):
+    return color(**kwargs)
+    
+def background(name=None, color=None, drawable=None):
+    if isinstance(color, dict):
+        color = color_(**color)
+    elif isinstance(color, (list, tuple)):
+        color = color_(*color)
+    elif isinstance(color, int):
+        color = color
     else:
-        colour = color(r=0, g=0, b=0, a=100)
+        color = color_(r=0, g=0, b=0, a=100)
 
     if drawable is None:
         drawable = java.clazz.appy.R.drawable().rounded_rect
@@ -190,7 +193,7 @@ def background(name=None, colour=None, drawable=None):
         drawable = getattr(java.clazz.appy.R.drawable(), drawable)
 
     bg = RelativeLayout(width=widget_manager.widget_dims.width, height=widget_manager.widget_dims.height, backgroundResource=drawable)
-    bg.backgroundTint = colour
+    bg.backgroundTint = color
     if name is not None:
         bg.name = name
     return bg
