@@ -1,7 +1,6 @@
 import math, os, random
 from PIL import Image, ImageDraw, ImageFont
-from appy.utils import cache_dir
-from appy.widgets import register_widget, file_uri, ImageView, Button
+from appy.widgets import register_widget, file_uri, cache_dir, ImageView, Button
 
 # make our png, with the number of sunrays as an argument
 def make_image(rays):
