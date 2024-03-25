@@ -1,6 +1,6 @@
 import os
 from appy.widgets import register_widget, TextView, Button, java_context, file_uri, Widget, request_permissions
-from appy.utils import RESOURCE_CACHE_DIR
+from appy.utils import cache_dir
 from appy.templates import background
 from appy import java
 
@@ -27,8 +27,8 @@ deeplink_template = '''intent://#Intent;
             S.widgetId={widget_id};
             end'''.replace('\n', '').replace('\r', '').replace('\t', '').replace(' ', '')
 
-# RESOURCE_CACHE_DIR is the preferred directory for resources (used by ui elements or external apps)
-html_path_template = os.path.join(RESOURCE_CACHE_DIR, 'pong_{widget_id}.html')
+# cache_dir() is the preferred directory for resources (used by ui elements or external apps)
+html_path_template = os.path.join(cache_dir(), 'pong_{widget_id}.html')
 html_template = '''<!doctype html>
 <html>
 <head>

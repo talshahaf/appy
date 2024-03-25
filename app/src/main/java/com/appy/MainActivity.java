@@ -15,6 +15,8 @@ import androidx.fragment.app.FragmentTransaction;
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
 import android.content.Intent;
+
+import com.google.android.material.internal.ManufacturerUtils;
 import com.google.android.material.navigation.NavigationView;
 import androidx.fragment.app.FragmentManager;
 import androidx.appcompat.app.ActionBar;
@@ -38,7 +40,6 @@ public class MainActivity extends AppCompatActivity implements StatusListener
     private NavigationView navView;
     private HashMap<Integer, Pair<Class<?>, Fragment>> fragments = new HashMap<>();
     public static final String FRAGMENT_TAG = "FRAGMENT";
-    public static final int REQUEST_PERMISSION_FOREGROUND = 102;
 
     @Override
     protected void onCreate(Bundle savedInstanceState)
@@ -107,10 +108,10 @@ public class MainActivity extends AppCompatActivity implements StatusListener
             }
         }
         selectDrawerItem(navView.getMenu().getItem(startingFragmentIndex), getIntent().getBundleExtra(Constants.FRAGMENT_ARG_EXTRA));
-        requestForegroundPermissionsIfNeeded();
+        requestPermissionsIfNeeded();
     }
 
-    public void foregroundPermissionsResult(boolean granted)
+    public void permissionsResult(boolean granted)
     {
         if (!granted)
         {
@@ -118,27 +119,45 @@ public class MainActivity extends AppCompatActivity implements StatusListener
         }
     }
 
-    public static final String[] foregroundPermissions = new String[]{Manifest.permission.ACCESS_BACKGROUND_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION};
+    public static final String[][] permissionsSteps = new String[][]{
+            new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
+            (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q ? new String[]{Manifest.permission.ACCESS_BACKGROUND_LOCATION} : new String[]{})
+    };
 
-    public boolean checkForegroundPermissions()
+    public static final int[] REQUEST_PERMISSION_STEPS = new int[] {102, 103};
+
+    public static final String[] permission_ask_message = new String[]{"Appy needs all time location access to not get killed", ""};
+
+    public int checkPermissions()
     {
-        for (String permission : foregroundPermissions) {
-            if (ContextCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED) {
-                return false;
+        for (int i = 0; i < permissionsSteps.length; i++)
+        {
+            for (String permission : permissionsSteps[i])
+            {
+                if (ContextCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED)
+                {
+                    return i; //step i needs asking
+                }
             }
         }
-        return true;
+        return -1;
     }
 
-    public void requestForegroundPermissionsIfNeeded()
+    public void requestPermissionsIfNeeded()
     {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && !checkForegroundPermissions())
+        int neededStep = checkPermissions();
+        if (neededStep != -1)
         {
-            ActivityCompat.requestPermissions(this, foregroundPermissions, REQUEST_PERMISSION_FOREGROUND);
+            Log.d("APPY", "Requesting location permissions step" + neededStep);
+            if (!permission_ask_message[neededStep].isEmpty())
+            {
+                Toast.makeText(this, permission_ask_message[neededStep], Toast.LENGTH_SHORT).show();
+            }
+            ActivityCompat.requestPermissions(this, permissionsSteps[neededStep], REQUEST_PERMISSION_STEPS[neededStep]);
         }
         else
         {
-            foregroundPermissionsResult(true);
+            permissionsResult(true);
         }
     }
 
@@ -156,7 +175,16 @@ public class MainActivity extends AppCompatActivity implements StatusListener
                 break;
             }
         }
-        foregroundPermissionsResult(allGranted);
+
+        if (!allGranted)
+        {
+            permissionsResult(false);
+        }
+        else
+        {
+            //next step
+            requestPermissionsIfNeeded();
+        }
     }
 
     @Override

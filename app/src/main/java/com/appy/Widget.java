@@ -770,7 +770,7 @@ public class Widget extends RemoteViewsService
                 {
                     clickIntent.putExtra(Constants.COLLECTION_ITEM_ID_EXTRA, layout.getId());
                     //request code has to be unique at any given time
-                    remoteView.setPendingIntentTemplate(layout.view_id, PendingIntent.getBroadcast(context, widgetId + ((int)layout.getId() << 10), clickIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE));
+                    remoteView.setPendingIntentTemplate(layout.view_id, PendingIntent.getBroadcast(context, widgetId + ((int)layout.getId() << 10), clickIntent, PendingIntent.FLAG_CANCEL_CURRENT | PendingIntent.FLAG_MUTABLE));
 
                     //prepare factory
                     getFactory(context, widgetId, layout.xml_id, layout.view_id, layout.toJSON());
@@ -806,7 +806,7 @@ public class Widget extends RemoteViewsService
                             clickIntent.putExtra(Constants.COLLECTION_POSITION_EXTRA, (int) collectionExtraData[1]);
                         }
 
-                        PendingIntent pendingIntent = PendingIntent.getBroadcast(context, widgetId + ((int) layout.getId() << 10), clickIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE);
+                        PendingIntent pendingIntent = PendingIntent.getBroadcast(context, widgetId + ((int) layout.getId() << 10), clickIntent, PendingIntent.FLAG_CANCEL_CURRENT | PendingIntent.FLAG_MUTABLE);
 
                         if (isCheckableInsteadOfClickable(layout.type) && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                             remoteView.setOnCheckedChangeResponse(layout.view_id, RemoteViews.RemoteResponse.fromPendingIntent(pendingIntent));

@@ -48,7 +48,7 @@ public class StateLayout
 
     public String getValue(List<String> keyPath, String key)
     {
-        return getValue(keyPath.size() > 0 ? keyPath.get(0) : null,
+        return getValue(keyPath.get(0),
                 keyPath.size() > 1 ? keyPath.get(1) : null,
                 keyPath.size() > 2 ? keyPath.get(2) : null,
                 key);
@@ -56,7 +56,7 @@ public class StateLayout
 
     public Set<String> listDict(List<String> keyPath)
     {
-        return listDict(keyPath.size() > 0 ? keyPath.get(0) : null, keyPath.size() > 1 ? keyPath.get(1) : null, keyPath.size() > 2 ? keyPath.get(2) : null);
+        return listDict(keyPath.get(0), keyPath.size() > 1 ? keyPath.get(1) : null, keyPath.size() > 2 ? keyPath.get(2) : null);
     }
 
     public Set<String> listDict(String scope, String widget, String widgetId)
@@ -83,7 +83,12 @@ public class StateLayout
             }
             else
             {
-                return nonlocals.get(widget).keySet();
+                HashMap<String, String> map = nonlocals.get(widget);
+                if (map == null)
+                {
+                    return new HashSet<>();
+                }
+                return map.keySet();
             }
         }
 
@@ -95,11 +100,26 @@ public class StateLayout
             }
             else if(widgetId == null)
             {
-                return locals.get(widget).keySet();
+                HashMap<String, HashMap<String, String>> map = locals.get(widget);
+                if (map == null)
+                {
+                    return new HashSet<>();
+                }
+                return map.keySet();
             }
             else
             {
-                return locals.get(widget).get(widgetId).keySet();
+                HashMap<String, HashMap<String, String>> map1 = locals.get(widget);
+                if (map1 == null)
+                {
+                    return new HashSet<>();
+                }
+                HashMap<String, String> map2 = map1.get(widgetId);
+                if (map2 == null)
+                {
+                    return new HashSet<>();
+                }
+                return map2.keySet();
             }
         }
 

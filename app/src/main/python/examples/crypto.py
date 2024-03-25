@@ -14,7 +14,14 @@ def api_request(url):
     return json.loads(requests.get(url, timeout=60, headers={'X-CMC_PRO_API_KEY': API_KEY}).text)
 
 def coin_list():
-    return {coin['symbol']: dict(id=coin['id'], name=coin['name'], symbol=coin['symbol']) for coin in api_request(COIN_LIST)['data']}
+    coins = {}
+    for coin in api_request(COIN_LIST)['data']:
+        value = dict(id=coin['id'], name=coin['name'], symbol=coin['symbol'])
+        # take lowest id on duplicate
+        if coin['symbol'] not in coins or coins[value['symbol']]['id'] > value['id']:
+            coins[value['symbol']] = value
+        
+    return coins
         
 def coin_value(id, currency):
     data = api_request(SPECIFIC.format(id=id, currency=currency))['data'][str(id)]['quote'][currency]
