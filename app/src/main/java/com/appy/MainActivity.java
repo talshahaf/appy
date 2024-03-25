@@ -55,7 +55,6 @@ public class MainActivity extends AppCompatActivity implements StatusListener
         fragments.put(R.id.navigation_state, new Pair<Class<?>, Fragment>(StateFragment.class, null));
         fragments.put(R.id.navigation_crash, new Pair<Class<?>, Fragment>(CrashFragment.class, null));
         fragments.put(R.id.navigation_settings, new Pair<Class<?>, Fragment>(SettingsFragment.class, null));
-        fragments.put(R.id.navigation_app, new Pair<Class<?>, Fragment>(AppFragment.class, null));
 
         // Set a Toolbar to replace the ActionBar.
         toolbar = findViewById(R.id.toolbar);

@@ -33,9 +33,5 @@
             android:id="@+id/navigation_settings"
             android:title="Settings"
         />
-        <item
-            android:id="@+id/navigation_app"
-            android:title="App"
-        />
     </group>
 </menu>
