@@ -82,6 +82,17 @@ public class FilesFragment extends MyFragment implements FileGridAdapter.ItemAct
             getWidgetService().addPythonFiles(pythonFiles);
             adapter.setItems(getWidgetService().getPythonFiles());
             adapter.notifyDataSetChanged();
+
+            //give it time to load
+            handler.postDelayed(new Runnable()
+            {
+                @Override
+                public void run()
+                {
+                    adapter.setItems(getWidgetService().getPythonFiles());
+                    adapter.notifyDataSetChanged();
+                }
+            }, 500);
         }
     }
 

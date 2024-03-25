@@ -78,6 +78,9 @@ def prepare_image_cache_dir():
     #shutil.rmtree(RESOURCE_CACHE_DIR, ignore_errors=True)
     os.makedirs(RESOURCE_CACHE_DIR, exist_ok=True)
 
+def cache_dir():
+    return RESOURCE_CACHE_DIR
+
 def generate_filename(url):
     extension = url[url.rfind('.'):]
     extension = extension if '.' in extension and extension in mimetypes.types_map else ''

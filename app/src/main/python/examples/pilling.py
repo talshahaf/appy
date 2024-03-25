@@ -1,6 +1,6 @@
 import math, os, random
 from PIL import Image, ImageDraw, ImageFont
-from appy.utils import RESOURCE_CACHE_DIR
+from appy.utils import cache_dir
 from appy.widgets import register_widget, file_uri, ImageView, Button
 
 # make our png, with the number of sunrays as an argument
@@ -17,8 +17,8 @@ def make_image(rays):
     text_color = random.choice(text_color_options)
     text_x, text_y = 0, 130
     
-    # RESOURCE_CACHE_DIR is the preferred directory for resources (used by ui elements or external apps)
-    image_path = os.path.join(RESOURCE_CACHE_DIR, 'happy.png')
+    # cache_dir() is the preferred directory for resources (used by ui elements or external apps)
+    image_path = os.path.join(cache_dir(), 'happy.png')
     
     # Transparent image
     img = Image.new('RGBA', (w, h), (0, 0, 0, 0))
@@ -30,10 +30,10 @@ def make_image(rays):
     # Rays
     for i in range(0, rays):
         angle = i * 2*math.pi/rays + math.pi / rays
-        draw.line((w / 2 + ray_start * math.cos(angle) + sun_x,
-                    h / 2 + ray_start * math.sin(angle) + sun_y,
-                    w / 2 + ray_end * math.cos(angle) + sun_x,
-                    h / 2 + ray_end * math.sin(angle) + sun_y), 
+        draw.line((round(w / 2 + ray_start * math.cos(angle) + sun_x),
+                    round(h / 2 + ray_start * math.sin(angle) + sun_y),
+                    round(w / 2 + ray_end * math.cos(angle) + sun_x),
+                    round(h / 2 + ray_end * math.sin(angle) + sun_y)), 
                   fill=sun_color, width=5)
     
     # Text
