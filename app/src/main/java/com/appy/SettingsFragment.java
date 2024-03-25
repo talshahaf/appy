@@ -1,11 +1,19 @@
 package com.appy;
 
 import android.app.AlertDialog;
+import android.content.ClipData;
+import android.content.ClipboardManager;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.widget.Toast;
+
+import androidx.annotation.NonNull;
 import androidx.preference.CheckBoxPreference;
 import androidx.preference.Preference;
+
+import java.io.File;
 
 /**
  * Created by Tal on 19/03/2018.
@@ -13,35 +21,26 @@ import androidx.preference.Preference;
 
 public class SettingsFragment extends MySettingsFragment implements SharedPreferences.OnSharedPreferenceChangeListener
 {
-    CheckBoxPreference foregroundPreference;
+    Preference externalDirPreference;
     @Override
     public void onCreatePreferences(Bundle savedInstanceState, String rootKey)
     {
         addPreferencesFromResource(R.xml.pref);
 
-        foregroundPreference = (CheckBoxPreference)getPreferenceScreen().findPreference("foreground_service");
+        externalDirPreference = getPreferenceScreen().findPreference("external_dir");
+        Context context = getContext();
+        File externalDir = context != null ? getContext().getExternalFilesDir(null) : null;
+        externalDirPreference.setSummary(externalDir != null ? externalDir.getAbsolutePath() : "No available directory");
 
-        foregroundPreference.setChecked(Widget.getForeground(getActivity()));
-
-        foregroundPreference.setOnPreferenceChangeListener(new Preference.OnPreferenceChangeListener()
+        externalDirPreference.setOnPreferenceClickListener(new Preference.OnPreferenceClickListener()
         {
             @Override
-            public boolean onPreferenceChange(Preference preference, Object newValue)
+            public boolean onPreferenceClick(@NonNull Preference preference)
             {
-                if(newValue instanceof Boolean && !((boolean)newValue) && Widget.needForeground())
-                {
-                    new AlertDialog.Builder(getActivity())
-                            .setTitle("Foreground Service")
-                            .setMessage("Turning off foreground service causes problems in android 8+. Are you sure?")
-                            .setIcon(android.R.drawable.ic_dialog_alert)
-                            .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
-                                public void onClick(DialogInterface dialog, int whichButton) {
-                                    foregroundPreference.setChecked(false);
-                                }})
-                            .setNegativeButton(android.R.string.no, null)
-                            .show();
-                    return false;
-                }
+                ClipboardManager clipboard = (ClipboardManager) getContext().getSystemService(Context.CLIPBOARD_SERVICE);
+                ClipData clip = ClipData.newPlainText(preference.getTitle(), preference.getSummary());
+                clipboard.setPrimaryClip(clip);
+                Toast.makeText(getContext(), "Path copied to clipboard", Toast.LENGTH_SHORT).show();
                 return true;
             }
         });

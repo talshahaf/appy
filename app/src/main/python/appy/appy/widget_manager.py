@@ -607,7 +607,7 @@ def widget_manager_create(widget, manager_state):
     bg.backgroundResource = java.clazz.appy.R.drawable().rect
     bg.backgroundTint = widgets.color(r=0, g=0, b=0, a=100)
     
-    restart_btn = widgets.ImageButton(style='danger_oval_pad', adjustViewBounds=True, click=widgets.restart, colorFilter=0xffffffff, width=140, height=140, right=0, bottom=0, imageResource=java.clazz.android.R.drawable().ic_lock_power_off)
+    restart_btn = widgets.ImageButton(style='danger_oval_pad', adjustViewBounds=True, click=widgets.restart, colorFilter=0xffffffff, width=80, height=80, right=0, bottom=0, imageResource=java.clazz.android.R.drawable().ic_lock_power_off)
 
     #calling java releases the gil and available_widgets might be changed while iterating it
     names = [name for name in available_widgets]
@@ -730,7 +730,7 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
             collection = views.find_id(collection_id)
             view = collection.children.find_id(view_id) if view_id != 0 else None
         except KeyError:
-            #element not found? must be stale pendingintent
+            #element not found, must be stale pendingintent
             #just invalidate
             print('Clicked collection item does not exist, invalidating')
             return java.new.java.lang.Object[()]([True, self.export(None, views)])
@@ -743,7 +743,13 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
     def onClick(self, widget_id, views_str, view_id, checked):
         print(f'python got on click {widget_id} {view_id} {checked}')
         input, views = self.import_(views_str)
-        v = views.find_id(view_id)
+        try:
+            v = views.find_id(view_id)
+        except KeyError:
+            #element not found, must be stale pendingintent
+            #just invalidate
+            print('Clicked element does not exist, invalidating')
+            return java.new.java.lang.Object[()]([True, self.export(None, views)])
         widget, manager_state = create_widget(widget_id)
         v.__event__('click', widget=widget, views=views, view=v, checked=checked)
         return self.export(input, views)

@@ -1185,14 +1185,14 @@ public class Widget extends RemoteViewsService
                 //We can finally set width/height!
 
                 dynamicView.methodCalls.add(new RemoteMethodCall("setViewLayoutWidth", true,
-                                            "setViewLayoutWidth", hor.first + dims.first, TypedValue.COMPLEX_UNIT_PX));
+                                            "setViewLayoutWidth", ((float)dims.first), TypedValue.COMPLEX_UNIT_PX));
                 dynamicView.methodCalls.add(new RemoteMethodCall("setViewLayoutHeight", true,
-                                            "setViewLayoutHeight", ver.first + dims.second, TypedValue.COMPLEX_UNIT_PX));
-                dynamicView.methodCalls.add(new RemoteMethodCall("setViewPadding", true, "setViewPadding",
-                        hor.first,
-                        ver.first,
-                        0,
-                        0));
+                                            "setViewLayoutHeight", ((float)dims.second), TypedValue.COMPLEX_UNIT_PX));
+
+                dynamicView.methodCalls.add(new RemoteMethodCall("setViewLayoutMargin", true,
+                        "setViewLayoutMargin", RemoteViews.MARGIN_LEFT, ((float)hor.first), TypedValue.COMPLEX_UNIT_PX));
+                dynamicView.methodCalls.add(new RemoteMethodCall("setViewLayoutMargin", true,
+                        "setViewLayoutMargin", RemoteViews.MARGIN_TOP, ((float)ver.first), TypedValue.COMPLEX_UNIT_PX));
             }
             else
             {
@@ -1494,16 +1494,10 @@ public class Widget extends RemoteViewsService
         return Build.VERSION.SDK_INT >= Build.VERSION_CODES.O;
     }
 
-    public static boolean getForeground(Context context)
-    {
-        SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(context);
-        return sharedPref.getBoolean("foreground_service", needForeground());
-    }
-
     public static void startService(Context context, Intent intent)
     {
         // this has nothing to do with the actual foregroundness of the service, but startService will fail if needForeground().
-        if(needForeground() && getForeground(context))
+        if(needForeground())
         {
             context.startForegroundService(intent);
         }
@@ -1515,68 +1509,58 @@ public class Widget extends RemoteViewsService
 
     public void loadForeground()
     {
-        boolean foreground = getForeground(this);
-        if(foreground)
+        Log.d("APPY", "foreground is on");
+
+        Notification.Builder builder;
+        if(needForeground())
         {
-            Log.d("APPY", "foreground is on");
-
-            Notification.Builder builder;
-            if(needForeground())
-            {
-                final String CHANNEL = "Service notification";
-                NotificationChannel channel_none = new NotificationChannel(CHANNEL, CHANNEL, NotificationManager.IMPORTANCE_NONE);
-                channel_none.setSound(null, null);
-                channel_none.enableVibration(false);
-                channel_none.setShowBadge(false);
-                ((NotificationManager)getSystemService(Context.NOTIFICATION_SERVICE)).createNotificationChannel(channel_none);
-                builder = new Notification.Builder(this, CHANNEL);
-                builder.setChannelId(CHANNEL);
-            }
-            else
-            {
-                builder = new Notification.Builder(this);
-            }
-
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
-            {
-                builder.setForegroundServiceBehavior(Notification.FOREGROUND_SERVICE_IMMEDIATE);
-            }
-
-            Intent intent = new Intent(this, MainActivity.class);
-            intent.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-            PendingIntent contentIntent = PendingIntent.getActivity(this, 0,
-                    intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE);
-
-            Notification notification = builder.setContentTitle ("Appy")
-                    .setContentText("Appy is running")
-                    .setSmallIcon(R.mipmap.ic_launcher_foreground)
-                    .setPriority(Notification.PRIORITY_MIN)
-                    .setContentIntent(contentIntent)
-                    .setOngoing(true)
-                    .setAutoCancel(false)
-                    .setWhen(0)
-                    .build();
-            try
-            {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
-                {
-                    startForeground(NOTIFICATION_ID, notification,  ServiceInfo.FOREGROUND_SERVICE_TYPE_MANIFEST);
-                }
-                else
-                {
-                    startForeground(NOTIFICATION_ID, notification);
-                }
-            }
-            catch (RuntimeException e)
-            {
-                Toast.makeText(this, "Could not start Appy because it is lacking permissions.", Toast.LENGTH_LONG);
-            }
+            final String CHANNEL = "Service notification";
+            NotificationChannel channel_none = new NotificationChannel(CHANNEL, CHANNEL, NotificationManager.IMPORTANCE_NONE);
+            channel_none.setSound(null, null);
+            channel_none.enableVibration(false);
+            channel_none.setShowBadge(false);
+            ((NotificationManager)getSystemService(Context.NOTIFICATION_SERVICE)).createNotificationChannel(channel_none);
+            builder = new Notification.Builder(this, CHANNEL);
+            builder.setChannelId(CHANNEL);
         }
         else
         {
-            Log.d("APPY", "foreground is off");
+            builder = new Notification.Builder(this);
+        }
 
-            stopForeground(true);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
+        {
+            builder.setForegroundServiceBehavior(Notification.FOREGROUND_SERVICE_IMMEDIATE);
+        }
+
+        Intent intent = new Intent(this, MainActivity.class);
+        intent.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        PendingIntent contentIntent = PendingIntent.getActivity(this, 0,
+                intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE);
+
+        Notification notification = builder.setContentTitle ("Appy")
+                .setContentText("Appy is running")
+                .setSmallIcon(R.mipmap.ic_launcher_foreground)
+                .setPriority(Notification.PRIORITY_MIN)
+                .setContentIntent(contentIntent)
+                .setOngoing(true)
+                .setAutoCancel(false)
+                .setWhen(0)
+                .build();
+        try
+        {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
+            {
+                startForeground(NOTIFICATION_ID, notification,  ServiceInfo.FOREGROUND_SERVICE_TYPE_MANIFEST);
+            }
+            else
+            {
+                startForeground(NOTIFICATION_ID, notification);
+            }
+        }
+        catch (RuntimeException e)
+        {
+            Toast.makeText(this, "Could not start Appy because it is lacking permissions.", Toast.LENGTH_LONG);
         }
     }
 
@@ -1831,7 +1815,7 @@ public class Widget extends RemoteViewsService
         else
         {
             AlarmManager mgr = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
-            if(needForeground() && getForeground(getApplicationContext()))
+            if(needForeground())
             {
                 pendingIntent[0] = PendingIntent.getForegroundService(getApplicationContext(), 1, timerIntent, PendingIntent.FLAG_CANCEL_CURRENT | PendingIntent.FLAG_MUTABLE);
             }
@@ -2277,7 +2261,7 @@ public class Widget extends RemoteViewsService
              {
                  Intent intent = new Intent(Widget.this, getClass());
                  PendingIntent pendingIntent;
-                 if(needForeground() && getForeground(getApplicationContext()))
+                 if(needForeground())
                  {
                      pendingIntent = PendingIntent.getForegroundService(getApplicationContext(), 1, intent, PendingIntent.FLAG_CANCEL_CURRENT | PendingIntent.FLAG_MUTABLE);
                  }

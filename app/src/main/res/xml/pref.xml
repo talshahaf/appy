@@ -18,9 +18,12 @@
         android:selectAllOnFocus="true" android:singleLine="true"
         android:title="Height Correction"/>
     <CheckBoxPreference
-        android:key="foreground_service" android:title="Foreground Service"/>
-    <CheckBoxPreference
-        android:defaultValue="false"
+        android:defaultValue="true"
         android:key="refresh_on_modify"
         android:title="Auto reload python files" />
+    <Preference
+        android:key="external_dir"
+        android:title="Preferred directory to put scripts into"
+        android:summary=""/>
+
 </PreferenceScreen>
