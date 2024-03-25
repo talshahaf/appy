@@ -3211,6 +3211,9 @@ public class Widget extends RemoteViewsService
             startupState = Constants.StartupState.IDLE;
             handler = new Handler();
 
+            //Force android to create dirs for us
+            getExternalFilesDir(null);
+
             loadPythonFiles();
             loadCorrectionFactors(true);
             //loadForeground();

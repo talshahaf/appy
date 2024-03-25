@@ -726,8 +726,14 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
     def onItemClick(self, widget_id, views_str, collection_id, position, view_id):
         print(f'python got onitemclick {widget_id} {collection_id} {position} {view_id}')
         input, views = self.import_(views_str)
-        collection = views.find_id(collection_id)
-        view = collection.children.find_id(view_id) if view_id != 0 else None
+        try:
+            collection = views.find_id(collection_id)
+            view = collection.children.find_id(view_id) if view_id != 0 else None
+        except KeyError:
+            #element not found? must be stale pendingintent
+            #just invalidate
+            print('Clicked collection item does not exist, invalidating')
+            return java.new.java.lang.Object[()]([True, self.export(None, views)])
         widget, manager_state = create_widget(widget_id)
         handled = collection.__event__('itemclick', widget=widget, views=views, collection=collection, position=position, view=view)
         handled = handled is True
