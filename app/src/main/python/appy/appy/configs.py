@@ -10,9 +10,9 @@ class ChangeListener(java.implements(java.clazz.appy.Configurations.ChangeListen
         sync()
 
 def set_defaults(widget, dic):
-    k, v = zip(*dic.items())
-    v = (json.dumps(e) for e in v)
-    java_widget_manager.getConfigurations().setDefaultConfig(widget, java.new.java.lang.String[()](k), java.new.java.lang.String[()](v))
+    pairs = ((k, json.dumps(v) if not k.endswith('_nojson') else v) for k,v in dic.items())
+    ks, vs = zip(*pairs)
+    java_widget_manager.getConfigurations().setDefaultConfig(widget, java.new.java.lang.String[()](ks), java.new.java.lang.String[()](vs))
     sync()
 
 def sync():
@@ -20,7 +20,13 @@ def sync():
     global_configs = AttrDict.make(json.loads(java_widget_manager.getConfigurations().serialize()))
     for widget, widget_configs in global_configs.items():
         for key in widget_configs:
-            widget_configs[key] = AttrDict.make(json.loads(widget_configs[key]['value']))
+            value = widget_configs[key]['value']
+            if not key.endswith('_nojson'):
+                try:
+                    value = AttrDict.make(json.loads(value))
+                except json.decoder.JSONDecodeError:
+                    value = None
+            widget_configs[key] = value
 
 def init():
     global java_widget_manager

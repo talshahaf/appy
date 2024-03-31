@@ -280,7 +280,7 @@ public class ConfigsFragment extends MyFragment
                         @Override
                         public void onClick(View view) {
                             String newValue = input.getText().toString();
-                            if(isValidJSON(newValue))
+                            if(item.key.endsWith("_nojson") || isValidJSON(newValue))
                             {
                                 getWidgetService().getConfigurations().setConfig(widget, item.key, newValue);
                                 getWidgetService().configurationUpdate(widget, item.key);

@@ -2,6 +2,7 @@ package com.appy;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.util.Log;
 import android.util.Pair;
 
 import org.json.JSONException;
@@ -314,7 +315,14 @@ public class Configurations
 
         if(listener != null)
         {
-            listener.onChange();
+            try
+            {
+                listener.onChange();
+            }
+            catch(Exception e)
+            {
+                Log.e("APPY", "Exception in onChange", e);
+            }
         }
     }
 }
