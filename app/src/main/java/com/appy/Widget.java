@@ -43,6 +43,7 @@ import android.os.AsyncTask;
 import android.os.Binder;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.FileObserver;
 import android.os.Handler;
 import android.os.IBinder;
@@ -3197,6 +3198,7 @@ public class Widget extends RemoteViewsService
 
             //Force android to create dirs for us
             getExternalFilesDir(null);
+            getExternalMediaDirs();
 
             loadPythonFiles();
             loadCorrectionFactors(true);

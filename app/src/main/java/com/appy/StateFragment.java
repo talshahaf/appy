@@ -263,7 +263,7 @@ public class StateFragment extends MyFragment
             fullPath.add(item.key);
 
             builder.setTitle(item.leaf ? "Delete state" : "Delete all");
-            builder.setMessage((item.leaf ? "Delete " : "Delete all ") + Utils.join(".", fullPath) + " ?");
+            builder.setMessage((item.leaf ? "Delete " : "Delete all ") + String.join(".", fullPath) + " ?");
 
             builder.show();
             return true;

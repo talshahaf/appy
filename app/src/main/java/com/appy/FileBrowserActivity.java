@@ -18,6 +18,7 @@ import androidx.appcompat.widget.Toolbar;
 import android.provider.Settings;
 import android.text.InputType;
 import android.util.Log;
+import android.util.Pair;
 import android.util.TypedValue;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -34,10 +35,13 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.StringBufferInputStream;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedList;
+import java.util.List;
 
 /**
  * Created by Tal on 23/03/2018.
@@ -48,8 +52,8 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
     public static final String RESULT_FILES = "RESULT_FILES";
     public static final int REQUEST_PERMISSION_STORAGE = 101;
     public static final int REQUEST_ALL_STORAGE = 102;
-    public static final int SCOPED_STORAGE_INDEX = 3;
-    public static final int SHARED_STORAGE_INDEX = 4;
+    public static final int MEDIA_STORAGE_INDEX = 1;
+    public static final int SHARED_STORAGE_INDEX = 5;
 
     FileBrowserAdapter adapter;
     ListView list;
@@ -78,8 +82,51 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
         bottomtext.setVisibility(View.INVISIBLE);
         setSupportActionBar(toolbar);
 
-        preset_names = new String[]{"app files dir", "app cache dir", "examples", "app scoped storage", "shared storage"};
-        preset_paths = new String[]{getFilesDir().getAbsolutePath(), getCacheDir().getAbsolutePath(), new File(getFilesDir(), "examples").getAbsolutePath(), getExternalFilesDir(null).getAbsolutePath(), Environment.getExternalStorageDirectory().getPath()};
+
+        File[] mediaDirs = getExternalMediaDirs();
+        String mediaDir = null;
+        if (mediaDirs.length > 0 && mediaDirs[0] != null)
+        {
+            mediaDir = mediaDirs[0].getAbsolutePath();
+        }
+
+        String externalFilesDir = null;
+        File externalFiles = getExternalFilesDir(null);
+        if (externalFiles != null)
+        {
+            externalFilesDir = externalFiles.getAbsolutePath();
+        }
+
+        List<Pair<String, String>> presets = new ArrayList<>();
+        presets.add(new Pair<>("examples", new File(getFilesDir(), "examples").getAbsolutePath()));
+        presets.add(new Pair<>("app media storage (preferred for script files)", mediaDir));
+        presets.add(new Pair<>("app scoped storage", externalFilesDir));
+        presets.add(new Pair<>("app files dir", getFilesDir().getAbsolutePath()));
+        presets.add(new Pair<>("app cache dir (for shared resources)", getCacheDir().getAbsolutePath()));
+        presets.add(new Pair<>("shared storage", Environment.getExternalStorageDirectory().getAbsolutePath()));
+
+        int filteredSize = 0;
+        for (Pair<String, String> preset : presets)
+        {
+            if (preset.second != null)
+            {
+                filteredSize++;
+            }
+        }
+
+        preset_names = new String[filteredSize];
+        preset_paths = new String[filteredSize];
+
+        int filteredIndex = 0;
+        for (Pair<String, String> preset : presets)
+        {
+            if (preset.second != null)
+            {
+                preset_names[filteredIndex] = preset.first;
+                preset_paths[filteredIndex] = preset.second;
+                filteredIndex++;
+            }
+        }
 
         cantViewSharedStorage = !Constants.compiledWithManagerStorage(this) && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R;
 
@@ -125,10 +172,10 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
 
     public void getStartDir()
     {
-        startDir = preset_paths[cantViewSharedStorage ? SCOPED_STORAGE_INDEX : SHARED_STORAGE_INDEX];
+        startDir = preset_paths[cantViewSharedStorage ? MEDIA_STORAGE_INDEX : SHARED_STORAGE_INDEX];
         if(!getDirFromRoot(startDir))
         {
-            startDir = preset_paths[SCOPED_STORAGE_INDEX];
+            startDir = preset_paths[MEDIA_STORAGE_INDEX];
             getDirFromRoot(startDir);
         }
     }

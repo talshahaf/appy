@@ -7,7 +7,7 @@ normal_flags = java.clazz.android.graphics.Paint().ANTI_ALIAS_FLAG
 
 def edit_btn_click(widget):
     # Make the user change 'list' configuration
-    widget.request_config_change('list')
+    widget.request_config_change('list_nojson')
     
 def on_check(widget, view, checked):
     # Update checked in state so remember through reboots and list changes
@@ -18,8 +18,10 @@ def on_check(widget, view, checked):
 def update_list(widget, views):
     children = []
     # Parse list configuration and make it CheckBoxes
-    for item in widget.config.list.split(','):
+    for item in widget.config.list_nojson.split('\n' if widget.config.newline_delimiter else widget.config.delimiter):
         text = item.strip()
+        if not text:
+            continue
         checked = widget.state.get(text, False)
         children.append(CheckBox(text=text, textColor=0xb3ffffff,
                                 buttonTintList=java.clazz.android.content.res.ColorStateList().valueOf(0xb3ffffff),
@@ -41,6 +43,7 @@ def create(widget):
     return [background(drawable=java.clazz.appy.R.drawable().rect), lst, edit_btn]
     
 register_widget('tasklist', create,
-                    config=dict(list='Task 1, Task 2, Task 3'),
+                    # no json so it would be easier to read and to change
+                    config=dict(list_nojson='Task 1, Task 2, Task 3', newline_delimiter=False, delimiter=', '),
                     # Refresh list every config change
                     on_config=update_list)
