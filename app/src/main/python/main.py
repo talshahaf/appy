@@ -75,11 +75,13 @@ except ImportError:
     import pip
 
 try:
+    needed_packages = ['pip', 'setuptools', 'wheel', 'requests', 'packaging', 'pyparsing', 'python-dateutil']
     try:
+        #TODO maybe import all?
         import requests
     except ImportError:
-        print('installing requests setuptools wheel')
-        execute([exe, '-m', 'pip', 'install', '--upgrade', 'pip', 'setuptools', 'wheel', 'requests'], kill_phrases=INSTALL_PHRASES)
+        print(f'installing {" ".join(needed_packages)}')
+        execute([exe, '-m', 'pip', 'install', '--upgrade'] + needed_packages, kill_phrases=INSTALL_PHRASES)
         import requests
 except Exception:
     pass #optional packages
