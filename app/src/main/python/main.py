@@ -75,7 +75,7 @@ except ImportError:
     import pip
 
 try:
-    needed_packages = ['pip', 'setuptools', 'wheel', 'requests', 'packaging', 'pyparsing', 'python-dateutil']
+    needed_packages = ['pip', 'setuptools', 'wheel', 'requests', 'packaging', 'pyparsing', 'python-dateutil', 'cycler']
     try:
         #TODO maybe import all?
         import requests
