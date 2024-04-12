@@ -2164,6 +2164,23 @@ public class Widget extends RemoteViewsService
         }
     }
 
+    public String getPreferredScriptDir()
+    {
+        File[] mediaDirs = getExternalMediaDirs();
+        if (mediaDirs.length > 0 && mediaDirs[0] != null)
+        {
+            return mediaDirs[0].getAbsolutePath();
+        }
+
+        //fallback
+        return getFilesDir().getAbsolutePath();
+    }
+
+    public String getPreferredCacheDir()
+    {
+        return getCacheDir().getAbsolutePath();
+    }
+
     public void initAllPythonFiles()
     {
         ArrayList<PythonFile> files = getPythonFiles();
@@ -2543,11 +2560,6 @@ public class Widget extends RemoteViewsService
         return waitForAsyncReport(requestCode, timeoutMilli) != null;
     }
 
-    public void reportSetConfig(int requestCode)
-    {
-
-    }
-
     public void setWidget(final int androidWidgetId, final int widgetId, final ArrayList<DynamicView> views, final boolean errorOnFailure)
     {
         needUpdateWidgets.remove(widgetId);
@@ -2755,7 +2767,7 @@ public class Widget extends RemoteViewsService
             error = false;
             String pythonHome = new File(getFilesDir(), "python").getAbsolutePath();
             String pythonLib = new File(pythonHome, "/lib/libpython3.12.so").getAbsolutePath(); //must be without
-            String cacheDir = getCacheDir().getAbsolutePath();
+            String cacheDir = getPreferredCacheDir();
             String exampleDir = new File(getFilesDir(), "examples").getAbsolutePath();
             try
             {
