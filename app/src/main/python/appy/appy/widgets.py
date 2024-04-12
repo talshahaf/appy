@@ -115,7 +115,7 @@ class Widget:
         widget_manager.java_context().startConfigFragment(self.name)
 
     def request_config_change(self, config, timeout=None):
-        completed = widget_manager.java_context().requestConfigChange(self.name, config, timeout if timeout is not None else -1)
+        completed = widget_manager.java_context().requestConfigChange(self.name, config, int(timeout * 1000) if timeout is not None else -1)
         if not completed:
             raise RuntimeError('timeout')
 
@@ -155,7 +155,7 @@ def has_permissions(*permissions):
 
 def _request_permissions(request, *permissions, timeout=None):
     perm_map = {getattr(java.clazz.android.Manifest.permission(), permission) : permission for permission in permissions}
-    result = widget_manager.java_context().requestPermissions(java.new.java.lang.String[()](perm_map.keys()), request, timeout if timeout is not None else -1)
+    result = widget_manager.java_context().requestPermissions(java.new.java.lang.String[()](perm_map.keys()), request, int(timeout * 1000) if timeout is not None else -1)
     if result == java.Null:
         raise RuntimeError('timeout')
     perms, states = list(result.first), list(result.second)
@@ -164,7 +164,7 @@ def _request_permissions(request, *permissions, timeout=None):
     return granted, denied
 
 def show_dialog(title, text, buttons=('Yes', 'No'), edittext=None, icon_res=None, timeout=None):
-    result = widget_manager.java_context().showAndWaitForDialog(icon_res, title, text, java.new.java.lang.String[()](buttons), edittext, timeout if timeout is not None else -1)
+    result = widget_manager.java_context().showAndWaitForDialog(icon_res, title, text, java.new.java.lang.String[()](buttons), edittext, int(timeout * 1000) if timeout is not None else -1)
     if result == java.Null:
         raise RuntimeError('timeout')
     if edittext is None:

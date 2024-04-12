@@ -72,19 +72,29 @@ class AttrDict(dict):
         else:
             return d
 
-RESOURCE_CACHE_DIR = os.path.join(os.environ['TMP'], 'resources')
+
 def prepare_image_cache_dir():
     #TODO somehow cleanup cache every now and then
-    #shutil.rmtree(RESOURCE_CACHE_DIR, ignore_errors=True)
-    os.makedirs(RESOURCE_CACHE_DIR, exist_ok=True)
+    #shutil.rmtree(cache_dir(), ignore_errors=True)
+    os.makedirs(cache_dir(), exist_ok=True)
+
+RESOURCE_CACHE_DIR = os.path.join(os.environ['TMP'], 'resources')
 
 def cache_dir():
     return RESOURCE_CACHE_DIR
 
+saved_script_dir = None
+def preferred_script_dir():
+    global saved_script_dir
+    if saved_script_dir is None:
+        from .widget_manager import java_context
+        saved_script_dir = java_context().getPreferredScriptDir()
+    return saved_script_dir
+
 def generate_filename(url):
     extension = url[url.rfind('.'):]
     extension = extension if '.' in extension and extension in mimetypes.types_map else ''
-    return os.path.join(RESOURCE_CACHE_DIR, hashlib.sha256(url.encode()).hexdigest() + extension)
+    return os.path.join(cache_dir(), hashlib.sha256(url.encode()).hexdigest() + extension)
 
 @functools.lru_cache(maxsize=128, typed=True)
 def download_resource(url):
@@ -108,3 +118,6 @@ def copy_resource(external_path):
                 break
             dst.write(buf)
     return filename
+
+# for matplotlib
+os.environ['MPLCONFIGDIR'] = RESOURCE_CACHE_DIR
