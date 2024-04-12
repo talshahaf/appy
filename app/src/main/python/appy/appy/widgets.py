@@ -163,11 +163,13 @@ def _request_permissions(request, *permissions, timeout=None):
     denied  = [perm_map[perm] for i, perm in enumerate(perms) if states[i] != java.clazz.android.content.pm.PackageManager().PERMISSION_GRANTED]
     return granted, denied
 
-def show_dialog(title, text, buttons=('Yes', 'No'), icon_res=None, timeout=None):
-    result = widget_manager.java_context().showAndWaitForDialog(icon_res, title, text, java.new.java.lang.String[()](buttons), timeout if timeout is not None else -1)
+def show_dialog(title, text, buttons=('Yes', 'No'), edittext=None, icon_res=None, timeout=None):
+    result = widget_manager.java_context().showAndWaitForDialog(icon_res, title, text, java.new.java.lang.String[()](buttons), edittext, timeout if timeout is not None else -1)
     if result == java.Null:
         raise RuntimeError('timeout')
-    return result
+    if edittext is None:
+        return result.first
+    return result.first, result.second
 
 def color(r=0, g=0, b=0, a=255):
     return ((a & 0xff) << 24) + \

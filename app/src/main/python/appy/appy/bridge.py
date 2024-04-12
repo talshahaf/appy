@@ -514,13 +514,16 @@ def callback(arg):
 
         if not hasattr(func, '__interface__'):
             raise Exception(f'function not an interface: {method}')
-
         ret = func(*args)
         value, _, _ = convert_arg(ret)
         _, ref = prepare_value(value, primitive_codes['object'], primitive_codes['object'])
         return native_appy.new_global_ref(ref.ref.handle)
     except Exception:
-        raise Exception('Python Exception\n\nThe above exception was the direct cause of the following exception:\n\n' + traceback.format_exc())
+        try:
+            tb = traceback.format_exc()
+        except Exception as e:
+            tb = f'Unable to get traceback, format_exc raised an exception: {e}'
+        raise Exception('Python Exception\n\nThe above exception was the direct cause of the following exception:\n\n' + tb)
 
 native_appy.set_python_callback(callback)
 

@@ -1755,7 +1755,15 @@ static PyObject * inspect_class_content(PyObject *self, PyObject *args)
         }
         for (Py_ssize_t i = 0; i < content.size(); ++i)
         {
-            PyObject * s = Py_BuildValue("s#", content[i].data(), content[i].size());
+            PyObject * s = NULL;
+            if (content[i].data() == NULL)
+            {
+                s = Py_BuildValue("s#", 0x1, 0);
+            }
+            else
+            {
+                s = Py_BuildValue("s#", content[i].data(), content[i].size());
+            }
             if(s == NULL)
             {
                 Py_XDECREF(out_tuple);
@@ -1858,7 +1866,15 @@ static PyObject * jstring_to_python_str(PyObject *self, PyObject *args)
         }
 
         std::vector<char> str = jstring_to_char_array((jstring)jstr);
-        return Py_BuildValue("s#", str.data(), str.size());
+
+        if (str.data() == NULL)
+        {
+            return Py_BuildValue("s#", 0x1, 0);
+        }
+        else
+        {
+            return Py_BuildValue("s#", str.data(), str.size());
+        }
     }
     catch(java_exception & e)
     {

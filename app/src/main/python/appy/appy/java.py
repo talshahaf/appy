@@ -207,9 +207,12 @@ class Null(Object):
         return other == Null or isinstance(other, Null) or other is None
     def __bool__(self):
         return False
-    def __getattr__(self, item):
+    def __getattr__(self, attr):
         raise ValueError('Object is null')
-    def __setattr__(self, item, value):
+    def __setattr__(self, attr, value):
+        if attr in self.__dict__:
+            self.__dict__[attr] = value
+            return
         raise ValueError('Object is null')
     def __invert__(self):
         return self

@@ -8,7 +8,12 @@ import android.content.Intent;
 import android.content.ServiceConnection;
 import android.os.Bundle;
 import android.os.IBinder;
+import android.util.Log;
 import android.util.Pair;
+import android.util.TypedValue;
+import android.view.ViewGroup;
+import android.widget.EditText;
+import android.widget.FrameLayout;
 
 import androidx.appcompat.app.AlertDialog;
 
@@ -19,6 +24,7 @@ public class DialogActivity extends Activity {
     public static final String EXTRA_BUTTONS = "EXTRA_BUTTONS";
     public static final String EXTRA_REQUEST_CODE = "EXTRA_REQUEST_CODE";
     public static final String EXTRA_ICON = "EXTRA_ICON";
+    public static final String EXTRA_EDITTEXT = "EXTRA_EDITTEXT";
 
     private Widget widgetService;
 
@@ -30,7 +36,8 @@ public class DialogActivity extends Activity {
                         getIntent().getIntExtra(EXTRA_ICON, android.R.drawable.ic_dialog_alert),
                         getIntent().getStringExtra(EXTRA_TITLE),
                         getIntent().getStringExtra(EXTRA_TEXT),
-                        getIntent().getStringArrayExtra(EXTRA_BUTTONS));
+                        getIntent().getStringArrayExtra(EXTRA_BUTTONS),
+                        getIntent().getStringExtra(EXTRA_EDITTEXT));
         }
 
         public void onServiceDisconnected(ComponentName className) {
@@ -40,9 +47,9 @@ public class DialogActivity extends Activity {
 
     public interface DialogActivityButtonClick
     {
-        void onClick(int which);
+        void onClick(int which, String editText);
     };
-    public void makeDialog(int request, int icon, String title, String text, String[] buttons)
+    public void makeDialog(int request, int icon, String title, String text, String[] buttons, String edittext)
     {
         if (request == -1 || title == null || text == null || buttons == null || buttons.length == 0)
         {
@@ -51,8 +58,8 @@ public class DialogActivity extends Activity {
 
         final DialogActivityButtonClick onClick = new DialogActivityButtonClick() {
             @Override
-            public void onClick(int which) {
-                widgetService.asyncReport(request, which);
+            public void onClick(int which, String editText) {
+                widgetService.asyncReport(request, new Pair<>(which, editText));
             }
         };
 
@@ -60,31 +67,61 @@ public class DialogActivity extends Activity {
                 .setIcon(icon)
                 .setTitle(title)
                 .setMessage(text);
+        final EditText editTextView = new EditText(this);
+        if (edittext != null)
+        {
+            FrameLayout container = new FrameLayout(this);
+            FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            float margin = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 20, getResources().getDisplayMetrics());
+            params.leftMargin = (int)margin;
+            params.rightMargin = (int)margin;
+
+            editTextView.setLayoutParams(params);
+            editTextView.setText(edittext);
+            container.addView(editTextView);
+
+            builder.setView(container);
+        }
+
+        builder.setOnCancelListener(new DialogInterface.OnCancelListener() {
+            @Override
+            public void onCancel(DialogInterface dialog) {
+                onClick.onClick(-1, edittext != null ? editTextView.getText().toString() : null);
+                finish();
+            }
+        });
+
+        DialogInterface.OnClickListener dialogClick = new DialogInterface.OnClickListener() {
+            public void onClick(DialogInterface dialog, int whichButton) {
+                int which = -1;
+                switch(whichButton)
+                {
+                    case AlertDialog.BUTTON_NEUTRAL:
+                        which = 2;
+                        break;
+                    case AlertDialog.BUTTON_NEGATIVE:
+                        which = 1;
+                        break;
+                    case AlertDialog.BUTTON_POSITIVE:
+                        which = 0;
+                        break;
+                }
+                onClick.onClick(which, edittext != null ? editTextView.getText().toString() : null);
+                finish();
+            }
+        };
+
         switch (buttons.length) {
             //fallthroughs
             default:
             case 3:
-                builder.setNeutralButton(buttons[2], new DialogInterface.OnClickListener() {
-                    public void onClick(DialogInterface dialog, int whichButton) {
-                        onClick.onClick(2);
-                        finish();
-                    }
-                });
+                builder.setNeutralButton(buttons[2], dialogClick);
             case 2:
-                builder.setNegativeButton(buttons[1], new DialogInterface.OnClickListener() {
-                    public void onClick(DialogInterface dialog, int whichButton) {
-                        onClick.onClick(1);
-                        finish();
-                    }
-                });
+                builder.setNegativeButton(buttons[1], dialogClick);
             case 1:
-                builder.setPositiveButton(buttons[0], new DialogInterface.OnClickListener() {
-                    public void onClick(DialogInterface dialog, int whichButton) {
-                        onClick.onClick(0);
-                        finish();
-                    }
-                });
+                builder.setPositiveButton(buttons[0], dialogClick);
         }
+
         builder.show();
     }
 
