@@ -40,6 +40,7 @@
 
         <activity android:name="com.appy.FileBrowserActivity" android:exported="true"/>
         <activity android:name="com.appy.PermissionActivity" android:theme="@android:style/Theme.Translucent.NoTitleBar" android:exported="true"/>
+        <activity android:name="com.appy.DialogActivity" android:theme="@style/Theme.AppCompat.Dialog" android:exported="true"/>
         <activity android:name="com.appy.ForegroundActivity" android:theme="@android:style/Theme.Translucent.NoTitleBar" android:exported="true"/>
 
         <receiver

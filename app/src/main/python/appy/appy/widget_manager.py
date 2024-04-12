@@ -549,7 +549,7 @@ def clear_module(path):
     available_widgets = {k:v for k,v in available_widgets.items() if v['pythonfile'] != path}
     sys.modules.pop(module_name(path), None)
 
-def create_manager_state():
+def obtain_manager_state():
     manager_state = state.State(None, -1) #special own scope
     manager_state.locals('__token__')
     manager_state.locals('chosen')
@@ -562,7 +562,7 @@ def create_manager_state():
     return manager_state
 
 def create_widget(widget_id):
-    manager_state = create_manager_state()
+    manager_state = obtain_manager_state()
     manager_state.chosen.setdefault(widget_id, None)
     name = None
     if manager_state.chosen[widget_id] is not None:
@@ -571,30 +571,35 @@ def create_widget(widget_id):
     return widget, manager_state
     
 def get_widget_name(widget_id):
-    manager_state = create_manager_state()
+    manager_state = obtain_manager_state()
     if widget_id in manager_state.chosen and manager_state.chosen[widget_id] is not None:
         return manager_state.chosen[widget_id].name
     raise KeyError(f'no such widget {widget_id}')
     
 def get_widgets_by_name(name):
-    manager_state = create_manager_state()
+    manager_state = obtain_manager_state()
     return [widget_id for widget_id, chosen in manager_state.chosen.items() if chosen is not None and chosen.name == name]
     
 def choose_widget(widget, name):
     print(f'choosing widget: {widget.widget_id} -> {name}')
-    manager_state = create_manager_state()
+    manager_state = obtain_manager_state()
     manager_state.chosen[widget.widget_id] = AttrDict(name=name, inited=False)
     widget.set_loading()
     widget.invalidate()
 
+def unchoose_widget(widget_id):
+    widget, manager_state = create_widget(widget_id)
+    state.clean_local_state(widget_id)
+    manager_state.chosen.pop(widget_id, None)
+    last_func_for_widget_id.pop(widget_id, None)
+
 def debug_button_click(widget):
     print('debug button click')
-    manager_state = create_manager_state()
+    manager_state = obtain_manager_state()
     if widget.widget_id in manager_state.chosen:
         chosen = manager_state.chosen[widget.widget_id]
         chosen.inited = False
         widget.invalidate()
-
 
 def widget_manager_create(widget, manager_state):
     print('widget_manager_create')
@@ -676,10 +681,23 @@ def set_error_to_widget_id(widget_id, error):
         set_unknown_error(error)
 
 def refresh_managers():
-    manager_state = create_manager_state()
-    for widget_id, chosen in {widget_id: chosen for widget_id, chosen in manager_state.chosen.items()}.items():
+    manager_state = obtain_manager_state()
+    chosen_copy = manager_state.chosen.copy()
+    for widget_id, chosen in chosen_copy.items():
         if chosen is None:
             widgets.Widget(widget_id, None).invalidate()
+
+def refresh_widgets(path, removed=False):
+    widget_names = [k for k,v in available_widgets.items() if v['pythonfile'] == path]
+    manager_state = obtain_manager_state()
+    chosen_copy = manager_state.chosen.copy()
+    for widget_id, chosen in chosen_copy.items():
+        if chosen is not None and chosen.name is not None and chosen.name in widget_names:
+            if removed:
+                unchoose_widget(widget_id)
+            widgets.Widget(widget_id, None).invalidate()
+    if removed:
+        state.save()
 
 class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
     def export(self, input, output):
@@ -716,10 +734,7 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
     @java.override
     def onDelete(self, widget_id):
         print(f'python got onDelete')
-        widget, manager_state = create_widget(widget_id)
-        state.clean_local_state(widget_id)
-        manager_state.chosen.pop(widget_id, None)
-        last_func_for_widget_id.pop(widget_id, None)
+        unchoose_widget(widget_id)
         state.save()
 
     @java.override
@@ -790,12 +805,17 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
         load_module(path)
         if not skip_refresh:
             refresh_managers()
+            refresh_widgets(path, removed=False)
 
     @java.override
     def deimportFile(self, path, skip_refresh):
+        print(f'deimport file request called on {path}')
+        if not skip_refresh:
+            refresh_widgets(path, removed=True)
         clear_module(path)
         if not skip_refresh:
             refresh_managers()
+
 
     @java.override
     def refreshManagers(self):
@@ -877,6 +897,12 @@ def init():
     
 def java_context():
     return java_widget_manager
+
+def reload_python_file(path):
+    return java_context().refreshPythonFileByPath(path)
+
+def add_python_file(path):
+    return java_context().addPythonFileByPathWithDialog(path)
     
 def register_widget(name, create, update=None, config=None, on_config=None, debug=False):
     path = getattr(__importing_module, 'path', None)

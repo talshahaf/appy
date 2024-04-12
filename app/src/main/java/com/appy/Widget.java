@@ -12,6 +12,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.lang.reflect.InvocationTargetException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -2086,6 +2089,63 @@ public class Widget extends RemoteViewsService
         editor.apply();
     }
 
+    public boolean addPythonFileByPath(String path)
+    {
+        if (!new File(path).isFile())
+        {
+            return false;
+        }
+        ArrayList<PythonFile> lst = new ArrayList<>();
+        lst.add(new PythonFile(path));
+        addPythonFiles(lst);
+
+        return true;
+    }
+
+    public boolean addPythonFileByPathWithDialog(String path)
+    {
+        int index = showAndWaitForDialog(null, "Add Python File", "Allow widget to add the python file \"" + new File(path).getName() + "\"?", new String[]{"OK", "CANCEL"}, -1);
+        if (index == 0) {
+            return addPythonFileByPath(path);
+        }
+        return false;
+    }
+
+    public boolean refreshPythonFileByPath(String path)
+    {
+        PythonFile pythonFile = null;
+        ArrayList<PythonFile> files = getPythonFiles();
+        for (PythonFile f : files)
+        {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                try {
+                    if (Files.isSameFile(Paths.get(f.path), Paths.get(path))) {
+                        pythonFile = f;
+                        break;
+                    }
+                    continue;
+                } catch (IOException e) {
+                    Log.e("APPY", "problem comparing paths", e);
+                }
+            }
+
+            // fallback check
+            if (f.path.equals(path))
+            {
+                pythonFile = f;
+                break;
+            }
+        }
+
+        if (pythonFile == null)
+        {
+            return false;
+        }
+
+        refreshPythonFile(pythonFile);
+        return true;
+    }
+
     public void refreshPythonFile(PythonFile file)
     {
         refreshPythonFile(file, true, false);
@@ -2404,6 +2464,28 @@ public class Widget extends RemoteViewsService
         startActivity(intent);
 
         return (Pair<String[], int[]>)waitForAsyncReport(requestCode, timeoutMilli);
+    }
+
+    public Integer showAndWaitForDialog(Integer icon, String title, String text, String[] buttons, int timeoutMilli)
+    {
+        if(Looper.myLooper() != null)
+        {
+            throw new IllegalStateException("showAndWaitForDialog must be called on a Task thread");
+        }
+
+        int requestCode = generateRequestCode();
+        Intent intent = new Intent(this, DialogActivity.class);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_MULTIPLE_TASK);
+        intent.putExtra(DialogActivity.EXTRA_REQUEST_CODE, requestCode);
+        intent.putExtra(DialogActivity.EXTRA_TITLE, title);
+        intent.putExtra(DialogActivity.EXTRA_TEXT, text);
+        intent.putExtra(DialogActivity.EXTRA_BUTTONS, buttons);
+        if (icon != null) {
+            intent.putExtra(DialogActivity.EXTRA_ICON, icon.intValue());
+        }
+        startActivity(intent);
+
+        return (Integer)waitForAsyncReport(requestCode, timeoutMilli);
     }
 
     public void asyncReport(int requestCode, @NonNull Object result)
