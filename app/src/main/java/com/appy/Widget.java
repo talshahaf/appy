@@ -2104,8 +2104,8 @@ public class Widget extends RemoteViewsService
 
     public boolean addPythonFileByPathWithDialog(String path)
     {
-        int index = showAndWaitForDialog(null, "Add Python File", "Allow widget to add the python file \"" + new File(path).getName() + "\"?", new String[]{"OK", "CANCEL"}, -1);
-        if (index == 0) {
+        Pair<Integer, String> pair = showAndWaitForDialog(null, "Add Python File", "Allow widget to add the python file \"" + new File(path).getName() + "\"?", new String[]{"OK", "CANCEL"}, null, -1);
+        if (pair.first == 0) {
             return addPythonFileByPath(path);
         }
         return false;
@@ -2466,7 +2466,7 @@ public class Widget extends RemoteViewsService
         return (Pair<String[], int[]>)waitForAsyncReport(requestCode, timeoutMilli);
     }
 
-    public Integer showAndWaitForDialog(Integer icon, String title, String text, String[] buttons, int timeoutMilli)
+    public Pair<Integer, String> showAndWaitForDialog(Integer icon, String title, String text, String[] buttons, String editText, int timeoutMilli)
     {
         if(Looper.myLooper() != null)
         {
@@ -2480,12 +2480,15 @@ public class Widget extends RemoteViewsService
         intent.putExtra(DialogActivity.EXTRA_TITLE, title);
         intent.putExtra(DialogActivity.EXTRA_TEXT, text);
         intent.putExtra(DialogActivity.EXTRA_BUTTONS, buttons);
+        if (editText != null) {
+            intent.putExtra(DialogActivity.EXTRA_EDITTEXT, editText);
+        }
         if (icon != null) {
             intent.putExtra(DialogActivity.EXTRA_ICON, icon.intValue());
         }
         startActivity(intent);
 
-        return (Integer)waitForAsyncReport(requestCode, timeoutMilli);
+        return (Pair<Integer, String>)waitForAsyncReport(requestCode, timeoutMilli);
     }
 
     public void asyncReport(int requestCode, @NonNull Object result)
