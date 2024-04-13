@@ -79,6 +79,7 @@ public class StateFragment extends MyFragment
             String key;
             String value;
             boolean leaf;
+            boolean inLocalScopeView;
 
             @Override
             public String toString()
@@ -86,11 +87,12 @@ public class StateFragment extends MyFragment
                 return key;
             }
 
-            public Item(String key, String value, boolean leaf)
+            public Item(String key, String value, boolean leaf, boolean inLocalScopeView)
             {
                 this.key = key;
                 this.value = value;
                 this.leaf = leaf;
+                this.inLocalScopeView = inLocalScopeView;
             }
         }
 
@@ -101,18 +103,20 @@ public class StateFragment extends MyFragment
             {
                 for(String scope : StateLayout.listScopes())
                 {
-                    adapterList.add(new Item(scope, "", false));
+                    adapterList.add(new Item(scope, "", false, false));
                 }
             }
             else
             {
                 StateLayout stateLayout = getWidgetService().getStateLayout();
 
-                boolean leaves = StateLayout.getDepth(keyPath.get(0)) == keyPath.size();
+                int depth = StateLayout.getDepth(keyPath.get(0));
+                boolean leaves = depth == keyPath.size();
+                boolean inLocalScopeView = depth - 1 == keyPath.size() && depth == 3;
 
                 for(String key : stateLayout.listDict(keyPath))
                 {
-                    adapterList.add(new Item(key, leaves ? stateLayout.getValue(keyPath, key) : "", leaves));
+                    adapterList.add(new Item(key, leaves ? stateLayout.getValue(keyPath, key) : "", leaves, inLocalScopeView));
                 }
             }
             list.setAdapter(new ItemAdapter(getActivity(), adapterList));
@@ -316,7 +320,14 @@ public class StateFragment extends MyFragment
                 TextView text1 = twoLineListItem.findViewById(R.id.text1);
                 TextView text2 = twoLineListItem.findViewById(R.id.text2);
 
-                text1.setText(items.get(position).key);
+                if (items.get(position).inLocalScopeView)
+                {
+                    text1.setText("widget #"+items.get(position).key);
+                }
+                else
+                {
+                    text1.setText(items.get(position).key);
+                }
 
                 String value = items.get(position).value;
                 if(value.length() > MAX_VALUE_LENGTH)
