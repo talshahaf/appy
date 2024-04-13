@@ -85,7 +85,7 @@ public class Widget extends RemoteViewsService
     private final IBinder mBinder = new LocalBinder();
     private static boolean mIsRunning = false;
 
-    public static final int PYTHON_VERSION = 31211;
+    public static final int PYTHON_VERSION = 31212;
     public static final int NOTIFICATION_ID = 100;
 
     WidgetUpdateListener updateListener = null;

@@ -5,6 +5,7 @@ import numpy as np
 
 from appy.widgets import register_widget, file_uri, cache_dir, ImageView, Button
 
+# cool plots taken from matplotlib examples
 def lorentz_plot():
     def lorenz(xyz, *, s=10, r=28, b=2.667):
         """
@@ -99,10 +100,31 @@ def surface_plot():
     ax.set_zlim(-1, 1)
     ax.set_title('3D')
     return fig
+    
+def projection_plot():
+    fig = plt.figure()
+    ax = fig.add_subplot(projection='3d')
+    X, Y, Z = axes3d.get_test_data(0.05)
 
-plots = [lorentz_plot, predictions_plot, polar_plot, surface_plot]
+    # Plot the 3D surface
+    ax.plot_surface(X, Y, Z, edgecolor='royalblue', lw=0.5, rstride=8, cstride=8,
+                    alpha=0.3)
 
-# make our png, with the number of sunrays as an argument
+    # Plot projections of the contours for each dimension.  By choosing offsets
+    # that match the appropriate axes limits, the projected contours will sit on
+    # the 'walls' of the graph
+    ax.contourf(X, Y, Z, zdir='z', offset=-100, cmap='coolwarm')
+    ax.contourf(X, Y, Z, zdir='x', offset=-40, cmap='coolwarm')
+    ax.contourf(X, Y, Z, zdir='y', offset=40, cmap='coolwarm')
+
+    ax.set(xlim=(-40, 40), ylim=(-40, 40), zlim=(-100, 100),
+           xlabel='X', ylabel='Y', zlabel='Z')
+    ax.set_title('Cool 3D')
+    return fig
+
+plots = [lorentz_plot, predictions_plot, polar_plot, surface_plot, projection_plot]
+
+# make our png, with plot index as an argument
 def make_image(which):
     # cache_dir() is the preferred directory for resources (used by ui elements or external apps)
     image_path = os.path.join(cache_dir(), 'plt.png')
@@ -118,10 +140,10 @@ def change_plot(widget, views, amount):
     views['image'].imageURI = make_image(widget.state.which)
  
 def create(widget):
-    # Start with a reasonable amount of rays
+    # Initialize graph index
     widget.state.which = 0
     return [ImageView(name='image', imageURI=make_image(widget.state.which), adjustViewBounds=True, left=0, top=0, width=widget.width, height=widget.height),
-            # Ray buttons anchored to the hcenter
+            # Buttons anchored to the hcenter
             Button(text='>', click=(change_plot, dict(amount=1)), bottom=10, right=10, left=widget.hcenter + 40),
             Button(text='<', click=(change_plot, dict(amount=-1)), bottom=10, left=10, right=widget.hcenter + 40)]
     
