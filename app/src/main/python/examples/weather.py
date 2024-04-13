@@ -23,28 +23,37 @@ def get_location():
                 lon=float(lastKnownLocation.getLongitude()),
                 acc=float(lastKnownLocation.getAccuracy()))
 
-# see https://api.openweathermap.org/
-API_KEY = 'c2771f55d71091fab071cb6af174e5a0'
-UNITS = ('metric', 'C')
-FORECAST = 'https://api.openweathermap.org/data/2.5/weather?lat={lat:.2f}&lon={lon:.2f}&units={units}&appid={api_key}'
-WEATHER_ICONS = 'https://openweathermap.org/img/wn/{code}@2x.png'
+FORECAST = 'https://api.open-meteo.com/v1/forecast?latitude={lat:.4f}&longitude={lon:.4f}&current=temperature_2m,is_day,weather_code&forecast_days=1'
+WMO_TO_ICON_URL = 'https://gist.github.com/stellasphere/9490c195ed2b53c707087c8c2db4ec0c/raw/76b0cb0ef0bfd8a2ec988aa54e30ecd1b483495d/descriptions.json'
 
 def parse_date(datestr):
     return datetime.datetime.strptime(datestr.translate({ord(':'): None, ord('-'): None}), "%Y%m%dT%H%M%SZ").replace(tzinfo=datetime.timezone.utc)
 
-def forecast(lat, lon, units):
-    response = json.loads(requests.get(FORECAST.format(lat=lat, lon=lon, units=units, api_key=API_KEY), timeout=60).text)
-    return response['name'], response['main']['temp'], response['weather'][0]['icon']
+def wmo_code_to_icon(widget, code, is_day):
+    widget.state.nonlocals('wmo_json')
+    if 'wmo_json' not in widget.state:
+        widget.state.wmo_json = requests.get(WMO_TO_ICON_URL).json()
+    
+    icon = widget.state.wmo_json.get(str(code), dict(day=None, night=None))['day' if is_day else 'night']
+    if icon:
+        return icon['description'], icon['image']
+    else:
+        return '', None
+    
+def forecast(widget, lat, lon):
+    response = json.loads(requests.get(FORECAST.format(lat=lat, lon=lon), timeout=60).text)
+
+    desc, icon = wmo_code_to_icon(widget, response['current']['weather_code'], bool(response['current']['is_day']))
+    return desc, response['current']['temperature_2m'], response['current_units']['temperature_2m'], icon
 
 def on_refresh(widget, views):
     try:
-        api_units, unit_symbol = UNITS
         lat, lon = widget.config.lat, widget.config.lon
-        name, temp, icon_code = forecast(lat=lat, lon=lon, units=api_units)
+        desc, temp, temp_units, icon_url = forecast(widget, lat=lat, lon=lon)
 
-        views['location'].text = name
-        views['temp'].text = f'{temp:.2f}°{unit_symbol}'
-        views['img'].imageURI = widgets.file_uri(widgets.download_resource(WEATHER_ICONS.format(code=icon_code)))
+        views['location'].text = desc
+        views['temp'].text = f'{round(temp)}{temp_units}'
+        views['img'].imageURI = widgets.file_uri(widgets.download_resource(icon_url))
     except OSError:
         print('error fetching information')
 
