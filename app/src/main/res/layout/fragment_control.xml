@@ -6,14 +6,14 @@
     android:layout_height="match_parent">
     <Button
         android:id="@+id/clear_widgets"
-        android:layout_width="wrap_content"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginTop="100dp"
         android:text="Clear Widgets"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.502"
-        app:layout_constraintTop_toTopOf="parent" app:layout_constraintVertical_bias="0.205"
+        app:layout_constraintEnd_toEndOf="@+id/reset_examples"
+        app:layout_constraintStart_toStartOf="@+id/reset_examples"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_bias="0.205"
         style="@style/secondary_btn"/>
     <Button
         android:id="@+id/clear_timers"
@@ -21,8 +21,8 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="20dp"
         android:text="Clear Timers"
-        app:layout_constraintEnd_toEndOf="@+id/clear_widgets"
-        app:layout_constraintStart_toStartOf="@+id/clear_widgets"
+        app:layout_constraintEnd_toEndOf="@+id/reset_examples"
+        app:layout_constraintStart_toStartOf="@+id/reset_examples"
         app:layout_constraintTop_toBottomOf="@+id/clear_widgets"
         style="@style/secondary_btn"/>
     <Button
@@ -31,10 +31,19 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="20dp"
         android:text="Clear State"
-        app:layout_constraintEnd_toEndOf="@+id/clear_widgets"
-        app:layout_constraintHorizontal_bias="0.0"
-        app:layout_constraintStart_toStartOf="@+id/clear_widgets"
+        app:layout_constraintEnd_toEndOf="@+id/reset_examples"
+        app:layout_constraintStart_toStartOf="@+id/reset_examples"
         app:layout_constraintTop_toBottomOf="@+id/clear_timers"
+        style="@style/secondary_btn"/>
+    <Button
+        android:id="@+id/reset_examples"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp"
+        android:text="Reset Examples"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/clear_state"
         style="@style/secondary_btn"/>
     <Button
         android:id="@+id/restart"
@@ -42,10 +51,9 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="20dp"
         android:text="Restart"
-        app:layout_constraintEnd_toEndOf="@+id/clear_widgets"
-        app:layout_constraintHorizontal_bias="0.489"
-        app:layout_constraintStart_toStartOf="@+id/clear_widgets"
-        app:layout_constraintTop_toBottomOf="@+id/clear_state"
+        app:layout_constraintEnd_toEndOf="@+id/reset_examples"
+        app:layout_constraintStart_toStartOf="@+id/reset_examples"
+        app:layout_constraintTop_toBottomOf="@+id/reset_examples"
         style="@style/secondary_btn"/>
     <ProgressBar
         android:id="@+id/startup_progress"
