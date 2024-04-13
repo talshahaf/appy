@@ -590,6 +590,7 @@ def choose_widget(widget, name):
 def unchoose_widget(widget_id):
     widget, manager_state = create_widget(widget_id)
     state.clean_local_state(widget_id)
+    widget.cancel_all_timers()
     manager_state.chosen.pop(widget_id, None)
     last_func_for_widget_id.pop(widget_id, None)
 

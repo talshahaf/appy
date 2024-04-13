@@ -1,4 +1,4 @@
-import json, requests, copy
+import requests, copy
 from appy import templates
 from appy.widgets import ImageView, RelativeLayout
 from appy import widgets
@@ -11,7 +11,7 @@ SPECIFIC = 'https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest?id
 IMAGE = 'https://s2.coinmarketcap.com/static/img/coins/32x32/{id}.png'
 
 def api_request(url):
-    return json.loads(requests.get(url, timeout=60, headers={'X-CMC_PRO_API_KEY': API_KEY}).text)
+    return requests.get(url, timeout=60, headers={'X-CMC_PRO_API_KEY': API_KEY}).json()
 
 def coin_list():
     coins = {}

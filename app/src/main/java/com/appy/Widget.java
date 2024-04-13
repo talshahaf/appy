@@ -24,6 +24,7 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Random;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -85,7 +86,7 @@ public class Widget extends RemoteViewsService
     private final IBinder mBinder = new LocalBinder();
     private static boolean mIsRunning = false;
 
-    public static final int PYTHON_VERSION = 31211;
+    public static final int PYTHON_VERSION = 31212;
     public static final int NOTIFICATION_ID = 100;
 
     WidgetUpdateListener updateListener = null;
@@ -1901,7 +1902,7 @@ public class Widget extends RemoteViewsService
         {
             super(pythonFiles.stream().map(pythonFile -> {
                 return new File(pythonFile.path).getParentFile();
-            }).collect(Collectors.toList()), mask);
+            }).filter(Objects::nonNull).collect(Collectors.toList()), mask);
 
             this.pythonFiles = new ArrayList<>(pythonFiles);
         }
@@ -2202,6 +2203,23 @@ public class Widget extends RemoteViewsService
             {
                 for (PythonFile f : pythonFiles)
                 {
+                    //filesystem check
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+                    {
+                        try
+                        {
+                            if (Files.isSameFile(Paths.get(f.path), Paths.get(file.path)))
+                            {
+                                exists = true;
+                                break;
+                            }
+                            continue;
+                        } catch (IOException e) {
+                            Log.e("APPY", "problem comparing paths", e);
+                        }
+                    }
+
+                    //fallback check
                     if (f.path.equals(file.path))
                     {
                         exists = true;
@@ -2915,7 +2933,7 @@ public class Widget extends RemoteViewsService
             PythonFile file = (PythonFile) args[0];
 
             String newhash = Utils.hashFile(file.path);
-            if (newhash.equalsIgnoreCase(file.hash))
+            if (file.state == PythonFile.State.ACTIVE && newhash.equalsIgnoreCase(file.hash))
             {
                 //file is exactly the same
                 Log.d("APPY", file.path+" hash is the same (" +newhash+"), not reloading");
