@@ -2749,6 +2749,25 @@ public class Widget extends RemoteViewsService
         file.delete();
     }
 
+    public void unpackExamples(boolean force)
+    {
+        String exampleDir = new File(getFilesDir(), "examples").getAbsolutePath();
+        if(force || !new File(exampleDir).exists())
+        {
+            try
+            {
+                Log.d("APPY", "unpacking examples");
+                new File(exampleDir).mkdir();
+                untar(getAssets().open("examples.targz"), exampleDir);
+                Log.d("APPY", "done unpacking examples");
+            }
+            catch (IOException e)
+            {
+                Log.e("APPY", "Error on unpackExamples", e);
+            }
+        }
+    }
+
     private class PythonSetupTask extends AsyncTask<Void, Void, Void>
     {
         private boolean error = false;
@@ -2768,7 +2787,7 @@ public class Widget extends RemoteViewsService
             String pythonHome = new File(getFilesDir(), "python").getAbsolutePath();
             String pythonLib = new File(pythonHome, "/lib/libpython3.12.so").getAbsolutePath(); //must be without
             String cacheDir = getPreferredCacheDir();
-            String exampleDir = new File(getFilesDir(), "examples").getAbsolutePath();
+
             try
             {
                 if(getPythonUnpacked() != PYTHON_VERSION)
@@ -2784,13 +2803,9 @@ public class Widget extends RemoteViewsService
                 {
                     Log.d("APPY", "python already unpacked");
                 }
-                if(!new File(exampleDir).exists())
-                {
-                    Log.d("APPY", "unpacking examples");
-                    new File(exampleDir).mkdir();
-                    untar(getAssets().open("examples.targz"), exampleDir);
-                    Log.d("APPY", "done unpacking examples");
-                }
+
+                unpackExamples(false);
+
                 copyAsset(getAssets().open("main.py"), new File(cacheDir, "main.py"));
                 copyAsset(getAssets().open("logcat.py"), new File(cacheDir, "logcat.py"));
                 copyAsset(getAssets().open("appy.targz"), new File(cacheDir, "appy.tar.gz"));
@@ -3626,6 +3641,7 @@ public class Widget extends RemoteViewsService
         else
         {
             file.getParentFile().mkdirs();
+            file.delete();
 
             if(entry.getHeader().linkFlag == TarHeader.LF_SYMLINK || entry.getHeader().linkFlag == TarHeader.LF_LINK)
             {

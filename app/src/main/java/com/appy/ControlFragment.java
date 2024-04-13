@@ -10,6 +10,7 @@ import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
+import android.widget.Toast;
 
 /**
  * Created by Tal on 19/03/2018.
@@ -22,6 +23,7 @@ public class ControlFragment extends MyFragment
     Button clearWidgets;
     Button clearTimers;
     Button clearState;
+    Button resetExamples;
     Button restart;
 
     Handler handler;
@@ -37,6 +39,7 @@ public class ControlFragment extends MyFragment
         clearWidgets = layout.findViewById(R.id.clear_widgets);
         clearTimers = layout.findViewById(R.id.clear_timers);
         clearState = layout.findViewById(R.id.clear_state);
+        resetExamples = layout.findViewById(R.id.reset_examples);
         restart = layout.findViewById(R.id.restart);
 
         handler = new Handler();
@@ -99,6 +102,28 @@ public class ControlFragment extends MyFragment
                             public void onClick(DialogInterface dialog, int whichButton)
                             {
                                 getWidgetService().resetState();
+                                debounce(v);
+                            }
+                        })
+                        .setNegativeButton(android.R.string.no, null);
+                builder.show();
+            }
+        });
+
+        resetExamples.setOnClickListener(new View.OnClickListener()
+        {
+            @Override
+            public void onClick(final View v)
+            {
+                AlertDialog.Builder builder = new AlertDialog.Builder(getActivity())
+                        .setIcon(android.R.drawable.ic_dialog_alert)
+                        .setTitle("Reset examples")
+                        .setMessage("Reset examples?")
+                        .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener()
+                        {
+                            public void onClick(DialogInterface dialog, int whichButton)
+                            {
+                                getWidgetService().unpackExamples(true);
                                 debounce(v);
                             }
                         })
