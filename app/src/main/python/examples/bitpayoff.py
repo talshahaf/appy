@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-import json, requests
+import requests
 from appy.templates import updating_text
 from appy.widgets import color
 
@@ -10,7 +10,7 @@ BITCOIN_ID = 1
 SPECIFIC = 'https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest?id={id}&convert={currency}'
 
 def api_request(url):
-    return json.loads(requests.get(url, timeout=60, headers={'X-CMC_PRO_API_KEY': API_KEY}).text)
+    return requests.get(url, timeout=60, headers={'X-CMC_PRO_API_KEY': API_KEY}).json()
 
 def bit_on_refresh(widget):
     print(f'refreshing {widget.config}')

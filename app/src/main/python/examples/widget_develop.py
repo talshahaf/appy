@@ -73,7 +73,10 @@ def on_refresh(widget, views):
     
     widget.state.setdefault('known_locals', {})
     success = 0
-    for file in widget.config.files:
+    
+    #Filter example entry
+    files = [file for file in widget.config.files if not file.get('url', '').startswith('https://www.example.com/')]
+    for file in files:
         if isinstance(file, str):
             url = file
             local = None
@@ -111,10 +114,10 @@ def on_refresh(widget, views):
             widget.state.known_locals[local] = time.time()
             success += 1
     
-    views['text'].textColor = color(g=255) if success == len(widget.config.files) else \
+    views['text'].textColor = color(g=255) if success == len(files) else \
                              (color(r=255) if success == 0 else \
                               color(r=255, g=255))
-    views['text'].text = f'{success}/{len(widget.config.files)}'
+    views['text'].text = f'{success}/{len(files)}'
     
     reset_timer_if_needed(widget)    
 
@@ -140,4 +143,4 @@ def create(widget):
     
     return [bg, text, countdown, refresh, enabled]
     
-register_widget('widget_develop', create, config=dict(interval=5, files=[]), on_config=on_config)
+register_widget('widget_develop', create, config=dict(interval=5, files=[{'url': 'https://www.example.com/widget.py&download=1', 'local': 'widget.py'}]), on_config=on_config)

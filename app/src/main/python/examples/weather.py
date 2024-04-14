@@ -1,4 +1,4 @@
-import json, requests, datetime, io
+import requests, datetime, io
 from appy.widgets import register_widget, ImageView, TextView, AttributeFunction
 from appy.templates import background, refresh_button, reset_refresh_buttons_if_needed
 from appy import widgets, java
@@ -41,7 +41,7 @@ def wmo_code_to_icon(widget, code, is_day):
         return '', None
     
 def forecast(widget, lat, lon):
-    response = json.loads(requests.get(FORECAST.format(lat=lat, lon=lon), timeout=60).text)
+    response = requests.get(FORECAST.format(lat=lat, lon=lon), timeout=60).json()
 
     desc, icon = wmo_code_to_icon(widget, response['current']['weather_code'], bool(response['current']['is_day']))
     return desc, response['current']['temperature_2m'], response['current_units']['temperature_2m'], icon
