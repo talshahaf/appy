@@ -3,6 +3,7 @@ from .utils import AttrDict
 from . import java
 
 global_configs = AttrDict()
+global_raw_configs = AttrDict()
 
 class ChangeListener(java.implements(java.clazz.appy.Configurations.ChangeListener())):
     @java.override
@@ -16,8 +17,9 @@ def set_defaults(widget, dic):
     sync()
 
 def sync():
-    global global_configs
+    global global_configs, global_raw_configs
     global_configs = AttrDict.make(json.loads(java_widget_manager.getConfigurations().serialize()))
+    global_raw_configs = AttrDict.make(json.loads(java_widget_manager.getConfigurations().serialize()))
     for widget, widget_configs in global_configs.items():
         for key in widget_configs:
             value = widget_configs[key]['value']
@@ -27,6 +29,10 @@ def sync():
                 except json.decoder.JSONDecodeError:
                     value = None
             widget_configs[key] = value
+            
+    for widget, widget_configs in global_raw_configs.items():
+        for key in widget_configs:
+            widget_configs[key] = widget_configs[key]['value']
 
 def init():
     global java_widget_manager

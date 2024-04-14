@@ -38,6 +38,8 @@ class Widget:
     def __getattr__(self, item):
         if item == 'config':
             return configs.global_configs[self.name]
+        if item == 'raw_config':
+            return configs.global_raw_configs[self.name]
         return getattr(self.widget_dims, item)
 
     def locals(self, *attrs):
