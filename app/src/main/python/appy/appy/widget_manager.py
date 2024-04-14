@@ -8,12 +8,6 @@ def gen_id():
         id = struct.unpack('<q', os.urandom(8))[0]
     return id
 
-def json_dumps(d):
-    #c json fucks up because we're not a regular dict, indent=* causes python to use the python implementation
-    return json.dumps(d)
-def json_loads(s):
-    return json.loads(s)
-
 @functools.lru_cache(maxsize=128, typed=True)
 def validate_type(type):
     return java.clazz.appy.Constants().typeToClass.containsKey(type)
@@ -196,7 +190,7 @@ def deserialize_arg(arg):
         return arg['value']
 
     #gotta go to java
-    return java.clazz.appy.Serializer().deserializeString(json_dumps(arg))
+    return java.clazz.appy.Serializer().deserializeString(json.dumps(arg))
 
 def serialize_arg(arg):
     #probably already serialized
@@ -210,7 +204,7 @@ def serialize_arg(arg):
         return AttrDict(type='primitive', value=arg)
 
     #gotta go to java
-    return json_loads(java.clazz.appy.Serializer().serializeToString(arg))
+    return json.loads(java.clazz.appy.Serializer().serializeToString(arg))
 
 element_event_hooks = {} #global for all
 class Element:
@@ -712,11 +706,11 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
         if input is not None and input == out:
             return None
 
-        return json_dumps(out)
+        return json.dumps(out)
 
     def import_(self, s):
-        d = json_loads(s)
-        d2 = json_loads(s)
+        d = json.loads(s)
+        d2 = json.loads(s)
         return d, elist(Element(e) for e in d2)
 
     @java.override
@@ -858,7 +852,7 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
         #     {widget_name -> {key -> repr(value)}}  
         #  locals:
         #     {widget_name -> {widget_id -> {key -> repr(value)}}}
-        return json_dumps(layout)
+        return json.dumps(layout)
     
     @java.override
     def cleanState(self, scope, widget, key):

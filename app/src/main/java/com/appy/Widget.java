@@ -2105,8 +2105,15 @@ public class Widget extends RemoteViewsService
 
     public boolean addPythonFileByPathWithDialog(String path)
     {
+        // Fail early
+        if (!new File(path).isFile())
+        {
+            return false;
+        }
+
         Pair<Integer, String> pair = showAndWaitForDialog(null, "Add Python File", "Allow widget to add the python file \"" + new File(path).getName() + "\"?", new String[]{"OK", "CANCEL"}, null, -1);
-        if (pair.first == 0) {
+        if (pair.first == 0)
+        {
             return addPythonFileByPath(path);
         }
         return false;
