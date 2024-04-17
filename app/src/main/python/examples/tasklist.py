@@ -1,4 +1,4 @@
-from appy.widgets import register_widget, ImageView, ListView, CheckBox
+from appy.widgets import register_widget, ImageView, ListView, CheckBox, R
 from appy.templates import background
 from appy import java
 
@@ -37,10 +37,10 @@ def create(widget):
                            colorFilter=0xffffffff, width=80, height=80,
                            right=10, bottom=10,
                            click=edit_btn_click,
-                           imageResource=java.clazz.android.R.drawable().ic_menu_edit)
+                           imageResource=R.drawable.ic_menu_edit)
     
     widget.post(update_list)
-    return [background(drawable=java.clazz.appy.R.drawable().rect), lst, edit_btn]
+    return [background(drawable=R.drawable.rect), lst, edit_btn]
     
 register_widget('tasklist', create,
                     # no json so it would be easier to read and to change

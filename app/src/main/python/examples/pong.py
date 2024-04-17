@@ -1,5 +1,5 @@
 import os
-from appy.widgets import register_widget, TextView, Button, java_context, file_uri, cache_dir, Widget, request_permissions
+from appy.widgets import register_widget, TextView, Button, java_context, file_uri, cache_dir, Widget, request_permissions, R
 from appy.templates import background
 from appy import java
 
@@ -234,7 +234,7 @@ def ping_click(widget):
         make_notification(notification_intent_filter, widget.widget_id, 
                           'Click to Pong', str(widget.state.counter + 1),
                           #            because it kinda looks like a paddle
-                          'Pong', java.clazz.android.R.drawable().ic_menu_search,
+                          'Pong', R.drawable.ic_menu_search,
                           dict(widget_id_extra=str(widget.widget_id), method_extra='add', amount_extra='2'))
 
 def create(widget):

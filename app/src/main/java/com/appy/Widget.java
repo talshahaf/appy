@@ -804,6 +804,8 @@ public class Widget extends RemoteViewsService
                             clickIntent.putExtra(Constants.ITEM_TAG_EXTRA, (Integer) layout.tag);
                         } else if (layout.tag instanceof Long) {
                             clickIntent.putExtra(Constants.ITEM_TAG_EXTRA, (Long) layout.tag);
+                        } else if (layout.tag instanceof String) {
+                            clickIntent.putExtra(Constants.ITEM_TAG_EXTRA, (String) layout.tag);
                         }
 
                         if (inCollection) {
@@ -1918,17 +1920,18 @@ public class Widget extends RemoteViewsService
         }
 
         @Override
-        public void onEvent(final int event, @Nullable final String path)
+        public void onEvent(final int event, @Nullable final String filename)
         {
             handler.postDelayed(new Runnable() {
                 @Override
                 public void run() {
-                    Log.d("APPY", "got base inotify: "+path+" "+event);
-                    for (PythonFile file : pythonFiles)
+                    Log.d("APPY", "got base inotify: "+filename+" "+event);
+                    // we have no way of knowing where it came from, firing for all pythonfiles with the same filename
+                    for (PythonFile pythonFile : getPythonFiles())
                     {
-                        if (new File(file.path).getName().equals(path))
+                        if (new File(pythonFile.path).getName().equals(filename))
                         {
-                            onEvent(event, file);
+                            onEvent(event, pythonFile);
                         }
                     }
                 }
@@ -2119,17 +2122,15 @@ public class Widget extends RemoteViewsService
         return false;
     }
 
-    public boolean refreshPythonFileByPath(String path)
+    public PythonFile findPythonFile(String path)
     {
-        PythonFile pythonFile = null;
         ArrayList<PythonFile> files = getPythonFiles();
         for (PythonFile f : files)
         {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 try {
                     if (Files.isSameFile(Paths.get(f.path), Paths.get(path))) {
-                        pythonFile = f;
-                        break;
+                        return f;
                     }
                     continue;
                 } catch (IOException e) {
@@ -2140,11 +2141,16 @@ public class Widget extends RemoteViewsService
             // fallback check
             if (f.path.equals(path))
             {
-                pythonFile = f;
-                break;
+                return f;
             }
         }
 
+        return null;
+    }
+
+    public boolean refreshPythonFileByPath(String path)
+    {
+        PythonFile pythonFile = findPythonFile(path);
         if (pythonFile == null)
         {
             return false;
@@ -2208,32 +2214,7 @@ public class Widget extends RemoteViewsService
         {
             for (PythonFile file : files)
             {
-                for (PythonFile f : pythonFiles)
-                {
-                    //filesystem check
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
-                    {
-                        try
-                        {
-                            if (Files.isSameFile(Paths.get(f.path), Paths.get(file.path)))
-                            {
-                                exists = true;
-                                break;
-                            }
-                            continue;
-                        } catch (IOException e) {
-                            Log.e("APPY", "problem comparing paths", e);
-                        }
-                    }
-
-                    //fallback check
-                    if (f.path.equals(file.path))
-                    {
-                        exists = true;
-                        break;
-                    }
-                }
-                if (!exists)
+                if (findPythonFile(file.path) == null)
                 {
                     pythonFiles.add(file);
                 }
@@ -2508,13 +2489,8 @@ public class Widget extends RemoteViewsService
         return (Pair<String[], int[]>)waitForAsyncReport(requestCode, timeoutMilli);
     }
 
-    public Pair<Integer, String> showAndWaitForDialog(Integer icon, String title, String text, String[] buttons, String editText, int timeoutMilli)
+    public int showDialogNoWait(Integer icon, String title, String text, String[] buttons, String editText)
     {
-        if(Looper.myLooper() != null)
-        {
-            throw new IllegalStateException("showAndWaitForDialog must be called on a Task thread");
-        }
-
         int requestCode = generateRequestCode();
         Intent intent = new Intent(this, DialogActivity.class);
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_MULTIPLE_TASK);
@@ -2529,6 +2505,17 @@ public class Widget extends RemoteViewsService
             intent.putExtra(DialogActivity.EXTRA_ICON, icon.intValue());
         }
         startActivity(intent);
+        return requestCode;
+    }
+
+    public Pair<Integer, String> showAndWaitForDialog(Integer icon, String title, String text, String[] buttons, String editText, int timeoutMilli)
+    {
+        if(Looper.myLooper() != null)
+        {
+            throw new IllegalStateException("showAndWaitForDialog must be called on a Task thread");
+        }
+
+        int requestCode = showDialogNoWait(icon, title, text, buttons, editText);
 
         return (Pair<Integer, String>)waitForAsyncReport(requestCode, timeoutMilli);
     }
@@ -2651,11 +2638,12 @@ public class Widget extends RemoteViewsService
     {
         Log.d("APPY", "setting error widget for "+widgetId+" android: "+androidWidgetId);
 
+        String path = null;
         if(widgetId > 0 && updateListener != null)
         {
             try
             {
-                updateListener.onError(widgetId, Stacktrace.stackTraceString(error));
+                path = updateListener.onError(widgetId, Stacktrace.stackTraceString(error));
             }
             catch(Exception e)
             {
@@ -2677,10 +2665,19 @@ public class Widget extends RemoteViewsService
         restart.attributes.attributes.put(Attributes.Type.HEIGHT, attributeParse("140"));
         restart.attributes.attributes.put(Attributes.Type.RIGHT, attributeParse("0"));
         restart.attributes.attributes.put(Attributes.Type.BOTTOM, attributeParse("0"));
-        restart.tag = Constants.SPECIAL_WIDGET_RESTART; //onclick
+        restart.tag = Constants.SPECIAL_WIDGET_RESTART+""; //onclick
+
+        DynamicView openApp = new DynamicView("ImageView");
+        openApp.methodCalls.add(new RemoteMethodCall("setImageResource", false, Constants.getSetterMethod(openApp.type, "setImageResource"), "setImageResource", R.mipmap.ic_launcher_foreground));
+        openApp.attributes.attributes.put(Attributes.Type.TOP, attributeParse("h(p)0.5+h("+openApp.getId()+")-0.5"));
+        openApp.attributes.attributes.put(Attributes.Type.LEFT, attributeParse("w(p)0.5"));
+        openApp.attributes.attributes.put(Attributes.Type.WIDTH, attributeParse("140"));
+        openApp.attributes.attributes.put(Attributes.Type.HEIGHT, attributeParse("140"));
+        openApp.tag = Constants.SPECIAL_WIDGET_OPENAPP+"";
 
         views.add(textView);
         views.add(restart);
+        views.add(openApp);
 
         if(widgetId > 0)
         {
@@ -2691,14 +2688,26 @@ public class Widget extends RemoteViewsService
             clear.selectors.put("style", "dark_sml");
             clear.attributes.attributes.put(Attributes.Type.TOP, afterText);
             clear.attributes.attributes.put(Attributes.Type.LEFT, attributeParse("l(p)"));
-            clear.tag = widgetId + (Constants.SPECIAL_WIDGET_CLEAR << 16);
+            clear.tag = Constants.SPECIAL_WIDGET_CLEAR + "," + widgetId;
 
             DynamicView reload = new DynamicView("Button");
             reload.methodCalls.add(new RemoteMethodCall("setText", false, Constants.getSetterMethod(reload.type, "setText"), "setText", "Reload"));
             reload.selectors.put("style", "info_sml");
             reload.attributes.attributes.put(Attributes.Type.TOP, afterText);
             reload.attributes.attributes.put(Attributes.Type.RIGHT, attributeParse("r(p)"));
-            reload.tag = widgetId + (Constants.SPECIAL_WIDGET_RELOAD << 16);
+            reload.tag = Constants.SPECIAL_WIDGET_RELOAD + "," + widgetId;
+
+            if (path != null)
+            {
+                DynamicView showError = new DynamicView("ImageView");
+                showError.methodCalls.add(new RemoteMethodCall("setImageResource", false, Constants.getSetterMethod(showError.type, "setImageResource"), "setImageResource", R.drawable.ic_action_info));
+                showError.attributes.attributes.put(Attributes.Type.TOP, attributeParse("h(p)0.5+h(" + showError.getId() + ")-0.5"));
+                showError.attributes.attributes.put(Attributes.Type.RIGHT, attributeParse("w(p)0.5"));
+                showError.attributes.attributes.put(Attributes.Type.WIDTH, attributeParse("140"));
+                showError.attributes.attributes.put(Attributes.Type.HEIGHT, attributeParse("140"));
+                showError.tag = Constants.SPECIAL_WIDGET_SHOWERROR + "," + path.length() + "," + path + "," + Stacktrace.stackTraceString(error);
+                views.add(showError);
+            }
 
             views.add(clear);
             views.add(reload);
@@ -2904,13 +2913,10 @@ public class Widget extends RemoteViewsService
         }
         else
         {
-            for (PythonFile file : getPythonFiles())
+            PythonFile pythonFile = findPythonFile(path);
+            if (pythonFile != null)
             {
-                if (file.path.equals(path))
-                {
-                    setPythonFileLastError(file, lastError);
-                    break;
-                }
+                setPythonFileLastError(pythonFile, lastError);
             }
         }
     }
@@ -3543,27 +3549,88 @@ public class Widget extends RemoteViewsService
 
                     if(eventWidgetId == Constants.SPECIAL_WIDGET_ID)
                     {
-                        int tag = widgetIntent.getIntExtra(Constants.ITEM_TAG_EXTRA, 0);
-                        if(tag == Constants.SPECIAL_WIDGET_RESTART)
-                        {
-                            restart();
-                        }
-                        else if(((tag >> 16) & 0xffff) == Constants.SPECIAL_WIDGET_CLEAR)
-                        {
-                            int widgetId = tag & 0xffff;
-                            if(widgetId > 0)
-                            {
-                                Log.d("APPY", "clearing " + widgetId);
-                                clearWidget(widgetId);
+                        String tag = widgetIntent.getStringExtra(Constants.ITEM_TAG_EXTRA);
+                        if (tag != null) {
+                            int index = tag.indexOf(",");
+                            int command = -1;
+                            String arg = null;
+                            try {
+                                if (index == -1) {
+                                    command = Integer.parseInt(tag);
+                                } else {
+                                    command = Integer.parseInt(tag.substring(0, index));
+                                    arg = tag.substring(index + 1);
+                                }
+                            } catch (NumberFormatException ignored) {
+
                             }
-                        }
-                        else if(((tag >> 16) & 0xffff) == Constants.SPECIAL_WIDGET_RELOAD)
-                        {
-                            int widgetId = tag & 0xffff;
-                            if(widgetId > 0)
+
+                            if (command != -1)
                             {
-                                Log.d("APPY", "reloading " + widgetId);
-                                update(widgetId);
+                                switch (command)
+                                {
+                                    case Constants.SPECIAL_WIDGET_RESTART:
+                                        restart();
+                                        break;
+                                    case Constants.SPECIAL_WIDGET_OPENAPP:
+                                        startMainActivity(null, null);
+                                        break;
+                                    case Constants.SPECIAL_WIDGET_CLEAR:
+                                        if (arg != null) {
+                                            try
+                                            {
+                                                int widgetId = Integer.parseInt(arg);
+                                                Log.d("APPY", "clearing " + widgetId);
+                                                clearWidget(widgetId);
+                                            }
+                                            catch (NumberFormatException ignored)
+                                            {
+
+                                            }
+                                        }
+                                        break;
+                                    case Constants.SPECIAL_WIDGET_RELOAD:
+                                        if (arg != null) {
+                                            try
+                                            {
+                                                int widgetId = Integer.parseInt(arg);
+                                                Log.d("APPY", "reloading " + widgetId);
+                                                update(widgetId);
+                                            }
+                                            catch (NumberFormatException ignored)
+                                            {
+
+                                            }
+                                        }
+                                        break;
+                                    case Constants.SPECIAL_WIDGET_SHOWERROR:
+                                        if (arg == null || arg.isEmpty()) {
+                                            Log.d("APPY", "cannot showerror, arg is empty");
+                                            break;
+                                        }
+                                        String[] args = arg.split(",", 2);
+                                        int arg1len = 0;
+                                        try {
+                                            arg1len = Integer.parseInt(args[0]);
+                                        } catch (NumberFormatException ignored) {
+                                            Log.d("APPY", "cannot showerror, " + args[0] + " is not a number");
+                                            break;
+                                        }
+
+                                        if (arg1len > args[1].length() || args[1].charAt(arg1len) != ',') {
+                                            Log.d("APPY", "cannot showerror, arglen (" + arg1len + ") is bad: " + args[1].length() + ", '"+args[1].substring(0, arg1len + 1)+"'");
+                                            break;
+                                        }
+
+                                        String path = args[1].substring(0, arg1len);
+                                        String error = args[1].substring(arg1len + 1);
+                                        String title = new File(path).getName();
+
+                                        Log.d("APPY", "showing error of " + path);
+
+                                        showDialogNoWait(null, title, path + "\n\n" + error, new String[]{"Close"}, null);
+                                        break;
+                                }
                             }
                         }
                     }

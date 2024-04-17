@@ -38,6 +38,7 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 
@@ -58,11 +59,15 @@ public class Constants
     public static final String FRAGMENT_ARG_WIDGET = "FRAGMENT_ARG_WIDGET";
     public static final String FRAGMENT_ARG_CONFIG = "FRAGMENT_ARG_CONFIG";
     public static final String FRAGMENT_ARG_REQUESTCODE = "FRAGMENT_ARG_REQUESTCODE";
-    public static final String DEEP_LINK_BROADCAST = "com.appy.DeepLink";
+    public static final String APP_PACKAGE_NOCOM = "appy";
+    public static final String APP_PACKAGE_NAME = "com." + APP_PACKAGE_NOCOM;
+    public static final String DEEP_LINK_BROADCAST = APP_PACKAGE_NAME + ".DeepLink";
     public static final int SPECIAL_WIDGET_ID = 100;
     public static final int SPECIAL_WIDGET_RESTART = 1;
     public static final int SPECIAL_WIDGET_CLEAR = 2;
     public static final int SPECIAL_WIDGET_RELOAD = 3;
+    public static final int SPECIAL_WIDGET_SHOWERROR = 4;
+    public static final int SPECIAL_WIDGET_OPENAPP = 5;
     public static final int TIMER_RELATIVE = 1;
     public static final int TIMER_ABSOLUTE = 2;
     public static final int TIMER_REPEATING = 3;
@@ -178,10 +183,10 @@ public class Constants
     static HashMap<List<String>, Integer> collection_map = new HashMap<>();
     static
     {
-        collection_map.put(Arrays.asList("ListView"), R.layout.root_listview);
-        collection_map.put(Arrays.asList("GridView"), R.layout.root_gridview);
-        collection_map.put(Arrays.asList("StackView"), R.layout.root_stackview);
-        collection_map.put(Arrays.asList("AdapterViewFlipper"), R.layout.root_adapterviewflipper);
+        collection_map.put(Collections.singletonList("ListView"), R.layout.root_listview);
+        collection_map.put(Collections.singletonList("GridView"), R.layout.root_gridview);
+        collection_map.put(Collections.singletonList("StackView"), R.layout.root_stackview);
+        collection_map.put(Collections.singletonList("AdapterViewFlipper"), R.layout.root_adapterviewflipper);
         collection_map.put(Arrays.asList("AdapterViewFlipper", "AdapterViewFlipper"), R.layout.root_adapterviewflipper_adapterviewflipper);
         collection_map.put(Arrays.asList("AdapterViewFlipper", "GridView"), R.layout.root_adapterviewflipper_gridview);
         collection_map.put(Arrays.asList("AdapterViewFlipper", "ListView"), R.layout.root_adapterviewflipper_listview);

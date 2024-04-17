@@ -33,7 +33,7 @@ public class DialogActivity extends Activity {
         {
             widgetService = ((Widget.LocalBinder) service).getService();
             makeDialog(getIntent().getIntExtra(EXTRA_REQUEST_CODE, -1),
-                        getIntent().getIntExtra(EXTRA_ICON, android.R.drawable.ic_dialog_alert),
+                        getIntent().getIntExtra(EXTRA_ICON, -1),
                         getIntent().getStringExtra(EXTRA_TITLE),
                         getIntent().getStringExtra(EXTRA_TEXT),
                         getIntent().getStringArrayExtra(EXTRA_BUTTONS),
@@ -64,9 +64,12 @@ public class DialogActivity extends Activity {
         };
 
         AlertDialog.Builder builder = new AlertDialog.Builder(this)
-                .setIcon(icon)
                 .setTitle(title)
                 .setMessage(text);
+        if (icon != -1)
+        {
+            builder.setIcon(icon);
+        }
         final EditText editTextView = new EditText(this);
         if (edittext != null)
         {

@@ -197,10 +197,10 @@ def background(name=None, color=None, drawable=None):
         color = color_(r=0, g=0, b=0, a=100)
 
     if drawable is None:
-        drawable = java.clazz.appy.R.drawable().rounded_rect
+        drawable = R.drawable.rounded_rect
 
     if isinstance(drawable, str):
-        drawable = getattr(java.clazz.appy.R.drawable(), drawable)
+        drawable = getattr(R.drawable, drawable)
 
     bg = RelativeLayout(width=widget_manager.widget_dims.width, height=widget_manager.widget_dims.height, backgroundResource=drawable)
     bg.backgroundTint = color
@@ -208,6 +208,6 @@ def background(name=None, color=None, drawable=None):
         bg.name = name
     return bg
 
-from .widget_manager import register_widget, java_context, elist, call_general_function, AttributeFunction
+from .widget_manager import register_widget, java_context, elist, call_general_function, AttributeFunction, R, androidR
 from .utils import download_resource, copy_resource, cache_dir, preferred_script_dir
 from .state import wipe_state

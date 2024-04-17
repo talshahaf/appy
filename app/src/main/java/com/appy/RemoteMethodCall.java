@@ -1,15 +1,14 @@
 package com.appy;
 
-import com.appy.Reflection;
-
 import android.util.Log;
+import android.util.Pair;
 import android.widget.RemoteViews;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.lang.reflect.Array;
+import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -25,6 +24,8 @@ public class RemoteMethodCall
     private Method method;
     private Object[] arguments;
     public static HashMap<String, Method> remoteViewMethods = new HashMap<>();
+    public static ArrayList<Pair<String, String>> resolveResourcePrefix = new ArrayList<>();
+
     static
     {
         Method[] methods = Reflection.getMethods(RemoteViews.class);
@@ -37,6 +38,63 @@ public class RemoteMethodCall
                 remoteViewMethods.put(method.getName(), method);
             }
         }
+
+        resolveResourcePrefix.add(new Pair<>("xml.resource.R.", Constants.APP_PACKAGE_NAME + ".R"));
+        resolveResourcePrefix.add(new Pair<>("xml.resource.android.R.", "android.R"));
+    }
+
+    public static Object reflectStaticPath(String path)
+    {
+        int index = path.lastIndexOf(".");
+        if (index == -1)
+        {
+            return null;
+        }
+        String member = path.substring(index + 1);
+        path = path.substring(0, index);
+        try {
+            Log.d("APPY", "xml searchcls: "+path);
+            Class<?> cls = Reflection.findClass(path, true, R.drawable.class.getClassLoader());
+            Log.d("APPY", "xml foudn cls: "+member);
+            Field fld = Reflection.getFieldRaw(cls, member);
+            Log.d("APPY", "xml fld cls: "+fld);
+            if (fld != null)
+            {
+                return fld.get(null);
+            }
+        } catch (RuntimeException | IllegalAccessException ignored) {
+            Log.e("APPY", "w ", ignored);
+        }
+
+        return null;
+    }
+
+    public Object tryResolveXmlResource(Object obj, Class<?> required)
+    {
+        if (obj == null)
+        {
+            return null;
+        }
+
+        Class<?> cls = obj.getClass();
+        if (cls == String.class && (required == Integer.class || required == Integer.TYPE))
+        {
+            for (Pair<String, String> prefix : resolveResourcePrefix)
+            {
+                if (((String) obj).startsWith(prefix.first))
+                {
+                    String path = ((String) obj).substring(prefix.first.length());
+
+                    Object resolved = reflectStaticPath(prefix.second + "." + path);
+                    if (resolved != null)
+                    {
+                        return resolved;
+                    }
+                }
+            }
+        }
+
+        return obj;
     }
 
     public static Object cast(Object obj, Class<?> required)
@@ -123,7 +181,8 @@ public class RemoteMethodCall
         Class<?>[] types = this.method.getParameterTypes();
         this.arguments = new Object[args.length];
         for (int i = 0; i < args.length; i++) {
-            arguments[i] = cast(args[i], types[i + 1]);
+            arguments[i] = tryResolveXmlResource(args[i], types[i + 1]);
+            arguments[i] = cast(arguments[i], types[i + 1]);
         }
     }
 
