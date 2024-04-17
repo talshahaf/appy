@@ -14,8 +14,8 @@ public class BootReceiver extends BroadcastReceiver
     @Override
     public void onReceive(Context context, Intent intent)
     {
-        Log.d("APPY", "boot onReceive intent: "+intent.getAction());
-        if(Intent.ACTION_BOOT_COMPLETED.equals(intent.getAction()))
+        Log.d("APPY", "boot onReceive intent: " + intent.getAction());
+        if (Intent.ACTION_BOOT_COMPLETED.equals(intent.getAction()))
         {
             Log.d("APPY", "boot onReceive intent");
             Widget.startService(context, new Intent(context, Widget.class));

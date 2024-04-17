@@ -22,6 +22,7 @@ import java.io.File;
 public class SettingsFragment extends MySettingsFragment implements SharedPreferences.OnSharedPreferenceChangeListener
 {
     Preference externalDirPreference;
+
     @Override
     public void onCreatePreferences(Bundle savedInstanceState, String rootKey)
     {
@@ -47,14 +48,16 @@ public class SettingsFragment extends MySettingsFragment implements SharedPrefer
     }
 
     @Override
-    public void onResume() {
+    public void onResume()
+    {
         super.onResume();
         // Set up a listener whenever a key changes
         getPreferenceScreen().getSharedPreferences().registerOnSharedPreferenceChangeListener(this);
     }
 
     @Override
-    public void onPause() {
+    public void onPause()
+    {
         super.onPause();
         // Set up a listener whenever a key changes
         getPreferenceScreen().getSharedPreferences().unregisterOnSharedPreferenceChangeListener(this);
@@ -73,7 +76,7 @@ public class SettingsFragment extends MySettingsFragment implements SharedPrefer
 
     public void updateConfig()
     {
-        if(getWidgetService() == null)
+        if (getWidgetService() == null)
         {
             return;
         }

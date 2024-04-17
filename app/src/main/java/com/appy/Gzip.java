@@ -8,7 +8,8 @@ import java.io.InputStreamReader;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
-public class Gzip {
+public class Gzip
+{
 
     public static byte[] compress(String data)
     {
@@ -40,7 +41,8 @@ public class Gzip {
             BufferedReader br = new BufferedReader(new InputStreamReader(gis, "UTF-8"));
             StringBuilder sb = new StringBuilder();
             String line;
-            while((line = br.readLine()) != null) {
+            while ((line = br.readLine()) != null)
+            {
                 sb.append(line);
             }
             br.close();

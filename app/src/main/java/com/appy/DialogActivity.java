@@ -17,7 +17,8 @@ import android.widget.FrameLayout;
 
 import androidx.appcompat.app.AlertDialog;
 
-public class DialogActivity extends Activity {
+public class DialogActivity extends Activity
+{
 
     public static final String EXTRA_TITLE = "EXTRA_TITLE";
     public static final String EXTRA_TEXT = "EXTRA_TEXT";
@@ -28,19 +29,21 @@ public class DialogActivity extends Activity {
 
     private Widget widgetService;
 
-    private ServiceConnection mConnection = new ServiceConnection() {
+    private ServiceConnection mConnection = new ServiceConnection()
+    {
         public void onServiceConnected(ComponentName className, IBinder service)
         {
             widgetService = ((Widget.LocalBinder) service).getService();
             makeDialog(getIntent().getIntExtra(EXTRA_REQUEST_CODE, -1),
-                        getIntent().getIntExtra(EXTRA_ICON, -1),
-                        getIntent().getStringExtra(EXTRA_TITLE),
-                        getIntent().getStringExtra(EXTRA_TEXT),
-                        getIntent().getStringArrayExtra(EXTRA_BUTTONS),
-                        getIntent().getStringExtra(EXTRA_EDITTEXT));
+                    getIntent().getIntExtra(EXTRA_ICON, -1),
+                    getIntent().getStringExtra(EXTRA_TITLE),
+                    getIntent().getStringExtra(EXTRA_TEXT),
+                    getIntent().getStringArrayExtra(EXTRA_BUTTONS),
+                    getIntent().getStringExtra(EXTRA_EDITTEXT));
         }
 
-        public void onServiceDisconnected(ComponentName className) {
+        public void onServiceDisconnected(ComponentName className)
+        {
             widgetService = null;
         }
     };
@@ -48,7 +51,10 @@ public class DialogActivity extends Activity {
     public interface DialogActivityButtonClick
     {
         void onClick(int which, String editText);
-    };
+    }
+
+    ;
+
     public void makeDialog(int request, int icon, String title, String text, String[] buttons, String edittext)
     {
         if (request == -1 || title == null || text == null || buttons == null || buttons.length == 0)
@@ -56,9 +62,11 @@ public class DialogActivity extends Activity {
             return;
         }
 
-        final DialogActivityButtonClick onClick = new DialogActivityButtonClick() {
+        final DialogActivityButtonClick onClick = new DialogActivityButtonClick()
+        {
             @Override
-            public void onClick(int which, String editText) {
+            public void onClick(int which, String editText)
+            {
                 widgetService.asyncReport(request, new Pair<>(which, editText));
             }
         };
@@ -76,8 +84,8 @@ public class DialogActivity extends Activity {
             FrameLayout container = new FrameLayout(this);
             FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
             float margin = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 20, getResources().getDisplayMetrics());
-            params.leftMargin = (int)margin;
-            params.rightMargin = (int)margin;
+            params.leftMargin = (int) margin;
+            params.rightMargin = (int) margin;
 
             editTextView.setLayoutParams(params);
             editTextView.setText(edittext);
@@ -86,18 +94,22 @@ public class DialogActivity extends Activity {
             builder.setView(container);
         }
 
-        builder.setOnCancelListener(new DialogInterface.OnCancelListener() {
+        builder.setOnCancelListener(new DialogInterface.OnCancelListener()
+        {
             @Override
-            public void onCancel(DialogInterface dialog) {
+            public void onCancel(DialogInterface dialog)
+            {
                 onClick.onClick(-1, edittext != null ? editTextView.getText().toString() : null);
                 finish();
             }
         });
 
-        DialogInterface.OnClickListener dialogClick = new DialogInterface.OnClickListener() {
-            public void onClick(DialogInterface dialog, int whichButton) {
+        DialogInterface.OnClickListener dialogClick = new DialogInterface.OnClickListener()
+        {
+            public void onClick(DialogInterface dialog, int whichButton)
+            {
                 int which = -1;
-                switch(whichButton)
+                switch (whichButton)
                 {
                     case AlertDialog.BUTTON_NEUTRAL:
                         which = 2;
@@ -114,7 +126,8 @@ public class DialogActivity extends Activity {
             }
         };
 
-        switch (buttons.length) {
+        switch (buttons.length)
+        {
             //fallthroughs
             default:
             case 3:
@@ -136,14 +149,17 @@ public class DialogActivity extends Activity {
         doBindService();
     }
 
-    void doBindService() {
+    void doBindService()
+    {
         Intent bindIntent = new Intent(this, Widget.class);
         bindIntent.putExtra(Constants.LOCAL_BIND_EXTRA, true);
         bindService(bindIntent, mConnection, Context.BIND_AUTO_CREATE);
     }
 
-    void doUnbindService() {
-        if (widgetService != null) {
+    void doUnbindService()
+    {
+        if (widgetService != null)
+        {
             widgetService.setStatusListener(null);
             unbindService(mConnection);
             widgetService = null;
@@ -151,7 +167,8 @@ public class DialogActivity extends Activity {
     }
 
     @Override
-    protected void onDestroy() {
+    protected void onDestroy()
+    {
         super.onDestroy();
         doUnbindService();
     }

@@ -3,8 +3,10 @@ package com.appy;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.os.Bundle;
+
 import androidx.fragment.app.FragmentTransaction;
 import androidx.appcompat.app.AlertDialog;
+
 import android.text.InputType;
 import android.text.TextUtils;
 import android.util.Pair;
@@ -61,7 +63,7 @@ public class StateFragment extends MyFragment
                 R.animator.slide_in_from_right, R.animator.slide_out_to_left,
                 R.animator.slide_in_from_left, R.animator.slide_out_to_right);
         transaction.replace(R.id.configs_container, fragment, FRAGMENT_TAG);
-        if(getChildFragmentManager().findFragmentByTag(FRAGMENT_TAG) != null)
+        if (getChildFragmentManager().findFragmentByTag(FRAGMENT_TAG) != null)
         {
             transaction.addToBackStack(null);
         }
@@ -99,9 +101,9 @@ public class StateFragment extends MyFragment
         public void refresh()
         {
             ArrayList<Item> adapterList = new ArrayList<>();
-            if(keyPath.isEmpty())
+            if (keyPath.isEmpty())
             {
-                for(String scope : StateLayout.listScopes())
+                for (String scope : StateLayout.listScopes())
                 {
                     adapterList.add(new Item(scope, "", false, false));
                 }
@@ -114,7 +116,7 @@ public class StateFragment extends MyFragment
                 boolean leaves = depth == keyPath.size();
                 boolean inLocalScopeView = depth - 1 == keyPath.size() && depth == 3;
 
-                for(String key : stateLayout.listDict(keyPath))
+                for (String key : stateLayout.listDict(keyPath))
                 {
                     adapterList.add(new Item(key, leaves ? stateLayout.getValue(keyPath, key) : "", leaves, inLocalScopeView));
                 }
@@ -150,8 +152,8 @@ public class StateFragment extends MyFragment
         @Override
         public void onItemClick(AdapterView<?> adapter, View view, int position, long id)
         {
-            Item item = (Item)adapter.getItemAtPosition(position);
-            if(!item.leaf)
+            Item item = (Item) adapter.getItemAtPosition(position);
+            if (!item.leaf)
             {
                 //select that widget
                 WidgetSelectFragment fragment = new WidgetSelectFragment();
@@ -176,7 +178,7 @@ public class StateFragment extends MyFragment
             View layout = LayoutInflater.from(getActivity()).inflate(R.layout.alert_error_view_vertical, null);
 
             TextView message = layout.findViewById(R.id.message);
-            message.setText(text+"\n\n");
+            message.setText(text + "\n\n");
 
             builder.setView(layout);
 
@@ -188,20 +190,20 @@ public class StateFragment extends MyFragment
         public void onCreateContextMenu(ContextMenu menu, View v,
                                         ContextMenu.ContextMenuInfo menuInfo)
         {
-            if(v == list)
+            if (v == list)
             {
                 boolean hasContextList = true;
-                if(!keyPath.isEmpty())
+                if (!keyPath.isEmpty())
                 {
                     int depth = StateLayout.getDepth(keyPath.get(0));
-                    if(depth != keyPath.size() && depth - 1 != keyPath.size())
+                    if (depth != keyPath.size() && depth - 1 != keyPath.size())
                     {
                         //only two deepest levels has menu
                         hasContextList = false;
                     }
                 }
 
-                if(hasContextList)
+                if (hasContextList)
                 {
                     getActivity().getMenuInflater().inflate(R.menu.state_actions, menu);
 
@@ -232,36 +234,36 @@ public class StateFragment extends MyFragment
             }
 
             AdapterView.AdapterContextMenuInfo info = (AdapterView.AdapterContextMenuInfo) menuItem.getMenuInfo();
-            final Item item = (Item)list.getItemAtPosition(info.position);
+            final Item item = (Item) list.getItemAtPosition(info.position);
             AlertDialog.Builder builder = new AlertDialog.Builder(getActivity())
-                .setIcon(android.R.drawable.ic_dialog_alert)
-                .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener()
-                {
-                    public void onClick(DialogInterface dialog, int whichButton)
+                    .setIcon(android.R.drawable.ic_dialog_alert)
+                    .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener()
                     {
-                        if(keyPath.isEmpty())
+                        public void onClick(DialogInterface dialog, int whichButton)
                         {
-                            if(StateLayout.getDepth(item.key) != 1)
+                            if (keyPath.isEmpty())
                             {
-                                Toast.makeText(getActivity(), "Too many inner levels to delete", Toast.LENGTH_SHORT).show();
+                                if (StateLayout.getDepth(item.key) != 1)
+                                {
+                                    Toast.makeText(getActivity(), "Too many inner levels to delete", Toast.LENGTH_SHORT).show();
+                                }
+                                else
+                                {
+                                    getWidgetService().cleanState(item.key, null, null);
+                                }
+                            }
+                            else if (!item.leaf)
+                            {
+                                getWidgetService().cleanState(keyPath.get(0), item.key, null);
                             }
                             else
                             {
-                                getWidgetService().cleanState(item.key, null, null);
+                                getWidgetService().cleanState(keyPath.get(0), keyPath.get(keyPath.size() - 1), item.key);
                             }
+                            refresh();
                         }
-                        else if(!item.leaf)
-                        {
-                            getWidgetService().cleanState(keyPath.get(0), item.key, null);
-                        }
-                        else
-                        {
-                            getWidgetService().cleanState(keyPath.get(0), keyPath.get(keyPath.size() - 1), item.key);
-                        }
-                        refresh();
-                    }
-                })
-                .setNegativeButton(android.R.string.no, null);
+                    })
+                    .setNegativeButton(android.R.string.no, null);
 
             ArrayList<String> fullPath = new ArrayList<>(keyPath);
             fullPath.add(item.key);
@@ -284,36 +286,44 @@ public class StateFragment extends MyFragment
             private Context context;
             private ArrayList<Item> items;
 
-            public ItemAdapter(Context context, ArrayList<Item> items) {
+            public ItemAdapter(Context context, ArrayList<Item> items)
+            {
                 this.context = context;
                 this.items = items;
             }
 
             @Override
-            public int getCount() {
+            public int getCount()
+            {
                 return items.size();
             }
 
             @Override
-            public Object getItem(int position) {
+            public Object getItem(int position)
+            {
                 return items.get(position);
             }
 
             @Override
-            public long getItemId(int position) {
+            public long getItemId(int position)
+            {
                 return position;
             }
 
             @Override
-            public View getView(int position, View convertView, ViewGroup parent) {
+            public View getView(int position, View convertView, ViewGroup parent)
+            {
 
                 View twoLineListItem;
 
-                if (convertView == null) {
+                if (convertView == null)
+                {
                     LayoutInflater inflater = (LayoutInflater) context
                             .getSystemService(Context.LAYOUT_INFLATER_SERVICE);
                     twoLineListItem = inflater.inflate(R.layout.configs_list_item, null);
-                } else {
+                }
+                else
+                {
                     twoLineListItem = convertView;
                 }
 
@@ -322,7 +332,7 @@ public class StateFragment extends MyFragment
 
                 if (items.get(position).inLocalScopeView)
                 {
-                    text1.setText("widget #"+items.get(position).key);
+                    text1.setText("widget #" + items.get(position).key);
                 }
                 else
                 {
@@ -330,7 +340,7 @@ public class StateFragment extends MyFragment
                 }
 
                 String value = items.get(position).value;
-                if(value.length() > MAX_VALUE_LENGTH)
+                if (value.length() > MAX_VALUE_LENGTH)
                 {
                     value = value.substring(0, MAX_VALUE_LENGTH - 3) + "...";
                 }

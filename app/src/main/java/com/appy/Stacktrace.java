@@ -34,28 +34,38 @@ public class Stacktrace
 
             return sb.toString();
         }
-        catch(Exception e)
+        catch (Exception e)
         {
             Log.e("APPY", "Exception while handling exception", e);
             return "Exception while handling exception.";
         }
     }
 
-    private static String stackElementToString(StackTraceElement element) {
+    private static String stackElementToString(StackTraceElement element)
+    {
 
         StringBuilder result = new StringBuilder();
         result.append("File: ");
-        if (element.isNativeMethod()) {
+        if (element.isNativeMethod())
+        {
             result.append("Unknown (Native Method)");
-        } else if (element.getFileName() != null) {
-            if (element.getLineNumber() >= 0) {
+        }
+        else if (element.getFileName() != null)
+        {
+            if (element.getLineNumber() >= 0)
+            {
                 result.append("\"").append(element.getFileName()).append("\", line ").append(element.getLineNumber());
-            } else {
+            }
+            else
+            {
                 result.append("\"").append(element.getFileName()).append("\"");
             }
-        } else {
+        }
+        else
+        {
             result.append("Unknown");
-            if (element.getLineNumber() >= 0) {
+            if (element.getLineNumber() >= 0)
+            {
                 // The line number is actually the dex pc.
                 result.append(", line ").append(element.getLineNumber());
             }
@@ -83,13 +93,13 @@ public class Stacktrace
             int identicalPrev = 0;
             int lastUniqueFrame = stack.length - 1;
             // don't print parent stack again
-            if(parent != null)
+            if (parent != null)
             {
                 StackTraceElement[] parentStack = parent.getStackTrace();
-                if(parentStack != null)
+                if (parentStack != null)
                 {
                     int parentCounter = parentStack.length - 1;
-                    while(lastUniqueFrame > 0 && parentCounter > 0 && stack[lastUniqueFrame].equals(parentStack[parentCounter]))
+                    while (lastUniqueFrame > 0 && parentCounter > 0 && stack[lastUniqueFrame].equals(parentStack[parentCounter]))
                     {
                         lastUniqueFrame--;
                         parentCounter--;
@@ -98,12 +108,12 @@ public class Stacktrace
             }
             for (int i = lastUniqueFrame; i >= 0; i--)
             {
-                if(prevElement != null && prevElement.equals(stack[i]))
+                if (prevElement != null && prevElement.equals(stack[i]))
                 {
                     identicalPrev++;
                     continue;
                 }
-                else if(identicalPrev > 0)
+                else if (identicalPrev > 0)
                 {
                     sb.append("  [Previous line repeated ").append(identicalPrev).append(" more times]\n");
                 }
@@ -113,13 +123,13 @@ public class Stacktrace
                 prevElement = stack[i];
                 identicalPrev = 0;
             }
-            if(identicalPrev > 0)
+            if (identicalPrev > 0)
             {
                 sb.append("  [Previous line repeated ").append(identicalPrev).append(" more times]\n");
             }
         }
         sb.append(t.getClass().getName());
-        if(t.getMessage() != null)
+        if (t.getMessage() != null)
         {
             sb.append(": ").append(t.getMessage());
         }

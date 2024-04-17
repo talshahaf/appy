@@ -34,6 +34,7 @@ public class Attributes
             public long id;
             public Type type;
             public double factor;
+
             public Reference(long id, Type type, double factor)
             {
                 this.id = id;
@@ -60,7 +61,7 @@ public class Attributes
 
         public boolean hasConstraints()
         {
-            return !arguments.isEmpty() ;
+            return !arguments.isEmpty();
         }
 
         public static AttributeValue fromJSON(JSONObject obj) throws JSONException
@@ -70,13 +71,13 @@ public class Attributes
             ret.function = Function.valueOf(obj.getString("function"));
 
             JSONArray argumentsArray = obj.getJSONArray("arguments");
-            for(int i = 0; i < argumentsArray.length(); i++)
+            for (int i = 0; i < argumentsArray.length(); i++)
             {
                 JSONObject argumentObj = argumentsArray.getJSONObject(i);
 
                 ArrayList<Reference> references = new ArrayList<>();
                 JSONArray referenceArray = argumentObj.getJSONArray("references");
-                for(int j = 0; j < referenceArray.length(); j++)
+                for (int j = 0; j < referenceArray.length(); j++)
                 {
                     JSONObject referenceObj = referenceArray.getJSONObject(j);
 
@@ -93,15 +94,15 @@ public class Attributes
         public JSONObject toJSON() throws JSONException
         {
             JSONObject obj = new JSONObject();
-            obj.put("function",  function.name());
+            obj.put("function", function.name());
             JSONArray argArray = new JSONArray();
-            for(Pair<ArrayList<Reference>, Double> arg : arguments)
+            for (Pair<ArrayList<Reference>, Double> arg : arguments)
             {
                 JSONObject argObj = new JSONObject();
                 argObj.put("amount", arg.second);
 
                 JSONArray refArray = new JSONArray();
-                for(Reference ref : arg.first)
+                for (Reference ref : arg.first)
                 {
                     JSONObject refObj = new JSONObject();
                     refObj.put("id", ref.id);
@@ -113,7 +114,7 @@ public class Attributes
                 argArray.put(argObj);
             }
             obj.put("arguments", argArray);
-            if(resolvedValue != null)
+            if (resolvedValue != null)
             {
                 obj.put("resolvedValue", resolvedValue);
             }
@@ -138,7 +139,7 @@ public class Attributes
     public Attributes()
     {
         attributes = new HashMap<>();
-        for(Type t : Type.values())
+        for (Type t : Type.values())
         {
             attributes.put(t, new AttributeValue()); //fill with unresolved values
         }
@@ -147,7 +148,7 @@ public class Attributes
     public JSONObject toJSON() throws JSONException
     {
         JSONObject obj = new JSONObject();
-        for(Map.Entry<Type, AttributeValue> e : attributes.entrySet())
+        for (Map.Entry<Type, AttributeValue> e : attributes.entrySet())
         {
             obj.put(e.getKey().toString(), e.getValue().toJSON());
         }
@@ -158,7 +159,7 @@ public class Attributes
     {
         Attributes attributes = new Attributes();
         Iterator<String> it = obj.keys();
-        while(it.hasNext())
+        while (it.hasNext())
         {
             String key = it.next();
             attributes.attributes.put(Type.valueOf(key), AttributeValue.fromJSON(obj.getJSONObject(key)));
@@ -169,9 +170,9 @@ public class Attributes
     public ArrayList<AttributeValue> unresolved()
     {
         ArrayList<AttributeValue> ret = new ArrayList<>();
-        for(Map.Entry<Type, AttributeValue> e : attributes.entrySet())
+        for (Map.Entry<Type, AttributeValue> e : attributes.entrySet())
         {
-            if(e.getValue().resolvedValue == null)
+            if (e.getValue().resolvedValue == null)
             {
                 ret.add(e.getValue());
             }

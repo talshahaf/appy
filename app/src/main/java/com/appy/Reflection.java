@@ -23,6 +23,7 @@ public class Reflection
     private static HashMap<Class<?>, Integer> groups;
     private static HashMap<Class<?>, Integer> enumTypes;
     private static final int OBJECT_TYPE = -1;
+
     static
     {
         groups = new HashMap<>();
@@ -55,6 +56,7 @@ public class Reflection
     private static Method getMethodsMethod;
     private static Method getConstructorMethod;
     private static Method getConstructorsMethod;
+
     static
     {
         try
@@ -67,14 +69,15 @@ public class Reflection
             getConstructorMethod = Class.class.getMethod("getConstructor", Class[].class);
             getConstructorsMethod = Class.class.getMethod("getConstructors");
         }
-        catch(NoSuchMethodException e)
+        catch (NoSuchMethodException e)
         {
             //everything is bad
             throw new RuntimeException("could not reflect reflection");
         }
     }
 
-    public static Object[] getField(Class<?> clazz, String field, boolean checkSameNameMethods) {
+    public static Object[] getField(Class<?> clazz, String field, boolean checkSameNameMethods)
+    {
         boolean hasSameNameMethod = false;
         if (checkSameNameMethods)
         {
@@ -104,16 +107,16 @@ public class Reflection
         Field f;
         try
         {
-            f = (Field)getFieldMethod.invoke(clazz, field);
+            f = (Field) getFieldMethod.invoke(clazz, field);
         }
-        catch(IllegalAccessException|InvocationTargetException e)
+        catch (IllegalAccessException | InvocationTargetException e)
         {
             //no such field
             return new Object[]{null, null, 0, hasSameNameMethod ? 1 : 0};
         }
         Integer type = enumTypes.get(f.getType());
         boolean isStatic = Modifier.isStatic(f.getModifiers());
-        if(isStatic)
+        if (isStatic)
         {
             try
             {
@@ -132,9 +135,9 @@ public class Reflection
     {
         try
         {
-            return (Field)getFieldMethod.invoke(clazz, field);
+            return (Field) getFieldMethod.invoke(clazz, field);
         }
-        catch(IllegalAccessException|InvocationTargetException e)
+        catch (IllegalAccessException | InvocationTargetException e)
         {
             throw new RuntimeException(e);
         }
@@ -144,9 +147,9 @@ public class Reflection
     {
         try
         {
-            return (Class<?>)forNameMethod.invoke(Class.class, path, initialize, classLoader);
+            return (Class<?>) forNameMethod.invoke(Class.class, path, initialize, classLoader);
         }
-        catch(IllegalAccessException|InvocationTargetException e)
+        catch (IllegalAccessException | InvocationTargetException e)
         {
             throw new RuntimeException(e);
         }
@@ -160,7 +163,6 @@ public class Reflection
             String[] dots = Arrays.copyOfRange(args, 0, args.length - many);
             String[] dollars = Arrays.copyOfRange(args, args.length - many, args.length);
             String trypath = String.join(".", dots) + ((dots.length == 0 || dollars.length == 0) ? "" : "$") + String.join("$", dollars);
-            Log.d("APPY", "findclass: "+trypath);
             try
             {
                 return forName(trypath, initialize, classLoader);
@@ -177,9 +179,9 @@ public class Reflection
     {
         try
         {
-            return (Field[])getFieldsMethod.invoke(clazz);
+            return (Field[]) getFieldsMethod.invoke(clazz);
         }
-        catch(IllegalAccessException|InvocationTargetException e)
+        catch (IllegalAccessException | InvocationTargetException e)
         {
             throw new RuntimeException(e);
         }
@@ -189,9 +191,9 @@ public class Reflection
     {
         try
         {
-            return (Method)getMethodMethod.invoke(clazz, method, (Object)parameterTypes);
+            return (Method) getMethodMethod.invoke(clazz, method, (Object) parameterTypes);
         }
-        catch(IllegalAccessException|InvocationTargetException e)
+        catch (IllegalAccessException | InvocationTargetException e)
         {
             throw new NoSuchMethodException(e.getMessage());
         }
@@ -201,9 +203,9 @@ public class Reflection
     {
         try
         {
-            return (Method[])getMethodsMethod.invoke(clazz);
+            return (Method[]) getMethodsMethod.invoke(clazz);
         }
-        catch(IllegalAccessException|InvocationTargetException e)
+        catch (IllegalAccessException | InvocationTargetException e)
         {
             throw new RuntimeException(e);
         }
@@ -213,9 +215,9 @@ public class Reflection
     {
         try
         {
-            return (Constructor)getConstructorMethod.invoke(clazz, (Object)parameterTypes);
+            return (Constructor) getConstructorMethod.invoke(clazz, (Object) parameterTypes);
         }
-        catch(IllegalAccessException|InvocationTargetException e)
+        catch (IllegalAccessException | InvocationTargetException e)
         {
             throw new NoSuchMethodException(e.getMessage());
         }
@@ -225,9 +227,9 @@ public class Reflection
     {
         try
         {
-            return (Constructor[])getConstructorsMethod.invoke(clazz);
+            return (Constructor[]) getConstructorsMethod.invoke(clazz);
         }
-        catch(IllegalAccessException|InvocationTargetException e)
+        catch (IllegalAccessException | InvocationTargetException e)
         {
             throw new RuntimeException(e);
         }
@@ -236,11 +238,11 @@ public class Reflection
     public static void printFunc(Class<?> clazz, String method, Class<?>[] parameterTypes)
     {
         String types = "";
-        for(Class<?> t : parameterTypes)
+        for (Class<?> t : parameterTypes)
         {
-            types += ", "+t.getName();
+            types += ", " + t.getName();
         }
-        Log.d("APPY", clazz.getName() +"."+ method + " " + types);
+        Log.d("APPY", clazz.getName() + "." + method + " " + types);
     }
 
     public static final boolean python_types = true;
@@ -248,15 +250,20 @@ public class Reflection
     public interface Callable
     {
         String getName();
+
         Class<?>[] getParameterTypes();
+
         Class<?> getReturnType();
+
         boolean isStatic();
+
         Object get();
     }
 
     public static class CallableMethod implements Callable
     {
         private Method m;
+
         CallableMethod(Method m)
         {
             this.m = m;
@@ -296,6 +303,7 @@ public class Reflection
     public static class CallableConstructor implements Callable
     {
         private Constructor<?> m;
+
         CallableConstructor(Constructor<?> m)
         {
             this.m = m;
@@ -335,8 +343,9 @@ public class Reflection
     public static Object[] getCompatibleMethod(Class<?> clazz, String method, Class<?>[] parameterTypes)
     {
         Callable result = null;
-        try {
-            if(method == null)
+        try
+        {
+            if (method == null)
             {
                 result = new CallableConstructor(getConstructor(clazz, parameterTypes));
             }
@@ -344,19 +353,22 @@ public class Reflection
             {
                 result = new CallableMethod(getMethod(clazz, method, parameterTypes));
             }
-        } catch (NoSuchMethodException e) {
+        }
+        catch (NoSuchMethodException e)
+        {
 
         }
 
         // printFunc(clazz, method, parameterTypes);
 
-        if (result == null) {
+        if (result == null)
+        {
             Callable[] methods;
-            if(method == null)
+            if (method == null)
             {
                 Constructor<?>[] _methods = getConstructors(clazz);
                 methods = new CallableConstructor[_methods.length];
-                for(int i = 0; i < methods.length; i++)
+                for (int i = 0; i < methods.length; i++)
                 {
                     methods[i] = new CallableConstructor(_methods[i]);
                 }
@@ -366,9 +378,9 @@ public class Reflection
                 Method[] _methods = getMethods(clazz);
                 methods = new CallableMethod[_methods.length];
                 int c = 0;
-                for(int i = 0; i < methods.length; i++)
+                for (int i = 0; i < methods.length; i++)
                 {
-                    if(_methods[i].getName().equals(method))
+                    if (_methods[i].getName().equals(method))
                     {
                         methods[c] = new CallableMethod(_methods[i]);
                         c++;
@@ -379,27 +391,31 @@ public class Reflection
                 methods = copy;
             }
 
-            for (Callable m : methods) {
-                if (m.getParameterTypes().length == (parameterTypes != null ? parameterTypes.length : 0)) {
+            for (Callable m : methods)
+            {
+                if (m.getParameterTypes().length == (parameterTypes != null ? parameterTypes.length : 0))
+                {
                     // If we have the same number of parameters there is a
                     // shot that we have a compatible
                     // constructor
                     Class<?>[] methodTypes = m.getParameterTypes();
                     boolean isCompatible = true;
-                    for (int j = 0; j < (parameterTypes != null ? parameterTypes.length : 0); j++) {
-                        if(methodTypes[j].isAssignableFrom(parameterTypes[j]))
+                    for (int j = 0; j < (parameterTypes != null ? parameterTypes.length : 0); j++)
+                    {
+                        if (methodTypes[j].isAssignableFrom(parameterTypes[j]))
                         {
                             // easy part
                             continue;
                         }
-                        if(python_types && !methodTypes[j].isPrimitive() && parameterTypes[j] == Object.class)
+                        if (python_types && !methodTypes[j].isPrimitive() && parameterTypes[j] == Object.class)
                         {
                             // because Nones
                             continue;
                         }
                         Class<?> unboxedMethodType = unboxClass(methodTypes[j]);
                         Class<?> unboxedParameterType = unboxClass(parameterTypes[j]);
-                        if (!unboxedMethodType.isAssignableFrom(unboxedParameterType)) {
+                        if (!unboxedMethodType.isAssignableFrom(unboxedParameterType))
+                        {
                             Integer methodValue = groups.get(unboxedMethodType);
                             Integer parameterValue = groups.get(unboxedParameterType);
                             if (methodValue != null && parameterValue != null && methodValue / 10 == parameterValue / 10 && (python_types || methodValue > parameterValue))
@@ -407,12 +423,13 @@ public class Reflection
                                 // conversion allowed
                                 continue;
                             }
-                            Log.d("APPY", "method " + m.getName() + " fails because "+methodTypes[j].getName() + " != "+parameterTypes[j].getName());
+                            Log.d("APPY", "method " + m.getName() + " fails because " + methodTypes[j].getName() + " != " + parameterTypes[j].getName());
                             isCompatible = false;
                             break;
                         }
                     }
-                    if (isCompatible) {
+                    if (isCompatible)
+                    {
                         result = m;
                         break;
                     }
@@ -421,15 +438,15 @@ public class Reflection
         }
 
         boolean hasSameNameField = getField(clazz, method, false)[0] != null;
-        if(result != null)
+        if (result != null)
         {
             //printFunc(clazz, method, result.getParameterTypes());
             Class<?>[] argTypes = result.getParameterTypes();
             int[][] args = new int[argTypes.length + 1][];
-            for(int i = 0; i < argTypes.length; i++)
+            for (int i = 0; i < argTypes.length; i++)
             {
                 Integer t = enumTypes.get(argTypes[i]);
-                args[i] = new int[]{ t == null ? OBJECT_TYPE : t, unboxClassToEnum(argTypes[i])};
+                args[i] = new int[]{t == null ? OBJECT_TYPE : t, unboxClassToEnum(argTypes[i])};
             }
 
             Integer t = enumTypes.get(result.getReturnType());
@@ -439,42 +456,50 @@ public class Reflection
             return new Object[]{result.get(), result.isStatic() ? 1 : 0, hasSameNameField ? 1 : 0, args};
         }
 
-        Log.d("APPY", "no such func "+method);
+        Log.d("APPY", "no such func " + method);
         return new Object[]{null, 0, hasSameNameField ? 1 : 0, null};
     }
 
     public static Class<?> unboxClass(Class<?> primitive)
     {
-        if(primitive == null)
+        if (primitive == null)
         {
             return null;
         }
-        if(primitive.isPrimitive())
+        if (primitive.isPrimitive())
         {
             return primitive;
         }
-        if (primitive.equals(java.lang.Boolean.class)) {
+        if (primitive.equals(java.lang.Boolean.class))
+        {
             return java.lang.Boolean.TYPE;
         }
-        if (primitive.equals(java.lang.Byte.class)) {
+        if (primitive.equals(java.lang.Byte.class))
+        {
             return java.lang.Byte.TYPE;
         }
-        if (primitive.equals(java.lang.Character.class)) {
+        if (primitive.equals(java.lang.Character.class))
+        {
             return java.lang.Character.TYPE;
         }
-        if (primitive.equals(java.lang.Double.class)) {
+        if (primitive.equals(java.lang.Double.class))
+        {
             return java.lang.Double.TYPE;
         }
-        if (primitive.equals(java.lang.Float.class)) {
+        if (primitive.equals(java.lang.Float.class))
+        {
             return java.lang.Float.TYPE;
         }
-        if (primitive.equals(java.lang.Integer.class)) {
+        if (primitive.equals(java.lang.Integer.class))
+        {
             return java.lang.Integer.TYPE;
         }
-        if (primitive.equals(java.lang.Long.class)) {
+        if (primitive.equals(java.lang.Long.class))
+        {
             return java.lang.Long.TYPE;
         }
-        if (primitive.equals(java.lang.Short.class)) {
+        if (primitive.equals(java.lang.Short.class))
+        {
             return java.lang.Short.TYPE;
         }
         return primitive;
@@ -495,7 +520,7 @@ public class Reflection
         Integer t = enumTypes.get(component);
         int componentEnumType = t == null ? OBJECT_TYPE : t;
         int unboxedComponentEnumType = unboxClassToEnum(component);
-        return new Object[] {clazz.getCanonicalName(), unboxedEnumType, isArray, component, componentEnumType, unboxedComponentEnumType};
+        return new Object[]{clazz.getCanonicalName(), unboxedEnumType, isArray, component, componentEnumType, unboxedComponentEnumType};
     }
 
 
@@ -536,12 +561,15 @@ public class Reflection
         return new String(bytes, "UTF-8");
     }
 
-    public static class ProxyListener implements java.lang.reflect.InvocationHandler {
+    public static class ProxyListener implements java.lang.reflect.InvocationHandler
+    {
         private long id;
+
         public ProxyListener(long id)
         {
             this.id = id;
         }
+
         public Object invoke(Object proxy, Method m, Object[] args) throws Throwable
         {
             return Widget.pythonCall(id, m.getDeclaringClass(), m.getName(), args);

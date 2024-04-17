@@ -46,7 +46,7 @@
         <receiver
             android:icon="@mipmap/ic_launcher"
             android:label="Appy"
-            android:name="com.appy.WidgetReceiver"
+            android:name="com.appy.WidgetReceiver1x1"
             android:exported="true">
             <intent-filter >
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
@@ -54,7 +54,98 @@
 
             <meta-data
                 android:name="android.appwidget.provider"
-                android:resource="@xml/widget_info" />
+                android:resource="@xml/widget_info1x1" />
+        </receiver>
+        <receiver
+            android:icon="@mipmap/ic_launcher"
+            android:label="Appy"
+            android:name="com.appy.WidgetReceiver2x1"
+            android:exported="true">
+            <intent-filter >
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_info2x1" />
+        </receiver>
+        <receiver
+            android:icon="@mipmap/ic_launcher"
+            android:label="Appy"
+            android:name="com.appy.WidgetReceiver2x2"
+            android:exported="true">
+            <intent-filter >
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_info2x2" />
+        </receiver>
+        <receiver
+            android:icon="@mipmap/ic_launcher"
+            android:label="Appy"
+            android:name="com.appy.WidgetReceiver3x2"
+            android:exported="true">
+            <intent-filter >
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_info3x2" />
+        </receiver>
+        <receiver
+            android:icon="@mipmap/ic_launcher"
+            android:label="Appy"
+            android:name="com.appy.WidgetReceiver3x3"
+            android:exported="true">
+            <intent-filter >
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_info3x3" />
+        </receiver>
+        <receiver
+            android:icon="@mipmap/ic_launcher"
+            android:label="Appy"
+            android:name="com.appy.WidgetReceiver4x2"
+            android:exported="true">
+            <intent-filter >
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_info4x2" />
+        </receiver>
+        <receiver
+            android:icon="@mipmap/ic_launcher"
+            android:label="Appy"
+            android:name="com.appy.WidgetReceiver4x3"
+            android:exported="true">
+            <intent-filter >
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_info4x3" />
+        </receiver>
+        <receiver
+            android:icon="@mipmap/ic_launcher"
+            android:label="Appy"
+            android:name="com.appy.WidgetReceiver4x4"
+            android:exported="true">
+            <intent-filter >
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_info4x4" />
         </receiver>
 
         <receiver android:name="com.appy.BootReceiver"

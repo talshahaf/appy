@@ -454,6 +454,11 @@ class elist(list):
     def find_id(self, id):
         return self._find_element((lambda id: (lambda e: getattr(e, 'id', None) == id))(id), f'with id {id}') #capture id
 
+    def names(self):
+        return list(set(getsttr(e, 'name', None) for e in self.all()))
+    def ids(self):
+            return list(set(getsttr(e, 'id', None) for e in self.all()))
+
     def __getitem__(self, item):
         try:
             return super().__getitem__(item)
@@ -625,7 +630,7 @@ def widget_manager_create(widget, manager_state):
     bg.backgroundResource = R.drawable.rect
     bg.backgroundTint = widgets.color(r=0, g=0, b=0, a=100)
     
-    restart_btn = widgets.ImageButton(style='danger_oval_pad', adjustViewBounds=True, click=widgets.restart, colorFilter=0xffffffff, width=80, height=80, right=0, bottom=0, imageResource=androidR.drawable.ic_lock_power_off)
+    #restart_btn = widgets.ImageButton(style='danger_oval_pad', adjustViewBounds=True, click=widgets.restart, colorFilter=0xffffffff, width=80, height=80, right=0, bottom=0, imageResource=androidR.drawable.ic_lock_power_off)
 
     #calling java releases the gil and available_widgets might be changed while iterating it
     names = [name for name in available_widgets]
@@ -635,7 +640,7 @@ def widget_manager_create(widget, manager_state):
     else:
         lst = widgets.ListView(top=10, left=10, children=[widgets.TextView(text=name, textSize=30, textColor=0xb3ffffff,
                                                                             click=(choose_widget, dict(name=name))) for name in names])
-    return [bg, lst, restart_btn]
+    return [bg, lst]
 
 def widget_manager_update(widget, manager_state, views):
     manager_state.chosen.setdefault(widget.widget_id, None)

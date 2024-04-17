@@ -36,10 +36,12 @@ public class Utils
         }
     }
 
-    public static String hexlify(byte[] bytes) {
+    public static String hexlify(byte[] bytes)
+    {
         StringBuilder sb = new StringBuilder();
-        for(byte b : bytes){
-            sb.append(String.format("%02x", b&0xff));
+        for (byte b : bytes)
+        {
+            sb.append(String.format("%02x", b & 0xff));
         }
         return sb.toString();
     }

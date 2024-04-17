@@ -32,7 +32,7 @@ public class DynamicView
     private static long genId()
     {
         long id = 0;
-        while(id == 0)
+        while (id == 0)
         {
             id = random.nextLong();
             if (id < 0)
@@ -66,9 +66,9 @@ public class DynamicView
         this.container_id = container_id;
         this.xml_id = xml_id;
 
-        if(!Constants.typeToClass.containsKey(type) && !type.equals("*"))
+        if (!Constants.typeToClass.containsKey(type) && !type.equals("*"))
         {
-            throw new IllegalArgumentException("no such type: "+type);
+            throw new IllegalArgumentException("no such type: " + type);
         }
     }
 
@@ -77,7 +77,8 @@ public class DynamicView
         return id;
     }
 
-    public static DynamicView fromJSON(String json) {
+    public static DynamicView fromJSON(String json)
+    {
         try
         {
             return fromJSON(new JSONObject(json));
@@ -87,10 +88,11 @@ public class DynamicView
             throw new IllegalArgumentException("json deserialization failed", e);
         }
     }
+
     private static DynamicView fromJSON(JSONObject obj) throws JSONException
     {
         long id;
-        if(obj.has("id"))
+        if (obj.has("id"))
         {
             id = obj.getLong("id");
         }
@@ -102,15 +104,15 @@ public class DynamicView
         int xml_id = 0;
         int container_id = 0;
         int view_id = 0;
-        if(obj.has("xmlId"))
+        if (obj.has("xmlId"))
         {
             xml_id = obj.getInt("xmlId");
         }
-        if(obj.has("containerId"))
+        if (obj.has("containerId"))
         {
             view_id = obj.getInt("containerId");
         }
-        if(obj.has("viewId"))
+        if (obj.has("viewId"))
         {
             view_id = obj.getInt("viewId");
         }
@@ -119,38 +121,38 @@ public class DynamicView
 
         //Log.d("APPY", "building "+view.id+" "+view.type);
 
-        if(obj.has("tag"))
+        if (obj.has("tag"))
         {
             view.tag = obj.get("tag");
         }
 
-        if(obj.has("actualWidth"))
+        if (obj.has("actualWidth"))
         {
             view.actualWidth = obj.getInt("actualWidth");
         }
 
-        if(obj.has("actualHeight"))
+        if (obj.has("actualHeight"))
         {
             view.actualHeight = obj.getInt("actualHeight");
         }
 
-        if(obj.has("selectors"))
+        if (obj.has("selectors"))
         {
             JSONObject selectors = obj.getJSONObject("selectors");
             Iterator<String> it = selectors.keys();
-            while(it.hasNext())
+            while (it.hasNext())
             {
                 String key = it.next();
                 view.selectors.put(key, selectors.getString(key));
             }
         }
 
-        if(obj.has("attributes"))
+        if (obj.has("attributes"))
         {
             view.attributes = Attributes.fromJSON(obj.getJSONObject("attributes"));
         }
 
-        if(obj.has("methodCalls"))
+        if (obj.has("methodCalls"))
         {
             JSONArray callsarr = obj.getJSONArray("methodCalls");
             //Log.d("APPY", callsarr.length() + " calls");
@@ -159,7 +161,7 @@ public class DynamicView
                 view.methodCalls.add(RemoteMethodCall.fromJSON(callsarr.getJSONObject(i)));
             }
         }
-        if(obj.has("children"))
+        if (obj.has("children"))
         {
             JSONArray childarr = obj.getJSONArray("children");
             //Log.d("APPY", childarr.length() + " children");
@@ -182,7 +184,7 @@ public class DynamicView
         obj.put("actualWidth", actualWidth);
         obj.put("actualHeight", actualHeight);
 
-        if(!selectors.isEmpty())
+        if (!selectors.isEmpty())
         {
             JSONObject selectorsObj = new JSONObject();
             for (String key : selectors.keySet())
@@ -192,12 +194,12 @@ public class DynamicView
             obj.put("selectors", selectorsObj);
         }
 
-        if(tag != null)
+        if (tag != null)
         {
             obj.put("tag", tag);
         }
 
-        if(!attributes.attributes.isEmpty())
+        if (!attributes.attributes.isEmpty())
         {
             obj.put("attributes", attributes.toJSON());
         }
@@ -238,7 +240,7 @@ public class DynamicView
     public static ArrayList<DynamicView> fromJSONArray(JSONArray array) throws JSONException
     {
         ArrayList<DynamicView> ret = new ArrayList<>();
-        for(int i = 0; i < array.length(); i++)
+        for (int i = 0; i < array.length(); i++)
         {
             ret.add(DynamicView.fromJSON(array.getJSONObject(i)));
         }
@@ -260,7 +262,7 @@ public class DynamicView
     public static JSONArray toJSON(ArrayList<DynamicView> views) throws JSONException
     {
         JSONArray viewarr = new JSONArray();
-        for(DynamicView view : views)
+        for (DynamicView view : views)
         {
             viewarr.put(view.toJSONObj());
         }

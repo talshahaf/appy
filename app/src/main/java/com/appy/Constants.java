@@ -154,7 +154,8 @@ public class Constants
             parameterToSetter.put(ColorStateList.class, "setColorStateList");
         }
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
+        {
             parameterToSetter.put(BlendMode.class, "setBlendMode");
         }
 
@@ -172,6 +173,7 @@ public class Constants
     }
 
     static HashMap<String, CollectionLayout> collection_layout_type = new HashMap<>();
+
     static
     {
         collection_layout_type.put("ListView", CollectionLayout.VERTICAL);
@@ -181,6 +183,7 @@ public class Constants
     }
 
     static HashMap<List<String>, Integer> collection_map = new HashMap<>();
+
     static
     {
         collection_map.put(Collections.singletonList("ListView"), R.layout.root_listview);
@@ -207,11 +210,11 @@ public class Constants
         SelectorElement(int res, String... selector_pairs)
         {
             this.res = res;
-            if(selector_pairs.length % 2 != 0)
+            if (selector_pairs.length % 2 != 0)
             {
                 throw new IllegalArgumentException("selector pairs argument must be even");
             }
-            for(int i = 0; i < selector_pairs.length; i += 2)
+            for (int i = 0; i < selector_pairs.length; i += 2)
             {
                 selectors.put(selector_pairs[i], selector_pairs[i + 1]);
             }
@@ -219,9 +222,9 @@ public class Constants
 
         int fit(HashMap<String, String> required)
         {
-            for(String key : required.keySet())
+            for (String key : required.keySet())
             {
-                if(!required.get(key).equals(selectors.get(key)))
+                if (!required.get(key).equals(selectors.get(key)))
                 {
                     return 0;
                 }
@@ -236,6 +239,7 @@ public class Constants
     }
 
     static HashMap<String, ArrayList<SelectorElement>> element_map = new HashMap<>();
+
     static
     {
         element_map.put("AnalogClock", new ArrayList<SelectorElement>());
@@ -709,6 +713,7 @@ public class Constants
     }
 
     private static Boolean compiledWithManagerStorageResult = null;
+
     public static boolean compiledWithManagerStorage(Context context)
     {
         if (compiledWithManagerStorageResult != null)
@@ -722,7 +727,8 @@ public class Constants
             return false;
         }
 
-        try {
+        try
+        {
             PackageInfo info = context.getPackageManager().getPackageInfo(context.getPackageName(), PackageManager.GET_PERMISSIONS);
             String[] permissions = info.requestedPermissions;//This array contains the requested permissions.
             for (String permission : permissions)
@@ -733,7 +739,9 @@ public class Constants
                     return true;
                 }
             }
-        } catch (PackageManager.NameNotFoundException e) {
+        }
+        catch (PackageManager.NameNotFoundException e)
+        {
             //Shouldn't ever reach here
         }
 

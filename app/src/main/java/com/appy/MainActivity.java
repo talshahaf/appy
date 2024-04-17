@@ -3,28 +3,35 @@ package com.appy;
 import android.Manifest;
 import android.content.ComponentName;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.ServiceConnection;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.IBinder;
 
+import androidx.appcompat.app.AlertDialog;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.core.view.GravityCompat;
 import androidx.fragment.app.FragmentTransaction;
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
+
 import android.content.Intent;
 
 import com.google.android.material.internal.ManufacturerUtils;
 import com.google.android.material.navigation.NavigationView;
+
 import androidx.fragment.app.FragmentManager;
 import androidx.appcompat.app.ActionBar;
 import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.os.Bundle;
+
 import androidx.appcompat.widget.Toolbar;
+
 import android.util.Log;
 import android.util.Pair;
 import android.view.Gravity;
@@ -68,9 +75,11 @@ public class MainActivity extends AppCompatActivity implements StatusListener
         navView = findViewById(R.id.nav_view);
         // Setup drawer view
         navView.setNavigationItemSelectedListener(
-                new NavigationView.OnNavigationItemSelectedListener() {
+                new NavigationView.OnNavigationItemSelectedListener()
+                {
                     @Override
-                    public boolean onNavigationItemSelected(@NonNull MenuItem menuItem) {
+                    public boolean onNavigationItemSelected(@NonNull MenuItem menuItem)
+                    {
                         Log.d("APPY", "onNavigationItemSelected");
                         selectDrawerItem(menuItem, null);
                         return true;
@@ -83,9 +92,9 @@ public class MainActivity extends AppCompatActivity implements StatusListener
             @Override
             public void onBackStackChanged()
             {
-                MyFragmentInterface fragment = (MyFragmentInterface)getSupportFragmentManager().findFragmentByTag(FRAGMENT_TAG);
+                MyFragmentInterface fragment = (MyFragmentInterface) getSupportFragmentManager().findFragmentByTag(FRAGMENT_TAG);
                 MenuItem menuItem = navView.getMenu().findItem(fragment.getMenuId());
-                if(menuItem != null)
+                if (menuItem != null)
                 {
                     menuItem.setChecked(true);
                     setTitle(menuItem.getTitle());
@@ -107,6 +116,8 @@ public class MainActivity extends AppCompatActivity implements StatusListener
             }
         }
         selectDrawerItem(navView.getMenu().getItem(startingFragmentIndex), getIntent().getBundleExtra(Constants.FRAGMENT_ARG_EXTRA));
+
+        permissionDialogShown = false;
         requestPermissionsIfNeeded();
     }
 
@@ -123,9 +134,10 @@ public class MainActivity extends AppCompatActivity implements StatusListener
             (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q ? new String[]{Manifest.permission.ACCESS_BACKGROUND_LOCATION} : new String[]{})
     };
 
-    public static final int[] REQUEST_PERMISSION_STEPS = new int[] {102, 103};
+    public static final int[] REQUEST_PERMISSION_STEPS = new int[]{102, 103};
 
-    public static final String[] permission_ask_message = new String[]{"Appy needs all time location access to not get killed", ""};
+    public static final String permission_ask_message = "Appy needs all time location access to not get killed. Appy itself will not use location data at all.";
+    private boolean permissionDialogShown = false; //we want to show it only once and not for every step.
 
     public int checkPermissions()
     {
@@ -142,17 +154,58 @@ public class MainActivity extends AppCompatActivity implements StatusListener
         return -1;
     }
 
+    public void setShowPermissionDialog(boolean show)
+    {
+        SharedPreferences sharedPref = getSharedPreferences("appy", Context.MODE_PRIVATE);
+        SharedPreferences.Editor editor = sharedPref.edit();
+        editor.putBoolean("show_permission_dialog", show);
+        editor.apply();
+    }
+
+    public boolean getShowPermissionDialog()
+    {
+        SharedPreferences sharedPref = getSharedPreferences("appy", Context.MODE_PRIVATE);
+        return sharedPref.getBoolean("show_permission_dialog", true);
+    }
+
     public void requestPermissionsIfNeeded()
     {
         int neededStep = checkPermissions();
         if (neededStep != -1)
         {
             Log.d("APPY", "Requesting location permissions step" + neededStep);
-            if (!permission_ask_message[neededStep].isEmpty())
+            if (!permissionDialogShown && !permission_ask_message.isEmpty() && getShowPermissionDialog())
             {
-                Toast.makeText(this, permission_ask_message[neededStep], Toast.LENGTH_SHORT).show();
+                permissionDialogShown = true;
+                AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                builder.setTitle("Permission Request");
+                builder.setMessage(permission_ask_message);
+                builder.setCancelable(false);
+                builder.setPositiveButton("OK", new DialogInterface.OnClickListener()
+                {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which)
+                    {
+                        ActivityCompat.requestPermissions(MainActivity.this, permissionsSteps[neededStep], REQUEST_PERMISSION_STEPS[neededStep]);
+                    }
+                });
+                builder.setNeutralButton("Don't show again", new DialogInterface.OnClickListener()
+                {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which)
+                    {
+                        setShowPermissionDialog(false);
+                        ActivityCompat.requestPermissions(MainActivity.this, permissionsSteps[neededStep], REQUEST_PERMISSION_STEPS[neededStep]);
+                    }
+                });
+
+                builder.show();
             }
-            ActivityCompat.requestPermissions(this, permissionsSteps[neededStep], REQUEST_PERMISSION_STEPS[neededStep]);
+            else
+            {
+                ActivityCompat.requestPermissions(this, permissionsSteps[neededStep], REQUEST_PERMISSION_STEPS[neededStep]);
+            }
+
         }
         else
         {
@@ -187,9 +240,11 @@ public class MainActivity extends AppCompatActivity implements StatusListener
     }
 
     @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
+    public boolean onOptionsItemSelected(MenuItem item)
+    {
         // The action bar home/up action should open or close the drawer.
-        switch (item.getItemId()) {
+        switch (item.getItemId())
+        {
             case android.R.id.home:
                 drawer.openDrawer(GravityCompat.START);
                 return true;
@@ -199,7 +254,8 @@ public class MainActivity extends AppCompatActivity implements StatusListener
     }
 
     @Override
-    public void onActivityResult(int requestCode, int resultCode, Intent data) {
+    public void onActivityResult(int requestCode, int resultCode, Intent data)
+    {
         super.onActivityResult(requestCode, resultCode, data);
     }
 
@@ -215,12 +271,12 @@ public class MainActivity extends AppCompatActivity implements StatusListener
             cls = fragments.get(itemId);
         }
 
-        MyFragmentInterface fragment = (MyFragmentInterface)cls.second;
+        MyFragmentInterface fragment = (MyFragmentInterface) cls.second;
         if (fragment == null)
         {
             try
             {
-                fragment = (MyFragmentInterface)cls.first.newInstance();
+                fragment = (MyFragmentInterface) cls.first.newInstance();
                 fragment.setMenuId(itemId);
             }
             catch (Exception e)
@@ -228,7 +284,7 @@ public class MainActivity extends AppCompatActivity implements StatusListener
                 Log.e("APPY", "Exception on selectDrawerItem", e);
             }
 
-            fragments.put(itemId, new Pair<Class<?>, Fragment>(cls.first, (Fragment)fragment));
+            fragments.put(itemId, new Pair<Class<?>, Fragment>(cls.first, (Fragment) fragment));
         }
 
         if (fragment == null)
@@ -241,7 +297,7 @@ public class MainActivity extends AppCompatActivity implements StatusListener
 
         if (prev != fragment)
         {
-            if(prev != null)
+            if (prev != null)
             {
                 prev.onHide();
             }
@@ -251,9 +307,9 @@ public class MainActivity extends AppCompatActivity implements StatusListener
             transaction.setCustomAnimations(
                     R.animator.slide_in_from_right, R.animator.slide_out_to_left,
                     R.animator.slide_in_from_left, R.animator.slide_out_to_right);
-            transaction.setPrimaryNavigationFragment((Fragment)fragment);
-            transaction.replace(R.id.container, (Fragment)fragment, FRAGMENT_TAG);
-            if(prev != null)
+            transaction.setPrimaryNavigationFragment((Fragment) fragment);
+            transaction.replace(R.id.container, (Fragment) fragment, FRAGMENT_TAG);
+            if (prev != null)
             {
                 transaction.addToBackStack(null);
             }
@@ -271,32 +327,38 @@ public class MainActivity extends AppCompatActivity implements StatusListener
 
     public Widget widgetService = null;
 
-    private ServiceConnection mConnection = new ServiceConnection() {
-        public void onServiceConnected(ComponentName className, IBinder service) {
-            widgetService = ((Widget.LocalBinder)service).getService();
+    private ServiceConnection mConnection = new ServiceConnection()
+    {
+        public void onServiceConnected(ComponentName className, IBinder service)
+        {
+            widgetService = ((Widget.LocalBinder) service).getService();
             widgetService.setStatusListener(MainActivity.this);
-            for(Pair<Class<?>, Fragment> frag : fragments.values())
+            for (Pair<Class<?>, Fragment> frag : fragments.values())
             {
-                if(frag.second != null)
+                if (frag.second != null)
                 {
-                    ((MyFragmentInterface)frag.second).onBound();
+                    ((MyFragmentInterface) frag.second).onBound();
                 }
             }
         }
 
-        public void onServiceDisconnected(ComponentName className) {
+        public void onServiceDisconnected(ComponentName className)
+        {
             widgetService = null;
         }
     };
 
-    void doBindService() {
+    void doBindService()
+    {
         Intent bindIntent = new Intent(this, Widget.class);
         bindIntent.putExtra(Constants.LOCAL_BIND_EXTRA, true);
         bindService(bindIntent, mConnection, Context.BIND_AUTO_CREATE);
     }
 
-    void doUnbindService() {
-        if (widgetService != null) {
+    void doUnbindService()
+    {
+        if (widgetService != null)
+        {
             widgetService.setStatusListener(null);
             unbindService(mConnection);
             widgetService = null;
@@ -304,7 +366,8 @@ public class MainActivity extends AppCompatActivity implements StatusListener
     }
 
     @Override
-    protected void onDestroy() {
+    protected void onDestroy()
+    {
         super.onDestroy();
         doUnbindService();
     }
@@ -313,9 +376,9 @@ public class MainActivity extends AppCompatActivity implements StatusListener
     public void onStartupStatusChange()
     {
         Fragment fragment = fragments.get(R.id.navigation_control).second;
-        if(fragment != null)
+        if (fragment != null)
         {
-            ((ControlFragment)fragment).onStartupStatusChange();
+            ((ControlFragment) fragment).onStartupStatusChange();
         }
     }
 
@@ -323,9 +386,9 @@ public class MainActivity extends AppCompatActivity implements StatusListener
     public void onPythonFileStatusChange()
     {
         Fragment fragment = fragments.get(R.id.navigation_files).second;
-        if(fragment != null)
+        if (fragment != null)
         {
-            ((FilesFragment)fragment).onPythonFileStatusChange();
+            ((FilesFragment) fragment).onPythonFileStatusChange();
         }
     }
 }

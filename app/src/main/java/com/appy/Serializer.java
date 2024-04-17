@@ -21,13 +21,13 @@ public class Serializer
     {
         JSONObject jsonobj = new JSONObject();
 
-        if(obj == null)
+        if (obj == null)
         {
             jsonobj.put("type", "null");
             return jsonobj;
         }
 
-        if(obj instanceof Boolean || obj instanceof Byte || obj instanceof Character || obj instanceof Short || obj instanceof Integer || obj instanceof Long || obj instanceof Float || obj instanceof Double
+        if (obj instanceof Boolean || obj instanceof Byte || obj instanceof Character || obj instanceof Short || obj instanceof Integer || obj instanceof Long || obj instanceof Float || obj instanceof Double
                 || obj instanceof String || obj instanceof CharSequence || obj instanceof JSONArray || obj instanceof JSONObject)
         {
             jsonobj.put("type", "primitive");
@@ -35,15 +35,15 @@ public class Serializer
             return jsonobj;
         }
 
-        if(obj.getClass().isEnum())
+        if (obj.getClass().isEnum())
         {
             jsonobj.put("type", "enum");
             jsonobj.put("class", obj.getClass().getName());
-            jsonobj.put("value", ((Enum)obj).name());
+            jsonobj.put("value", ((Enum) obj).name());
             return jsonobj;
         }
 
-        if(obj instanceof Uri)
+        if (obj instanceof Uri)
         {
             jsonobj.put("type", "complicated");
             jsonobj.put("class", obj.getClass().getName());
@@ -75,12 +75,12 @@ public class Serializer
 
     public static Object deserialize(JSONObject value) throws JSONException
     {
-        if(value.getString("type").equals("null"))
+        if (value.getString("type").equals("null"))
         {
             return null;
         }
 
-        if(value.getString("type").equals("primitive"))
+        if (value.getString("type").equals("primitive"))
         {
             return value.get("value");
         }
@@ -88,13 +88,13 @@ public class Serializer
         try
         {
             Class clazz = Class.forName(value.getString("class"));
-            if(value.getString("type").equals("enum"))
+            if (value.getString("type").equals("enum"))
             {
                 return Enum.valueOf(clazz, value.getString("value"));
             }
-            if(value.getString("type").equals("complicated"))
+            if (value.getString("type").equals("complicated"))
             {
-                if(Uri.class.isAssignableFrom(clazz))
+                if (Uri.class.isAssignableFrom(clazz))
                 {
                     return Uri.parse(value.getString("value"));
                 }

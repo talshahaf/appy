@@ -29,6 +29,7 @@ public class FileBrowserAdapter extends BaseAdapter
         File file;
         boolean checked = false;
     }
+
     interface OnCheckedChanged
     {
         void onCheckedChanged(FileBrowserAdapter adapter, File file, boolean checked);
@@ -58,7 +59,7 @@ public class FileBrowserAdapter extends BaseAdapter
 
     public void updateSelection(Collection<File> selected)
     {
-        for(FileItem file : files)
+        for (FileItem file : files)
         {
             file.checked = selected.contains(file.file);
         }
@@ -75,7 +76,8 @@ public class FileBrowserAdapter extends BaseAdapter
         return position == 0 && !isRoot;
     }
 
-    public FileBrowserAdapter(Context context, FileItem[] files, FileItem current, boolean isRoot) {
+    public FileBrowserAdapter(Context context, FileItem[] files, FileItem current, boolean isRoot)
+    {
         this.context = context;
         this.files = files;
         this.current = current;
@@ -83,14 +85,16 @@ public class FileBrowserAdapter extends BaseAdapter
     }
 
     @Override
-    public int getCount() {
+    public int getCount()
+    {
         return files.length + (isRoot ? 0 : 1);
     }
 
     @Override
-    public Object getItem(int position) {
+    public Object getItem(int position)
+    {
         int index = position - (isRoot ? 0 : 1);
-        if(index == -1)
+        if (index == -1)
         {
             return current;
         }
@@ -98,7 +102,8 @@ public class FileBrowserAdapter extends BaseAdapter
     }
 
     @Override
-    public long getItemId(int position) {
+    public long getItemId(int position)
+    {
         return position;
     }
 
@@ -124,8 +129,8 @@ public class FileBrowserAdapter extends BaseAdapter
             viewHolder = ((ViewHolder) view.getTag());
         }
 
-        final FileItem item = (FileItem)getItem(position);
-        if(item == current)
+        final FileItem item = (FileItem) getItem(position);
+        if (item == current)
         {
             viewHolder.filename.setText("..");
             viewHolder.icon.setImageResource(DIRECTORY_RESOURCE);
@@ -153,7 +158,7 @@ public class FileBrowserAdapter extends BaseAdapter
                 }
 
                 item.checked = isChecked;
-                if(checkedListener != null)
+                if (checkedListener != null)
                 {
                     checkedListener.onCheckedChanged(FileBrowserAdapter.this, item.file, isChecked);
                 }
@@ -179,7 +184,7 @@ public class FileBrowserAdapter extends BaseAdapter
         else
         {
             String extension = file.file.getName().substring(file.file.getName().lastIndexOf(".") + 1);
-            if(extension.equalsIgnoreCase("py"))
+            if (extension.equalsIgnoreCase("py"))
             {
                 return PYTHON_FILE_RESOURCE;
             }
