@@ -31,7 +31,7 @@ interface WidgetUpdateListener
     void importFile(String path, boolean skipRefresh);
     void deimportFile(String path, boolean skipRefresh);
     void refreshManagers();
-    void onError(int widgetId, String error);
+    String onError(int widgetId, String error);
     String getStateLayout();
     void cleanState(String scope, String widget, String key);
     int[] findWidgetsByMame(String name);

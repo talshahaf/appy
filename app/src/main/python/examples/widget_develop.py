@@ -2,7 +2,7 @@ import time, os, functools
 import requests
 from urllib.parse import urlparse
 from appy import widget_manager, java
-from appy.widgets import register_widget, background, TextView, ImageButton, Switch, color, show_dialog, preferred_script_dir
+from appy.widgets import register_widget, background, TextView, ImageButton, Switch, color, R, show_dialog, preferred_script_dir
 
 def on_config(widget, views):
     reset_timer_if_needed(widget)
@@ -159,7 +159,7 @@ def create(widget):
     countdown = TextView(name='countdown', textColor=0xb3ffffff, textSize=20, bottom=text.itop + 10, hcenter=text.hcenter)
     refresh = ImageButton(click=on_refresh, name='refresh_btn', top=text.ibottom + 10, hcenter=text.hcenter,
                             style='dark_oval_pad', adjustViewBounds=True, colorFilter=0xffffffff,
-                            imageResource=java.clazz.appy.R.drawable().ic_action_refresh)
+                            imageResource=R.drawable.ic_action_refresh)
     
     widget.state.enabled = True
     enabled = Switch(name='enabled', checked=widget.state.enabled, click=on_enable, top=20, left=10)

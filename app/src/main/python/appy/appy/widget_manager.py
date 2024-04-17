@@ -160,6 +160,19 @@ class WidgetAttribute:
             return composite_attrs[item](self)
         raise AttributeError(item)
 
+class BaseR:
+    def __init__(self, path):
+        self.__path = path
+
+    def __getattr__(self, key):
+        return self.__class__(self.__path + [key])
+
+    def export_to_java(self):
+        return f'xml.resource.{".".join(self.__path)}'
+
+androidR = BaseR(['android', 'R'])
+R = BaseR(['R'])
+
 last_func_for_widget_id = {}
 def call_function(func, captures, **kwargs):
     #for tracing errors to their module
@@ -306,6 +319,9 @@ class Element:
                 return
             else:
                 raise AttributeError(f'{key} can not be modified')
+
+        if hasattr(value, 'export_to_java'):
+            value = value.export_to_java()
 
         if key in attrs:
             if value is None:
@@ -512,9 +528,11 @@ def module_name(path):
 
 def set_module_error(module, error):
     java_widget_manager.setFileLastError(module.__file__, error)
+    return module.__file__
 
 def set_unknown_error(error):
     java_widget_manager.setFileLastError(None, error)
+    return None
 
 def load_module(path):
     __set_importing_module(path)
@@ -604,10 +622,10 @@ def widget_manager_create(widget, manager_state):
     manager_state.chosen[widget.widget_id] = None
 
     bg = widgets.RelativeLayout(width=widget_dims.width, height=widget_dims.height)
-    bg.backgroundResource = java.clazz.appy.R.drawable().rect
+    bg.backgroundResource = R.drawable.rect
     bg.backgroundTint = widgets.color(r=0, g=0, b=0, a=100)
     
-    restart_btn = widgets.ImageButton(style='danger_oval_pad', adjustViewBounds=True, click=widgets.restart, colorFilter=0xffffffff, width=80, height=80, right=0, bottom=0, imageResource=java.clazz.android.R.drawable().ic_lock_power_off)
+    restart_btn = widgets.ImageButton(style='danger_oval_pad', adjustViewBounds=True, click=widgets.restart, colorFilter=0xffffffff, width=80, height=80, right=0, bottom=0, imageResource=androidR.drawable.ic_lock_power_off)
 
     #calling java releases the gil and available_widgets might be changed while iterating it
     names = [name for name in available_widgets]
@@ -671,9 +689,9 @@ def set_error_to_widget_id(widget_id, error):
                     func = func[0]
 
     if func is not None:
-        set_module_error(inspect.getmodule(func), error)
+        return set_module_error(inspect.getmodule(func), error)
     else:
-        set_unknown_error(error)
+        return set_unknown_error(error)
 
 def refresh_managers():
     manager_state = obtain_manager_state()
@@ -818,7 +836,7 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
 
     @java.override
     def onError(self, widget_id, error):
-        set_error_to_widget_id(widget_id, error)
+        return set_error_to_widget_id(widget_id, error)
 
     @java.override
     def getStateLayout(self):

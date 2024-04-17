@@ -1,5 +1,5 @@
 import time, datetime
-from appy.widgets import register_widget, Chronometer
+from appy.widgets import register_widget, Chronometer, R
 from appy.templates import background
 from appy import java
 
@@ -25,7 +25,7 @@ def create(widget):
                         vcenter=widget.vcenter, hcenter=widget.hcenter, alignment='center')
     
     # Set up a semi-transparent black rectangle as background
-    return [background(drawable=java.clazz.appy.R.drawable().rect), timer]
+    return [background(drawable=R.drawable.rect), timer]
 
 register_widget('countdown',
                 create,

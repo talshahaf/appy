@@ -48,6 +48,7 @@ public class Reflection
         enumTypes.put(null, 9); //constructors
     }
 
+    private static Method forNameMethod;
     private static Method getFieldMethod;
     private static Method getFieldsMethod;
     private static Method getMethodMethod;
@@ -58,6 +59,7 @@ public class Reflection
     {
         try
         {
+            forNameMethod = Class.class.getMethod("forName", String.class, Boolean.TYPE, ClassLoader.class);
             getFieldMethod = Class.class.getMethod("getField", String.class);
             getFieldsMethod = Class.class.getMethod("getFields");
             getMethodMethod = Class.class.getMethod("getMethod", String.class, Class[].class);
@@ -72,7 +74,7 @@ public class Reflection
         }
     }
 
-    public static Object[] getField(Class clazz, String field, boolean checkSameNameMethods) {
+    public static Object[] getField(Class<?> clazz, String field, boolean checkSameNameMethods) {
         boolean hasSameNameMethod = false;
         if (checkSameNameMethods)
         {
@@ -126,6 +128,51 @@ public class Reflection
         return new Object[]{f, new int[]{type == null ? OBJECT_TYPE : type, unboxClassToEnum(f.getType())}, isStatic ? 1 : 0, hasSameNameMethod ? 1 : 0};
     }
 
+    public static Field getFieldRaw(Class<?> clazz, String field)
+    {
+        try
+        {
+            return (Field)getFieldMethod.invoke(clazz, field);
+        }
+        catch(IllegalAccessException|InvocationTargetException e)
+        {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public static Class<?> forName(String path, boolean initialize, ClassLoader classLoader)
+    {
+        try
+        {
+            return (Class<?>)forNameMethod.invoke(Class.class, path, initialize, classLoader);
+        }
+        catch(IllegalAccessException|InvocationTargetException e)
+        {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public static Class<?> findClass(String path, boolean initialize, ClassLoader classLoader)
+    {
+        String[] args = path.split("\\.");
+        for (int many = 0; many < args.length; many++)
+        {
+            String[] dots = Arrays.copyOfRange(args, 0, args.length - many);
+            String[] dollars = Arrays.copyOfRange(args, args.length - many, args.length);
+            String trypath = String.join(".", dots) + ((dots.length == 0 || dollars.length == 0) ? "" : "$") + String.join("$", dollars);
+            Log.d("APPY", "findclass: "+trypath);
+            try
+            {
+                return forName(trypath, initialize, classLoader);
+            }
+            catch (RuntimeException ignored)
+            {
+
+            }
+        }
+        return null;
+    }
+
     public static Field[] getFields(Class<?> clazz)
     {
         try
@@ -134,7 +181,7 @@ public class Reflection
         }
         catch(IllegalAccessException|InvocationTargetException e)
         {
-            throw new RuntimeException(e.getMessage());
+            throw new RuntimeException(e);
         }
     }
 
@@ -158,7 +205,7 @@ public class Reflection
         }
         catch(IllegalAccessException|InvocationTargetException e)
         {
-            throw new RuntimeException(e.getMessage());
+            throw new RuntimeException(e);
         }
     }
 
@@ -182,7 +229,7 @@ public class Reflection
         }
         catch(IllegalAccessException|InvocationTargetException e)
         {
-            throw new RuntimeException(e.getMessage());
+            throw new RuntimeException(e);
         }
     }
 
