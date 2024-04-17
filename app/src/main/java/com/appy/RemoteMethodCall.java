@@ -53,17 +53,13 @@ public class RemoteMethodCall
         String member = path.substring(index + 1);
         path = path.substring(0, index);
         try {
-            Log.d("APPY", "xml searchcls: "+path);
             Class<?> cls = Reflection.findClass(path, true, R.drawable.class.getClassLoader());
-            Log.d("APPY", "xml foudn cls: "+member);
             Field fld = Reflection.getFieldRaw(cls, member);
-            Log.d("APPY", "xml fld cls: "+fld);
             if (fld != null)
             {
                 return fld.get(null);
             }
         } catch (RuntimeException | IllegalAccessException ignored) {
-            Log.e("APPY", "w ", ignored);
         }
 
         return null;

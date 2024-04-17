@@ -3,11 +3,14 @@ package com.appy;
 import android.Manifest;
 import android.content.ComponentName;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.ServiceConnection;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.IBinder;
 
+import androidx.appcompat.app.AlertDialog;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.core.view.GravityCompat;
@@ -107,6 +110,8 @@ public class MainActivity extends AppCompatActivity implements StatusListener
             }
         }
         selectDrawerItem(navView.getMenu().getItem(startingFragmentIndex), getIntent().getBundleExtra(Constants.FRAGMENT_ARG_EXTRA));
+
+        permissionDialogShown = false;
         requestPermissionsIfNeeded();
     }
 
@@ -125,7 +130,8 @@ public class MainActivity extends AppCompatActivity implements StatusListener
 
     public static final int[] REQUEST_PERMISSION_STEPS = new int[] {102, 103};
 
-    public static final String[] permission_ask_message = new String[]{"Appy needs all time location access to not get killed", ""};
+    public static final String permission_ask_message = "Appy needs all time location access to not get killed. Appy itself will not use location data at all.";
+    private boolean permissionDialogShown = false; //we want to show it only once and not for every step.
 
     public int checkPermissions()
     {
@@ -142,17 +148,54 @@ public class MainActivity extends AppCompatActivity implements StatusListener
         return -1;
     }
 
+    public void setShowPermissionDialog(boolean show)
+    {
+        SharedPreferences sharedPref = getSharedPreferences("appy", Context.MODE_PRIVATE);
+        SharedPreferences.Editor editor = sharedPref.edit();
+        editor.putBoolean("show_permission_dialog", show);
+        editor.apply();
+    }
+
+    public boolean getShowPermissionDialog()
+    {
+        SharedPreferences sharedPref = getSharedPreferences("appy", Context.MODE_PRIVATE);
+        return sharedPref.getBoolean("show_permission_dialog", true);
+    }
+
     public void requestPermissionsIfNeeded()
     {
         int neededStep = checkPermissions();
         if (neededStep != -1)
         {
             Log.d("APPY", "Requesting location permissions step" + neededStep);
-            if (!permission_ask_message[neededStep].isEmpty())
+            if (!permissionDialogShown && !permission_ask_message.isEmpty() && getShowPermissionDialog())
             {
-                Toast.makeText(this, permission_ask_message[neededStep], Toast.LENGTH_SHORT).show();
+                permissionDialogShown = true;
+                AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                builder.setTitle("Permission Request");
+                builder.setMessage(permission_ask_message);
+                builder.setCancelable(false);
+                builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        ActivityCompat.requestPermissions(MainActivity.this, permissionsSteps[neededStep], REQUEST_PERMISSION_STEPS[neededStep]);
+                    }
+                });
+                builder.setNeutralButton("Don't show again", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        setShowPermissionDialog(false);
+                        ActivityCompat.requestPermissions(MainActivity.this, permissionsSteps[neededStep], REQUEST_PERMISSION_STEPS[neededStep]);
+                    }
+                });
+
+                builder.show();
             }
-            ActivityCompat.requestPermissions(this, permissionsSteps[neededStep], REQUEST_PERMISSION_STEPS[neededStep]);
+            else
+            {
+                ActivityCompat.requestPermissions(this, permissionsSteps[neededStep], REQUEST_PERMISSION_STEPS[neededStep]);
+            }
+
         }
         else
         {

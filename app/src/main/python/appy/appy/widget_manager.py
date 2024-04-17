@@ -454,6 +454,11 @@ class elist(list):
     def find_id(self, id):
         return self._find_element((lambda id: (lambda e: getattr(e, 'id', None) == id))(id), f'with id {id}') #capture id
 
+    def names(self):
+        return list(set(getsttr(e, 'name', None) for e in self.all()))
+    def ids(self):
+            return list(set(getsttr(e, 'id', None) for e in self.all()))
+
     def __getitem__(self, item):
         try:
             return super().__getitem__(item)
