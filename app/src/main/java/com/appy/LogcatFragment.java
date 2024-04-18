@@ -47,14 +47,18 @@ public class LogcatFragment extends MyFragment implements RunnerListener
         });
 
         clearButton = layout.findViewById(R.id.logcat_clear);
-        clearButton.setOnClickListener(new View.OnClickListener() {
+        clearButton.setOnClickListener(new View.OnClickListener()
+        {
             @Override
-            public void onClick(View v) {
+            public void onClick(View v)
+            {
                 try
                 {
                     Runtime.getRuntime().exec("logcat -c");
-                } catch (IOException e)
-                { }
+                }
+                catch (IOException e)
+                {
+                }
                 selectionBuffer.clear();
                 logcatView.setText(EMPTY_TEXT);
             }
@@ -71,7 +75,7 @@ public class LogcatFragment extends MyFragment implements RunnerListener
     @Override
     public void onLine(final String line)
     {
-        if(handler != null)
+        if (handler != null)
         {
             handler.post(new Runnable()
             {
@@ -79,13 +83,13 @@ public class LogcatFragment extends MyFragment implements RunnerListener
                 public void run()
                 {
                     // freeze when selecting
-                    if(logcatView.hasSelection() || !atEnd)
+                    if (logcatView.hasSelection() || !atEnd)
                     {
                         selectionBuffer.add(line);
                     }
                     else
                     {
-                        for(String bufferedLine : selectionBuffer)
+                        for (String bufferedLine : selectionBuffer)
                         {
                             logcatView.append("\n" + bufferedLine);
                         }
@@ -114,7 +118,7 @@ public class LogcatFragment extends MyFragment implements RunnerListener
 
     public void stopLogcat()
     {
-        if(logcat != null)
+        if (logcat != null)
         {
             logcat.stop();
             logcat = null;
@@ -124,9 +128,9 @@ public class LogcatFragment extends MyFragment implements RunnerListener
     public void startLogcat()
     {
         stopLogcat();
-        logcat = new Runner(new String[]{"logcat", "-b", "main", "-v", "time", "-T", ""+INITIAL_LOGCAT_LINES}, null, null, this);
+        logcat = new Runner(new String[]{"logcat", "-b", "main", "-v", "time", "-T", "" + INITIAL_LOGCAT_LINES}, null, null, this);
         logcat.start();
-        if(handler != null)
+        if (handler != null)
         {
             handler.post(new Runnable()
             {

@@ -7,6 +7,7 @@ import android.view.ViewGroup;
 import android.widget.BaseAdapter;
 import android.widget.ImageView;
 import android.widget.TextView;
+
 import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -25,7 +26,9 @@ public class FileGridAdapter extends BaseAdapter
     interface ItemActionListener
     {
         void onDelete(PythonFile file);
+
         void onRefresh(PythonFile file);
+
         void onInfo(PythonFile file);
     }
 
@@ -34,7 +37,8 @@ public class FileGridAdapter extends BaseAdapter
         this.files = files;
     }
 
-    public FileGridAdapter(Context context, ItemActionListener listener) {
+    public FileGridAdapter(Context context, ItemActionListener listener)
+    {
         this.context = context;
         this.listener = listener;
         this.files = new ArrayList<>();
@@ -51,17 +55,20 @@ public class FileGridAdapter extends BaseAdapter
     }
 
     @Override
-    public int getCount() {
+    public int getCount()
+    {
         return files.size();
     }
 
     @Override
-    public Object getItem(int position) {
+    public Object getItem(int position)
+    {
         return files.get(position);
     }
 
     @Override
-    public long getItemId(int position) {
+    public long getItemId(int position)
+    {
         return position;
     }
 
@@ -95,7 +102,7 @@ public class FileGridAdapter extends BaseAdapter
         PythonFile.State state = file.state;
         PythonFile.State override = stateOverride.get(file.path);
 
-        switch(override == null ? state : override)
+        switch (override == null ? state : override)
         {
             case ACTIVE:
             {
@@ -121,7 +128,7 @@ public class FileGridAdapter extends BaseAdapter
             @Override
             public void onClick(View v)
             {
-                if(listener != null)
+                if (listener != null)
                 {
                     listener.onInfo(file);
                 }
@@ -132,7 +139,7 @@ public class FileGridAdapter extends BaseAdapter
             @Override
             public void onClick(View v)
             {
-                if(listener != null)
+                if (listener != null)
                 {
                     listener.onDelete(file);
                 }
@@ -143,7 +150,7 @@ public class FileGridAdapter extends BaseAdapter
             @Override
             public void onClick(View v)
             {
-                if(listener != null)
+                if (listener != null)
                 {
                     listener.onRefresh(file);
                 }

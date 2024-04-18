@@ -6,6 +6,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.TextView;
+
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
@@ -36,7 +37,7 @@ public class CrashFragment extends MyFragment
             @Override
             public void onClick(View v)
             {
-                if(getActivity() == null)
+                if (getActivity() == null)
                 {
                     return;
                 }
@@ -45,12 +46,16 @@ public class CrashFragment extends MyFragment
                 {
                     new File(getActivity().getCacheDir(), "javacrash.txt").delete();
                 }
-                catch (SecurityException e) { }
+                catch (SecurityException e)
+                {
+                }
                 try
                 {
                     new File(getActivity().getCacheDir(), "pythoncrash.txt").delete();
                 }
-                catch (SecurityException e) { }
+                catch (SecurityException e)
+                {
+                }
 
                 onShow();
             }
@@ -70,7 +75,7 @@ public class CrashFragment extends MyFragment
         {
             readed = reader.read(buf, 0, buf.length);
             sb.append(buf);
-        } while(readed == buf.length);
+        } while (readed == buf.length);
         return sb.toString();
     }
 
@@ -78,7 +83,8 @@ public class CrashFragment extends MyFragment
     {
         try
         {
-            if (path.exists()) {
+            if (path.exists())
+            {
                 return "Last crash from " + new Date(path.lastModified()).toString() + "\n\n" + readFile(path);
             }
             else
@@ -88,18 +94,18 @@ public class CrashFragment extends MyFragment
         }
         catch (IOException e)
         {
-            return "Cannot print crash:\n\n"+e.getMessage();
+            return "Cannot print crash:\n\n" + e.getMessage();
         }
     }
 
     @Override
     public void onShow()
     {
-        if(getActivity() == null)
+        if (getActivity() == null)
         {
             return;
         }
-        if(javaView != null && pythonView != null)
+        if (javaView != null && pythonView != null)
         {
             javaView.setText(getCrash(new File(getActivity().getCacheDir(), "javacrash.txt")));
             pythonView.setText(getCrash(new File(getActivity().getCacheDir(), "pythoncrash.txt")));

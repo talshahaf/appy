@@ -3,7 +3,9 @@ package com.appy;
 import android.content.DialogInterface;
 import android.os.Bundle;
 import android.os.Handler;
+
 import androidx.appcompat.app.AlertDialog;
+
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -30,7 +32,8 @@ public class ControlFragment extends MyFragment
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
-                             Bundle savedInstanceState) {
+                             Bundle savedInstanceState)
+    {
 
         View layout = inflater.inflate(R.layout.fragment_control, container, false);
 
@@ -76,13 +79,13 @@ public class ControlFragment extends MyFragment
                         .setTitle("Clear timers")
                         .setMessage("Clear all timers?")
                         .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener()
-                                {
-                                    public void onClick(DialogInterface dialog, int whichButton)
-                                    {
-                                        getWidgetService().cancelAllTimers();
-                                        debounce(v);
-                                    }
-                                })
+                        {
+                            public void onClick(DialogInterface dialog, int whichButton)
+                            {
+                                getWidgetService().cancelAllTimers();
+                                debounce(v);
+                            }
+                        })
                         .setNegativeButton(android.R.string.no, null);
                 builder.show();
             }
@@ -167,11 +170,11 @@ public class ControlFragment extends MyFragment
 
     public void onStartupStatusChange()
     {
-        if(getWidgetService() == null)
+        if (getWidgetService() == null)
         {
             return;
         }
-        switch(getWidgetService().getStartupState())
+        switch (getWidgetService().getStartupState())
         {
             case IDLE:
                 startupStatus.setImageResource(R.drawable.idle_indicator);

@@ -29,7 +29,7 @@ public class RemoteMethodCall
     static
     {
         Method[] methods = Reflection.getMethods(RemoteViews.class);
-        for(Method method : methods)
+        for (Method method : methods)
         {
             Class<?>[] types = method.getParameterTypes();
 
@@ -52,14 +52,17 @@ public class RemoteMethodCall
         }
         String member = path.substring(index + 1);
         path = path.substring(0, index);
-        try {
+        try
+        {
             Class<?> cls = Reflection.findClass(path, true, R.drawable.class.getClassLoader());
             Field fld = Reflection.getFieldRaw(cls, member);
             if (fld != null)
             {
                 return fld.get(null);
             }
-        } catch (RuntimeException | IllegalAccessException ignored) {
+        }
+        catch (RuntimeException | IllegalAccessException ignored)
+        {
         }
 
         return null;
@@ -95,7 +98,7 @@ public class RemoteMethodCall
 
     public static Object cast(Object obj, Class<?> required)
     {
-        if(obj == null)
+        if (obj == null)
         {
             return null;
         }
@@ -103,66 +106,66 @@ public class RemoteMethodCall
         double dbl;
         Class cls = obj.getClass();
 
-        if(cls == Byte.class)
+        if (cls == Byte.class)
         {
-            lng = (long)(Byte)obj;
-            dbl = (double)(Byte)obj;
+            lng = (long) (Byte) obj;
+            dbl = (double) (Byte) obj;
         }
-        else if(cls == Short.class)
+        else if (cls == Short.class)
         {
-            lng = (long)(Short)obj;
-            dbl = (double)(Short)obj;
+            lng = (long) (Short) obj;
+            dbl = (double) (Short) obj;
         }
-        else if(cls == Integer.class)
+        else if (cls == Integer.class)
         {
-            lng = (long)(Integer)obj;
-            dbl = (double)(Integer)obj;
+            lng = (long) (Integer) obj;
+            dbl = (double) (Integer) obj;
         }
-        else if(cls == Long.class)
+        else if (cls == Long.class)
         {
-            lng = (long)(Long)obj;
-            dbl = (double)(Long)obj;
+            lng = (long) (Long) obj;
+            dbl = (double) (Long) obj;
         }
-        else if(cls == Float.class)
+        else if (cls == Float.class)
         {
-            lng = ((Float)obj).longValue();
-            dbl = (double)(Float)obj;
+            lng = ((Float) obj).longValue();
+            dbl = (double) (Float) obj;
         }
-        else if(cls == Double.class)
+        else if (cls == Double.class)
         {
-            lng = ((Double)obj).longValue();
-            dbl = (double)(Double)obj;
+            lng = ((Double) obj).longValue();
+            dbl = (double) (Double) obj;
         }
         else
         {
             return obj;
         }
 
-        if(required == Byte.class || required == Byte.TYPE)
+        if (required == Byte.class || required == Byte.TYPE)
         {
-            return (byte)lng;
+            return (byte) lng;
         }
-        else if(required == Short.class || required == Short.TYPE)
+        else if (required == Short.class || required == Short.TYPE)
         {
-            return (short)lng;
+            return (short) lng;
         }
-        else if(required == Integer.class || required == Integer.TYPE)
+        else if (required == Integer.class || required == Integer.TYPE)
         {
-            return (int)lng;
+            return (int) lng;
         }
-        else if(required == Long.class || required == Long.TYPE)
+        else if (required == Long.class || required == Long.TYPE)
         {
             return lng;
         }
-        else if(required == Float.class || required == Float.TYPE)
+        else if (required == Float.class || required == Float.TYPE)
         {
-            return (float)dbl;
+            return (float) dbl;
         }
-        else if(required == Double.class || required == Double.TYPE)
+        else if (required == Double.class || required == Double.TYPE)
         {
             return dbl;
         }
-        return (int)lng;
+        return (int) lng;
     }
 
     public RemoteMethodCall(String identifier, boolean parentCall, String methodName, Object... args)
@@ -171,12 +174,14 @@ public class RemoteMethodCall
         this.parentCall = parentCall;
 
         this.method = remoteViewMethods.get(methodName);
-        if (this.method == null) {
+        if (this.method == null)
+        {
             throw new IllegalArgumentException("no remotable method " + methodName + " " + identifier);
         }
         Class<?>[] types = this.method.getParameterTypes();
         this.arguments = new Object[args.length];
-        for (int i = 0; i < args.length; i++) {
+        for (int i = 0; i < args.length; i++)
+        {
             arguments[i] = tryResolveXmlResource(args[i], types[i + 1]);
             arguments[i] = cast(arguments[i], types[i + 1]);
         }
@@ -245,9 +250,9 @@ public class RemoteMethodCall
                     throw new IllegalArgumentException("cannot call function with " + arguments.length + " arguments");
             }
         }
-        catch(IllegalArgumentException e)
+        catch (IllegalArgumentException e)
         {
-            throw new IllegalArgumentException("Illegal argument exception calling method " + identifier +" "+ method.getName() +" "+ method.getParameterTypes().length, e);
+            throw new IllegalArgumentException("Illegal argument exception calling method " + identifier + " " + method.getName() + " " + method.getParameterTypes().length, e);
         }
     }
 
@@ -266,7 +271,7 @@ public class RemoteMethodCall
     public static RemoteMethodCall fromJSON(JSONObject obj) throws JSONException
     {
         Object[] args = new Object[0];
-        if(obj.has("arguments"))
+        if (obj.has("arguments"))
         {
             JSONArray jsonargs = obj.getJSONArray("arguments");
             args = new Object[jsonargs.length()];
@@ -277,7 +282,7 @@ public class RemoteMethodCall
         }
 
         boolean parentCall = false;
-        if(obj.has("parentCall"))
+        if (obj.has("parentCall"))
         {
             parentCall = obj.getBoolean("parentCall");
         }

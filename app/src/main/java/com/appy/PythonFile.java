@@ -52,7 +52,7 @@ public class PythonFile
         JSONObject obj = new JSONObject();
         obj.put("path", path);
 
-        if(lastError != null)
+        if (lastError != null)
         {
             byte[] data;
             try
@@ -65,7 +65,7 @@ public class PythonFile
             }
             obj.put("lastError", Base64.encodeToString(data, Base64.DEFAULT));
         }
-        if(lastErrorDate != null)
+        if (lastErrorDate != null)
         {
             obj.put("lastErrorDate", dateFormat.format(lastErrorDate));
         }
@@ -76,7 +76,7 @@ public class PythonFile
     {
         String lastError = null;
         Date lastErrorDate = null;
-        if(obj.has("lastError"))
+        if (obj.has("lastError"))
         {
             try
             {
@@ -87,7 +87,7 @@ public class PythonFile
                 throw new IllegalArgumentException("can't encode lastError", e);
             }
         }
-        if(obj.has("lastErrorDate"))
+        if (obj.has("lastErrorDate"))
         {
             String serializedDate = obj.getString("lastErrorDate");
             try
@@ -108,7 +108,7 @@ public class PythonFile
         {
             return serialize().toString();
         }
-        catch(JSONException e)
+        catch (JSONException e)
         {
             throw new IllegalArgumentException("json serialization failed", e);
         }
@@ -121,7 +121,7 @@ public class PythonFile
             JSONObject obj = new JSONObject(json);
             return deserialize(obj);
         }
-        catch(JSONException e)
+        catch (JSONException e)
         {
             throw new IllegalArgumentException("json serialization failed", e);
         }
@@ -139,7 +139,7 @@ public class PythonFile
             }
             return result;
         }
-        catch(JSONException e)
+        catch (JSONException e)
         {
             throw new IllegalArgumentException("json serialization failed", e);
         }
@@ -156,7 +156,7 @@ public class PythonFile
             }
             return arr.toString();
         }
-        catch(JSONException e)
+        catch (JSONException e)
         {
             throw new IllegalArgumentException("json serialization failed", e);
         }

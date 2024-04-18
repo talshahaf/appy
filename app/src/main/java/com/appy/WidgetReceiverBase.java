@@ -12,8 +12,9 @@ import android.util.Log;
 public class WidgetReceiverBase extends AppWidgetProvider
 {
     @Override
-    public void onReceive(Context context, Intent intent) {
-        Log.d("APPY", "onReceive intent: "+intent.getAction());
+    public void onReceive(Context context, Intent intent)
+    {
+        Log.d("APPY", "onReceive intent: " + intent.getAction());
 
         if (Widget.isRunning())
         {

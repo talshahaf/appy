@@ -12,11 +12,17 @@ import androidx.preference.PreferenceFragmentCompat;
 interface MyFragmentInterface
 {
     void onShow();
+
     void onHide();
+
     void onBound();
+
     Widget getWidgetService();
+
     void setMenuId(int id);
+
     int getMenuId();
+
     void setArgument(Bundle arg);
 }
 
@@ -26,6 +32,7 @@ abstract class MyFragment extends Fragment implements MyFragmentInterface
     {
 
     }
+
     public void onHide()
     {
 
@@ -38,10 +45,11 @@ abstract class MyFragment extends Fragment implements MyFragmentInterface
 
     public Widget getWidgetService()
     {
-        return ((MainActivity)getActivity()).widgetService;
+        return ((MainActivity) getActivity()).widgetService;
     }
 
     private int menuId = -1;
+
     public void setMenuId(int id)
     {
         menuId = id;
@@ -64,6 +72,7 @@ abstract class MySettingsFragment extends PreferenceFragmentCompat implements My
     {
 
     }
+
     public void onHide()
     {
 
@@ -76,10 +85,11 @@ abstract class MySettingsFragment extends PreferenceFragmentCompat implements My
 
     public Widget getWidgetService()
     {
-        return ((MainActivity)getActivity()).widgetService;
+        return ((MainActivity) getActivity()).widgetService;
     }
 
     private int menuId = -1;
+
     public void setMenuId(int id)
     {
         menuId = id;

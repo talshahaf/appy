@@ -3,8 +3,10 @@ package com.appy;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.os.Bundle;
+
 import androidx.fragment.app.FragmentTransaction;
 import androidx.appcompat.app.AlertDialog;
+
 import android.text.InputType;
 import android.util.Log;
 import android.view.ContextMenu;
@@ -70,7 +72,8 @@ public class ConfigsFragment extends MyFragment
         WidgetSelectFragment fragment = new WidgetSelectFragment();
         fragment.setWidget(widget);
         String config = fragmentArg.getString(Constants.FRAGMENT_ARG_CONFIG);
-        if (configs.containsKey(config)) {
+        if (configs.containsKey(config))
+        {
             fragment.setConfig(config);
             fragment.setRequestCode(fragmentArg.getInt(Constants.FRAGMENT_ARG_REQUESTCODE, 0));
         }
@@ -81,6 +84,7 @@ public class ConfigsFragment extends MyFragment
     {
         tryStart();
     }
+
     public void onShow()
     {
         tryStart();
@@ -106,7 +110,7 @@ public class ConfigsFragment extends MyFragment
                 R.animator.slide_in_from_right, R.animator.slide_out_to_left,
                 R.animator.slide_in_from_left, R.animator.slide_out_to_right);
         transaction.replace(R.id.configs_container, fragment, FRAGMENT_TAG);
-        if(getChildFragmentManager().findFragmentByTag(FRAGMENT_TAG) != null && noBackStack)
+        if (getChildFragmentManager().findFragmentByTag(FRAGMENT_TAG) != null && noBackStack)
         {
             transaction.addToBackStack(null);
         }
@@ -151,18 +155,18 @@ public class ConfigsFragment extends MyFragment
         {
             ArrayList<Item> adapterList = new ArrayList<>();
             Item selectedConfigItem = null;
-            if(widget == null)
+            if (widget == null)
             {
                 HashMap<String, Integer> widgets = getWidgetService().getConfigurations().listWidgets();
-                for(Map.Entry<String, Integer> item : widgets.entrySet())
+                for (Map.Entry<String, Integer> item : widgets.entrySet())
                 {
-                    adapterList.add(new Item(item.getKey(), item.getValue()+" configurations"));
+                    adapterList.add(new Item(item.getKey(), item.getValue() + " configurations"));
                 }
             }
             else
             {
                 HashMap<String, String> values = getWidgetService().getConfigurations().getValues(widget);
-                for(Map.Entry<String, String> item : values.entrySet())
+                for (Map.Entry<String, String> item : values.entrySet())
                 {
                     Item listitem = new Item(item.getKey(), item.getValue());
                     if (config != null && item.getKey().equals(config))
@@ -194,8 +198,8 @@ public class ConfigsFragment extends MyFragment
         @Override
         public void onItemClick(AdapterView<?> adapter, View view, int position, long id)
         {
-            Item item = (Item)adapter.getItemAtPosition(position);
-            if(widget == null)
+            Item item = (Item) adapter.getItemAtPosition(position);
+            if (widget == null)
             {
                 //select that widget
                 WidgetSelectFragment fragment = new WidgetSelectFragment();
@@ -214,7 +218,7 @@ public class ConfigsFragment extends MyFragment
             try
             {
                 // turns everything to an array (array of array is ok)
-                new JSONArray("["+value+"]");
+                new JSONArray("[" + value + "]");
             }
             catch (JSONException e)
             {
@@ -234,7 +238,7 @@ public class ConfigsFragment extends MyFragment
             {
                 input.setText(new JSONObject(item.value).toString(2));
             }
-            catch(JSONException e)
+            catch (JSONException e)
             {
                 input.setText(item.value);
             }
@@ -245,9 +249,11 @@ public class ConfigsFragment extends MyFragment
 
             builder.setPositiveButton("Ok", null);
 
-            final DialogInterface.OnClickListener onDismiss = new DialogInterface.OnClickListener() {
+            final DialogInterface.OnClickListener onDismiss = new DialogInterface.OnClickListener()
+            {
                 @Override
-                public void onClick(DialogInterface dialog, int which) {
+                public void onClick(DialogInterface dialog, int which)
+                {
                     if (dieAfter)
                     {
                         if (requestCode != 0)
@@ -260,27 +266,33 @@ public class ConfigsFragment extends MyFragment
                 }
             };
             builder.setNegativeButton("Cancel", onDismiss);
-            builder.setOnCancelListener(new DialogInterface.OnCancelListener() {
+            builder.setOnCancelListener(new DialogInterface.OnCancelListener()
+            {
                 @Override
-                public void onCancel(DialogInterface dialog) {
+                public void onCancel(DialogInterface dialog)
+                {
                     onDismiss.onClick(dialog, 0);
                 }
             });
 
             final AlertDialog alert = builder.create();
 
-            alert.setOnShowListener(new DialogInterface.OnShowListener() {
+            alert.setOnShowListener(new DialogInterface.OnShowListener()
+            {
 
                 @Override
-                public void onShow(DialogInterface dialogInterface) {
+                public void onShow(DialogInterface dialogInterface)
+                {
 
                     Button button = alert.getButton(AlertDialog.BUTTON_POSITIVE);
-                    button.setOnClickListener(new View.OnClickListener() {
+                    button.setOnClickListener(new View.OnClickListener()
+                    {
 
                         @Override
-                        public void onClick(View view) {
+                        public void onClick(View view)
+                        {
                             String newValue = input.getText().toString();
-                            if(item.key.endsWith("_nojson") || isValidJSON(newValue))
+                            if (item.key.endsWith("_nojson") || isValidJSON(newValue))
                             {
                                 getWidgetService().getConfigurations().setConfig(widget, item.key, newValue);
                                 getWidgetService().configurationUpdate(widget, item.key);
@@ -316,12 +328,12 @@ public class ConfigsFragment extends MyFragment
         public void onCreateContextMenu(ContextMenu menu, View v,
                                         ContextMenu.ContextMenuInfo menuInfo)
         {
-            if(v == list)
+            if (v == list)
             {
                 getActivity().getMenuInflater().inflate(R.menu.config_actions, menu);
 
                 AdapterView.AdapterContextMenuInfo info = (AdapterView.AdapterContextMenuInfo) menuInfo;
-                Item item = (Item)list.getItemAtPosition(info.position);
+                Item item = (Item) list.getItemAtPosition(info.position);
                 menu.setHeaderTitle(item.key);
             }
             else
@@ -355,16 +367,16 @@ public class ConfigsFragment extends MyFragment
             final boolean delete = delete_;
 
             AdapterView.AdapterContextMenuInfo info = (AdapterView.AdapterContextMenuInfo) menuItem.getMenuInfo();
-            final Item item = (Item)list.getItemAtPosition(info.position);
+            final Item item = (Item) list.getItemAtPosition(info.position);
             AlertDialog.Builder builder = new AlertDialog.Builder(getActivity())
                     .setIcon(android.R.drawable.ic_dialog_alert)
                     .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener()
                             {
                                 public void onClick(DialogInterface dialog, int whichButton)
                                 {
-                                    if(widget == null)
+                                    if (widget == null)
                                     {
-                                        if(delete)
+                                        if (delete)
                                         {
                                             getWidgetService().getConfigurations().deleteWidget(item.key);
                                         }
@@ -376,7 +388,7 @@ public class ConfigsFragment extends MyFragment
                                     }
                                     else
                                     {
-                                        if(delete)
+                                        if (delete)
                                         {
                                             getWidgetService().getConfigurations().deleteKey(widget, item.key);
                                         }
@@ -393,7 +405,7 @@ public class ConfigsFragment extends MyFragment
                     )
                     .setNegativeButton(android.R.string.no, null);
 
-            if(widget == null)
+            if (widget == null)
             {
                 if (delete)
                 {
@@ -408,7 +420,7 @@ public class ConfigsFragment extends MyFragment
             }
             else
             {
-                if(delete)
+                if (delete)
                 {
                     builder.setTitle("Delete configuration");
                     builder.setMessage("Delete " + item.key + "?");
@@ -432,10 +444,12 @@ public class ConfigsFragment extends MyFragment
         {
             this.widget = widget;
         }
+
         public void setConfig(String config)
         {
             this.config = config;
         }
+
         public void setRequestCode(int requestCode)
         {
             this.requestCode = requestCode;
@@ -446,36 +460,44 @@ public class ConfigsFragment extends MyFragment
             private Context context;
             private ArrayList<Item> items;
 
-            public ItemAdapter(Context context, ArrayList<Item> items) {
+            public ItemAdapter(Context context, ArrayList<Item> items)
+            {
                 this.context = context;
                 this.items = items;
             }
 
             @Override
-            public int getCount() {
+            public int getCount()
+            {
                 return items.size();
             }
 
             @Override
-            public Object getItem(int position) {
+            public Object getItem(int position)
+            {
                 return items.get(position);
             }
 
             @Override
-            public long getItemId(int position) {
+            public long getItemId(int position)
+            {
                 return position;
             }
 
             @Override
-            public View getView(int position, View convertView, ViewGroup parent) {
+            public View getView(int position, View convertView, ViewGroup parent)
+            {
 
                 View twoLineListItem;
 
-                if (convertView == null) {
+                if (convertView == null)
+                {
                     LayoutInflater inflater = (LayoutInflater) context
                             .getSystemService(Context.LAYOUT_INFLATER_SERVICE);
                     twoLineListItem = inflater.inflate(R.layout.configs_list_item, null);
-                } else {
+                }
+                else
+                {
                     twoLineListItem = convertView;
                 }
 

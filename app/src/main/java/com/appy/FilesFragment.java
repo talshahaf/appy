@@ -5,8 +5,11 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
+
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
+
 import androidx.appcompat.app.AlertDialog;
+
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -32,7 +35,8 @@ public class FilesFragment extends MyFragment implements FileGridAdapter.ItemAct
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
-                             Bundle savedInstanceState) {
+                             Bundle savedInstanceState)
+    {
 
         View layout = inflater.inflate(R.layout.fragment_files, container, false);
 
@@ -70,12 +74,12 @@ public class FilesFragment extends MyFragment implements FileGridAdapter.ItemAct
     @Override
     public void onActivityResult(int requestCode, int resultCode, Intent data)
     {
-        if(resultCode == Activity.RESULT_OK)
+        if (resultCode == Activity.RESULT_OK)
         {
             Log.d("APPY", "file activity result");
             String[] files = data.getStringArrayExtra(FileBrowserActivity.RESULT_FILES);
             ArrayList<PythonFile> pythonFiles = new ArrayList<>();
-            for(String file : files)
+            for (String file : files)
             {
                 pythonFiles.add(new PythonFile(file));
             }
@@ -140,9 +144,11 @@ public class FilesFragment extends MyFragment implements FileGridAdapter.ItemAct
 
         builder.setTitle(new File(file.path).getName() + (file.lastErrorDate != null ? " from " + file.lastErrorDate.toString() : ""));
         builder.setNeutralButton("OK", null);
-        builder.setNegativeButton("Clear", new DialogInterface.OnClickListener() {
+        builder.setNegativeButton("Clear", new DialogInterface.OnClickListener()
+        {
             @Override
-            public void onClick(DialogInterface dialog, int which) {
+            public void onClick(DialogInterface dialog, int which)
+            {
                 getWidgetService().clearFileError(file);
             }
         });
@@ -150,19 +156,21 @@ public class FilesFragment extends MyFragment implements FileGridAdapter.ItemAct
         View layout = LayoutInflater.from(getActivity()).inflate(R.layout.alert_error_view, null);
         TextView message = layout.findViewById(R.id.message);
         String error = "No errors\n\n";
-        if(!file.lastError.isEmpty())
+        if (!file.lastError.isEmpty())
         {
             error = file.lastError + "\n\n";
         }
 
-        message.setText(file.path+"\n\n"+error);
+        message.setText(file.path + "\n\n" + error);
 
         builder.setView(layout);
 
         AlertDialog alert = builder.create();
-        alert.setOnShowListener(new DialogInterface.OnShowListener() {
+        alert.setOnShowListener(new DialogInterface.OnShowListener()
+        {
             @Override
-            public void onShow(DialogInterface dialog) {
+            public void onShow(DialogInterface dialog)
+            {
                 ScrollView vertical = layout.findViewById(R.id.verticalscroll);
                 vertical.fullScroll(View.FOCUS_DOWN);
             }
@@ -172,11 +180,11 @@ public class FilesFragment extends MyFragment implements FileGridAdapter.ItemAct
 
     public void onPythonFileStatusChange()
     {
-        if(getActivity() == null)
+        if (getActivity() == null)
         {
             return;
         }
-        if(getWidgetService() == null)
+        if (getWidgetService() == null)
         {
             return;
         }

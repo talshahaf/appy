@@ -67,7 +67,7 @@ public class Runner implements Runnable
     private String nextLine(StringBuffer str)
     {
         int index = str.indexOf("\n");
-        if(index < 0)
+        if (index < 0)
         {
             return null;
         }
@@ -79,7 +79,7 @@ public class Runner implements Runnable
 
     public void writeToStdin(byte[] data)
     {
-        if(process != null)
+        if (process != null)
         {
             try
             {
@@ -92,8 +92,10 @@ public class Runner implements Runnable
         }
     }
 
-    public static String[] translateCommandline(String toProcess) {
-        if (toProcess == null || toProcess.length() == 0) {
+    public static String[] translateCommandline(String toProcess)
+    {
+        if (toProcess == null || toProcess.length() == 0)
+        {
             // no command? no string
             return new String[0];
         }
@@ -110,36 +112,52 @@ public class Runner implements Runnable
         StringBuilder current = new StringBuilder();
         boolean lastTokenHasBeenQuoted = false;
 
-        while (tok.hasMoreTokens()) {
+        while (tok.hasMoreTokens())
+        {
             String nextTok = tok.nextToken();
-            switch (state) {
+            switch (state)
+            {
                 case inQuote:
-                    if ("\'".equals(nextTok)) {
+                    if ("\'".equals(nextTok))
+                    {
                         lastTokenHasBeenQuoted = true;
                         state = normal;
-                    } else {
+                    }
+                    else
+                    {
                         current.append(nextTok);
                     }
                     break;
                 case inDoubleQuote:
-                    if ("\"".equals(nextTok)) {
+                    if ("\"".equals(nextTok))
+                    {
                         lastTokenHasBeenQuoted = true;
                         state = normal;
-                    } else {
+                    }
+                    else
+                    {
                         current.append(nextTok);
                     }
                     break;
                 default:
-                    if ("\'".equals(nextTok)) {
+                    if ("\'".equals(nextTok))
+                    {
                         state = inQuote;
-                    } else if ("\"".equals(nextTok)) {
+                    }
+                    else if ("\"".equals(nextTok))
+                    {
                         state = inDoubleQuote;
-                    } else if (" ".equals(nextTok)) {
-                        if (lastTokenHasBeenQuoted || current.length() != 0) {
+                    }
+                    else if (" ".equals(nextTok))
+                    {
+                        if (lastTokenHasBeenQuoted || current.length() != 0)
+                        {
                             list.add(current.toString());
                             current = new StringBuilder();
                         }
-                    } else {
+                    }
+                    else
+                    {
                         current.append(nextTok);
                     }
                     lastTokenHasBeenQuoted = false;
@@ -147,11 +165,13 @@ public class Runner implements Runnable
             }
         }
 
-        if (lastTokenHasBeenQuoted || current.length() != 0) {
+        if (lastTokenHasBeenQuoted || current.length() != 0)
+        {
             list.add(current.toString());
         }
 
-        if (state == inQuote || state == inDoubleQuote) {
+        if (state == inQuote || state == inDoubleQuote)
+        {
             throw new IllegalArgumentException("Unbalanced quotes in "
                     + toProcess);
         }
@@ -183,19 +203,19 @@ public class Runner implements Runnable
                     exitCode = process.exitValue();
                     exited = true;
                 }
-                catch(IllegalThreadStateException e)
+                catch (IllegalThreadStateException e)
                 {
 
                 }
 
                 boolean nothingHappened = true;
-                if(bufferedOut.ready())
+                if (bufferedOut.ready())
                 {
                     nothingHappened = false;
                     int len = bufferedOut.read(buf);
                     out.append(buf, 0, len);
                 }
-                if(bufferedErr.ready())
+                if (bufferedErr.ready())
                 {
                     nothingHappened = false;
                     int len = bufferedErr.read(buf);
@@ -216,9 +236,9 @@ public class Runner implements Runnable
                     callback.onLine(line);
                 }
 
-                if(nothingHappened)
+                if (nothingHappened)
                 {
-                    if(exited)
+                    if (exited)
                     {
                         shouldStop = true;
                     }
@@ -246,7 +266,7 @@ public class Runner implements Runnable
             kill();
         }
 
-        if(callback != null)
+        if (callback != null)
         {
             callback.onExited(exitCode);
         }

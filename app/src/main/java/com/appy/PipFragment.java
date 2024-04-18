@@ -33,7 +33,8 @@ public class PipFragment extends MyFragment implements RunnerListener
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
-                             Bundle savedInstanceState) {
+                             Bundle savedInstanceState)
+    {
 
         View layout = inflater.inflate(R.layout.fragment_pip, container, false);
 
@@ -56,7 +57,7 @@ public class PipFragment extends MyFragment implements RunnerListener
             @Override
             public void onClick(final View v)
             {
-                if(runner != null)
+                if (runner != null)
                 {
                     runner.stop();
                 }
@@ -81,9 +82,9 @@ public class PipFragment extends MyFragment implements RunnerListener
             @Override
             public void onClick(final View v)
             {
-                if(runner != null)
+                if (runner != null)
                 {
-                    if(runner.isRunning())
+                    if (runner.isRunning())
                     {
                         output.setText(output.getText() + "\n\nStopping...");
                         v.setEnabled(false);
@@ -126,13 +127,13 @@ public class PipFragment extends MyFragment implements RunnerListener
             @Override
             public void run()
             {
-                if(code == null)
+                if (code == null)
                 {
                     output.setText(output.getText() + "\nTerminated");
                 }
                 else
                 {
-                    output.setText(output.getText() + "\nExited: "+code);
+                    output.setText(output.getText() + "\nExited: " + code);
                 }
             }
         });

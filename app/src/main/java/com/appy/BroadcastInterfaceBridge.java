@@ -22,7 +22,7 @@ public class BroadcastInterfaceBridge extends BroadcastReceiver
         {
             iface.onReceive(context, intent);
         }
-        catch(Exception e)
+        catch (Exception e)
         {
             Log.e("APPY", "Exception on onReceive", e);
         }

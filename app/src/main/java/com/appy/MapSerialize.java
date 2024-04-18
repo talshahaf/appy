@@ -16,6 +16,7 @@ public class MapSerialize<T, S>
     interface Converter<M, N>
     {
         N convert(M m);
+
         M invert(N n);
     }
 
@@ -61,7 +62,7 @@ public class MapSerialize<T, S>
         @Override
         public Integer invert(Object o)
         {
-            return (Integer)o;
+            return (Integer) o;
         }
     }
 
@@ -108,7 +109,7 @@ public class MapSerialize<T, S>
     public JSONObject toJson(HashMap<T, S> map, Converter<T, String> keySerializer, Converter<S, Object> valueSerializer) throws JSONException
     {
         JSONObject obj = new JSONObject();
-        for(Map.Entry<T, S> entry : map.entrySet())
+        for (Map.Entry<T, S> entry : map.entrySet())
         {
             obj.put(keySerializer.convert(entry.getKey()), valueSerializer.convert(entry.getValue()));
         }
@@ -119,7 +120,7 @@ public class MapSerialize<T, S>
     {
         HashMap<T, S> map = new HashMap<>();
         Iterator<String> iter = obj.keys();
-        while(iter.hasNext())
+        while (iter.hasNext())
         {
             String key = iter.next();
             map.put(keyDeserializer.invert(key), valueDeserializer.invert(obj.get(key)));

@@ -28,17 +28,17 @@ public class StateLayout
 
     public static int getDepth(String scope)
     {
-        if(scope.equals("globals"))
+        if (scope.equals("globals"))
         {
             return 1;
         }
 
-        if(scope.equals("nonlocals"))
+        if (scope.equals("nonlocals"))
         {
             return 2;
         }
 
-        if(scope.equals("locals"))
+        if (scope.equals("locals"))
         {
             return 3;
         }
@@ -61,23 +61,23 @@ public class StateLayout
 
     public Set<String> listDict(String scope, String widget, String widgetId)
     {
-        if(scope.equals("globals"))
+        if (scope.equals("globals"))
         {
-            if(widget != null || widgetId != null)
+            if (widget != null || widgetId != null)
             {
                 throw new IllegalArgumentException("global has no more levels");
             }
             return globals.keySet();
         }
 
-        if(scope.equals("nonlocals"))
+        if (scope.equals("nonlocals"))
         {
-            if(widgetId != null)
+            if (widgetId != null)
             {
                 throw new IllegalArgumentException("nonlocals has no more levels");
             }
 
-            if(widget == null)
+            if (widget == null)
             {
                 return nonlocals.keySet();
             }
@@ -92,13 +92,13 @@ public class StateLayout
             }
         }
 
-        if(scope.equals("locals"))
+        if (scope.equals("locals"))
         {
-            if(widget == null)
+            if (widget == null)
             {
                 return locals.keySet();
             }
-            else if(widgetId == null)
+            else if (widgetId == null)
             {
                 HashMap<String, HashMap<String, String>> map = locals.get(widget);
                 if (map == null)
@@ -128,23 +128,23 @@ public class StateLayout
 
     public String getValue(String scope, String widget, String widgetId, String key)
     {
-        if(scope.equals("globals"))
+        if (scope.equals("globals"))
         {
-            if(widget != null || widgetId != null)
+            if (widget != null || widgetId != null)
             {
                 throw new IllegalArgumentException("global has no more levels");
             }
             return globals.get(key);
         }
 
-        if(scope.equals("nonlocals"))
+        if (scope.equals("nonlocals"))
         {
-            if(widgetId != null)
+            if (widgetId != null)
             {
                 throw new IllegalArgumentException("nonlocals has no more levels");
             }
 
-            if(widget == null)
+            if (widget == null)
             {
                 throw new IllegalArgumentException("nonlocals has more levels");
             }
@@ -152,9 +152,9 @@ public class StateLayout
             return nonlocals.get(widget).get(key);
         }
 
-        if(scope.equals("locals"))
+        if (scope.equals("locals"))
         {
-            if(widget == null || widgetId == null)
+            if (widget == null || widgetId == null)
             {
                 throw new IllegalArgumentException("locals has more levels");
             }
@@ -172,7 +172,7 @@ public class StateLayout
 
         JSONObject globals = obj.getJSONObject("globals");
         it = globals.keys();
-        while(it.hasNext())
+        while (it.hasNext())
         {
             String key = it.next();
             stateLayout.globals.put(key, globals.getString(key));
@@ -180,7 +180,7 @@ public class StateLayout
 
         JSONObject nonlocals = obj.getJSONObject("nonlocals");
         it = nonlocals.keys();
-        while(it.hasNext())
+        while (it.hasNext())
         {
             String widget = it.next();
 
@@ -190,7 +190,7 @@ public class StateLayout
             JSONObject nonlocalsWidget = nonlocals.getJSONObject(widget);
 
             Iterator<String> it2 = nonlocalsWidget.keys();
-            while(it2.hasNext())
+            while (it2.hasNext())
             {
                 String key = it2.next();
                 tmpNonLocalsWidget.put(key, nonlocalsWidget.getString(key));
@@ -199,7 +199,7 @@ public class StateLayout
 
         JSONObject locals = obj.getJSONObject("locals");
         it = locals.keys();
-        while(it.hasNext())
+        while (it.hasNext())
         {
             String widget = it.next();
 
@@ -209,7 +209,7 @@ public class StateLayout
             JSONObject localsWidget = locals.getJSONObject(widget);
 
             Iterator<String> it2 = localsWidget.keys();
-            while(it2.hasNext())
+            while (it2.hasNext())
             {
                 String widgetId = it2.next();
 
@@ -219,7 +219,7 @@ public class StateLayout
                 JSONObject localsWidgetWidgetId = localsWidget.getJSONObject(widgetId);
 
                 Iterator<String> it3 = localsWidgetWidgetId.keys();
-                while(it3.hasNext())
+                while (it3.hasNext())
                 {
                     String key = it3.next();
                     tmpLocalsWidgetWidgetId.put(key, localsWidgetWidgetId.getString(key));
@@ -237,7 +237,7 @@ public class StateLayout
             JSONObject obj = new JSONObject(json);
             return deserialize(obj);
         }
-        catch(JSONException e)
+        catch (JSONException e)
         {
             throw new IllegalArgumentException("json serialization failed", e);
         }

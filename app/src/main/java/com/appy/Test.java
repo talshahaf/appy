@@ -26,13 +26,12 @@ public class Test
     }
 
 
-
     public Test()
     {
 
     }
 
-    public Test(boolean z, byte b, char c,      short s, int i,     long j, float f, double d,
+    public Test(boolean z, byte b, char c, short s, int i, long j, float f, double d,
                 Boolean Z, Byte B, Character C, Short S, Integer I, Long J, Float F, Double D,
                 Object O)
     {
@@ -41,12 +40,13 @@ public class Test
 
     public static long test(long i)
     {
-        Log.d("APPY", "test: "+i);
+        Log.d("APPY", "test: " + i);
         return i * 2;
     }
+
     public long ins_test(long i)
     {
-        Log.d("APPY", "ins_test: "+i);
+        Log.d("APPY", "ins_test: " + i);
         return i * 7;
     }
 
@@ -58,7 +58,7 @@ public class Test
 
     public static void void_test(long l)
     {
-        Log.d("APPY", "test_void: "+l);
+        Log.d("APPY", "test_void: " + l);
     }
 
     public static void void_void()
@@ -66,11 +66,11 @@ public class Test
         Log.d("APPY", "void_void");
     }
 
-    public static Object all(boolean z, byte b, char c,      short s, int i,     long j, float f, double d,
+    public static Object all(boolean z, byte b, char c, short s, int i, long j, float f, double d,
                              Boolean Z, Byte B, Character C, Short S, Integer I, Long J, Float F, Double D,
                              Object O)
     {
-        Log.d("APPY", "all got: "+z+" "+b+" "+c+" "+s+" "+i+" "+j+" "+f+" "+d+" | "+Z+" "+B+" "+C+" "+S+" "+I+" "+J+" "+F+" "+D+" | "+O);
+        Log.d("APPY", "all got: " + z + " " + b + " " + c + " " + s + " " + i + " " + j + " " + f + " " + d + " | " + Z + " " + B + " " + C + " " + S + " " + I + " " + J + " " + F + " " + D + " | " + O);
         return O;
     }
 
@@ -82,11 +82,11 @@ public class Test
     public static void test_work(int times)
     {
         String text = "";
-        for(int i = 0; i < 256; i++)
+        for (int i = 0; i < 256; i++)
         {
             text += "a";
         }
-        for(int i = 0; i < times; i++)
+        for (int i = 0; i < times; i++)
         {
             text = text.toLowerCase();
             text = text.toUpperCase();
@@ -115,7 +115,7 @@ public class Test
 
     public static String test_unicode(String s)
     {
-        Log.d("APPY", ""+s.length());
+        Log.d("APPY", "" + s.length());
         return "בדיקה";
     }
 
@@ -129,6 +129,7 @@ public class Test
     {
         return "string";
     }
+
     public static String cast_test(CharSequence str)
     {
         return "charsequence";

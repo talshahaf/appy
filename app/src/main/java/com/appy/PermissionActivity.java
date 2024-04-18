@@ -7,24 +7,28 @@ import android.content.Intent;
 import android.content.ServiceConnection;
 import android.os.Bundle;
 import android.os.IBinder;
+
 import androidx.annotation.NonNull;
 import androidx.core.app.ActivityCompat;
+
 import android.util.Pair;
 
 public class PermissionActivity extends Activity
 {
     public static final String EXTRA_REQUEST_CODE = "EXTRA_REQUEST_CODE";
-    public static final String EXTRA_PERMISSIONS  = "EXTRA_PERMISSIONS";
+    public static final String EXTRA_PERMISSIONS = "EXTRA_PERMISSIONS";
     private Widget widgetService;
 
-    private ServiceConnection mConnection = new ServiceConnection() {
+    private ServiceConnection mConnection = new ServiceConnection()
+    {
         public void onServiceConnected(ComponentName className, IBinder service)
         {
             widgetService = ((Widget.LocalBinder) service).getService();
             requestPermissions(getIntent().getIntExtra(EXTRA_REQUEST_CODE, 1), getIntent().getStringArrayExtra(EXTRA_PERMISSIONS));
         }
 
-        public void onServiceDisconnected(ComponentName className) {
+        public void onServiceDisconnected(ComponentName className)
+        {
             widgetService = null;
         }
     };
@@ -37,9 +41,10 @@ public class PermissionActivity extends Activity
         doBindService();
     }
 
-    public void requestPermissions(int requestCode, String[] permissions) {
+    public void requestPermissions(int requestCode, String[] permissions)
+    {
         Pair<int[], Boolean> state = Widget.getPermissionState(this, permissions);
-        if(state.second)
+        if (state.second)
         {
             onRequestPermissionsResult(requestCode, permissions, state.first);
         }
@@ -49,14 +54,17 @@ public class PermissionActivity extends Activity
         }
     }
 
-    void doBindService() {
+    void doBindService()
+    {
         Intent bindIntent = new Intent(this, Widget.class);
         bindIntent.putExtra(Constants.LOCAL_BIND_EXTRA, true);
         bindService(bindIntent, mConnection, Context.BIND_AUTO_CREATE);
     }
 
-    void doUnbindService() {
-        if (widgetService != null) {
+    void doUnbindService()
+    {
+        if (widgetService != null)
+        {
             widgetService.setStatusListener(null);
             unbindService(mConnection);
             widgetService = null;
@@ -64,14 +72,16 @@ public class PermissionActivity extends Activity
     }
 
     @Override
-    protected void onDestroy() {
+    protected void onDestroy()
+    {
         super.onDestroy();
         doUnbindService();
     }
 
     @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        if(widgetService != null)
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults)
+    {
+        if (widgetService != null)
         {
             widgetService.asyncReport(requestCode, new Pair<>(permissions, grantResults));
         }

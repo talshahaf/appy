@@ -1,4 +1,5 @@
 package com.appy;
 
-public class WidgetReceiver1x1 extends WidgetReceiverBase{
+public class WidgetReceiver1x1 extends WidgetReceiverBase
+{
 }

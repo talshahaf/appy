@@ -8,6 +8,7 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
+
 import androidx.annotation.NonNull;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
@@ -133,15 +134,19 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
         String[] permissions;
         if (Build.VERSION.SDK_INT <= 32)
         {
-            permissions = new String[] {Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE};
-        } else {
-            permissions = new String[] {};
+            permissions = new String[]{Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE};
+        }
+        else
+        {
+            permissions = new String[]{};
             //Manifest.permission.READ_MEDIA_AUDIO, Manifest.permission.READ_MEDIA_VIDEO, Manifest.permission.READ_MEDIA_IMAGES};
         }
 
         boolean all = true;
-        for (String permission : permissions) {
-            if (ContextCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED) {
+        for (String permission : permissions)
+        {
+            if (ContextCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED)
+            {
                 all = false;
                 break;
             }
@@ -159,7 +164,8 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
 
     public void requestAllStorage()
     {
-        if (Constants.compiledWithManagerStorage(this) && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && !Environment.isExternalStorageManager()) {
+        if (Constants.compiledWithManagerStorage(this) && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && !Environment.isExternalStorageManager())
+        {
             Uri uri = Uri.parse("package:" + BuildConfig.APPLICATION_ID);
             Intent intent = new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION, uri);
             startActivityForResult(intent, REQUEST_ALL_STORAGE);
@@ -173,7 +179,7 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
     public void getStartDir()
     {
         startDir = preset_paths[cantViewSharedStorage ? MEDIA_STORAGE_INDEX : SHARED_STORAGE_INDEX];
-        if(!getDirFromRoot(startDir))
+        if (!getDirFromRoot(startDir))
         {
             startDir = preset_paths[MEDIA_STORAGE_INDEX];
             getDirFromRoot(startDir);
@@ -193,13 +199,19 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
 
     @Override
     public void onRequestPermissionsResult(int requestCode,
-                                           @NonNull String permissions[], @NonNull int[] grantResults) {
+                                           @NonNull String permissions[], @NonNull int[] grantResults)
+    {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        switch (requestCode) {
-            case REQUEST_PERMISSION_STORAGE: {
-                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+        switch (requestCode)
+        {
+            case REQUEST_PERMISSION_STORAGE:
+            {
+                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED)
+                {
                     requestAllStorage();
-                } else {
+                }
+                else
+                {
                     Toast.makeText(this, "Cannot open file browser", Toast.LENGTH_SHORT).show();
                     finish();
                 }
@@ -212,7 +224,7 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
 
     public void userNavigate(String path)
     {
-        if(!getDirFromRoot(path))
+        if (!getDirFromRoot(path))
         {
             Toast.makeText(FileBrowserActivity.this, "Cannot navigate to " + path, Toast.LENGTH_SHORT).show();
         }
@@ -226,7 +238,7 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
         FileBrowserAdapter.FileItem current = new FileBrowserAdapter.FileItem();
         current.file = new File(path);
         File[] filesArray = current.file.listFiles();
-        if(filesArray == null)
+        if (filesArray == null)
         {
             Log.d("APPY", "Cannot navigate to " + path);
             return false;
@@ -235,14 +247,16 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
         history.addFirst(path);
 
         //sorting file list in alphabetical order
-        Arrays.sort(filesArray, new Comparator<File>() {
+        Arrays.sort(filesArray, new Comparator<File>()
+        {
             @Override
-            public int compare(File o1, File o2) {
-                if(o1.isDirectory() && !o2.isDirectory())
+            public int compare(File o1, File o2)
+            {
+                if (o1.isDirectory() && !o2.isDirectory())
                 {
                     return -1;
                 }
-                if(!o1.isDirectory() && o2.isDirectory())
+                if (!o1.isDirectory() && o2.isDirectory())
                 {
                     return 1;
                 }
@@ -251,7 +265,7 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
         });
 
         FileBrowserAdapter.FileItem[] items = new FileBrowserAdapter.FileItem[filesArray.length];
-        for(int i = 0; i < filesArray.length; i++)
+        for (int i = 0; i < filesArray.length; i++)
         {
             items[i] = new FileBrowserAdapter.FileItem();
             items[i].file = filesArray[i];
@@ -266,7 +280,7 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id)
             {
-                if(adapter.isParent(position))
+                if (adapter.isParent(position))
                 {
                     userNavigate(adapter.getCurrent().file.getParentFile().getAbsolutePath());
                 }
@@ -297,15 +311,16 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
     }
 
     @Override
-    public void onBackPressed() {
-        if(copying || cutting)
+    public void onBackPressed()
+    {
+        if (copying || cutting)
         {
             cancelFileOp();
             return;
         }
 
         history.removeFirst(); //pop current
-        if(history.isEmpty())
+        if (history.isEmpty())
         {
             finish();
             return;
@@ -325,7 +340,7 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
     {
         String[] files = new String[selected.size()];
         int i = 0;
-        for(File file : selected.values())
+        for (File file : selected.values())
         {
             files[i] = file.getAbsolutePath();
             i++;
@@ -353,13 +368,13 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
                 os.write(buffer, 0, length);
             }
         }
-        catch(IOException e)
+        catch (IOException e)
         {
             return false;
         }
         finally
         {
-            if(is != null)
+            if (is != null)
             {
                 try
                 {
@@ -370,7 +385,7 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
 
                 }
             }
-            if(os != null)
+            if (os != null)
             {
                 try
                 {
@@ -388,7 +403,7 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
     @Override
     public boolean onOptionsItemSelected(MenuItem item)
     {
-        if(adapter != null)
+        if (adapter != null)
         {
             switch (item.getItemId())
             {
@@ -590,7 +605,8 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
     }
 
     @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
+    public boolean onCreateOptionsMenu(Menu menu)
+    {
         getMenuInflater().inflate(R.menu.filebrowser_actions, menu);
         updateMenu(menu);
         return super.onCreateOptionsMenu(menu);
@@ -600,19 +616,20 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
     {
         updateMenu(toolbar.getMenu());
     }
+
     public void updateMenu(Menu menu)
     {
-        if(menu != null)
+        if (menu != null)
         {
-            menu.findItem(R.id.action_clear).setVisible( selected.size() > 0);
-            menu.findItem(R.id.action_select).setVisible(selected.size() > 0  && !copying && !cutting);
-            menu.findItem(R.id.action_copy).setVisible(  selected.size() > 0  && !copying && !cutting);
-            menu.findItem(R.id.action_cut).setVisible(   selected.size() > 0  && !copying && !cutting);
-            menu.findItem(R.id.action_delete).setVisible(selected.size() > 0  && !copying && !cutting);
+            menu.findItem(R.id.action_clear).setVisible(selected.size() > 0);
+            menu.findItem(R.id.action_select).setVisible(selected.size() > 0 && !copying && !cutting);
+            menu.findItem(R.id.action_copy).setVisible(selected.size() > 0 && !copying && !cutting);
+            menu.findItem(R.id.action_cut).setVisible(selected.size() > 0 && !copying && !cutting);
+            menu.findItem(R.id.action_delete).setVisible(selected.size() > 0 && !copying && !cutting);
             menu.findItem(R.id.action_rename).setVisible(selected.size() == 1 && !copying && !cutting);
 
             menu.findItem(R.id.action_cancel).setVisible(copying || cutting);
-            menu.findItem(R.id.action_paste).setVisible( copying || cutting);
+            menu.findItem(R.id.action_paste).setVisible(copying || cutting);
         }
     }
 
@@ -631,7 +648,7 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
     @Override
     public void onCheckedChanged(FileBrowserAdapter adapter, File file, boolean checked)
     {
-        if(checked)
+        if (checked)
         {
             selected.put(canonicalPath(file), file);
         }

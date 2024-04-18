@@ -13,12 +13,12 @@ public class LinkService extends Activity
         super.onCreate(savedInstanceState);
 
         Intent intent = getIntent();
-        if(intent != null)
+        if (intent != null)
         {
             String customAction = intent.getStringExtra("action");
             String action = Constants.DEEP_LINK_BROADCAST + (customAction == null ? "" : "." + customAction);
 
-            Log.d("APPY", "sending "+action);
+            Log.d("APPY", "sending " + action);
 
             Intent broadcastIntent = new Intent(action);
             broadcastIntent.putExtras(intent);
