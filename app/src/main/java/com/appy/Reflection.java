@@ -160,7 +160,6 @@ public class Reflection
             String[] dots = Arrays.copyOfRange(args, 0, args.length - many);
             String[] dollars = Arrays.copyOfRange(args, args.length - many, args.length);
             String trypath = String.join(".", dots) + ((dots.length == 0 || dollars.length == 0) ? "" : "$") + String.join("$", dollars);
-            Log.d("APPY", "findclass: "+trypath);
             try
             {
                 return forName(trypath, initialize, classLoader);

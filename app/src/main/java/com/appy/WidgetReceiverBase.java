@@ -9,7 +9,7 @@ import android.util.Log;
  * Created by Tal on 25/11/2017.
  */
 
-public class WidgetReceiver extends AppWidgetProvider
+public class WidgetReceiverBase extends AppWidgetProvider
 {
     @Override
     public void onReceive(Context context, Intent intent) {

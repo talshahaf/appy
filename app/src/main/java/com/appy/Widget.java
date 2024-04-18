@@ -428,7 +428,7 @@ public class Widget extends RemoteViewsService
                     {
                         ArrayList<DynamicView> dynamicViewCopy = DynamicView.fromJSONArray(DynamicView.toJSONString(list.children.get(position)));
                         RemoteViews remoteView = resolveDimensions(context, widgetId, dynamicViewCopy, Constants.collection_layout_type.get(list.type), new Object[]{list.getId(), position}, list.actualWidth, list.actualHeight).first;
-                        Intent fillIntent = new Intent(context, WidgetReceiver.class);
+                        Intent fillIntent = new Intent(context, WidgetReceiver2x2.class);
                         if (list.children.get(position).size() == 1)
                         {
                             fillIntent.putExtra(Constants.ITEM_ID_EXTRA, list.children.get(position).get(0).getId());
@@ -763,7 +763,7 @@ public class Widget extends RemoteViewsService
             Intent clickIntent = null;
             if (!forMeasurement)
             {
-                clickIntent = new Intent(context, WidgetReceiver.class);
+                clickIntent = new Intent(context, WidgetReceiver2x2.class);
                 clickIntent.setAction(AppWidgetManager.ACTION_APPWIDGET_UPDATE);
                 clickIntent.putExtra(Constants.WIDGET_ID_EXTRA, widgetId);
             }
@@ -2750,8 +2750,32 @@ public class Widget extends RemoteViewsService
 
     public int[] requestAndroidWidgets()
     {
-        ComponentName thisWidget = new ComponentName(this, WidgetReceiver.class);
-        int[] ids = AppWidgetManager.getInstance(this).getAppWidgetIds(thisWidget);
+        Class<?>[] widgetReceivers = new Class[]{WidgetReceiver1x1.class, WidgetReceiver2x1.class,
+                                              WidgetReceiver2x2.class, WidgetReceiver3x2.class,
+                                              WidgetReceiver3x3.class, WidgetReceiver4x2.class,
+                                              WidgetReceiver4x3.class, WidgetReceiver4x4.class};
+        ArrayList<int[]> allIds = new ArrayList<>();
+        int totalSize = 0;
+
+        for (Class<?> clazz : widgetReceivers)
+        {
+            ComponentName thisWidget = new ComponentName(this, clazz);
+            int[] receiverIds = AppWidgetManager.getInstance(this).getAppWidgetIds(thisWidget);
+            allIds.add(receiverIds);
+            totalSize += receiverIds.length;
+        }
+
+        int[] ids = new int[totalSize];
+        int c = 0;
+        for (int[] arr : allIds)
+        {
+            for (int i : arr)
+            {
+                ids[c] = i;
+                c++;
+            }
+        }
+
         return filterBadAndroidWidgets(ids);
     }
 
