@@ -621,11 +621,11 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
     {
         if (menu != null)
         {
-            menu.findItem(R.id.action_clear).setVisible(selected.size() > 0);
-            menu.findItem(R.id.action_select).setVisible(selected.size() > 0 && !copying && !cutting);
-            menu.findItem(R.id.action_copy).setVisible(selected.size() > 0 && !copying && !cutting);
-            menu.findItem(R.id.action_cut).setVisible(selected.size() > 0 && !copying && !cutting);
-            menu.findItem(R.id.action_delete).setVisible(selected.size() > 0 && !copying && !cutting);
+            menu.findItem(R.id.action_clear).setVisible(!selected.isEmpty() && !copying && !cutting);
+            menu.findItem(R.id.action_select).setVisible(!selected.isEmpty() && !copying && !cutting);
+            menu.findItem(R.id.action_copy).setVisible(!selected.isEmpty() && !copying && !cutting);
+            menu.findItem(R.id.action_cut).setVisible(!selected.isEmpty() && !copying && !cutting);
+            menu.findItem(R.id.action_delete).setVisible(!selected.isEmpty() && !copying && !cutting);
             menu.findItem(R.id.action_rename).setVisible(selected.size() == 1 && !copying && !cutting);
 
             menu.findItem(R.id.action_cancel).setVisible(copying || cutting);
