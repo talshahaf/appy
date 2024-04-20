@@ -54,14 +54,14 @@ public class MainActivity extends AppCompatActivity implements StatusListener
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        fragments.put(R.id.navigation_control, new Pair<Class<?>, Fragment>(ControlFragment.class, null));
-        fragments.put(R.id.navigation_logcat, new Pair<Class<?>, Fragment>(LogcatFragment.class, null));
-        fragments.put(R.id.navigation_pip, new Pair<Class<?>, Fragment>(PipFragment.class, null));
-        fragments.put(R.id.navigation_files, new Pair<Class<?>, Fragment>(FilesFragment.class, null));
-        fragments.put(R.id.navigation_configs, new Pair<Class<?>, Fragment>(ConfigsFragment.class, null));
-        fragments.put(R.id.navigation_state, new Pair<Class<?>, Fragment>(StateFragment.class, null));
-        fragments.put(R.id.navigation_crash, new Pair<Class<?>, Fragment>(CrashFragment.class, null));
-        fragments.put(R.id.navigation_settings, new Pair<Class<?>, Fragment>(SettingsFragment.class, null));
+        fragments.put(R.id.navigation_control, new Pair<>(ControlFragment.class, null));
+        fragments.put(R.id.navigation_logcat, new Pair<>(LogcatFragment.class, null));
+        fragments.put(R.id.navigation_pip, new Pair<>(PipFragment.class, null));
+        fragments.put(R.id.navigation_files, new Pair<>(FilesFragment.class, null));
+        fragments.put(R.id.navigation_configs, new Pair<>(ConfigsFragment.class, null));
+        fragments.put(R.id.navigation_state, new Pair<>(StateFragment.class, null));
+        fragments.put(R.id.navigation_crash, new Pair<>(CrashFragment.class, null));
+        fragments.put(R.id.navigation_settings, new Pair<>(SettingsFragment.class, null));
 
         // Set a Toolbar to replace the ActionBar.
         toolbar = findViewById(R.id.toolbar);

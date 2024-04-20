@@ -167,11 +167,20 @@ class BaseR:
     def __getattr__(self, key):
         return self.__class__(self.__path + [key])
 
-    def export_to_java(self):
+    def export_to_views(self):
         return f'xml.resource.{".".join(self.__path)}'
 
+    def resolve_now(self):
+        cls_res = java.clazz
+        for part in self.__path[:-1]:
+            cls_res = getattr(cls_res, part)
+        return getattr(cls_res(), self.__path[-1])
+
+    def __java__(self):
+        return self.resolve_now()
+
 androidR = BaseR(['android', 'R'])
-R = BaseR(['R'])
+R = BaseR(['appy', 'R'])
 
 last_func_for_widget_id = {}
 def call_function(func, captures, **kwargs):
@@ -320,8 +329,8 @@ class Element:
             else:
                 raise AttributeError(f'{key} can not be modified')
 
-        if hasattr(value, 'export_to_java'):
-            value = value.export_to_java()
+        if hasattr(value, 'export_to_views'):
+            value = value.export_to_views()
 
         if key in attrs:
             if value is None:

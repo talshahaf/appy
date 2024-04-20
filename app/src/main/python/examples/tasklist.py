@@ -1,4 +1,4 @@
-from appy.widgets import register_widget, ImageView, ListView, CheckBox, R
+from appy.widgets import register_widget, ImageView, ListView, CheckBox, R, androidR
 from appy.templates import background
 from appy import java
 
@@ -43,7 +43,7 @@ def create(widget):
                            colorFilter=0xffffffff, width=80, height=80,
                            right=10, bottom=10,
                            click=edit_btn_click,
-                           imageResource=R.drawable.ic_menu_edit)
+                           imageResource=androidR.drawable.ic_menu_edit)
     
     widget.invalidate()
     return [background(drawable=R.drawable.rect), lst, edit_btn]
