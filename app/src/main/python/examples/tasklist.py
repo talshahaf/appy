@@ -16,7 +16,7 @@ def on_check(widget, view, checked):
     # Strikethrough on checked
     view.paintFlags = strikethrough_flags if checked else normal_flags
     
-    #invalidate other tasklists
+    # Invalidate other tasklists
     for w in widget.by_name(widget.name):
         if w != widget:
             w.invalidate()
@@ -48,7 +48,9 @@ def create(widget):
     widget.invalidate()
     return [background(drawable=R.drawable.rect), lst, edit_btn]
     
-register_widget('tasklist', create, update_list,
+register_widget('tasklist', create,
+                    # Also refresh list every update so we can call invalidate from other tasklists
+                    update_list,
                     # no json so it would be easier to read and to change
                     config=dict(list_nojson='Task 1, Task 2, Task 3', newline_delimiter=False, delimiter=', '),
                     # Refresh list every config change
