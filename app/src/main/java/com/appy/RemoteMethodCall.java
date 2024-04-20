@@ -1,5 +1,6 @@
 package com.appy;
 
+import android.content.res.Resources;
 import android.util.Log;
 import android.util.Pair;
 import android.widget.RemoteViews;
@@ -89,6 +90,8 @@ public class RemoteMethodCall
                     {
                         return resolved;
                     }
+
+                    throw new Resources.NotFoundException("Resource '" + prefix.second + "." + path + "' does not exist");
                 }
             }
         }

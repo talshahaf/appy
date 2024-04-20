@@ -67,7 +67,7 @@ class State:
             self.__info__['scopes'][attr] = 'locals'
 
     def __getattr__(self, attr):
-        scope = self.__info__['scopes'].get(attr, 'locals')
+        scope = self.__info__['scopes'].get(attr)
         
         if scope is None or scope == 'locals':
             v, found = self.__act__(getter, 'locals', self.__info__['scope_keys']['locals'], attr)

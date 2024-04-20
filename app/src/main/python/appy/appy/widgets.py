@@ -41,6 +41,9 @@ class Widget:
         if item == 'raw_config':
             return configs.global_raw_configs[self.name]
         return getattr(self.widget_dims, item)
+        
+    def __eq__(self, other):
+        return self.widget_id == other.widget_id
 
     def locals(self, *attrs):
         self.state.locals(*attrs)

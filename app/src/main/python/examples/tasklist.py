@@ -11,9 +11,15 @@ def edit_btn_click(widget):
     
 def on_check(widget, view, checked):
     # Update checked in state so remember through reboots and list changes
+    widget.nonlocals(view.text)
     widget.state[view.text] = checked
     # Strikethrough on checked
     view.paintFlags = strikethrough_flags if checked else normal_flags
+    
+    #invalidate other tasklists
+    for w in widget.by_name(widget.name):
+        if w != widget:
+            w.invalidate()
  
 def update_list(widget, views):
     children = []
@@ -39,10 +45,10 @@ def create(widget):
                            click=edit_btn_click,
                            imageResource=R.drawable.ic_menu_edit)
     
-    widget.post(update_list)
+    widget.invalidate()
     return [background(drawable=R.drawable.rect), lst, edit_btn]
     
-register_widget('tasklist', create,
+register_widget('tasklist', create, update_list,
                     # no json so it would be easier to read and to change
                     config=dict(list_nojson='Task 1, Task 2, Task 3', newline_delimiter=False, delimiter=', '),
                     # Refresh list every config change
