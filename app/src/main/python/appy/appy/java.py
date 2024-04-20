@@ -72,6 +72,9 @@ def wrap(obj, *args, **kwargs):
     return Object(obj, *args, **kwargs), False
 
 def unwrap(obj):
+    if hasattr(obj, '__java__'):
+        return unwrap(obj.__java__())
+
     if isinstance(obj, (Object, Class, Array)):
         return obj.bridge
     if isinstance(obj, InterfaceBase):

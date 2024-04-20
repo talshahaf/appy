@@ -41,6 +41,7 @@ public class RemoteMethodCall
         }
 
         resolveResourcePrefix.add(new Pair<>("xml.resource.R.", Constants.APP_PACKAGE_NAME + ".R"));
+        resolveResourcePrefix.add(new Pair<>("xml.resource.appy.R.", Constants.APP_PACKAGE_NAME + ".R"));
         resolveResourcePrefix.add(new Pair<>("xml.resource.android.R.", "android.R"));
     }
 

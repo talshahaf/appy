@@ -3645,7 +3645,7 @@ public class Widget extends RemoteViewsService
                                         restart();
                                         break;
                                     case Constants.SPECIAL_WIDGET_OPENAPP:
-                                        startMainActivity(null, null);
+                                        startMainActivity("Files", null);
                                         break;
                                     case Constants.SPECIAL_WIDGET_CLEAR:
                                         if (arg != null)
