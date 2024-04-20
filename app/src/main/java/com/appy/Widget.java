@@ -2733,21 +2733,18 @@ public class Widget extends RemoteViewsService
             reload.attributes.attributes.put(Attributes.Type.RIGHT, attributeParse("r(p)"));
             reload.tag = Constants.SPECIAL_WIDGET_RELOAD + "," + widgetId;
 
-            if (path != null)
-            {
-                DynamicView showError = new DynamicView("ImageView");
-                showError.methodCalls.add(new RemoteMethodCall("setImageResource", false, Constants.getSetterMethod(showError.type, "setImageResource"), "setImageResource", R.drawable.ic_action_info));
-                showError.attributes.attributes.put(Attributes.Type.TOP, attributeParse("h(p)0.5+h(" + showError.getId() + ")-0.5"));
-                showError.attributes.attributes.put(Attributes.Type.RIGHT, attributeParse("w(p)0.5"));
-                showError.attributes.attributes.put(Attributes.Type.WIDTH, attributeParse("140"));
-                showError.attributes.attributes.put(Attributes.Type.HEIGHT, attributeParse("140"));
-                showError.tag = Constants.SPECIAL_WIDGET_SHOWERROR + "," + path.length() + "," + path + "," + Stacktrace.stackTraceString(error);
-                views.add(showError);
-            }
-
             views.add(clear);
             views.add(reload);
         }
+
+        DynamicView showError = new DynamicView("ImageView");
+        showError.methodCalls.add(new RemoteMethodCall("setImageResource", false, Constants.getSetterMethod(showError.type, "setImageResource"), "setImageResource", R.drawable.ic_action_info));
+        showError.attributes.attributes.put(Attributes.Type.TOP, attributeParse("h(p)0.5+h(" + showError.getId() + ")-0.5"));
+        showError.attributes.attributes.put(Attributes.Type.RIGHT, attributeParse("w(p)0.5"));
+        showError.attributes.attributes.put(Attributes.Type.WIDTH, attributeParse("140"));
+        showError.attributes.attributes.put(Attributes.Type.HEIGHT, attributeParse("140"));
+        showError.tag = Constants.SPECIAL_WIDGET_SHOWERROR + "," + (path == null ? "0," : (path.length() + "," + path)) + "," + Stacktrace.stackTraceString(error);
+        views.add(showError);
 
         setWidget(androidWidgetId, Constants.SPECIAL_WIDGET_ID, views, false);
 
@@ -3706,7 +3703,8 @@ public class Widget extends RemoteViewsService
 
                                         String path = args[1].substring(0, arg1len);
                                         String error = args[1].substring(arg1len + 1);
-                                        String title = new File(path).getName();
+
+                                        String title = path.isEmpty() ? "" : new File(path).getName();
 
                                         Log.d("APPY", "showing error of " + path);
 
