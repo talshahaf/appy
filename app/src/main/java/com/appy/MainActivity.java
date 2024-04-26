@@ -285,12 +285,6 @@ public class MainActivity extends AppCompatActivity implements StatusListener
     }
 
     @Override
-    public void onActivityResult(int requestCode, int resultCode, Intent data)
-    {
-        super.onActivityResult(requestCode, resultCode, data);
-    }
-
-    @Override
     public void onBackPressed()
     {
         if (!tutorial.allowBackPress())
