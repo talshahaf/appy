@@ -235,11 +235,18 @@ public class StateFragment extends MyFragment
 
             AdapterView.AdapterContextMenuInfo info = (AdapterView.AdapterContextMenuInfo) menuItem.getMenuInfo();
             final Item item = (Item) list.getItemAtPosition(info.position);
-            AlertDialog.Builder builder = new AlertDialog.Builder(getActivity())
-                    .setIcon(android.R.drawable.ic_dialog_alert)
-                    .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener()
+
+            ArrayList<String> fullPath = new ArrayList<>(keyPath);
+            fullPath.add(item.key);
+
+            Utils.showConfirmationDialog(getActivity(),
+                    item.leaf ? "Delete state" : "Delete all",
+                    (item.leaf ? "Delete " : "Delete all ") + String.join(".", fullPath) + " ?",
+                    android.R.drawable.ic_dialog_alert,
+                    null, null, new Runnable()
                     {
-                        public void onClick(DialogInterface dialog, int whichButton)
+                        @Override
+                        public void run()
                         {
                             if (keyPath.isEmpty())
                             {
@@ -262,16 +269,7 @@ public class StateFragment extends MyFragment
                             }
                             refresh();
                         }
-                    })
-                    .setNegativeButton(android.R.string.no, null);
-
-            ArrayList<String> fullPath = new ArrayList<>(keyPath);
-            fullPath.add(item.key);
-
-            builder.setTitle(item.leaf ? "Delete state" : "Delete all");
-            builder.setMessage((item.leaf ? "Delete " : "Delete all ") + String.join(".", fullPath) + " ?");
-
-            builder.show();
+                    });
             return true;
         }
 

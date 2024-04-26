@@ -146,6 +146,8 @@ public class FileBrowserAdapter extends BaseAdapter
             viewHolder.checkbox.setEnabled(selectingEnabled);
         }
 
+        view.setContentDescription("fileitem_" + viewHolder.filename.getText());
+
         viewHolder.checkbox.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener()
         {
             @Override

@@ -36,7 +36,6 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.StringBufferInputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -51,6 +50,7 @@ import java.util.List;
 public class FileBrowserActivity extends AppCompatActivity implements FileBrowserAdapter.OnCheckedChanged
 {
     public static final String RESULT_FILES = "RESULT_FILES";
+    public static final String REQUEST_ALLOW_RETURN_MULTIPLE = "REQUEST_ALLOW_RETURN_MULTIPLE";
     public static final int REQUEST_PERMISSION_STORAGE = 101;
     public static final int REQUEST_ALL_STORAGE = 102;
     public static final int MEDIA_STORAGE_INDEX = 1;
@@ -61,12 +61,15 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
     LinkedList<String> history = new LinkedList<>();
     Toolbar toolbar;
     TextView bottomtext;
+    TutorialOverlayView tutorialOverlay;
+    Tutorial tutorial;
     boolean copying = false;
     boolean cutting = false;
     HashMap<String, File> selected = new HashMap<>();
     boolean selectingEnabled = true;
 
     boolean cantViewSharedStorage;
+    boolean allowReturnMultipleFiles;
 
     private String[] preset_names;
     private String[] preset_paths;
@@ -77,12 +80,17 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
         super.onCreate(savedInstanceState);
         setContentView(R.layout.filebrowser);
 
+        allowReturnMultipleFiles = getIntent().getBooleanExtra(REQUEST_ALLOW_RETURN_MULTIPLE, true);
+
         list = findViewById(R.id.filelist);
         toolbar = findViewById(R.id.toolbar);
         bottomtext = findViewById(R.id.bottomtext);
         bottomtext.setVisibility(View.INVISIBLE);
+        tutorialOverlay = findViewById(R.id.tutorial_overlay_view);
         setSupportActionBar(toolbar);
 
+        tutorial = new Tutorial();
+        tutorial.fillFileBrowserComponents(this, tutorialOverlay, toolbar, list);
 
         File[] mediaDirs = getExternalMediaDirs();
         String mediaDir = null;
@@ -172,6 +180,7 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
         }
         else
         {
+            tutorial.startFileBrowser();
             getStartDir();
         }
     }
@@ -313,6 +322,11 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
     @Override
     public void onBackPressed()
     {
+        if (!tutorial.allowBackPress())
+        {
+            return;
+        }
+
         if (copying || cutting)
         {
             cancelFileOp();
@@ -330,6 +344,11 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
 
     public void returnFiles(String[] files)
     {
+        if (!allowReturnMultipleFiles && files.length > 1)
+        {
+            Toast.makeText(this, "Please select only one file.", Toast.LENGTH_SHORT).show();
+            return;
+        }
         Intent intent = new Intent();
         intent.putExtra(RESULT_FILES, files);
         setResult(RESULT_OK, intent);
@@ -434,7 +453,15 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
                                     getDirFromRoot(currentDir());
                                 }
                             })
-                            .setNegativeButton(android.R.string.no, null).show();
+                            .setNegativeButton(android.R.string.no, null)
+                            .setOnDismissListener(new DialogInterface.OnDismissListener()
+                            {
+                                @Override
+                                public void onDismiss(DialogInterface dialog)
+                                {
+                                    tutorial.onFileBrowserDialogDone();
+                                }
+                            }).show();
                     return true;
                 }
                 case R.id.action_copy:
@@ -526,6 +553,15 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
                         }
                     });
 
+                    builder.setOnDismissListener(new DialogInterface.OnDismissListener()
+                    {
+                        @Override
+                        public void onDismiss(DialogInterface dialog)
+                        {
+                            tutorial.onFileBrowserDialogDone();
+                        }
+                    });
+
                     builder.show();
                     return true;
                 }
@@ -575,12 +611,13 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
                             //overriding later
                         }
                     });
-                    builder.setNegativeButton(android.R.string.cancel, new DialogInterface.OnClickListener()
+
+                    builder.setOnDismissListener(new DialogInterface.OnDismissListener()
                     {
                         @Override
-                        public void onClick(DialogInterface dialog, int which)
+                        public void onDismiss(DialogInterface dialog)
                         {
-                            dialog.cancel();
+                            tutorial.onFileBrowserDialogDone();
                         }
                     });
 
@@ -659,5 +696,10 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
         updateMenu();
     }
 
-
+    @Override
+    protected void onDestroy()
+    {
+        super.onDestroy();
+        tutorial.onActivityDestroyed();
+    }
 }

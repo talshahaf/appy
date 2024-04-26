@@ -63,21 +63,7 @@ public class CrashFragment extends MyFragment
         return layout;
     }
 
-    public String readFile(File path) throws IOException
-    {
-        FileReader reader = new FileReader(path);
 
-        StringBuilder sb = new StringBuilder();
-
-        char[] buf = new char[4096];
-        int readed;
-        do
-        {
-            readed = reader.read(buf, 0, buf.length);
-            sb.append(buf);
-        } while (readed == buf.length);
-        return sb.toString();
-    }
 
     public String getCrash(File path)
     {
@@ -85,7 +71,7 @@ public class CrashFragment extends MyFragment
         {
             if (path.exists())
             {
-                return "Last crash from " + new Date(path.lastModified()).toString() + "\n\n" + readFile(path);
+                return "Last crash from " + new Date(path.lastModified()).toString() + "\n\n" + Utils.readFile(path);
             }
             else
             {

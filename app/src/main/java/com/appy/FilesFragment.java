@@ -103,20 +103,19 @@ public class FilesFragment extends MyFragment implements FileGridAdapter.ItemAct
     @Override
     public void onDelete(final PythonFile file)
     {
-        new AlertDialog.Builder(getActivity())
-                .setTitle("Confirm Delete")
-                .setMessage("Are you sure?")
-                .setIcon(android.R.drawable.ic_dialog_alert)
-                .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener()
+        Utils.showConfirmationDialog(getActivity(),
+                "Confirm Delete", "Are you sure?", android.R.drawable.ic_dialog_alert,
+                null, null, new Runnable()
                 {
-                    public void onClick(DialogInterface dialog, int whichButton)
+                    @Override
+                    public void run()
                     {
                         Log.d("APPY", "on delete");
                         getWidgetService().removePythonFile(file);
                         adapter.setItems(getWidgetService().getPythonFiles());
                         adapter.notifyDataSetChanged();
                     }
-                }).setNegativeButton(android.R.string.no, null).show();
+                });
     }
 
     @Override

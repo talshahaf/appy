@@ -109,7 +109,14 @@ public class Widget extends RemoteViewsService
     HashSet<Integer> needUpdateWidgets = new HashSet<>();
     float widthCorrectionFactor = 1.0f;
     float heightCorrectionFactor = 1.0f;
-    Configurations configurations = new Configurations(this);
+    Configurations configurations = new Configurations(this, new Configurations.ChangeListener()
+    {
+        @Override
+        public void onChange(String widget, String key)
+        {
+            configurationUpdate(widget, key);
+        }
+    });
     MultipleFileObserverBase pythonFilesObserver = null;
 
     static class WidgetDestroyedException extends RuntimeException
@@ -1726,18 +1733,6 @@ public class Widget extends RemoteViewsService
         saveTimers();
     }
 
-    public static abstract class ArgRunnable implements Runnable
-    {
-        Object[] args;
-
-        ArgRunnable(Object... args)
-        {
-            this.args = args;
-        }
-
-        public abstract void run();
-    }
-
     public void setPost(int widgetId, String data)
     {
         addTask(widgetId, new Task<>(new CallPostTask(), widgetId, data));
@@ -1747,10 +1742,22 @@ public class Widget extends RemoteViewsService
     {
         if (updateListener != null)
         {
-            int[] widgetIds = updateListener.findWidgetsByMame(widget);
-            for (int widgetId : widgetIds)
+            try
             {
-                addTask(widgetId, new Task<>(new CallConfigTask(), widgetId, key));
+                updateListener.syncConfig(getConfigurations().serialize());
+            }
+            catch(Exception e)
+            {
+                Log.e("APPY", "Exception in python", e);
+            }
+
+            if (widget != null)
+            {
+                int[] widgetIds = updateListener.findWidgetsByMame(widget);
+                for (int widgetId : widgetIds)
+                {
+                    addTask(widgetId, new Task<>(new CallConfigTask(), widgetId, key));
+                }
             }
         }
     }
@@ -1802,7 +1809,7 @@ public class Widget extends RemoteViewsService
         if (type == Constants.TIMER_REPEATING && millis <= Constants.TIMER_MAX_HANDLER)
         {
             Log.d("APPY", "setting short time timer");
-            handler.post(new ArgRunnable(timerIntent, since, millis, timerId)
+            handler.post(new Utils.ArgRunnable(timerIntent, since, millis, timerId)
             {
                 boolean first = true;
 
@@ -3446,67 +3453,12 @@ public class Widget extends RemoteViewsService
         return true;
     }
 
-    class CrashHandler implements Thread.UncaughtExceptionHandler
-    {
-        String path;
-        Thread.UncaughtExceptionHandler prev;
-
-        public CrashHandler(String path, Thread.UncaughtExceptionHandler prev)
-        {
-            this.path = path;
-            this.prev = prev;
-        }
-
-        @Override
-        public void uncaughtException(Thread t, Throwable e)
-        {
-            String trace = Stacktrace.stackTraceString(e);
-
-            BufferedWriter bw = null;
-            try
-            {
-                bw = new BufferedWriter(new FileWriter(path, true));
-                bw.write(trace);
-                bw.flush();
-                bw.close();
-            }
-            catch (IOException e1)
-            {
-                Log.e("APPY", "Exception on uncaught exception", e1);
-            }
-            finally
-            {
-                if (bw != null)
-                {
-                    try
-                    {
-                        bw.close();
-                    }
-                    catch (IOException e1)
-                    {
-
-                    }
-                }
-            }
-
-            if (prev != null)
-            {
-                prev.uncaughtException(t, e);
-            }
-        }
-    }
-
     boolean startedAfterSetup = false;
     PythonSetupTask pythonSetupTask = new PythonSetupTask();
 
     public void handleStartCommand(Intent intent)
     {
-        Thread.UncaughtExceptionHandler handler = Thread.getDefaultUncaughtExceptionHandler();
-        if (handler == null || !(handler instanceof CrashHandler))
-        {
-            //not ours
-            Thread.setDefaultUncaughtExceptionHandler(new CrashHandler(new File(getCacheDir(), "javacrash.txt").getAbsolutePath(), handler));
-        }
+        Utils.setCrashHandlerIfNeeded(this);
 
         loadForeground();
 

@@ -1,4 +1,5 @@
 import base64, pickle, inspect, shutil, functools, mimetypes, hashlib, os, time
+from . import java
 
 def timeit(f):
     def wrapper(*args, **kwargs):
@@ -87,8 +88,7 @@ saved_script_dir = None
 def preferred_script_dir():
     global saved_script_dir
     if saved_script_dir is None:
-        from .widget_manager import java_context
-        saved_script_dir = java_context().getPreferredScriptDir()
+        saved_script_dir = java.get_java_arg().getPreferredScriptDir()
     return saved_script_dir
 
 def generate_filename(url):

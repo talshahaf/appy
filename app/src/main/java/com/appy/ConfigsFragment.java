@@ -1,7 +1,9 @@
 package com.appy;
 
+import android.app.Activity;
 import android.content.Context;
 import android.content.DialogInterface;
+import android.content.Intent;
 import android.os.Bundle;
 
 import androidx.fragment.app.FragmentTransaction;
@@ -9,9 +11,12 @@ import androidx.appcompat.app.AlertDialog;
 
 import android.text.InputType;
 import android.util.Log;
+import android.util.Pair;
 import android.view.ContextMenu;
 import android.view.Gravity;
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
@@ -21,11 +26,18 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ListView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
@@ -42,7 +54,103 @@ public class ConfigsFragment extends MyFragment
     {
         View layout = inflater.inflate(R.layout.fragment_configs, container, false);
         onShow();
+
+        setHasOptionsMenu(true);
         return layout;
+    }
+
+    @Override
+    public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
+        inflater.inflate(R.menu.config_toolbar_actions, menu);
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item)
+    {
+        switch (item.getItemId())
+        {
+            case R.id.action_export:
+            {
+                Log.d("APPY", "Export click");
+
+                if (getWidgetService() != null)
+                {
+                    Configurations configurations = getWidgetService().getConfigurations();
+                    if (configurations != null)
+                    {
+                        File exportFile = exportFilePath();
+                        try
+                        {
+                            FileWriter writer = new FileWriter(exportFile, false);
+                            writer.write(configurations.serialize());
+                            writer.close();
+                            Toast.makeText(getActivity(), "Configurations exported to "+exportFile.getAbsolutePath(), Toast.LENGTH_LONG).show();
+                        }
+                        catch (IOException e)
+                        {
+                            Log.e("APPY", "export config failed", e);
+                        }
+
+                    }
+                }
+
+                return true;
+            }
+            case R.id.action_import:
+            {
+                Log.d("APPY", "Import click");
+                Intent intent = new Intent(getActivity(), FileBrowserActivity.class);
+                intent.putExtra(FileBrowserActivity.REQUEST_ALLOW_RETURN_MULTIPLE, false);
+                startActivityForResult(intent, 0);
+                return true;
+            }
+        }
+
+        return super.onOptionsItemSelected(item);
+    }
+
+    @Override
+    public void onActivityResult(int requestCode, int resultCode, Intent data)
+    {
+        if (resultCode == Activity.RESULT_OK)
+        {
+            String[] files = data.getStringArrayExtra(FileBrowserActivity.RESULT_FILES);
+            if (files == null || files.length == 0)
+            {
+                return;
+            }
+
+            if (getWidgetService() == null)
+            {
+                return;
+            }
+            Configurations configurations = getWidgetService().getConfigurations();
+            if (configurations == null)
+            {
+                return;
+            }
+
+            try
+            {
+                String content = Utils.readFile(new File(files[0]));
+                HashMap<String, HashMap<String, Pair<String, String>>> newConfig = Configurations.deserialize(content);
+
+                Utils.showConfirmationDialog(getActivity(),
+                        "Import Configuration", "This will overwrite all existing configurations", android.R.drawable.ic_dialog_alert,
+                        null, null, new Runnable()
+                        {
+                            @Override
+                            public void run()
+                            {
+                                configurations.replaceConfiguration(newConfig);
+                            }
+                        });
+            }
+            catch (IOException e)
+            {
+                Log.e("APPY", "import config failed", e);
+            }
+        }
     }
 
     public void tryStart()
@@ -78,6 +186,11 @@ public class ConfigsFragment extends MyFragment
             fragment.setRequestCode(fragmentArg.getInt(Constants.FRAGMENT_ARG_REQUESTCODE, 0));
         }
         switchTo(fragment, true);
+    }
+
+    public File exportFilePath()
+    {
+        return new File(getWidgetService().getPreferredScriptDir(), "exported_configurations.json");
     }
 
     public void onBound()
@@ -295,7 +408,6 @@ public class ConfigsFragment extends MyFragment
                             if (item.key.endsWith("_nojson") || isValidJSON(newValue))
                             {
                                 getWidgetService().getConfigurations().setConfig(widget, item.key, newValue);
-                                getWidgetService().configurationUpdate(widget, item.key);
                                 if (dieAfter)
                                 {
                                     if (requestCode != 0)
@@ -319,7 +431,6 @@ public class ConfigsFragment extends MyFragment
                     });
                 }
             });
-
 
             alert.show();
         }
@@ -368,70 +479,70 @@ public class ConfigsFragment extends MyFragment
 
             AdapterView.AdapterContextMenuInfo info = (AdapterView.AdapterContextMenuInfo) menuItem.getMenuInfo();
             final Item item = (Item) list.getItemAtPosition(info.position);
-            AlertDialog.Builder builder = new AlertDialog.Builder(getActivity())
-                    .setIcon(android.R.drawable.ic_dialog_alert)
-                    .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener()
-                            {
-                                public void onClick(DialogInterface dialog, int whichButton)
-                                {
-                                    if (widget == null)
-                                    {
-                                        if (delete)
-                                        {
-                                            getWidgetService().getConfigurations().deleteWidget(item.key);
-                                        }
-                                        else
-                                        {
-                                            getWidgetService().getConfigurations().resetWidget(item.key);
-                                        }
-                                        getWidgetService().configurationUpdate(item.key, null);
-                                    }
-                                    else
-                                    {
-                                        if (delete)
-                                        {
-                                            getWidgetService().getConfigurations().deleteKey(widget, item.key);
-                                        }
-                                        else
-                                        {
-                                            getWidgetService().getConfigurations().resetKey(widget, item.key);
-                                        }
-                                        getWidgetService().configurationUpdate(widget, item.key);
-                                    }
 
-                                    refresh();
-                                }
-                            }
-                    )
-                    .setNegativeButton(android.R.string.no, null);
+            String title;
+            String message;
 
             if (widget == null)
             {
                 if (delete)
                 {
-                    builder.setTitle("Delete all");
-                    builder.setMessage("Delete all " + item.key + " configurations?");
+                    title = "Delete all";
+                    message = "Delete all " + item.key + " configurations?";
                 }
                 else
                 {
-                    builder.setTitle("Reset all");
-                    builder.setMessage("Reset all " + item.key + " configurations?");
+                    title = "Reset all";
+                    message = "Reset all " + item.key + " configurations?";
                 }
             }
             else
             {
                 if (delete)
                 {
-                    builder.setTitle("Delete configuration");
-                    builder.setMessage("Delete " + item.key + "?");
+                    title = "Delete configuration";
+                    message = "Delete " + item.key + "?";
                 }
                 else
                 {
-                    builder.setTitle("Reset configuration");
-                    builder.setMessage("Reset " + item.key + "?");
+                    title = "Reset configuration";
+                    message = "Reset " + item.key + "?";
                 }
             }
-            builder.show();
+
+            Utils.showConfirmationDialog(getActivity(),
+                    title, message, android.R.drawable.ic_dialog_alert,
+                    null, null, new Runnable()
+                    {
+                        @Override
+                        public void run()
+                        {
+                            if (widget == null)
+                            {
+                                if (delete)
+                                {
+                                    getWidgetService().getConfigurations().deleteWidget(item.key);
+                                }
+                                else
+                                {
+                                    getWidgetService().getConfigurations().resetWidget(item.key);
+                                }
+                            }
+                            else
+                            {
+                                if (delete)
+                                {
+                                    getWidgetService().getConfigurations().deleteKey(widget, item.key);
+                                }
+                                else
+                                {
+                                    getWidgetService().getConfigurations().resetKey(widget, item.key);
+                                }
+                            }
+
+                            refresh();
+                        }
+                    });
             return true;
         }
 

@@ -8,7 +8,9 @@ import android.util.Pair;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
@@ -23,19 +25,15 @@ public class Configurations
 
     interface ChangeListener
     {
-        void onChange();
+        void onChange(String widget, String key);
     }
 
     private ChangeListener listener;
 
-    public void setListener(ChangeListener listener)
-    {
-        this.listener = listener;
-    }
-
-    public Configurations(Context context)
+    public Configurations(Context context, ChangeListener listener)
     {
         this.context = context;
+        this.listener = listener;
     }
 
     public HashMap<String, Integer> listWidgets()
@@ -96,6 +94,7 @@ public class Configurations
 
         if (changed)
         {
+            configurationUpdate(widget, key);
             save(serialized);
         }
     }
@@ -131,6 +130,7 @@ public class Configurations
 
         if (changed)
         {
+            configurationUpdate(widget, null);
             save(serialized);
         }
     }
@@ -155,6 +155,7 @@ public class Configurations
 
         if (changed)
         {
+            configurationUpdate(widget, key);
             save(serialized);
         }
     }
@@ -175,6 +176,7 @@ public class Configurations
 
         if (changed)
         {
+            configurationUpdate(widget, null);
             save(serialized);
         }
     }
@@ -184,7 +186,7 @@ public class Configurations
         boolean changed = false;
         for (int i = 0; i < keys.length; i++)
         {
-            if (setConfig(widget, keys[i], values[i], true))
+            if (setConfigNoSave(widget, keys[i], values[i], true))
             {
                 changed = true;
             }
@@ -198,13 +200,13 @@ public class Configurations
 
     public void setConfig(String widget, String key, String value)
     {
-        if (setConfig(widget, key, value, false))
+        if (setConfigNoSave(widget, key, value, false))
         {
             save(serialize());
         }
     }
 
-    public boolean setConfig(String widget, String key, String value, boolean defaultValue)
+    public boolean setConfigNoSave(String widget, String key, String value, boolean defaultValue)
     {
         boolean changed = false;
         synchronized (lock)
@@ -237,6 +239,11 @@ public class Configurations
             }
             widgetConfig.put(key, values);
         }
+
+        if (changed)
+        {
+            configurationUpdate(widget, key);
+        }
         return changed;
     }
 
@@ -268,6 +275,36 @@ public class Configurations
         }
     }
 
+    public static HashMap<String, HashMap<String, Pair<String, String>>> deserialize(String data)
+    {
+        try
+        {
+            HashMap<String, HashMap<String, Pair<String, String>>> result = new HashMap<>();
+            JSONObject obj = new JSONObject(data);
+            Iterator<String> it = obj.keys();
+            while (it.hasNext())
+            {
+                String widgetKey = it.next();
+                HashMap<String, Pair<String, String>> configs = new HashMap<>();
+                JSONObject widgetObj = obj.getJSONObject(widgetKey);
+                Iterator<String> it2 = widgetObj.keys();
+                while (it2.hasNext())
+                {
+                    String configKey = it2.next();
+                    JSONObject values = widgetObj.getJSONObject(configKey);
+                    configs.put(configKey, new Pair<>(values.getString("value"), values.getString("default")));
+                }
+                result.put(widgetKey, configs);
+            }
+
+            return result;
+        }
+        catch (JSONException e)
+        {
+            throw new IllegalStateException(e);
+        }
+    }
+
     public void load()
     {
         SharedPreferences sharedPref = context.getSharedPreferences("appy", Context.MODE_PRIVATE);
@@ -277,32 +314,63 @@ public class Configurations
             return;
         }
 
-        try
+        HashMap<String, HashMap<String, Pair<String, String>>> result = deserialize(config);
+        synchronized (lock)
         {
-            synchronized (lock)
+            widgetConfigurations = result;
+        }
+
+        configurationUpdate(null, null);
+    }
+
+    public void replaceConfiguration(HashMap<String, HashMap<String, Pair<String, String>>> newConfig)
+    {
+        ArrayList<Pair<String, String>> changed = new ArrayList<>();
+        synchronized (lock)
+        {
+            Pair<Set<String>, Set<String>> intersectionAndXor = Utils.intersectionAndXor(widgetConfigurations.keySet(), newConfig.keySet());
+
+            //all new widgets and removed widgets
+            for (String widget : intersectionAndXor.second)
             {
-                widgetConfigurations = new HashMap<>();
-                JSONObject obj = new JSONObject(config);
-                Iterator<String> it = obj.keys();
-                while (it.hasNext())
+                changed.add(new Pair<>(widget, null));
+            }
+
+            for (String widget : intersectionAndXor.first)
+            {
+                Pair<Set<String>, Set<String>> intersectionAndXorWidget = Utils.intersectionAndXor(widgetConfigurations.get(widget).keySet(), newConfig.get(widget).keySet());
+
+                //all new keys and removed keys
+                for (String key : intersectionAndXorWidget.second)
                 {
-                    String widgetKey = it.next();
-                    HashMap<String, Pair<String, String>> configs = new HashMap<>();
-                    JSONObject widgetObj = obj.getJSONObject(widgetKey);
-                    Iterator<String> it2 = widgetObj.keys();
-                    while (it2.hasNext())
+                    changed.add(new Pair<>(widget, key));
+                }
+
+                //all changed values or changed defaults
+                for (String key : intersectionAndXorWidget.first)
+                {
+                    //only check changed value
+                    if (!widgetConfigurations.get(widget).get(key).first.equals(newConfig.get(widget).get(key).first))
                     {
-                        String configKey = it2.next();
-                        JSONObject values = widgetObj.getJSONObject(configKey);
-                        configs.put(configKey, new Pair<>(values.getString("value"), values.getString("default")));
+                        changed.add(new Pair<>(widget, key));
                     }
-                    widgetConfigurations.put(widgetKey, configs);
                 }
             }
+
+            widgetConfigurations = newConfig;
         }
-        catch (JSONException e)
+
+        for (Pair<String, String> change : changed)
         {
-            throw new IllegalStateException(e);
+            configurationUpdate(change.first, change.second);
+        }
+    }
+
+    private void configurationUpdate(String widget, String key)
+    {
+        if (listener != null)
+        {
+            listener.onChange(widget, key);
         }
     }
 
@@ -312,17 +380,5 @@ public class Configurations
         SharedPreferences.Editor editor = sharedPref.edit();
         editor.putString("configurations", serialized);
         editor.apply();
-
-        if (listener != null)
-        {
-            try
-            {
-                listener.onChange();
-            }
-            catch (Exception e)
-            {
-                Log.e("APPY", "Exception in onChange", e);
-            }
-        }
     }
 }

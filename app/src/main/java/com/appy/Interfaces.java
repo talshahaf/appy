@@ -52,6 +52,8 @@ interface WidgetUpdateListener
     int[] findWidgetsByMame(String name);
 
     String dumpState();
+
+    void syncConfig(String serializedConfig);
 }
 
 interface RunnerListener
