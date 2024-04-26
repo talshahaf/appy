@@ -85,7 +85,7 @@ public class Tutorial implements OverlayHoleView.OnHoleClick, TutorialStepListen
             //click on add
             new StepText("Here all the imported python files would show up.\nClick on '+' to import a new one from the file system.", 0, 0.5f),
             //click on goto
-            new StepText("The starting path is the preferred script path where you should add your scripts.\nFor now, click on 'goto' and select the examples dir.", 0, 0.5f),
+            new StepText("The starting path is the preferred script path where you should add your scripts.\nFor now, click on 'goto' and select the examples dir.", 0, 0.25f),
             //waiting for dialog
             new StepText("", 0, 0),
             //click on pilling

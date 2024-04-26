@@ -291,7 +291,6 @@ public class MainActivity extends AppCompatActivity implements StatusListener
         {
             return;
         }
-        Log.d("APPY", "back pressed");
         super.onBackPressed();
     }
 

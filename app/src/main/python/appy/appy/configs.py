@@ -9,6 +9,7 @@ class ConfigDict(AttrDict):
 
 global_configs = ConfigDict()
 global_raw_configs = ConfigDict()
+previous_serialized_config = ''
 
 def set_defaults(widget, dic):
     pairs = ((k, json.dumps(v) if not k.endswith('_nojson') else v) for k,v in dic.items())
@@ -18,7 +19,11 @@ def set_defaults(widget, dic):
     sync(configurations.serialize())
 
 def sync(serialized_config):
-    global global_configs, global_raw_configs
+    global global_configs, global_raw_configs, previous_serialized_config
+
+    if serialized_config == previous_serialized_config:
+        # no update needed
+        return
 
     global_configs = ConfigDict.make(json.loads(serialized_config))
     global_raw_configs = ConfigDict.make(json.loads(serialized_config))
