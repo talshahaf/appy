@@ -27,6 +27,8 @@ import java.util.ArrayList;
 
 public class FilesFragment extends MyFragment implements FileGridAdapter.ItemActionListener
 {
+    public static final int REQUEST_FILES = 405;
+
     FloatingActionButton browse;
     FloatingActionButton unknownInfo;
     GridView filegrid;
@@ -48,7 +50,7 @@ public class FilesFragment extends MyFragment implements FileGridAdapter.ItemAct
             @Override
             public void onClick(View v)
             {
-                startActivityForResult(new Intent(getActivity(), FileBrowserActivity.class), 0);
+                startActivityForResult(new Intent(getActivity(), FileBrowserActivity.class), REQUEST_FILES);
             }
         });
 
@@ -74,7 +76,7 @@ public class FilesFragment extends MyFragment implements FileGridAdapter.ItemAct
     @Override
     public void onActivityResult(int requestCode, int resultCode, Intent data)
     {
-        if (resultCode == Activity.RESULT_OK)
+        if (requestCode == REQUEST_FILES && resultCode == Activity.RESULT_OK)
         {
             Log.d("APPY", "file activity result");
             String[] files = data.getStringArrayExtra(FileBrowserActivity.RESULT_FILES);

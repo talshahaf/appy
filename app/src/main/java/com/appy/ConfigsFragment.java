@@ -45,6 +45,7 @@ import java.util.Map;
 public class ConfigsFragment extends MyFragment
 {
     public static final String FRAGMENT_TAG = "FRAGMENT";
+    public static final int REQUEST_IMPORT_PATH = 304;
 
     public Bundle fragmentArg = null;
 
@@ -101,7 +102,7 @@ public class ConfigsFragment extends MyFragment
                 Log.d("APPY", "Import click");
                 Intent intent = new Intent(getActivity(), FileBrowserActivity.class);
                 intent.putExtra(FileBrowserActivity.REQUEST_ALLOW_RETURN_MULTIPLE, false);
-                startActivityForResult(intent, 0);
+                startActivityForResult(intent, REQUEST_IMPORT_PATH);
                 return true;
             }
         }
@@ -112,7 +113,7 @@ public class ConfigsFragment extends MyFragment
     @Override
     public void onActivityResult(int requestCode, int resultCode, Intent data)
     {
-        if (resultCode == Activity.RESULT_OK)
+        if (requestCode == REQUEST_IMPORT_PATH && resultCode == Activity.RESULT_OK)
         {
             String[] files = data.getStringArrayExtra(FileBrowserActivity.RESULT_FILES);
             if (files == null || files.length == 0)
@@ -145,6 +146,11 @@ public class ConfigsFragment extends MyFragment
                                 configurations.replaceConfiguration(newConfig);
                             }
                         });
+            }
+            catch (IllegalStateException e)
+            {
+                Toast.makeText(getActivity(), "File is not in a valid JSON format", Toast.LENGTH_SHORT).show();
+                Log.e("APPY", "deserialize failed", e);
             }
             catch (IOException e)
             {
