@@ -3,7 +3,9 @@ faulthandler.enable()
 
 import logcat
 
-import subprocess, os, sys, traceback, time, email, tarfile, importlib
+import subprocess, signal, os, sys, traceback, time, email, tarfile, importlib.util, site
+from pathlib import Path
+from threading import Thread
 
 def tar_version(path):
     with tarfile.open(path) as tar:
@@ -12,35 +14,78 @@ def tar_version(path):
         info = tar.extractfile(info_member).read()
     return email.message_from_bytes(info)['Version']
 
-INSTALL_PHRASES = [b'Successfully installed']
-UNINSTALL_PHRASES = [b'Successfully uninstalled', b'as it is not installed']
+def print_only_diff(prev, current):
+    if not current:
+        return
+    if prev and current.startswith(prev):
+        return print(current[len(prev):].decode(encoding='utf8', errors='ignore'))
+    return print(current.decode(encoding='utf8', errors='ignore'))
 
-def execute(command, kill_phrases=None):
-    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-
+def execute(command):
+    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     killed = False
-    # Poll process for new output until finished
+
+    nochange_counter = 0
+    nochange_counter_max = 20
+    prev_stdout = b''
+    prev_stderr = b''
     while True:
-        nextline = process.stdout.readline()
-        if nextline == '' and process.poll() is not None:
+        try:
+            output, errs = process.communicate(timeout=1)
             break
-        sys.stdout.write(nextline)
-        sys.stdout.flush()
+        except subprocess.TimeoutExpired as e:
+            if prev_stdout != e.stdout or prev_stderr != e.stderr:
+                print_only_diff(prev_stdout, e.stdout)
+                print_only_diff(prev_stderr, e.stderr)
+                prev_stdout = e.stdout
+                prev_stderr = e.stderr
+                nochange_counter = 0
+                continue
+            nochange_counter += 1
+            if nochange_counter >= nochange_counter_max:
+                print("Process didn't output for a while. killing")
+                process.kill()
+                killed = True
+                output, errs = process.communicate()
+                break
 
-        #XXX until next version of pip
-        if kill_phrases is not None and any(phrase in nextline for phrase in kill_phrases):
-            time.sleep(2)
-            process.kill()
-            killed = True
-            break
+    print_only_diff(prev_stdout, output)
+    print_only_diff(prev_stderr, errs)
 
-    output = process.communicate()[0]
+    #output = process.communicate()[0]
     exitCode = process.returncode
 
     if exitCode == 0 or killed:
         return output
     else:
         raise subprocess.CalledProcessError(command, exitCode)
+
+def install_optional_packages():
+    try:
+        needed_packages = ['pip', 'setuptools', 'wheel', 'requests', 'packaging', 'pyparsing', 'python-dateutil', 'cycler']
+        try:
+            #TODO maybe import all?
+            import requests, setuptools, cycler
+        except ImportError:
+            print(f'installing {" ".join(needed_packages)}')
+            execute([exe, '-m', 'pip', 'install', '--upgrade'] + needed_packages)
+            import requests
+    except Exception as e:
+        print(e) #optional packages
+
+
+def install_package_with_tar(pkg_path):
+    site_dir = Path(site.getsitepackages()[0])
+
+    with tarfile.open(pkg_path) as tar:
+        for f in tar.getmembers():
+            path = Path(f.name)
+            if len(path.parts) > 2 and 'egg-info' not in f.name:
+                dest = site_dir / Path(*path.parts[1:])
+                print(f'extracting {f.name} to {dest}')
+                Path.mkdir(dest.parent, exist_ok=True)
+                with open(dest, 'wb') as fh:
+                    fh.write(tar.extractfile(f).read())
 
 #replace all bins and replace with symlinks to our own python3 binary because android forbids executing from app data dir
 exe_dir = os.environ['NATIVELIBS']
@@ -66,25 +111,16 @@ for link in python_links:
     except OSError as e:
         pass
 
-#TODO offline initialization
 try:
     import pip
 except ImportError:
+    print('Installing pip')
     import ensurepip
     ensurepip._main()
     import pip
 
-try:
-    needed_packages = ['pip', 'setuptools', 'wheel', 'requests', 'packaging', 'pyparsing', 'python-dateutil', 'cycler']
-    try:
-        #TODO maybe import all?
-        import requests
-    except ImportError:
-        print(f'installing {" ".join(needed_packages)}')
-        execute([exe, '-m', 'pip', 'install', '--upgrade'] + needed_packages, kill_phrases=INSTALL_PHRASES)
-        import requests
-except Exception:
-    pass #optional packages
+#running in background
+Thread(target=install_optional_packages).start()
 
 upgrade = False
 tar = os.path.join(os.environ['TMP'], 'appy.tar.gz')
@@ -107,6 +143,8 @@ try:
 except Exception as e:
     print('error importing appy: ', traceback.format_exc())
     print('installing appy')
-    execute([exe, '-m', 'pip', 'uninstall', 'appy' ,'--yes'], kill_phrases=UNINSTALL_PHRASES)
-    execute([exe, '-m', 'pip', 'install', os.path.join(os.environ['TMP'], 'appy.tar.gz')], kill_phrases=INSTALL_PHRASES)
+    execute([exe, '-m', 'pip', 'uninstall', 'appy' ,'--yes'])
+    install_package_with_tar(os.path.join(os.environ['TMP'], 'appy.tar.gz'))
     import appy
+
+appy.do_init()

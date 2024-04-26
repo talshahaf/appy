@@ -193,5 +193,3 @@ def clean_local_state(widget_id):
 
 def clean_global_state():
     clean_state('globals', None, None)
-
-init()

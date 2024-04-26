@@ -45,4 +45,9 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent" />
 
+    <com.appy.TutorialOverlayView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:elevation="5dp"
+        android:id="@+id/tutorial_overlay_view"/>
 </androidx.constraintlayout.widget.ConstraintLayout>

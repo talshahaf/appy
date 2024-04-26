@@ -26,6 +26,7 @@
         android:layout_margin="16dp"
         android:scaleType="fitCenter"
         android:src="@drawable/ic_action_add"
+        android:contentDescription="open_file_browser_button"
         app:layout_constraintBottom_toBottomOf="@+id/filegrid"
         app:layout_constraintEnd_toEndOf="parent" />
     <com.google.android.material.floatingactionbutton.FloatingActionButton

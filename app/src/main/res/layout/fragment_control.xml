@@ -74,5 +74,6 @@
         app:layout_constraintEnd_toEndOf="@+id/startup_progress"
         app:layout_constraintStart_toStartOf="@+id/startup_progress"
         app:layout_constraintTop_toTopOf="@+id/startup_progress"
-        app:srcCompat="@android:drawable/presence_online"/>
+        app:srcCompat="@android:drawable/presence_online"
+        android:contentDescription="control_status_indicator"/>
 </androidx.constraintlayout.widget.ConstraintLayout>

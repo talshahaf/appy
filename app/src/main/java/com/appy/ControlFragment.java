@@ -1,10 +1,7 @@
 package com.appy;
 
-import android.content.DialogInterface;
 import android.os.Bundle;
 import android.os.Handler;
-
-import androidx.appcompat.app.AlertDialog;
 
 import android.view.LayoutInflater;
 import android.view.View;
@@ -12,7 +9,6 @@ import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
-import android.widget.Toast;
 
 /**
  * Created by Tal on 19/03/2018.
@@ -52,20 +48,17 @@ public class ControlFragment extends MyFragment
             @Override
             public void onClick(final View v)
             {
-                AlertDialog.Builder builder = new AlertDialog.Builder(getActivity())
-                        .setIcon(android.R.drawable.ic_dialog_alert)
-                        .setTitle("Clear widgets")
-                        .setMessage("Clear all widgets?")
-                        .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener()
+                Utils.showConfirmationDialog(getActivity(),
+                    "Clear widgets", "Clear all widgets?", android.R.drawable.ic_dialog_alert,
+                        null, null, new Runnable()
                         {
-                            public void onClick(DialogInterface dialog, int whichButton)
+                            @Override
+                            public void run()
                             {
                                 getWidgetService().resetWidgets();
                                 debounce(v);
                             }
-                        })
-                        .setNegativeButton(android.R.string.no, null);
-                builder.show();
+                        });
             }
         });
 
@@ -74,20 +67,17 @@ public class ControlFragment extends MyFragment
             @Override
             public void onClick(final View v)
             {
-                AlertDialog.Builder builder = new AlertDialog.Builder(getActivity())
-                        .setIcon(android.R.drawable.ic_dialog_alert)
-                        .setTitle("Clear timers")
-                        .setMessage("Clear all timers?")
-                        .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener()
+                Utils.showConfirmationDialog(getActivity(),
+                        "Clear timers", "Clear all timers?", android.R.drawable.ic_dialog_alert,
+                        null, null, new Runnable()
                         {
-                            public void onClick(DialogInterface dialog, int whichButton)
+                            @Override
+                            public void run()
                             {
                                 getWidgetService().cancelAllTimers();
                                 debounce(v);
                             }
-                        })
-                        .setNegativeButton(android.R.string.no, null);
-                builder.show();
+                        });
             }
         });
 
@@ -96,20 +86,17 @@ public class ControlFragment extends MyFragment
             @Override
             public void onClick(final View v)
             {
-                AlertDialog.Builder builder = new AlertDialog.Builder(getActivity())
-                        .setIcon(android.R.drawable.ic_dialog_alert)
-                        .setTitle("Clear state")
-                        .setMessage("Clear state?")
-                        .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener()
+                Utils.showConfirmationDialog(getActivity(),
+                        "Clear state", "Clear state?", android.R.drawable.ic_dialog_alert,
+                        null, null, new Runnable()
                         {
-                            public void onClick(DialogInterface dialog, int whichButton)
+                            @Override
+                            public void run()
                             {
                                 getWidgetService().resetState();
                                 debounce(v);
                             }
-                        })
-                        .setNegativeButton(android.R.string.no, null);
-                builder.show();
+                        });
             }
         });
 
@@ -118,20 +105,17 @@ public class ControlFragment extends MyFragment
             @Override
             public void onClick(final View v)
             {
-                AlertDialog.Builder builder = new AlertDialog.Builder(getActivity())
-                        .setIcon(android.R.drawable.ic_dialog_alert)
-                        .setTitle("Reset examples")
-                        .setMessage("Reset examples?")
-                        .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener()
+                Utils.showConfirmationDialog(getActivity(),
+                        "Reset examples", "Reset examples?", android.R.drawable.ic_dialog_alert,
+                        null, null, new Runnable()
                         {
-                            public void onClick(DialogInterface dialog, int whichButton)
+                            @Override
+                            public void run()
                             {
                                 getWidgetService().unpackExamples(true);
                                 debounce(v);
                             }
-                        })
-                        .setNegativeButton(android.R.string.no, null);
-                builder.show();
+                        });
             }
         });
 

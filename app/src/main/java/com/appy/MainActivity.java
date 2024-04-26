@@ -7,7 +7,9 @@ import android.content.DialogInterface;
 import android.content.ServiceConnection;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.os.Build;
+import android.os.Handler;
 import android.os.IBinder;
 
 import androidx.appcompat.app.AlertDialog;
@@ -36,12 +38,20 @@ import android.util.Log;
 import android.util.Pair;
 import android.view.Gravity;
 import android.view.MenuItem;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.FrameLayout;
+import android.widget.TextView;
 import android.widget.Toast;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 
 public class MainActivity extends AppCompatActivity implements StatusListener
 {
+    private TutorialOverlayView tutorialOverlayView;
+    private Tutorial tutorial = null;
+    private FrameLayout fragmentContainer;
     private DrawerLayout drawer;
     private Toolbar toolbar;
     private NavigationView navView;
@@ -51,6 +61,8 @@ public class MainActivity extends AppCompatActivity implements StatusListener
     @Override
     protected void onCreate(Bundle savedInstanceState)
     {
+        Utils.setCrashHandlerIfNeeded(this);
+
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
@@ -70,9 +82,13 @@ public class MainActivity extends AppCompatActivity implements StatusListener
         actionBar.setDisplayHomeAsUpEnabled(true);
         actionBar.setHomeButtonEnabled(true);
         actionBar.setHomeAsUpIndicator(R.drawable.ic_menu_24dp);
+        actionBar.setHomeActionContentDescription("fragment_menu_button");
         // Find our drawer view
         drawer = findViewById(R.id.drawer_layout);
         navView = findViewById(R.id.nav_view);
+        tutorialOverlayView = findViewById(R.id.tutorial_overlay_view);
+        fragmentContainer = findViewById(R.id.container);
+
         // Setup drawer view
         navView.setNavigationItemSelectedListener(
                 new NavigationView.OnNavigationItemSelectedListener()
@@ -102,6 +118,18 @@ public class MainActivity extends AppCompatActivity implements StatusListener
             }
         });
 
+        tutorial = new Tutorial();
+        tutorial.fillMainComponents(this, tutorialOverlayView, drawer, fragmentContainer);
+        tutorial.setTutorialFinishedListener(new Tutorial.TutorialFinishedListener()
+        {
+            @Override
+            public void tutorialFinished()
+            {
+                permissionDialogShown = false;
+                requestPermissionsIfNeeded();
+            }
+        });
+
         Widget.startService(this, new Intent(this, Widget.class));
         doBindService();
 
@@ -117,8 +145,7 @@ public class MainActivity extends AppCompatActivity implements StatusListener
         }
         selectDrawerItem(navView.getMenu().getItem(startingFragmentIndex), getIntent().getBundleExtra(Constants.FRAGMENT_ARG_EXTRA));
 
-        permissionDialogShown = false;
-        requestPermissionsIfNeeded();
+        tutorial.startMain(widgetService);
     }
 
     public void permissionsResult(boolean granted)
@@ -136,7 +163,11 @@ public class MainActivity extends AppCompatActivity implements StatusListener
 
     public static final int[] REQUEST_PERMISSION_STEPS = new int[]{102, 103};
 
-    public static final String permission_ask_message = "Appy needs all time location access to not get killed. Appy itself will not use location data at all.";
+    public static final String permission_ask_title = "Just one more thing";
+    public static final String permission_ask_message = "Appy needs all time location access to remain in background and avoid being killed by Android.\n"+
+                                                        "Appy itself will not use location data at all (though specific widgets might).\n"+
+                                                        "You will be presented a permission asking prompt. After that, you'll need to set location access to 'all time' in appy settings.\n"+
+                                                        "This permission is optional, but widgets will become unresponsive if the service is killed.";
     private boolean permissionDialogShown = false; //we want to show it only once and not for every step.
 
     public int checkPermissions()
@@ -178,7 +209,7 @@ public class MainActivity extends AppCompatActivity implements StatusListener
             {
                 permissionDialogShown = true;
                 AlertDialog.Builder builder = new AlertDialog.Builder(this);
-                builder.setTitle("Permission Request");
+                builder.setTitle(permission_ask_title);
                 builder.setMessage(permission_ask_message);
                 builder.setCancelable(false);
                 builder.setPositiveButton("OK", new DialogInterface.OnClickListener()
@@ -257,6 +288,17 @@ public class MainActivity extends AppCompatActivity implements StatusListener
     public void onActivityResult(int requestCode, int resultCode, Intent data)
     {
         super.onActivityResult(requestCode, resultCode, data);
+    }
+
+    @Override
+    public void onBackPressed()
+    {
+        if (!tutorial.allowBackPress())
+        {
+            return;
+        }
+        Log.d("APPY", "back pressed");
+        super.onBackPressed();
     }
 
     public void selectDrawerItem(@NonNull MenuItem menuItem, Bundle fragmentArg)
@@ -369,6 +411,7 @@ public class MainActivity extends AppCompatActivity implements StatusListener
     protected void onDestroy()
     {
         super.onDestroy();
+        tutorial.onActivityDestroyed();
         doUnbindService();
     }
 
@@ -379,6 +422,10 @@ public class MainActivity extends AppCompatActivity implements StatusListener
         if (fragment != null)
         {
             ((ControlFragment) fragment).onStartupStatusChange();
+        }
+        if (tutorial != null)
+        {
+            tutorial.onStartupStatusChange(widgetService);
         }
     }
 

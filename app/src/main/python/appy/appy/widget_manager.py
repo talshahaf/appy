@@ -541,6 +541,8 @@ def module_name(path):
     return f'{os.path.splitext(os.path.basename(path))[0]}_{int(hashlib.sha1(path.encode()).hexdigest(), 16) % (10 ** 8)}'
 
 def set_module_error(module, error):
+    if module is None:
+        return None
     java_widget_manager.setFileLastError(module.__file__, error)
     return module.__file__
 
@@ -816,7 +818,7 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
 
     @java.override
     def onConfig(self, widget_id, views_str, key):
-        print('config called')
+        print('onConfig called', key)
         input, views = self.import_(views_str)
         widget, manager_state = create_widget(widget_id)
         return self.export(input, widget_manager_config(widget, manager_state, views, key))
@@ -910,6 +912,11 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
     @java.override
     def dumpState(self):
         return state.dumps_state()
+
+    @java.override
+    def syncConfig(self, serialized_onfig):
+        print('sync config called')
+        configs.sync(serialized_onfig)
 
             
 java_widget_manager = None
