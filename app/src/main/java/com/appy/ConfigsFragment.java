@@ -85,7 +85,7 @@ public class ConfigsFragment extends MyFragment
                             FileWriter writer = new FileWriter(exportFile, false);
                             writer.write(configurations.serialize());
                             writer.close();
-                            Toast.makeText(getActivity(), "Configurations exported to "+exportFile.getAbsolutePath(), Toast.LENGTH_LONG).show();
+                            Toast.makeText(getActivity(), "Configurations exported to " + exportFile.getAbsolutePath(), Toast.LENGTH_LONG).show();
                         }
                         catch (IOException e)
                         {
@@ -144,6 +144,8 @@ public class ConfigsFragment extends MyFragment
                             public void run()
                             {
                                 configurations.replaceConfiguration(newConfig);
+                                Toast.makeText(getActivity(), "Configurations imported from " + files[0], Toast.LENGTH_LONG).show();
+                                tryStart();
                             }
                         });
             }
