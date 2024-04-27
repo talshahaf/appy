@@ -223,7 +223,7 @@ public class Widget extends RemoteViewsService
         boolean executing = false;
     }
 
-    public void addTask(int widgetId, Task<?> task)
+    public void addTask(int widgetId, Task<?> task, boolean onlyOnce)
     {
         synchronized (lock)
         {
@@ -235,7 +235,30 @@ public class Widget extends RemoteViewsService
             }
 
             task.widgetId = widgetId;
-            queue.queue.add(task);
+
+            boolean alreadyHas = false;
+            if (onlyOnce)
+            {
+                for (Task qTask : queue.queue)
+                {
+                    if (qTask.torun.getClass() == task.torun.getClass())
+                    {
+                        alreadyHas = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!onlyOnce || !alreadyHas)
+            {
+                queue.queue.add(task);
+
+                if (queue.queue.size() >= Constants.TASK_QUEUE_SUSPICIOUS_SIZE)
+                {
+                    Log.w("APPY", "addTask: dumping stacktrace due to suspicious queue size: " + queue.queue.size() + " for widget " +widgetId  + ", latest task waiting: " + task.torun.getClass().getSimpleName());
+                    dumpStacktrace();
+                }
+            }
         }
         executeReadyTasks();
     }
@@ -797,8 +820,6 @@ public class Widget extends RemoteViewsService
                     listintent.putExtra(Constants.VIEW_ID_EXTRA, layout.view_id);
                     listintent.setData(Uri.parse(listintent.toUri(Intent.URI_INTENT_SCHEME)));
                     remoteView.setRemoteAdapter(layout.view_id, listintent);
-
-                    //Log.d("APPY", "set remote adapter on " + layout.view_id+", "+layout.xml_id+" in dynamic "+layout.getId());
                 }
             }
             else
@@ -1735,7 +1756,7 @@ public class Widget extends RemoteViewsService
 
     public void setPost(int widgetId, String data)
     {
-        addTask(widgetId, new Task<>(new CallPostTask(), widgetId, data));
+        addTask(widgetId, new Task<>(new CallPostTask(), widgetId, data), false);
     }
 
     public void configurationUpdate(String widget, String key)
@@ -1756,7 +1777,7 @@ public class Widget extends RemoteViewsService
                 int[] widgetIds = updateListener.findWidgetsByMame(widget);
                 for (int widgetId : widgetIds)
                 {
-                    addTask(widgetId, new Task<>(new CallConfigTask(), widgetId, key));
+                    addTask(widgetId, new Task<>(new CallConfigTask(), widgetId, key), false);
                 }
             }
         }
@@ -1764,7 +1785,7 @@ public class Widget extends RemoteViewsService
 
     public void deferredStateDump()
     {
-        addTask(Constants.IMPORT_TASK_QUEUE, new Task<>(new StateDumpTask()));
+        addTask(Constants.IMPORT_TASK_QUEUE, new Task<>(new StateDumpTask()), true);
     }
 
     public long setTimer(long millis, int type, int widgetId, String data)
@@ -1786,21 +1807,24 @@ public class Widget extends RemoteViewsService
             type = Constants.TIMER_ABSOLUTE;
         }
 
-        if (timerId == -1)
-        {
-            timerId = generateTimerId();
-        }
-        Intent timerIntent = new Intent(Widget.this, getClass());
-        timerIntent.setAction("timer" + timerId); //make it unique for cancel
-        timerIntent.putExtra("widgetId", widgetId);
-        timerIntent.putExtra("timer", timerId);
-        timerIntent.putExtra("timerData", Gzip.compress(data));
-
-        //trick to insert a reference to the hashmap to be populated later
-        PendingIntent[] pendingIntent = new PendingIntent[1];
+        Intent timerIntent;
+        PendingIntent[] pendingIntent;
 
         synchronized (lock)
         {
+            if (timerId == -1)
+            {
+                timerId = generateTimerId();
+            }
+            timerIntent = new Intent(Widget.this, getClass());
+            timerIntent.setAction("timer" + timerId); //make it unique for cancel
+            timerIntent.putExtra("widgetId", widgetId);
+            timerIntent.putExtra("timer", timerId);
+            timerIntent.putExtra("timerData", Gzip.compress(data));
+
+            //trick to insert a reference to the hashmap to be populated later
+            pendingIntent = new PendingIntent[1];
+
             activeTimers.put(timerId, new Timer(widgetId, since, millis, type, data));
             activeTimersIntents.put(timerId, pendingIntent);
         }
@@ -1816,13 +1840,15 @@ public class Widget extends RemoteViewsService
                 @Override
                 public void run()
                 {
+                    long timer = (long) args[3];
+
                     if (!first)
                     {
-                        Log.d("APPY", "short time timer fire");
+                        Log.d("APPY", "short time timer fire "+timer);
                         Widget.startService(Widget.this, (Intent) args[0]);
                     }
                     first = false;
-                    long timer = (long) args[3];
+
                     Timer obj;
                     synchronized (lock)
                     {
@@ -2208,7 +2234,7 @@ public class Widget extends RemoteViewsService
         Task task = new Task<>(new CallImportTask(), file, skipRefresh);
         if (usePool)
         {
-            addTask(Constants.IMPORT_TASK_QUEUE, task);
+            addTask(Constants.IMPORT_TASK_QUEUE, task, false);
         }
         else
         {
@@ -2216,21 +2242,31 @@ public class Widget extends RemoteViewsService
         }
     }
 
-    public String getPreferredScriptDir()
+    public static String getPreferredScriptDirStatic(Context context)
     {
-        File[] mediaDirs = getExternalMediaDirs();
+        File[] mediaDirs = context.getExternalMediaDirs();
         if (mediaDirs.length > 0 && mediaDirs[0] != null)
         {
             return mediaDirs[0].getAbsolutePath();
         }
 
         //fallback
-        return getFilesDir().getAbsolutePath();
+        return context.getFilesDir().getAbsolutePath();
+    }
+
+    public String getPreferredScriptDir()
+    {
+        return getPreferredScriptDirStatic(this);
+    }
+
+    public static String getPreferredCacheDirStatic(Context context)
+    {
+        return context.getCacheDir().getAbsolutePath();
     }
 
     public String getPreferredCacheDir()
     {
-        return getCacheDir().getAbsolutePath();
+        return getPreferredCacheDirStatic(this);
     }
 
     public void initAllPythonFiles()
@@ -2356,12 +2392,12 @@ public class Widget extends RemoteViewsService
 
     public void delete(int widgetId, Integer androidWidgetDeleted)
     {
-        addTask(widgetId, new Task<>(new DeleteWidgetTask(), widgetId, androidWidgetDeleted));
+        addTask(widgetId, new Task<>(new DeleteWidgetTask(), widgetId, androidWidgetDeleted), false);
     }
 
     public void update(int widgetId)
     {
-        addTask(widgetId, new Task<>(new CallUpdateTask(), widgetId));
+        addTask(widgetId, new Task<>(new CallUpdateTask(), widgetId), false);
     }
 
     public void updateAll()
@@ -2398,6 +2434,38 @@ public class Widget extends RemoteViewsService
                 System.exit(0);
             }
         });
+    }
+
+    public void dumpPythonStacktrace()
+    {
+        if (updateListener != null)
+        {
+            try
+            {
+                updateListener.dumpStacktrace(Utils.getCrashPath(this, Constants.CrashIndex.PYTHON_TRACE_INDEX));
+            }
+            catch (Exception e)
+            {
+                Log.e("APPY", "Exception on dumpPythonStacktrace", e);
+            }
+        }
+    }
+    public void dumpJavaStacktrace()
+    {
+        try
+        {
+            Utils.dumpStacktrace(Utils.getCrashPath(this, Constants.CrashIndex.JAVA_TRACE_INDEX));
+        }
+        catch (Exception e)
+        {
+            Log.e("APPY", "Exception on dumpJavaStacktrace", e);
+        }
+    }
+
+    public void dumpStacktrace()
+    {
+        dumpJavaStacktrace();
+        dumpPythonStacktrace();
     }
 
     public void saveState(String state)
@@ -3142,6 +3210,8 @@ public class Widget extends RemoteViewsService
 
     public void callTimerWidget(final long timerId, int widgetId, final String data)
     {
+        Log.d("APPY", "callTimerWidget: " + widgetId + " " + timerId);
+
         Timer timer;
         synchronized (lock)
         {
@@ -3458,7 +3528,7 @@ public class Widget extends RemoteViewsService
 
     public void handleStartCommand(Intent intent)
     {
-        Utils.setCrashHandlerIfNeeded(this);
+        Utils.setCrashHandlerIfNeeded(Utils.getCrashPath(this, Constants.CrashIndex.JAVA_CRASH_INDEX));
 
         loadForeground();
 
@@ -3495,7 +3565,7 @@ public class Widget extends RemoteViewsService
                     activeWidgetIds.add(widgetId);
                     needUpdateWidgets.add(widgetId);
 
-                    addTask(widgetId, new Task<>(new CallUpdateTask(), widgetId));
+                    addTask(widgetId, new Task<>(new CallUpdateTask(), widgetId), false);
                 }
                 Set<Integer> allWidgetIds = getAllWidgets();
                 allWidgetIds.removeAll(activeWidgetIds);
@@ -3508,8 +3578,10 @@ public class Widget extends RemoteViewsService
         }
         else if (intent != null && intent.getAction() != null && intent.getAction().startsWith("timer") && intent.hasExtra("widgetId") && intent.hasExtra("timer"))
         {
-            Log.d("APPY", "timer fire");
-            addTask(intent.getIntExtra("widgetId", -1), new Task<>(new CallTimerTask(), intent.getLongExtra("timer", -1), intent.getIntExtra("widgetId", -1), Gzip.decompress(intent.getByteArrayExtra("timerData"))));
+            long timer = intent.getLongExtra("timer", -1);
+            int widgetId = intent.getIntExtra("widgetId", -1);
+            Log.d("APPY", "timer fire: " + widgetId + " " + timer);
+            addTask(widgetId, new Task<>(new CallTimerTask(), timer, widgetId, Gzip.decompress(intent.getByteArrayExtra("timerData"))), false);
         }
         else if (widgetIntent != null)
         {
@@ -3542,7 +3614,7 @@ public class Widget extends RemoteViewsService
             {
                 int widgetId = fromAndroidWidget(widgetIntent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, -1), true);
                 needUpdateWidgets.add(widgetId);
-                addTask(widgetId, new Task<>(new CallUpdateTask(), widgetId));
+                addTask(widgetId, new Task<>(new CallUpdateTask(), widgetId), false);
             }
             else if (AppWidgetManager.ACTION_APPWIDGET_UPDATE.equals(widgetIntent.getAction()))
             {
@@ -3557,7 +3629,7 @@ public class Widget extends RemoteViewsService
 //                            Log.d("APPY", "new widget!");
 //                            setLoadingWidget(widgetId);
 //                        }
-                        addTask(widgetId, new Task<>(new CallUpdateTask(), widgetId));
+                        addTask(widgetId, new Task<>(new CallUpdateTask(), widgetId), false);
                     }
                 }
                 else if (widgetIntent.hasExtra(Constants.WIDGET_ID_EXTRA))
@@ -3669,7 +3741,7 @@ public class Widget extends RemoteViewsService
                     else
                     {
                         Log.d("APPY", "calling event task: item id: " + widgetIntent.hasExtra(Constants.ITEM_ID_EXTRA) + ", collection item id: " + widgetIntent.hasExtra(Constants.COLLECTION_ITEM_ID_EXTRA) + " , collection item position: " + widgetIntent.hasExtra(Constants.COLLECTION_POSITION_EXTRA) + " checked: " + widgetIntent.getBooleanExtra(RemoteViews.EXTRA_CHECKED, false));
-                        addTask(eventWidgetId, new Task<>(new CallEventTask(), (long) eventWidgetId, widgetIntent.getLongExtra(Constants.ITEM_ID_EXTRA, 0), widgetIntent.getLongExtra(Constants.COLLECTION_ITEM_ID_EXTRA, 0), (long) widgetIntent.getIntExtra(Constants.COLLECTION_POSITION_EXTRA, -1), (long) (widgetIntent.getBooleanExtra(RemoteViews.EXTRA_CHECKED, false) ? 1 : 0)));
+                        addTask(eventWidgetId, new Task<>(new CallEventTask(), (long) eventWidgetId, widgetIntent.getLongExtra(Constants.ITEM_ID_EXTRA, 0), widgetIntent.getLongExtra(Constants.COLLECTION_ITEM_ID_EXTRA, 0), (long) widgetIntent.getIntExtra(Constants.COLLECTION_POSITION_EXTRA, -1), (long) (widgetIntent.getBooleanExtra(RemoteViews.EXTRA_CHECKED, false) ? 1 : 0)), false);
                     }
                 }
             }
@@ -3707,24 +3779,6 @@ public class Widget extends RemoteViewsService
         catch (IOException e)
         {
             Log.e("APPY", "exception", e);
-        }
-    }
-
-    public static void printAll(InputStream is)
-    {
-        InputStreamReader isr = new InputStreamReader(is);
-        BufferedReader br = new BufferedReader(isr);
-        String line;
-        try
-        {
-            while ((line = br.readLine()) != null)
-            {
-                Log.d("APPY", line);
-            }
-        }
-        catch (IOException e)
-        {
-            Log.e("APPY", "Exception on printAll", e);
         }
     }
 

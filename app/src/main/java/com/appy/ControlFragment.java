@@ -22,6 +22,7 @@ public class ControlFragment extends MyFragment
     Button clearTimers;
     Button clearState;
     Button resetExamples;
+    Button dumpStacktrace;
     Button restart;
 
     Handler handler;
@@ -39,6 +40,7 @@ public class ControlFragment extends MyFragment
         clearTimers = layout.findViewById(R.id.clear_timers);
         clearState = layout.findViewById(R.id.clear_state);
         resetExamples = layout.findViewById(R.id.reset_examples);
+        dumpStacktrace = layout.findViewById(R.id.dump_stacktrace);
         restart = layout.findViewById(R.id.restart);
 
         handler = new Handler();
@@ -116,6 +118,16 @@ public class ControlFragment extends MyFragment
                                 debounce(v);
                             }
                         });
+            }
+        });
+
+        dumpStacktrace.setOnClickListener(new View.OnClickListener()
+        {
+            @Override
+            public void onClick(View v)
+            {
+                getWidgetService().dumpStacktrace();
+                debounce(v);
             }
         });
 

@@ -42,9 +42,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
-public class ConfigsFragment extends MyFragment
+public class ConfigsFragment extends FragmentParent
 {
-    public static final String FRAGMENT_TAG = "FRAGMENT";
     public static final int REQUEST_IMPORT_PATH = 304;
 
     public Bundle fragmentArg = null;
@@ -222,66 +221,23 @@ public class ConfigsFragment extends MyFragment
         this.fragmentArg = fragmentArg;
     }
 
-    public void switchTo(WidgetSelectFragment fragment, boolean noBackStack)
+    public static class WidgetSelectFragment extends ChildFragment implements AdapterView.OnItemClickListener
     {
-        fragment.setParent(this);
-
-        FragmentTransaction transaction = getChildFragmentManager().beginTransaction();
-        transaction.setCustomAnimations(
-                R.animator.slide_in_from_right, R.animator.slide_out_to_left,
-                R.animator.slide_in_from_left, R.animator.slide_out_to_right);
-        transaction.replace(R.id.configs_container, fragment, FRAGMENT_TAG);
-        if (getChildFragmentManager().findFragmentByTag(FRAGMENT_TAG) != null && noBackStack)
-        {
-            transaction.addToBackStack(null);
-        }
-        transaction.commitAllowingStateLoss();
-    }
-
-    public void finishActivity()
-    {
-        if (getActivity() != null)
-        {
-            getActivity().finish();
-        }
-    }
-
-    public static class WidgetSelectFragment extends MyFragment implements AdapterView.OnItemClickListener
-    {
-        ConfigsFragment parent;
         ListView list;
         String widget = null;
         String config = null;
         int requestCode = 0;
 
-        static class Item
-        {
-            String key;
-            String value;
-
-            @Override
-            public String toString()
-            {
-                return key;
-            }
-
-            public Item(String key, String value)
-            {
-                this.key = key;
-                this.value = value;
-            }
-        }
-
         public void refresh()
         {
-            ArrayList<Item> adapterList = new ArrayList<>();
-            Item selectedConfigItem = null;
+            ArrayList<ListFragmentAdapter.Item> adapterList = new ArrayList<>();
+            ListFragmentAdapter.Item selectedConfigItem = null;
             if (widget == null)
             {
                 HashMap<String, Integer> widgets = getWidgetService().getConfigurations().listWidgets();
                 for (Map.Entry<String, Integer> item : widgets.entrySet())
                 {
-                    adapterList.add(new Item(item.getKey(), item.getValue() + " configurations"));
+                    adapterList.add(new ListFragmentAdapter.Item(item.getKey(), item.getValue() + " configurations"));
                 }
             }
             else
@@ -289,7 +245,7 @@ public class ConfigsFragment extends MyFragment
                 HashMap<String, String> values = getWidgetService().getConfigurations().getValues(widget);
                 for (Map.Entry<String, String> item : values.entrySet())
                 {
-                    Item listitem = new Item(item.getKey(), item.getValue());
+                    ListFragmentAdapter.Item listitem = new ListFragmentAdapter.Item(item.getKey(), item.getValue());
                     if (config != null && item.getKey().equals(config))
                     {
                         selectedConfigItem = listitem;
@@ -297,7 +253,7 @@ public class ConfigsFragment extends MyFragment
                     adapterList.add(listitem);
                 }
             }
-            list.setAdapter(new ItemAdapter(getActivity(), adapterList));
+            list.setAdapter(new ListFragmentAdapter(getActivity(), adapterList));
             if (selectedConfigItem != null)
             {
                 showEditor(selectedConfigItem, true);
@@ -319,7 +275,7 @@ public class ConfigsFragment extends MyFragment
         @Override
         public void onItemClick(AdapterView<?> adapter, View view, int position, long id)
         {
-            Item item = (Item) adapter.getItemAtPosition(position);
+            ListFragmentAdapter.Item item = (ListFragmentAdapter.Item) adapter.getItemAtPosition(position);
             if (widget == null)
             {
                 //select that widget
@@ -348,7 +304,7 @@ public class ConfigsFragment extends MyFragment
             return true;
         }
 
-        public void showEditor(final Item item, final boolean dieAfter)
+        public void showEditor(final ListFragmentAdapter.Item item, final boolean dieAfter)
         {
             AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
             builder.setTitle(widget + "." + item.key);
@@ -452,7 +408,7 @@ public class ConfigsFragment extends MyFragment
                 getActivity().getMenuInflater().inflate(R.menu.config_actions, menu);
 
                 AdapterView.AdapterContextMenuInfo info = (AdapterView.AdapterContextMenuInfo) menuInfo;
-                Item item = (Item) list.getItemAtPosition(info.position);
+                ListFragmentAdapter.Item item = (ListFragmentAdapter.Item) list.getItemAtPosition(info.position);
                 menu.setHeaderTitle(item.key);
             }
             else
@@ -486,7 +442,7 @@ public class ConfigsFragment extends MyFragment
             final boolean delete = delete_;
 
             AdapterView.AdapterContextMenuInfo info = (AdapterView.AdapterContextMenuInfo) menuItem.getMenuInfo();
-            final Item item = (Item) list.getItemAtPosition(info.position);
+            final ListFragmentAdapter.Item item = (ListFragmentAdapter.Item) list.getItemAtPosition(info.position);
 
             String title;
             String message;
@@ -554,11 +510,6 @@ public class ConfigsFragment extends MyFragment
             return true;
         }
 
-        public void setParent(ConfigsFragment parent)
-        {
-            this.parent = parent;
-        }
-
         public void setWidget(String widget)
         {
             this.widget = widget;
@@ -572,62 +523,6 @@ public class ConfigsFragment extends MyFragment
         public void setRequestCode(int requestCode)
         {
             this.requestCode = requestCode;
-        }
-
-        static class ItemAdapter extends BaseAdapter
-        {
-            private Context context;
-            private ArrayList<Item> items;
-
-            public ItemAdapter(Context context, ArrayList<Item> items)
-            {
-                this.context = context;
-                this.items = items;
-            }
-
-            @Override
-            public int getCount()
-            {
-                return items.size();
-            }
-
-            @Override
-            public Object getItem(int position)
-            {
-                return items.get(position);
-            }
-
-            @Override
-            public long getItemId(int position)
-            {
-                return position;
-            }
-
-            @Override
-            public View getView(int position, View convertView, ViewGroup parent)
-            {
-
-                View twoLineListItem;
-
-                if (convertView == null)
-                {
-                    LayoutInflater inflater = (LayoutInflater) context
-                            .getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-                    twoLineListItem = inflater.inflate(R.layout.configs_list_item, null);
-                }
-                else
-                {
-                    twoLineListItem = convertView;
-                }
-
-                TextView text1 = twoLineListItem.findViewById(R.id.text1);
-                TextView text2 = twoLineListItem.findViewById(R.id.text2);
-
-                text1.setText(items.get(position).key);
-                text2.setText(items.get(position).value);
-
-                return twoLineListItem;
-            }
         }
     }
 }

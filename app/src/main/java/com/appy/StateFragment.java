@@ -38,74 +38,59 @@ import java.util.Set;
 
 import static java.util.prefs.Preferences.MAX_VALUE_LENGTH;
 
-public class StateFragment extends MyFragment
+public class StateFragment extends FragmentParent
 {
-    public static final String FRAGMENT_TAG = "FRAGMENT";
-
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState)
     {
         View layout = inflater.inflate(R.layout.fragment_configs, container, false);
+        onShow();
 
-        WidgetSelectFragment fragment = new WidgetSelectFragment();
-        fragment.setKeyPath();
-        switchTo(fragment);
         return layout;
     }
 
-    public void switchTo(WidgetSelectFragment fragment)
+    public void tryStart()
     {
-        fragment.setParent(this);
-
-        FragmentTransaction transaction = getChildFragmentManager().beginTransaction();
-        transaction.setCustomAnimations(
-                R.animator.slide_in_from_right, R.animator.slide_out_to_left,
-                R.animator.slide_in_from_left, R.animator.slide_out_to_right);
-        transaction.replace(R.id.configs_container, fragment, FRAGMENT_TAG);
-        if (getChildFragmentManager().findFragmentByTag(FRAGMENT_TAG) != null)
+        if (getActivity() == null)
         {
-            transaction.addToBackStack(null);
+            return;
         }
-        transaction.commitAllowingStateLoss();
+        if (getWidgetService() == null)
+        {
+            return;
+        }
+
+        WidgetSelectFragment fragment = new WidgetSelectFragment();
+        fragment.setKeyPath();
+        switchTo(fragment, true);
     }
 
-    public static class WidgetSelectFragment extends MyFragment implements AdapterView.OnItemClickListener
+    @Override
+    public void onBound()
     {
-        StateFragment parent;
+        tryStart();
+    }
+
+    @Override
+    public void onShow()
+    {
+        tryStart();
+    }
+
+    public static class WidgetSelectFragment extends ChildFragment implements AdapterView.OnItemClickListener
+    {
         ListView list;
         ArrayList<String> keyPath;
 
-        static class Item
-        {
-            String key;
-            String value;
-            boolean leaf;
-            boolean inLocalScopeView;
-
-            @Override
-            public String toString()
-            {
-                return key;
-            }
-
-            public Item(String key, String value, boolean leaf, boolean inLocalScopeView)
-            {
-                this.key = key;
-                this.value = value;
-                this.leaf = leaf;
-                this.inLocalScopeView = inLocalScopeView;
-            }
-        }
-
         public void refresh()
         {
-            ArrayList<Item> adapterList = new ArrayList<>();
+            ArrayList<ListFragmentAdapter.Item> adapterList = new ArrayList<>();
             if (keyPath.isEmpty())
             {
                 for (String scope : StateLayout.listScopes())
                 {
-                    adapterList.add(new Item(scope, "", false, false));
+                    adapterList.add(new ListFragmentAdapter.Item(scope, "", false, false));
                 }
             }
             else
@@ -118,10 +103,10 @@ public class StateFragment extends MyFragment
 
                 for (String key : stateLayout.listDict(keyPath))
                 {
-                    adapterList.add(new Item(key, leaves ? stateLayout.getValue(keyPath, key) : "", leaves, inLocalScopeView));
+                    adapterList.add(new ListFragmentAdapter.Item(key, leaves ? stateLayout.getValue(keyPath, key) : "", leaves, inLocalScopeView));
                 }
             }
-            list.setAdapter(new ItemAdapter(getActivity(), adapterList));
+            list.setAdapter(new ListFragmentAdapter(getActivity(), adapterList));
         }
 
         public void setKeyPath()
@@ -143,7 +128,6 @@ public class StateFragment extends MyFragment
             list = layout.findViewById(R.id.configs_list);
             list.setOnItemClickListener(this);
             list.setEmptyView(layout.findViewById(R.id.empty_view));
-
             registerForContextMenu(list);
             refresh();
             return layout;
@@ -152,13 +136,13 @@ public class StateFragment extends MyFragment
         @Override
         public void onItemClick(AdapterView<?> adapter, View view, int position, long id)
         {
-            Item item = (Item) adapter.getItemAtPosition(position);
+            ListFragmentAdapter.Item item = (ListFragmentAdapter.Item) adapter.getItemAtPosition(position);
             if (!item.leaf)
             {
                 //select that widget
                 WidgetSelectFragment fragment = new WidgetSelectFragment();
                 fragment.setKeyPath(keyPath, item.key);
-                parent.switchTo(fragment);
+                parent.switchTo(fragment, false);
             }
             else
             {
@@ -208,7 +192,7 @@ public class StateFragment extends MyFragment
                     getActivity().getMenuInflater().inflate(R.menu.state_actions, menu);
 
                     AdapterView.AdapterContextMenuInfo info = (AdapterView.AdapterContextMenuInfo) menuInfo;
-                    Item item = (Item) list.getItemAtPosition(info.position);
+                    ListFragmentAdapter.Item item = (ListFragmentAdapter.Item) list.getItemAtPosition(info.position);
                     menu.setHeaderTitle(item.key);
                 }
             }
@@ -234,7 +218,7 @@ public class StateFragment extends MyFragment
             }
 
             AdapterView.AdapterContextMenuInfo info = (AdapterView.AdapterContextMenuInfo) menuItem.getMenuInfo();
-            final Item item = (Item) list.getItemAtPosition(info.position);
+            final ListFragmentAdapter.Item item = (ListFragmentAdapter.Item) list.getItemAtPosition(info.position);
 
             ArrayList<String> fullPath = new ArrayList<>(keyPath);
             fullPath.add(item.key);
@@ -271,82 +255,6 @@ public class StateFragment extends MyFragment
                         }
                     });
             return true;
-        }
-
-        public void setParent(StateFragment parent)
-        {
-            this.parent = parent;
-        }
-
-        static class ItemAdapter extends BaseAdapter
-        {
-            public static int MAX_VALUE_LENGTH = 100;
-            private Context context;
-            private ArrayList<Item> items;
-
-            public ItemAdapter(Context context, ArrayList<Item> items)
-            {
-                this.context = context;
-                this.items = items;
-            }
-
-            @Override
-            public int getCount()
-            {
-                return items.size();
-            }
-
-            @Override
-            public Object getItem(int position)
-            {
-                return items.get(position);
-            }
-
-            @Override
-            public long getItemId(int position)
-            {
-                return position;
-            }
-
-            @Override
-            public View getView(int position, View convertView, ViewGroup parent)
-            {
-
-                View twoLineListItem;
-
-                if (convertView == null)
-                {
-                    LayoutInflater inflater = (LayoutInflater) context
-                            .getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-                    twoLineListItem = inflater.inflate(R.layout.configs_list_item, null);
-                }
-                else
-                {
-                    twoLineListItem = convertView;
-                }
-
-                TextView text1 = twoLineListItem.findViewById(R.id.text1);
-                TextView text2 = twoLineListItem.findViewById(R.id.text2);
-
-                if (items.get(position).inLocalScopeView)
-                {
-                    text1.setText("widget #" + items.get(position).key);
-                }
-                else
-                {
-                    text1.setText(items.get(position).key);
-                }
-
-                String value = items.get(position).value;
-                if (value.length() > MAX_VALUE_LENGTH)
-                {
-                    value = value.substring(0, MAX_VALUE_LENGTH - 3) + "...";
-                }
-
-                text2.setText(value);
-
-                return twoLineListItem;
-            }
         }
     }
 }

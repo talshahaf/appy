@@ -21,13 +21,14 @@ class LogcatWriter:
         return [s[i : i + size] for i in range(0, len(s), size)]
         
     def write(self, s):
-        if self.std is not None:
-            # tee to actual std
-            if isinstance(s, bytes):
-                self.std.write(s.decode())
-            else:
-                self.std.write(s)
-            
+#         don't tee to actual std, it might block
+#         if self.std is not None:
+#             # tee to actual std
+#             if isinstance(s, bytes):
+#                 self.std.write(s.decode())
+#             else:
+#                 self.std.write(s)
+
         if isinstance(s, str):
             s = s.encode()
         self.buf = self.buf + s
