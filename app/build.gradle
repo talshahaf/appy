@@ -10,7 +10,7 @@ android {
 
 
     defaultConfig {
-        applicationId "com.appy.app"
+        applicationId "com.appy.widgets"
         minSdkVersion 21
         targetSdkVersion 34
         versionCode 21

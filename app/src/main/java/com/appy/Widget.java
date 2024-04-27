@@ -615,16 +615,21 @@ public class Widget extends RemoteViewsService
 
     public Integer advanceElementsId(int elements_id)
     {
-        switch (elements_id)
+        if (elements_id == R.id.elements0)
         {
-            case R.id.elements0:
-                return R.id.elements1;
-            case R.id.elements1:
-                return R.id.elements2;
-            case R.id.elements2:
-                return null;
-            default:
-                return elements_id; //for collection_element_vertical and others
+            return R.id.elements1;
+        }
+        else if (elements_id == R.id.elements1)
+        {
+            return R.id.elements2;
+        }
+        else if (elements_id == R.id.elements2)
+        {
+            return null;
+        }
+        else
+        {
+            return elements_id; //for collection_element_vertical and others
         }
     }
 
@@ -2512,7 +2517,7 @@ public class Widget extends RemoteViewsService
 
     public Uri getUriForPath(String path)
     {
-        return FileProvider.getUriForFile(this, "com.appy.fileprovider", new File(path));
+        return FileProvider.getUriForFile(this, "com.appy.appyfileprovider", new File(path));
     }
 
     public int generateRequestCode()

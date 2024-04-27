@@ -211,20 +211,16 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
                                            @NonNull String permissions[], @NonNull int[] grantResults)
     {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        switch (requestCode)
+        if (requestCode == REQUEST_PERMISSION_STORAGE)
         {
-            case REQUEST_PERMISSION_STORAGE:
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED)
             {
-                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED)
-                {
-                    requestAllStorage();
-                }
-                else
-                {
-                    Toast.makeText(this, "Cannot open file browser", Toast.LENGTH_SHORT).show();
-                    finish();
-                }
-                break;
+                requestAllStorage();
+            }
+            else
+            {
+                Toast.makeText(this, "Cannot open file browser", Toast.LENGTH_SHORT).show();
+                finish();
             }
         }
     }
@@ -424,218 +420,215 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
     {
         if (adapter != null)
         {
-            switch (item.getItemId())
+            if (item.getItemId() == R.id.action_select)
             {
-                case R.id.action_select:
-                {
-                    returnFiles(getSelectedFiles());
-                    return true;
-                }
-                case R.id.action_delete:
-                {
-                    final String[] files = getSelectedFiles();
+                returnFiles(getSelectedFiles());
+                return true;
+            }
+            else if (item.getItemId() == R.id.action_delete)
+            {
+                final String[] files = getSelectedFiles();
 
-                    //TODO are you sure
-                    new AlertDialog.Builder(this)
-                            .setTitle("Delete")
-                            .setMessage(files.length == 1 ? "Delete " + new File(files[0]).getName() + "?" : "Delete " + files.length + " files?")
-                            .setIcon(android.R.drawable.ic_dialog_alert)
-                            .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener()
+                //TODO are you sure
+                new AlertDialog.Builder(this)
+                        .setTitle("Delete")
+                        .setMessage(files.length == 1 ? "Delete " + new File(files[0]).getName() + "?" : "Delete " + files.length + " files?")
+                        .setIcon(android.R.drawable.ic_dialog_alert)
+                        .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener()
+                        {
+                            public void onClick(DialogInterface dialog, int whichButton)
                             {
-                                public void onClick(DialogInterface dialog, int whichButton)
+                                for (String path : files)
                                 {
-                                    for (String path : files)
-                                    {
-                                        Widget.deleteDir(new File(path));
-                                    }
-                                    selected.clear();
-                                    updateMenu();
-                                    getDirFromRoot(currentDir());
+                                    Widget.deleteDir(new File(path));
                                 }
-                            })
-                            .setNegativeButton(android.R.string.no, null)
-                            .setOnDismissListener(new DialogInterface.OnDismissListener()
+                                selected.clear();
+                                updateMenu();
+                                getDirFromRoot(currentDir());
+                            }
+                        })
+                        .setNegativeButton(android.R.string.no, null)
+                        .setOnDismissListener(new DialogInterface.OnDismissListener()
+                        {
+                            @Override
+                            public void onDismiss(DialogInterface dialog)
                             {
-                                @Override
-                                public void onDismiss(DialogInterface dialog)
-                                {
-                                    tutorial.onFileBrowserDialogDone();
-                                }
-                            }).show();
-                    return true;
-                }
-                case R.id.action_copy:
+                                tutorial.onFileBrowserDialogDone();
+                            }
+                        }).show();
+                return true;
+            }
+            else if (item.getItemId() == R.id.action_copy)
+            {
+                copying = true;
+                selectingEnabled = false;
+                adapter.setSelectingEnabled(selectingEnabled);
+                updateMenu();
+                return true;
+            }
+            else if (item.getItemId() == R.id.action_cut)
+            {
+                cutting = true;
+                selectingEnabled = false;
+                adapter.setSelectingEnabled(selectingEnabled);
+                updateMenu();
+                return true;
+            }
+            else if (item.getItemId() == R.id.action_paste)
+            {
+                String newDir = currentDir();
+                for (File file : selected.values())
                 {
-                    copying = true;
-                    selectingEnabled = false;
-                    adapter.setSelectingEnabled(selectingEnabled);
-                    updateMenu();
-                    return true;
-                }
-                case R.id.action_cut:
-                {
-                    cutting = true;
-                    selectingEnabled = false;
-                    adapter.setSelectingEnabled(selectingEnabled);
-                    updateMenu();
-                    return true;
-                }
-                case R.id.action_paste:
-                {
-                    String newDir = currentDir();
-                    for (File file : selected.values())
+                    if (copying)
                     {
-                        if (copying)
+                        if (!copy(file, new File(newDir, file.getName())))
                         {
-                            if (!copy(file, new File(newDir, file.getName())))
-                            {
-                                //TODO notify
-                            }
-                        }
-                        if (cutting)
-                        {
-                            if (!file.renameTo(new File(newDir, file.getName())))
-                            {
-                                //TODO notify
-                            }
+                            //TODO notify
                         }
                     }
-                    cancelFileOp();
-                    selected.clear();
-                    getDirFromRoot(currentDir());
-                    return true;
-                }
-                case R.id.action_cancel:
-                {
-                    cancelFileOp();
-                    return true;
-                }
-                case R.id.action_clear:
-                {
-                    selected.clear();
-                    cancelFileOp();
-                    updateMenu();
-                    adapter.updateSelection(selected.values());
-                    return true;
-                }
-                case R.id.action_rename:
-                {
-                    AlertDialog.Builder builder = new AlertDialog.Builder(this);
-                    builder.setTitle("Rename");
-
-                    final File file = selected.values().iterator().next();
-
-                    final EditText input = new EditText(this);
-                    input.setInputType(InputType.TYPE_TEXT_VARIATION_URI);
-                    input.setText(file.getName());
-                    builder.setView(input);
-
-                    builder.setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener()
+                    if (cutting)
                     {
-                        @Override
-                        public void onClick(DialogInterface dialog, int which)
+                        if (!file.renameTo(new File(newDir, file.getName())))
                         {
-                            if (!file.renameTo(new File(file.getParentFile(), input.getText().toString())))
+                            //TODO notify
+                        }
+                    }
+                }
+                cancelFileOp();
+                selected.clear();
+                getDirFromRoot(currentDir());
+                return true;
+            }
+            else if (item.getItemId() == R.id.action_cancel)
+            {
+                cancelFileOp();
+                return true;
+            }
+            else if (item.getItemId() == R.id.action_clear)
+            {
+                selected.clear();
+                cancelFileOp();
+                updateMenu();
+                adapter.updateSelection(selected.values());
+                return true;
+            }
+            else if (item.getItemId() == R.id.action_rename)
+            {
+                AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                builder.setTitle("Rename");
+
+                final File file = selected.values().iterator().next();
+
+                final EditText input = new EditText(this);
+                input.setInputType(InputType.TYPE_TEXT_VARIATION_URI);
+                input.setText(file.getName());
+                builder.setView(input);
+
+                builder.setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener()
+                {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which)
+                    {
+                        if (!file.renameTo(new File(file.getParentFile(), input.getText().toString())))
+                        {
+                            Toast.makeText(FileBrowserActivity.this, "Failed to rename", Toast.LENGTH_SHORT).show();
+                        }
+                        selected.clear();
+                        updateMenu();
+                        getDirFromRoot(currentDir());
+                    }
+                });
+                builder.setNegativeButton(android.R.string.cancel, new DialogInterface.OnClickListener()
+                {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which)
+                    {
+                        dialog.cancel();
+                    }
+                });
+
+                builder.setOnDismissListener(new DialogInterface.OnDismissListener()
+                {
+                    @Override
+                    public void onDismiss(DialogInterface dialog)
+                    {
+                        tutorial.onFileBrowserDialogDone();
+                    }
+                });
+
+                builder.show();
+                return true;
+            }
+            else if (item.getItemId() == R.id.action_goto)
+            {
+                AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                builder.setTitle("Go to");
+
+                FrameLayout container = new FrameLayout(this);
+
+                final EditText input = new EditText(this);
+                input.setInputType(InputType.TYPE_TEXT_VARIATION_URI);
+                input.setText(currentDir());
+
+                float margin = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 30, getResources().getDisplayMetrics());
+                FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+                params.leftMargin = (int) margin;
+                params.rightMargin = (int) margin;
+                input.setLayoutParams(params);
+                container.addView(input);
+
+                builder.setView(container);
+
+                builder.setSingleChoiceItems(preset_names, -1,
+                        new DialogInterface.OnClickListener()
+                        {
+                            public void onClick(DialogInterface dialog, int which)
                             {
-                                Toast.makeText(FileBrowserActivity.this, "Failed to rename", Toast.LENGTH_SHORT).show();
-                            }
-                            selected.clear();
-                            updateMenu();
-                            getDirFromRoot(currentDir());
-                        }
-                    });
-                    builder.setNegativeButton(android.R.string.cancel, new DialogInterface.OnClickListener()
-                    {
-                        @Override
-                        public void onClick(DialogInterface dialog, int which)
-                        {
-                            dialog.cancel();
-                        }
-                    });
-
-                    builder.setOnDismissListener(new DialogInterface.OnDismissListener()
-                    {
-                        @Override
-                        public void onDismiss(DialogInterface dialog)
-                        {
-                            tutorial.onFileBrowserDialogDone();
-                        }
-                    });
-
-                    builder.show();
-                    return true;
-                }
-                case R.id.action_goto:
-                {
-                    AlertDialog.Builder builder = new AlertDialog.Builder(this);
-                    builder.setTitle("Go to");
-
-                    FrameLayout container = new FrameLayout(this);
-
-                    final EditText input = new EditText(this);
-                    input.setInputType(InputType.TYPE_TEXT_VARIATION_URI);
-                    input.setText(currentDir());
-
-                    float margin = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 30, getResources().getDisplayMetrics());
-                    FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-                    params.leftMargin = (int) margin;
-                    params.rightMargin = (int) margin;
-                    input.setLayoutParams(params);
-                    container.addView(input);
-
-                    builder.setView(container);
-
-                    builder.setSingleChoiceItems(preset_names, -1,
-                            new DialogInterface.OnClickListener()
-                            {
-                                public void onClick(DialogInterface dialog, int which)
+                                if (cantViewSharedStorage && which == SHARED_STORAGE_INDEX)
                                 {
-                                    if (cantViewSharedStorage && which == SHARED_STORAGE_INDEX)
-                                    {
-                                        bottomtext.setVisibility(View.VISIBLE);
-                                    }
-                                    else
-                                    {
-                                        bottomtext.setVisibility(View.INVISIBLE);
-                                    }
-                                    userNavigate(preset_paths[which]);
-                                    dialog.dismiss();
+                                    bottomtext.setVisibility(View.VISIBLE);
                                 }
-                            });
-
-                    builder.setPositiveButton("Go", new DialogInterface.OnClickListener()
-                    {
-                        @Override
-                        public void onClick(DialogInterface dialog, int which)
-                        {
-                            //overriding later
-                        }
-                    });
-
-                    builder.setOnDismissListener(new DialogInterface.OnDismissListener()
-                    {
-                        @Override
-                        public void onDismiss(DialogInterface dialog)
-                        {
-                            tutorial.onFileBrowserDialogDone();
-                        }
-                    });
-
-                    final AlertDialog dialog = builder.show();
-                    dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(new View.OnClickListener()
-                    {
-                        @Override
-                        public void onClick(View v)
-                        {
-                            // only if we succeeded
-                            if (getDirFromRoot(input.getText().toString()))
-                            {
+                                else
+                                {
+                                    bottomtext.setVisibility(View.INVISIBLE);
+                                }
+                                userNavigate(preset_paths[which]);
                                 dialog.dismiss();
                             }
+                        });
+
+                builder.setPositiveButton("Go", new DialogInterface.OnClickListener()
+                {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which)
+                    {
+                        //overriding later
+                    }
+                });
+
+                builder.setOnDismissListener(new DialogInterface.OnDismissListener()
+                {
+                    @Override
+                    public void onDismiss(DialogInterface dialog)
+                    {
+                        tutorial.onFileBrowserDialogDone();
+                    }
+                });
+
+                final AlertDialog dialog = builder.show();
+                dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(new View.OnClickListener()
+                {
+                    @Override
+                    public void onClick(View v)
+                    {
+                        // only if we succeeded
+                        if (getDirFromRoot(input.getText().toString()))
+                        {
+                            dialog.dismiss();
                         }
-                    });
-                    return true;
-                }
+                    }
+                });
+                return true;
             }
         }
         return super.onOptionsItemSelected(item);

@@ -348,7 +348,7 @@ public class Tutorial implements OverlayHoleView.OnHoleClick, TutorialStepListen
 
     public void doNextStep()
     {
-        switch(mStepsDone)
+        switch (mStepsDone)
         {
             case 0:
             {
