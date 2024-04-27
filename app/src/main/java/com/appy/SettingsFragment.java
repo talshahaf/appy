@@ -22,6 +22,7 @@ import java.io.File;
 public class SettingsFragment extends MySettingsFragment implements SharedPreferences.OnSharedPreferenceChangeListener
 {
     Preference externalDirPreference;
+    Preference pythonVersionPreference;
 
     @Override
     public void onCreatePreferences(Bundle savedInstanceState, String rootKey)
@@ -29,9 +30,7 @@ public class SettingsFragment extends MySettingsFragment implements SharedPrefer
         addPreferencesFromResource(R.xml.pref);
 
         externalDirPreference = getPreferenceScreen().findPreference("external_dir");
-        Context context = getContext();
-        File externalDir = context != null ? getContext().getExternalFilesDir(null) : null;
-        externalDirPreference.setSummary(externalDir != null ? externalDir.getAbsolutePath() : "No available directory");
+        externalDirPreference.setSummary(getContext() != null ? Widget.getPreferredScriptDirStatic(getContext()) : "No available directory");
 
         externalDirPreference.setOnPreferenceClickListener(new Preference.OnPreferenceClickListener()
         {
@@ -45,6 +44,10 @@ public class SettingsFragment extends MySettingsFragment implements SharedPrefer
                 return true;
             }
         });
+
+        pythonVersionPreference = getPreferenceScreen().findPreference("python_version");
+
+        updateConfig();
     }
 
     @Override
@@ -83,5 +86,7 @@ public class SettingsFragment extends MySettingsFragment implements SharedPrefer
 
         getWidgetService().loadCorrectionFactors(false);
         getWidgetService().loadForeground();
+
+        pythonVersionPreference.setSummary(getWidgetService().pythonVersion());
     }
 }

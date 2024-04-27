@@ -1,6 +1,6 @@
 import json, functools, copy, traceback, inspect, threading, os, collections, importlib.util, sys, hashlib, struct, re, time, faulthandler
 from .utils import AttrDict, dumps, loads, cap, get_args, prepare_image_cache_dir, preferred_script_dir, timeit
-from . import widgets, java, state, configs
+from . import widgets, java, state, configs, __version__
 
 def gen_id():
     id = 0
@@ -924,6 +924,10 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
         fh = open(path, 'w')
         faulthandler.dump_traceback(fh)
         print('Dump python stacktrace done.')
+
+    @java.override
+    def getVersion(self):
+        return __version__.__version__
 
             
 java_widget_manager = None

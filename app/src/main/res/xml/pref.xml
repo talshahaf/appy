@@ -25,5 +25,9 @@
         android:key="external_dir"
         android:title="Preferred directory to put scripts into"
         android:summary=""/>
+    <Preference
+        android:key="python_version"
+        android:title="Appy python version"
+        android:summary=""/>
 
 </PreferenceScreen>
