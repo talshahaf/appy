@@ -2436,6 +2436,15 @@ public class Widget extends RemoteViewsService
         });
     }
 
+    public String pythonVersion()
+    {
+        if (updateListener != null)
+        {
+            return updateListener.getVersion();
+        }
+        return "Not available";
+    }
+
     public void dumpPythonStacktrace()
     {
         if (updateListener != null)
@@ -3749,38 +3758,6 @@ public class Widget extends RemoteViewsService
     }
 
     //-----------------------------------python--------------------------------------------------------------
-
-    public static void printFnames(File sDir)
-    {
-        File[] faFiles = sDir.listFiles();
-        for (File file : faFiles)
-        {
-            Log.d("APPY", file.getAbsolutePath());
-            if (file.isDirectory())
-            {
-                printFnames(file);
-            }
-        }
-    }
-
-    public static void printFile(File file)
-    {
-        try
-        {
-            FileReader fileReader = new FileReader(file);
-            BufferedReader bufferedReader = new BufferedReader(fileReader);
-            String line;
-            while ((line = bufferedReader.readLine()) != null)
-            {
-                Log.e("APPY", line);
-            }
-            fileReader.close();
-        }
-        catch (IOException e)
-        {
-            Log.e("APPY", "exception", e);
-        }
-    }
 
     public static void copyAsset(InputStream asset, File file) throws IOException
     {
