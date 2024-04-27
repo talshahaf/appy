@@ -274,11 +274,10 @@ public class MainActivity extends AppCompatActivity implements StatusListener
     public boolean onOptionsItemSelected(MenuItem item)
     {
         // The action bar home/up action should open or close the drawer.
-        switch (item.getItemId())
+        if (item.getItemId() == android.R.id.home)
         {
-            case android.R.id.home:
-                drawer.openDrawer(GravityCompat.START);
-                return true;
+            drawer.openDrawer(GravityCompat.START);
+            return true;
         }
 
         return super.onOptionsItemSelected(item);

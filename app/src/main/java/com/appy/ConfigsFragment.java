@@ -67,43 +67,40 @@ public class ConfigsFragment extends FragmentParent
     @Override
     public boolean onOptionsItemSelected(MenuItem item)
     {
-        switch (item.getItemId())
+        if (item.getItemId() == R.id.action_export)
         {
-            case R.id.action_export:
-            {
-                Log.d("APPY", "Export click");
+            Log.d("APPY", "Export click");
 
-                if (getWidgetService() != null)
+            if (getWidgetService() != null)
+            {
+                Configurations configurations = getWidgetService().getConfigurations();
+                if (configurations != null)
                 {
-                    Configurations configurations = getWidgetService().getConfigurations();
-                    if (configurations != null)
+                    File exportFile = exportFilePath();
+                    try
                     {
-                        File exportFile = exportFilePath();
-                        try
-                        {
-                            FileWriter writer = new FileWriter(exportFile, false);
-                            writer.write(configurations.serialize());
-                            writer.close();
-                            Toast.makeText(getActivity(), "Configurations exported to " + exportFile.getAbsolutePath(), Toast.LENGTH_LONG).show();
-                        }
-                        catch (IOException e)
-                        {
-                            Log.e("APPY", "export config failed", e);
-                        }
-
+                        FileWriter writer = new FileWriter(exportFile, false);
+                        writer.write(configurations.serialize());
+                        writer.close();
+                        Toast.makeText(getActivity(), "Configurations exported to " + exportFile.getAbsolutePath(), Toast.LENGTH_LONG).show();
                     }
-                }
+                    catch (IOException e)
+                    {
+                        Log.e("APPY", "export config failed", e);
+                    }
 
-                return true;
+                }
             }
-            case R.id.action_import:
-            {
-                Log.d("APPY", "Import click");
-                Intent intent = new Intent(getActivity(), FileBrowserActivity.class);
-                intent.putExtra(FileBrowserActivity.REQUEST_ALLOW_RETURN_MULTIPLE, false);
-                startActivityForResult(intent, REQUEST_IMPORT_PATH);
-                return true;
-            }
+
+            return true;
+        }
+        else if (item.getItemId() == R.id.action_import)
+        {
+            Log.d("APPY", "Import click");
+            Intent intent = new Intent(getActivity(), FileBrowserActivity.class);
+            intent.putExtra(FileBrowserActivity.REQUEST_ALLOW_RETURN_MULTIPLE, false);
+            startActivityForResult(intent, REQUEST_IMPORT_PATH);
+            return true;
         }
 
         return super.onOptionsItemSelected(item);
@@ -421,22 +418,17 @@ public class ConfigsFragment extends FragmentParent
         public boolean onContextItemSelected(MenuItem menuItem)
         {
             boolean delete_;
-            switch (menuItem.getItemId())
+            if (menuItem.getItemId() == R.id.action_reset)
             {
-                case R.id.action_reset:
-                {
-                    delete_ = false;
-                    break;
-                }
-                case R.id.action_delete:
-                {
-                    delete_ = true;
-                    break;
-                }
-                default:
-                {
-                    return super.onContextItemSelected(menuItem);
-                }
+                delete_ = false;
+            }
+            else if (menuItem.getItemId() == R.id.action_delete)
+            {
+                delete_ = true;
+            }
+            else
+            {
+                return super.onContextItemSelected(menuItem);
             }
 
             final boolean delete = delete_;

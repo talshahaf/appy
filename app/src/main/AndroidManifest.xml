@@ -184,7 +184,7 @@
 
         <provider
             android:name="com.appy.FileProvider"
-            android:authorities="com.appy.fileprovider"
+            android:authorities="com.appy.appyfileprovider"
             android:exported="true"
             android:grantUriPermissions="true"
             tools:ignore="ExportedContentProvider">

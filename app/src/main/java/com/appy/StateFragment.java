@@ -205,16 +205,9 @@ public class StateFragment extends FragmentParent
         @Override
         public boolean onContextItemSelected(MenuItem menuItem)
         {
-            switch (menuItem.getItemId())
+            if (menuItem.getItemId() != R.id.action_delete)
             {
-                case R.id.action_delete:
-                {
-                    break;
-                }
-                default:
-                {
-                    return super.onContextItemSelected(menuItem);
-                }
+                return super.onContextItemSelected(menuItem);
             }
 
             AdapterView.AdapterContextMenuInfo info = (AdapterView.AdapterContextMenuInfo) menuItem.getMenuInfo();
