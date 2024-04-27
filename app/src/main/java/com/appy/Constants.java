@@ -75,6 +75,22 @@ public class Constants
     public static final int TEXT_COLOR = 0xb3ffffff;
     public static final int TIMER_MAX_HANDLER = 60 * 60 * 1000; //1 hour
     public static final int ERROR_COALESCE_MILLI = 60 * 1000; //1 minute
+    public static final int TASK_QUEUE_SUSPICIOUS_SIZE = 20;
+    public static final String[] CRASHES_FILENAMES = {
+            "javacrash.txt",
+            "pythoncrash.txt",
+            "javatrace.txt",
+            "pythontrace.txt",
+    };
+    public static final String CRASH_ZIP_PATH = "crash.zip";
+
+    public enum CrashIndex
+    {
+        JAVA_CRASH_INDEX,
+        PYTHON_CRASH_INDEX,
+        JAVA_TRACE_INDEX,
+        PYTHON_TRACE_INDEX,
+    }
 
     public enum StartupState
     {

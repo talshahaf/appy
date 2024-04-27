@@ -10,8 +10,8 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="100dp"
         android:text="Clear Widgets"
-        app:layout_constraintEnd_toEndOf="@+id/reset_examples"
-        app:layout_constraintStart_toStartOf="@+id/reset_examples"
+        app:layout_constraintEnd_toEndOf="@+id/dump_stacktrace"
+        app:layout_constraintStart_toStartOf="@+id/dump_stacktrace"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintVertical_bias="0.205"
         style="@style/secondary_btn"/>
@@ -21,8 +21,8 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="20dp"
         android:text="Clear Timers"
-        app:layout_constraintEnd_toEndOf="@+id/reset_examples"
-        app:layout_constraintStart_toStartOf="@+id/reset_examples"
+        app:layout_constraintEnd_toEndOf="@+id/dump_stacktrace"
+        app:layout_constraintStart_toStartOf="@+id/dump_stacktrace"
         app:layout_constraintTop_toBottomOf="@+id/clear_widgets"
         style="@style/secondary_btn"/>
     <Button
@@ -31,19 +31,29 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="20dp"
         android:text="Clear State"
-        app:layout_constraintEnd_toEndOf="@+id/reset_examples"
-        app:layout_constraintStart_toStartOf="@+id/reset_examples"
+        app:layout_constraintEnd_toEndOf="@+id/dump_stacktrace"
+        app:layout_constraintStart_toStartOf="@+id/dump_stacktrace"
         app:layout_constraintTop_toBottomOf="@+id/clear_timers"
         style="@style/secondary_btn"/>
     <Button
         android:id="@+id/reset_examples"
-        android:layout_width="wrap_content"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginTop="20dp"
         android:text="Reset Examples"
+        app:layout_constraintEnd_toEndOf="@+id/dump_stacktrace"
+        app:layout_constraintStart_toStartOf="@+id/dump_stacktrace"
+        app:layout_constraintTop_toBottomOf="@+id/clear_state"
+        style="@style/secondary_btn"/>
+    <Button
+        android:id="@+id/dump_stacktrace"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp"
+        android:text="Dump Stacktrace"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/clear_state"
+        app:layout_constraintTop_toBottomOf="@+id/reset_examples"
         style="@style/secondary_btn"/>
     <Button
         android:id="@+id/restart"
@@ -51,9 +61,9 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="20dp"
         android:text="Restart"
-        app:layout_constraintEnd_toEndOf="@+id/reset_examples"
-        app:layout_constraintStart_toStartOf="@+id/reset_examples"
-        app:layout_constraintTop_toBottomOf="@+id/reset_examples"
+        app:layout_constraintEnd_toEndOf="@+id/dump_stacktrace"
+        app:layout_constraintStart_toStartOf="@+id/dump_stacktrace"
+        app:layout_constraintTop_toBottomOf="@+id/dump_stacktrace"
         style="@style/secondary_btn"/>
     <ProgressBar
         android:id="@+id/startup_progress"

@@ -1,5 +1,5 @@
-import json, functools, copy, traceback, inspect, threading, os, collections, importlib.util, sys, hashlib, struct, re, time
-from .utils import AttrDict, dumps, loads, cap, get_args, prepare_image_cache_dir, timeit
+import json, functools, copy, traceback, inspect, threading, os, collections, importlib.util, sys, hashlib, struct, re, time, faulthandler
+from .utils import AttrDict, dumps, loads, cap, get_args, prepare_image_cache_dir, preferred_script_dir, timeit
 from . import widgets, java, state, configs
 
 def gen_id():
@@ -800,7 +800,7 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
 
     @java.override
     def onTimer(self, timer_id, widget_id, views_str, data):
-        print('timer called')
+        print('timer called', widget_id, timer_id)
         input, views = self.import_(views_str)
         func, captures = loads(data)
         widget, manager_state = create_widget(widget_id)
@@ -917,6 +917,13 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
     def syncConfig(self, serialized_onfig):
         print('sync config called')
         configs.sync(serialized_onfig)
+
+    @java.override
+    def dumpStacktrace(self, path):
+        print('Dumping python stacktrace.')
+        fh = open(path, 'w')
+        faulthandler.dump_traceback(fh)
+        print('Dump python stacktrace done.')
 
             
 java_widget_manager = None

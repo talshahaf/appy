@@ -61,7 +61,7 @@ public class MainActivity extends AppCompatActivity implements StatusListener
     @Override
     protected void onCreate(Bundle savedInstanceState)
     {
-        Utils.setCrashHandlerIfNeeded(this);
+        Utils.setCrashHandlerIfNeeded(Utils.getCrashPath(this, Constants.CrashIndex.JAVA_CRASH_INDEX));
 
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);

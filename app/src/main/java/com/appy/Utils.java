@@ -8,9 +8,12 @@ import android.util.Pair;
 
 import androidx.appcompat.app.AlertDialog;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -18,7 +21,10 @@ import java.io.InputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 public class Utils
 {
@@ -84,7 +90,7 @@ public class Utils
         do
         {
             readed = reader.read(buf, 0, buf.length);
-            sb.append(buf);
+            sb.append(buf, 0, readed);
         } while (readed == buf.length);
         return sb.toString();
     }
@@ -143,13 +149,123 @@ public class Utils
         builder.show();
     }
 
-    public static void setCrashHandlerIfNeeded(Context context)
+    public static String getCrashPath(Context context, Constants.CrashIndex index)
+    {
+        return new File(context.getCacheDir(), Constants.CRASHES_FILENAMES[index.ordinal()]).getAbsolutePath();
+    }
+
+    public static void zipWithoutPath(String[] files, String zipFile, boolean ignoreNonExistent) throws IOException
+    {
+        final int BUFFER_SIZE = 4096;
+
+        try (ZipOutputStream out = new ZipOutputStream(new BufferedOutputStream(new FileOutputStream(zipFile))))
+        {
+            byte[] data = new byte[BUFFER_SIZE];
+
+            for (String file : files)
+            {
+                if (!new File(file).exists() && ignoreNonExistent)
+                {
+                    continue;
+                }
+                FileInputStream fi = new FileInputStream(file);
+                try (BufferedInputStream origin = new BufferedInputStream(fi, BUFFER_SIZE))
+                {
+                    ZipEntry entry = new ZipEntry(new File(file).getName());
+                    out.putNextEntry(entry);
+                    int count;
+                    while ((count = origin.read(data, 0, BUFFER_SIZE)) != -1)
+                    {
+                        out.write(data, 0, count);
+                    }
+                }
+            }
+        }
+    }
+
+    public static void dumpStacktrace(String path)
+    {
+        Log.e("APPY", "Dumping java stacktrace:");
+
+        Map<Thread, StackTraceElement[]> traces = Thread.getAllStackTraces();
+
+        StringBuilder sb = new StringBuilder();
+
+        for (Map.Entry<Thread, StackTraceElement[]> entry : traces.entrySet())
+        {
+            sb.append("Thread ");
+            sb.append(entry.getKey().getId());
+            sb.append("(");
+            sb.append(entry.getKey().getName());
+            sb.append("):\n");
+            sb.append(buildStackTraceString(entry.getValue()));
+            sb.append("\n");
+        }
+
+        String trace = sb.toString();
+
+        tryWriteFile(path, trace);
+
+        for (String line : trace.split("\n"))
+        {
+            Log.e("APPY", line);
+        }
+    }
+
+    public static String buildStackTraceString(StackTraceElement[] elements) {
+        StringBuilder sb = new StringBuilder();
+        if (elements != null)
+        {
+            for (StackTraceElement element : elements)
+            {
+                sb.append(element.toString());
+                sb.append("\n");
+            }
+        }
+        else
+        {
+            sb.append("Stacktrace is null");
+        }
+        return sb.toString();
+    }
+
+    public static void setCrashHandlerIfNeeded(String path)
     {
         Thread.UncaughtExceptionHandler handler = Thread.getDefaultUncaughtExceptionHandler();
         if (handler == null || !(handler instanceof CrashHandler))
         {
             //not ours
-            Thread.setDefaultUncaughtExceptionHandler(new CrashHandler(new File(context.getCacheDir(), "javacrash.txt").getAbsolutePath(), handler));
+            Thread.setDefaultUncaughtExceptionHandler(new CrashHandler(path, handler));
+        }
+    }
+
+    public static void tryWriteFile(String path, String data)
+    {
+        BufferedWriter bw = null;
+        try
+        {
+            bw = new BufferedWriter(new FileWriter(path, true));
+            bw.write(data);
+            bw.flush();
+            bw.close();
+        }
+        catch (IOException e)
+        {
+            Log.e("APPY", "Exception on tryWriteFile", e);
+        }
+        finally
+        {
+            if (bw != null)
+            {
+                try
+                {
+                    bw.close();
+                }
+                catch (IOException ignored)
+                {
+
+                }
+            }
         }
     }
 
@@ -169,32 +285,7 @@ public class Utils
         {
             String trace = Stacktrace.stackTraceString(e);
 
-            BufferedWriter bw = null;
-            try
-            {
-                bw = new BufferedWriter(new FileWriter(path, true));
-                bw.write(trace);
-                bw.flush();
-                bw.close();
-            }
-            catch (IOException e1)
-            {
-                Log.e("APPY", "Exception on uncaught exception", e1);
-            }
-            finally
-            {
-                if (bw != null)
-                {
-                    try
-                    {
-                        bw.close();
-                    }
-                    catch (IOException e1)
-                    {
-
-                    }
-                }
-            }
+            tryWriteFile(path, trace);
 
             for (String line : trace.split("\n"))
             {

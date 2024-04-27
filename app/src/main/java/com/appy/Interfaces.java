@@ -54,6 +54,8 @@ interface WidgetUpdateListener
     String dumpState();
 
     void syncConfig(String serializedConfig);
+
+    void dumpStacktrace(String path);
 }
 
 interface RunnerListener

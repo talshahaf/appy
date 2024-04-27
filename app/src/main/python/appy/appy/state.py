@@ -39,7 +39,6 @@ def setter(d, k, value=None, delete=None):
         del d[k]
     else:
         d[k] = value
-    save()
 
 def getter(d, k):
     return d.get(k), k in d
