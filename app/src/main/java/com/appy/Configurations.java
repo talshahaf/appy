@@ -354,6 +354,13 @@ public class Configurations
                     {
                         changed.add(new Pair<>(widget, key));
                     }
+
+                    if (!widgetConfigurations.get(widget).get(key).second.equals(newConfig.get(widget).get(key).second))
+                    {
+                        //don't override default
+                        newConfig.get(widget).put(key,
+                                new Pair<>(newConfig.get(widget).get(key).first, widgetConfigurations.get(widget).get(key).second));
+                    }
                 }
             }
 
