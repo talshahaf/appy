@@ -49,7 +49,7 @@ public class Tutorial implements OverlayHoleView.OnHoleClick, TutorialStepListen
     private boolean tutorialDone = false;
     private static ArrayList<TutorialStepListener> gTutorialStepDoneListeners = new ArrayList<>();
 
-    public static final int overlayColor = Color.argb(0, 0, 0, 0);
+    public static final int overlayColor = Color.argb(150, 0, 0, 0);
 
     public static final int circleHolePad = 30;
     public static final int rectHolePadW = 30;
@@ -62,35 +62,43 @@ public class Tutorial implements OverlayHoleView.OnHoleClick, TutorialStepListen
 
     public static class StepText
     {
+        public enum Anchor
+        {
+            ABSOLUTE,
+            ABOVE_HOLE,
+            BELOW_HOLE,
+        };
         public String text;
-        public float x;
         public float y;
+        public boolean yIsFactor;
+        public Anchor anchor;
 
-        public StepText(String text, float x, float y)
+        public StepText(String text, float y, boolean yIsFactor, Anchor anchor)
         {
             this.text = text;
-            this.x = x;
             this.y = y;
+            this.yIsFactor = yIsFactor;
+            this.anchor = anchor;
         }
     }
     public static final StepText[] stepTexts = new StepText[]{
             //starting from 1
-            new StepText("", 0, 0),
+            new StepText("", 0, false, StepText.Anchor.ABSOLUTE),
             //status change
-            new StepText(welcomeMessage + "\n\nAppy is now installing python and downloads some helpful libraries (pip, requests, setuptools and more).\nIt shouldn't take more than 10 seconds, and once it's done you can add your first widget.", 0, 0.25f),
+            new StepText(welcomeMessage + "\n\nAppy is now installing python and downloads some helpful libraries (pip, requests, setuptools and more).\nIt shouldn't take more than 10 seconds, and once it's done you can add your first widget.", 20, false, StepText.Anchor.BELOW_HOLE),
             //click on menu
-            new StepText(welcomeMessage + "\n\nAppy is ready. Next, we'll import your first widget.\nClick on the menu icon.", 0, 0.25f),
+            new StepText(welcomeMessage + "\n\nAppy is ready. Next, we'll import your first widget.\nClick on the menu icon.", 20, false, StepText.Anchor.BELOW_HOLE),
             //click on files
-            new StepText("Click on 'Files' to open the python file management tab.\nFrom there you can import new script files.", 0, 0.33f),
+            new StepText("Click on 'Files' to open the python file management tab.\nFrom there you can import new script files.", 20, false, StepText.Anchor.BELOW_HOLE),
             //click on add
-            new StepText("Here all the imported python files would show up.\nClick on '+' to import a new one from the file system.", 0, 0.5f),
+            new StepText("Here all the imported python files would show up.\nClick on '+' to import a new one from the file system.", 20, false, StepText.Anchor.ABOVE_HOLE),
             //click on goto
-            new StepText("The starting path is the preferred script path where you should add your scripts.\nFor now, click on 'goto' and select the examples dir.", 0, 0.25f),
+            new StepText("The starting path is the preferred script path where you should add your scripts.\nFor now, click on 'goto' and select the examples dir.", 20, false, StepText.Anchor.BELOW_HOLE),
             //waiting for dialog
-            new StepText("", 0, 0),
+            new StepText("", 0, false, StepText.Anchor.ABSOLUTE),
             //click on pilling
-            new StepText("You can import any of these example widgets or make your own.\nFor now, we'll go with 'pilling' which uses PIL to draw an image.", 0, 0.5f),
-            new StepText("That's it! you can now add an Appy widget to your home screen and select 'pilling'.", 0, 0.33f),
+            new StepText("You can import any of these example widgets or make your own.\nFor now, we'll go with 'pilling' which uses PIL to draw an image.", 20, false, StepText.Anchor.BELOW_HOLE),
+            new StepText("That's it! you can now add an Appy widget to your home screen and select 'pilling'.", 0.33f, true, StepText.Anchor.ABSOLUTE),
     };
 
     public Tutorial()
@@ -123,7 +131,16 @@ public class Tutorial implements OverlayHoleView.OnHoleClick, TutorialStepListen
         Log.d("APPY", "Tutorial stepsDone: " + stepsDone + ", " + allDone);
         mStepsDone = stepsDone;
 
-        overlay.setTextTop(stepTexts[mStepsDone].y);
+        StepText.Anchor stepAnchor = stepTexts[mStepsDone].anchor;
+        if (stepAnchor == StepText.Anchor.ABSOLUTE)
+        {
+            overlay.setTextTopFromTop(stepTexts[mStepsDone].y, stepTexts[mStepsDone].yIsFactor);
+        }
+        else if (stepAnchor == StepText.Anchor.BELOW_HOLE || stepAnchor == StepText.Anchor.ABOVE_HOLE)
+        {
+            overlay.setTextFromHole(stepTexts[mStepsDone].y, stepTexts[mStepsDone].yIsFactor, stepAnchor == StepText.Anchor.BELOW_HOLE);
+        }
+
         overlay.setText(stepTexts[mStepsDone].text);
 
         if (mStepsDone == 1)
@@ -237,7 +254,7 @@ public class Tutorial implements OverlayHoleView.OnHoleClick, TutorialStepListen
     public void readIsDone()
     {
         SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this.activity.getApplicationContext());
-        tutorialDone = sharedPref.getBoolean("tutorial_done", false);
+        //tutorialDone = sharedPref.getBoolean("tutorial_done", false);
     }
 
     public void writeIsDone(boolean done)

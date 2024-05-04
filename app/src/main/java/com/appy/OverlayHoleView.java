@@ -217,11 +217,6 @@ public class OverlayHoleView extends View implements ValueAnimator.AnimatorUpdat
         return false;
     }
 
-    public int getHoleX()
-    {
-        return holeX;
-    }
-
     public void setAbsoluteHole(int holeX, int holeY, float holeW, float holeH, HoleShape holeShape)
     {
         int[] loc = new int[2];
@@ -240,6 +235,21 @@ public class OverlayHoleView extends View implements ValueAnimator.AnimatorUpdat
         invalidate();
     }
 
+    public float[] getHolePosition()
+    {
+        return new float[] {holeX, holeY, holeW, holeH};
+    }
+
+    public float[] getAbsoluteHolePosition()
+    {
+        int[] loc = new int[2];
+        getLocationInWindow(loc);
+        float[] pos = getHolePosition();
+        pos[0] += loc[0];
+        pos[1] += loc[1];
+        return pos;
+    }
+
     public void setNoHole()
     {
         this.holeShape = HoleShape.None;
@@ -251,21 +261,6 @@ public class OverlayHoleView extends View implements ValueAnimator.AnimatorUpdat
     {
         this.overlayColor = overlayColor;
         invalidate();
-    }
-
-    public int getHoleY()
-    {
-        return holeY;
-    }
-
-    public float getHoleW()
-    {
-        return holeW;
-    }
-
-    public float getHoleH()
-    {
-        return holeH;
     }
 
     public int getOverlayColor()
