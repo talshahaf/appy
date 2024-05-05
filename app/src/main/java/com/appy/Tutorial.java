@@ -6,6 +6,7 @@ import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Rect;
+import android.net.Uri;
 import android.os.Handler;
 import android.util.Log;
 import android.view.View;
@@ -60,7 +61,7 @@ public class Tutorial implements OverlayHoleView.OnHoleClick, TutorialStepListen
 
     public static final String welcomeMessage = "Welcome to Appy!\n\nThe app that lets you build you own home screen widgets using nothing but Python.";
 
-    public static class StepText
+    public static class StepProps
     {
         public enum Anchor
         {
@@ -72,44 +73,41 @@ public class Tutorial implements OverlayHoleView.OnHoleClick, TutorialStepListen
         public float y;
         public boolean yIsFactor;
         public Anchor anchor;
+        public Integer videoRes;
 
-        public StepText(String text, float y, boolean yIsFactor, Anchor anchor)
+        public StepProps(String text, float y, boolean yIsFactor, Anchor anchor, Integer videoRes)
         {
             this.text = text;
             this.y = y;
             this.yIsFactor = yIsFactor;
             this.anchor = anchor;
+            this.videoRes = videoRes;
         }
     }
-    public static final StepText[] stepTexts = new StepText[]{
+    public static final StepProps[] stepProps = new StepProps[]{
             //starting from 1
-            new StepText("", 0, false, StepText.Anchor.ABSOLUTE),
+            new StepProps("", 0, false, StepProps.Anchor.ABSOLUTE, null),
             //status change
-            new StepText(welcomeMessage + "\n\nAppy is now installing python and downloads some helpful libraries (pip, requests, setuptools and more).\nIt shouldn't take more than 10 seconds, and once it's done you can add your first widget.", 20, false, StepText.Anchor.BELOW_HOLE),
+            new StepProps(welcomeMessage + "\n\nAppy is now installing python and downloads some helpful libraries (pip, requests, setuptools and more).\nIt shouldn't take more than 10 seconds, and once it's done you can add your first widget.", 20, false, StepProps.Anchor.BELOW_HOLE, null),
             //click on menu
-            new StepText(welcomeMessage + "\n\nAppy is ready. Next, we'll import your first widget.\nClick on the menu icon.", 20, false, StepText.Anchor.BELOW_HOLE),
+            new StepProps(welcomeMessage + "\n\nAppy is ready. Next, we'll import your first widget.\nClick on the menu icon.", 20, false, StepProps.Anchor.BELOW_HOLE, null),
             //click on files
-            new StepText("Click on 'Files' to open the python file management tab.\nFrom there you can import new script files.", 20, false, StepText.Anchor.BELOW_HOLE),
+            new StepProps("Click on 'Files' to open the python file management tab.\nFrom there you can import new script files.", 20, false, StepProps.Anchor.BELOW_HOLE, null),
             //click on add
-            new StepText("Here all the imported python files would show up.\nClick on '+' to import a new one from the file system.", 20, false, StepText.Anchor.ABOVE_HOLE),
+            new StepProps("Here all the imported python files would show up.\nClick on '+' to import a new one from the file system.", 20, false, StepProps.Anchor.ABOVE_HOLE, null),
             //click on goto
-            new StepText("The starting path is the preferred script path where you should add your scripts.\nFor now, click on 'goto' and select the examples dir.", 20, false, StepText.Anchor.BELOW_HOLE),
+            new StepProps("The starting path is the preferred script path where you should add your scripts.\nFor now, click on 'goto' and select the examples dir.", 20, false, StepProps.Anchor.BELOW_HOLE, null),
             //waiting for dialog
-            new StepText("", 0, false, StepText.Anchor.ABSOLUTE),
+            new StepProps("", 0, false, StepProps.Anchor.ABSOLUTE, null),
             //click on pilling
-            new StepText("You can import any of these example widgets or make your own.\nFor now, we'll go with 'pilling' which uses PIL to draw an image.", 20, false, StepText.Anchor.BELOW_HOLE),
-            new StepText("That's it! you can now add an Appy widget to your home screen and select 'pilling'.", 0.33f, true, StepText.Anchor.ABSOLUTE),
+            new StepProps("You can import any of these example widgets or make your own.\nFor now, we'll go with 'pilling' which uses PIL to draw an image.", 20, false, StepProps.Anchor.BELOW_HOLE, null),
+            new StepProps("That's it! you can now add an Appy widget to your home screen and select 'pilling'.", 0.33f, true, StepProps.Anchor.ABSOLUTE, R.raw.addwidget),
     };
 
     public Tutorial()
     {
         handler = new Handler();
         gTutorialStepDoneListeners.add(this);
-    }
-
-    public void onActivityDestroyed()
-    {
-        gTutorialStepDoneListeners.remove(this);
     }
 
     private void setOverlayVisible(boolean visible)
@@ -131,17 +129,35 @@ public class Tutorial implements OverlayHoleView.OnHoleClick, TutorialStepListen
         Log.d("APPY", "Tutorial stepsDone: " + stepsDone + ", " + allDone);
         mStepsDone = stepsDone;
 
-        StepText.Anchor stepAnchor = stepTexts[mStepsDone].anchor;
-        if (stepAnchor == StepText.Anchor.ABSOLUTE)
+        StepProps stepProp = stepProps[mStepsDone];
+        if (stepProp.anchor == StepProps.Anchor.ABSOLUTE)
         {
-            overlay.setTextTopFromTop(stepTexts[mStepsDone].y, stepTexts[mStepsDone].yIsFactor);
+            overlay.setTextTopFromTop(stepProp.y, stepProp.yIsFactor);
         }
-        else if (stepAnchor == StepText.Anchor.BELOW_HOLE || stepAnchor == StepText.Anchor.ABOVE_HOLE)
+        else if (stepProp.anchor == StepProps.Anchor.BELOW_HOLE || stepProp.anchor == StepProps.Anchor.ABOVE_HOLE)
         {
-            overlay.setTextFromHole(stepTexts[mStepsDone].y, stepTexts[mStepsDone].yIsFactor, stepAnchor == StepText.Anchor.BELOW_HOLE);
+            overlay.setTextFromHole(stepProp.y, stepProp.yIsFactor, stepProp.anchor == StepProps.Anchor.BELOW_HOLE);
         }
 
-        overlay.setText(stepTexts[mStepsDone].text);
+        if (stepProp.videoRes != null && activity != null)
+        {
+            overlay.setVideo(Uri.parse("android.resource://" + activity.getPackageName() + "/" + stepProp.videoRes));
+        }
+        else
+        {
+            overlay.setNoVideo();
+        }
+
+        overlay.setText(stepProp.text);
+
+        if (mStepsDone == 8 && fileBrowserToolbar != null)
+        {
+            overlay.hideBoxNoAnimation();
+        }
+        else
+        {
+            overlay.showBox();
+        }
 
         if (mStepsDone == 1)
         {
@@ -254,7 +270,7 @@ public class Tutorial implements OverlayHoleView.OnHoleClick, TutorialStepListen
     public void readIsDone()
     {
         SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this.activity.getApplicationContext());
-        //tutorialDone = sharedPref.getBoolean("tutorial_done", false);
+        tutorialDone = sharedPref.getBoolean("tutorial_done", false);
     }
 
     public void writeIsDone(boolean done)
@@ -326,6 +342,24 @@ public class Tutorial implements OverlayHoleView.OnHoleClick, TutorialStepListen
     public boolean allowBackPress()
     {
         return tutorialDone;
+    }
+
+    public void onActivityPaused()
+    {
+
+    }
+
+    public void onActivityResumed()
+    {
+        if (overlay != null)
+        {
+            overlay.resumeVideoIfNeeded();
+        }
+    }
+
+    public void onActivityDestroyed()
+    {
+        gTutorialStepDoneListeners.remove(this);
     }
 
     public void onFileBrowserDialogDone()
@@ -425,6 +459,7 @@ public class Tutorial implements OverlayHoleView.OnHoleClick, TutorialStepListen
     public void step(int step, View root, String needle, boolean desc, boolean rectHole, int holePadW, int holePadH)
     {
         overlay.setNoHole();
+        overlay.hideBox();
 
         handler.postDelayed(new Runnable()
         {

@@ -695,4 +695,26 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
         super.onDestroy();
         tutorial.onActivityDestroyed();
     }
+
+    @Override
+    public void onPause()
+    {
+        super.onPause();
+
+        if (tutorial != null)
+        {
+            tutorial.onActivityPaused();
+        }
+    }
+
+    @Override
+    public void onResume()
+    {
+        super.onResume();
+
+        if (tutorial != null)
+        {
+            tutorial.onActivityResumed();
+        }
+    }
 }
