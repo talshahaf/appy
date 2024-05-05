@@ -1,11 +1,17 @@
 package com.appy;
 
 import android.content.Context;
+import android.media.MediaPlayer;
+import android.media.MediaTimestamp;
+import android.net.Uri;
 import android.util.AttributeSet;
 import android.util.Log;
+import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
+import android.widget.VideoView;
 
+import androidx.annotation.NonNull;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.constraintlayout.widget.ConstraintProperties;
 import androidx.constraintlayout.widget.ConstraintSet;
@@ -18,6 +24,7 @@ public class TutorialOverlayView extends ConstraintLayout
     private ConstraintLayout box;
     private Guideline guideline;
     private Button button;
+    private VideoView video;
 
     public TutorialOverlayView(Context context, AttributeSet attrs, int defStyle)
     {
@@ -45,6 +52,15 @@ public class TutorialOverlayView extends ConstraintLayout
         box = findViewById(R.id.overlay_text_bg);
         guideline = findViewById(R.id.guideline);
         button = findViewById(R.id.overlay_btn);
+        video = findViewById(R.id.overlay_video);
+
+        video.setVisibility(View.GONE);
+        video.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
+            @Override
+            public void onPrepared(MediaPlayer mp) {
+                mp.setLooping(true);
+            }
+        });
     }
 
     public void setOverlayColor(int color)
@@ -75,6 +91,18 @@ public class TutorialOverlayView extends ConstraintLayout
     public void setText(String text)
     {
         this.text.setText(text);
+    }
+
+    public void setVideo(Uri uri)
+    {
+        video.setVisibility(View.VISIBLE);
+        video.setVideoURI(uri);
+        video.start();
+    }
+
+    public void setNoVideo()
+    {
+        video.setVisibility(View.GONE);
     }
 
     public void setOnHoleClick(OverlayHoleView.OnHoleClick onHoleClick)
@@ -115,6 +143,31 @@ public class TutorialOverlayView extends ConstraintLayout
         boxParams.topToTop = topToTop ? R.id.guideline : ConstraintProperties.UNSET;
         boxParams.bottomToTop = topToTop ? ConstraintProperties.UNSET : R.id.guideline;
         box.setLayoutParams(boxParams);
+    }
+
+    public void hideBox()
+    {
+        box.setVisibility(View.VISIBLE);
+        box.animate().alpha(0.0f).setDuration(100);
+    }
+
+    public void showBox()
+    {
+        box.setVisibility(View.VISIBLE);
+        box.animate().alpha(1.0f).setDuration(100);
+    }
+
+    public void hideBoxNoAnimation()
+    {
+        box.setVisibility(View.GONE);
+    }
+
+    public void resumeVideoIfNeeded()
+    {
+        if (video.getVisibility() == View.VISIBLE)
+        {
+            video.start();
+        }
     }
 
     public void setButtonText(String text)

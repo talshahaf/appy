@@ -430,4 +430,26 @@ public class MainActivity extends AppCompatActivity implements StatusListener
             ((FilesFragment) fragment).onPythonFileStatusChange();
         }
     }
+
+    @Override
+    public void onPause()
+    {
+        super.onPause();
+
+        if (tutorial != null)
+        {
+            tutorial.onActivityPaused();
+        }
+    }
+
+    @Override
+    public void onResume()
+    {
+        super.onResume();
+
+        if (tutorial != null)
+        {
+            tutorial.onActivityResumed();
+        }
+    }
 }
