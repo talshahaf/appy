@@ -2,18 +2,12 @@ package com.appy;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileOutputStream;
-import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.lang.reflect.InvocationTargetException;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -31,6 +25,7 @@ import java.util.stream.Collectors;
 import java.util.zip.GZIPInputStream;
 
 import android.app.AlarmManager;
+import android.app.ForegroundServiceStartNotAllowedException;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -1551,7 +1546,21 @@ public class Widget extends RemoteViewsService
         // this has nothing to do with the actual foregroundness of the service, but startService will fail if needForeground().
         if (needForeground())
         {
-            context.startForegroundService(intent);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
+            {
+                try
+                {
+                    context.startForegroundService(intent);
+                }
+                catch (ForegroundServiceStartNotAllowedException e)
+                {
+                    Log.e("APPY", "startForeground not allowed", e);
+                }
+            }
+            else
+            {
+                context.startForegroundService(intent);
+            }
         }
         else
         {
