@@ -168,7 +168,7 @@ public class CrashFragment extends FragmentParent
         {
             try
             {
-                crashText.setText(file.exists() ? Utils.readFile(file) : "");
+                crashText.setText(file.exists() ? Utils.readAndHashFileAsString(file, Constants.CRASH_FILE_MAX_SIZE).first : "");
             }
             catch (IOException e)
             {

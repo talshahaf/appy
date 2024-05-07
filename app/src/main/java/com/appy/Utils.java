@@ -2,7 +2,10 @@ package com.appy;
 
 import android.content.Context;
 import android.content.DialogInterface;
+import android.database.Cursor;
 import android.graphics.drawable.Icon;
+import android.net.Uri;
+import android.provider.OpenableColumns;
 import android.util.Log;
 import android.util.Pair;
 
@@ -11,6 +14,7 @@ import androidx.appcompat.app.AlertDialog;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.BufferedWriter;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -18,6 +22,8 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HashSet;
@@ -41,19 +47,32 @@ public class Utils
         public abstract void run();
     }
 
-    public static String hashFile(String path)
+    public static Pair<byte[], String> readAndHashFile(File path, int sizeLimit) throws IOException
+    {
+        InputStream fis = new FileInputStream(path);
+        return readAndHashFile(fis, sizeLimit);
+    }
+
+    public static Pair<byte[], String> readAndHashFile(InputStream fis, int sizeLimit) throws IOException
     {
         try
         {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             byte[] buffer = new byte[65536];
-            InputStream fis = new FileInputStream(path);
+            ByteArrayOutputStream total = new ByteArrayOutputStream();
+
             while (true)
             {
                 int read = fis.read(buffer);
                 if (read > 0)
                 {
                     digest.update(buffer, 0, read);
+                    total.write(buffer, 0, read);
+
+                    if (sizeLimit > 0 && sizeLimit < total.size())
+                    {
+                        throw new IOException("File size exceeded limit: " + sizeLimit);
+                    }
                 }
                 else
                 {
@@ -61,12 +80,26 @@ public class Utils
                 }
             }
             byte[] digestResult = digest.digest();
-            return hexlify(digestResult);
+            return new Pair<>(total.toByteArray(), hexlify(digestResult));
         }
-        catch (IOException | NoSuchAlgorithmException e)
+        catch (NoSuchAlgorithmException e)
         {
-            return "";
+            throw new RuntimeException(e);
         }
+    }
+
+    public static Pair<String, String> readAndHashFileAsString(InputStream fis, int sizeLimit) throws IOException
+    {
+        Pair<byte[], String> result = readAndHashFile(fis, sizeLimit);
+        String text = new String(result.first, StandardCharsets.UTF_8);
+        return new Pair<>(text, result.second);
+    }
+
+    public static Pair<String, String> readAndHashFileAsString(File path, int sizeLimit) throws IOException
+    {
+        Pair<byte[], String> result = readAndHashFile(path, sizeLimit);
+        String text = new String(result.first, StandardCharsets.UTF_8);
+        return new Pair<>(text, result.second);
     }
 
     public static String hexlify(byte[] bytes)
@@ -79,20 +112,30 @@ public class Utils
         return sb.toString();
     }
 
-    public static String readFile(File path) throws IOException
+    public static String getFilenameFromUri(Context context, Uri uri, String defaultName)
     {
-        FileReader reader = new FileReader(path);
-
-        StringBuilder sb = new StringBuilder();
-
-        char[] buf = new char[4096];
-        int readed;
-        do
+        if ("content".equals(uri.getScheme()))
         {
-            readed = reader.read(buf, 0, buf.length);
-            sb.append(buf, 0, readed);
-        } while (readed == buf.length);
-        return sb.toString();
+            try (Cursor cursor = context.getContentResolver().query(uri, null, null, null, null))
+            {
+                if (cursor != null && cursor.moveToFirst())
+                {
+                    int index = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
+                    if (index != -1)
+                    {
+                        return cursor.getString(index);
+                    }
+                }
+            }
+        }
+
+        String lastSegment = uri.getLastPathSegment();
+        if (lastSegment != null)
+        {
+            return lastSegment;
+        }
+
+        return defaultName;
     }
 
     public static <T> Pair<Set<T>, Set<T>> intersectionAndXor(Set<T> a, Set<T> b)
@@ -204,7 +247,7 @@ public class Utils
 
         String trace = sb.toString();
 
-        tryWriteFile(path, trace);
+        tryWriteStringFile(path, trace);
 
         for (String line : trace.split("\n"))
         {
@@ -239,7 +282,15 @@ public class Utils
         }
     }
 
-    public static void tryWriteFile(String path, String data)
+    public static void writeFile(File path, byte[] data) throws IOException
+    {
+        try(OutputStream os = new FileOutputStream(path))
+        {
+            os.write(data);
+        }
+    }
+
+    public static void tryWriteStringFile(String path, String data)
     {
         BufferedWriter bw = null;
         try
@@ -285,7 +336,7 @@ public class Utils
         {
             String trace = Stacktrace.stackTraceString(e);
 
-            tryWriteFile(path, trace);
+            tryWriteStringFile(path, trace);
 
             for (String line : trace.split("\n"))
             {

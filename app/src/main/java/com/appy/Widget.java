@@ -3103,7 +3103,17 @@ public class Widget extends RemoteViewsService
         {
             PythonFile file = (PythonFile) args[0];
 
-            String newhash = Utils.hashFile(file.path);
+            String newhash = "";
+            try
+            {
+                newhash = Utils.readAndHashFileAsString(new File(file.path), Constants.PYTHON_FILE_MAX_SIZE).second;
+            }
+            catch (IOException e)
+            {
+                Log.e("APPY", "Could not hash file: "+file.path, e);
+                //let python try to import anyway
+            }
+
             if (file.state == PythonFile.State.ACTIVE && newhash.equalsIgnoreCase(file.hash))
             {
                 //file is exactly the same

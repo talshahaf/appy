@@ -58,6 +58,7 @@ public class Constants
     public static final String FRAGMENT_ARG_EXTRA = "FRAGMENT_ARG_EXTRA";
     public static final String FRAGMENT_ARG_WIDGET = "FRAGMENT_ARG_WIDGET";
     public static final String FRAGMENT_ARG_CONFIG = "FRAGMENT_ARG_CONFIG";
+    public static final String FRAGMENT_ARG_FILEURI = "FRAGMENT_ARG_FILEURI";
     public static final String FRAGMENT_ARG_REQUESTCODE = "FRAGMENT_ARG_REQUESTCODE";
     public static final String APP_PACKAGE_NOCOM = "appy";
     public static final String APP_PACKAGE_NAME = "com." + APP_PACKAGE_NOCOM;
@@ -76,6 +77,9 @@ public class Constants
     public static final int TIMER_MAX_HANDLER = 60 * 60 * 1000; //1 hour
     public static final int ERROR_COALESCE_MILLI = 60 * 1000; //1 minute
     public static final int TASK_QUEUE_SUSPICIOUS_SIZE = 20;
+    public static final int CONFIG_IMPORT_MAX_SIZE = 100 * 1024 * 1024;
+    public static final int CRASH_FILE_MAX_SIZE = 10 * 1024 * 1024;
+    public static final int PYTHON_FILE_MAX_SIZE = 100 * 1024 * 1024;
     public static final String[] CRASHES_FILENAMES = {
             "javacrash.txt",
             "pythoncrash.txt",
