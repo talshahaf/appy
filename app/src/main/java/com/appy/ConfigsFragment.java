@@ -129,7 +129,7 @@ public class ConfigsFragment extends FragmentParent
 
             try
             {
-                String content = Utils.readFile(new File(files[0]));
+                String content = Utils.readAndHashFileAsString(new File(files[0]), Constants.CONFIG_IMPORT_MAX_SIZE).first;
                 HashMap<String, HashMap<String, Pair<String, String>>> newConfig = Configurations.deserialize(content);
 
                 Utils.showConfirmationDialog(getActivity(),

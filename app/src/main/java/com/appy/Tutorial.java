@@ -280,12 +280,16 @@ public class Tutorial implements OverlayHoleView.OnHoleClick, TutorialStepListen
         editor.apply();
     }
 
-    public void startMain(@Nullable Widget service)
+    public boolean startMain(@Nullable Widget service)
     {
         setOverlayVisible(!tutorialDone);
         if (tutorialDone)
         {
-            return;
+            if (tutorialFinishedListener != null)
+            {
+                tutorialFinishedListener.tutorialFinished();
+            }
+            return false;
         }
 
         Log.d("APPY", "Tutorial start");
@@ -297,6 +301,7 @@ public class Tutorial implements OverlayHoleView.OnHoleClick, TutorialStepListen
 
         mStepsDone = 0;
         doNextStep();
+        return true;
     }
 
     public void startFileBrowser()

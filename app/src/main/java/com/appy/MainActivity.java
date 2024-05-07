@@ -133,7 +133,26 @@ public class MainActivity extends AppCompatActivity implements StatusListener
         Widget.startService(this, new Intent(this, Widget.class));
         doBindService();
 
+        boolean inTutorialMode = tutorial.startMain(widgetService);
+        if (inTutorialMode)
+        {
+            return;
+        }
+
+        // if not in tutorial, do fancy intent handling
+
         String startingFragment = getIntent().getStringExtra(Constants.FRAGMENT_NAME_EXTRA);
+        Bundle fragmentArg = getIntent().getBundleExtra(Constants.FRAGMENT_ARG_EXTRA);
+
+        // Handle py files
+        if ("android.intent.action.VIEW".equals(getIntent().getAction()) && getIntent().getData() != null)
+        {
+            startingFragment = "Files";
+
+            fragmentArg = new Bundle();
+            fragmentArg.putParcelable(Constants.FRAGMENT_ARG_FILEURI, getIntent().getData());
+        }
+
         int startingFragmentIndex = 0;
         for (int i = 0; i < navView.getMenu().size(); i++)
         {
@@ -143,9 +162,7 @@ public class MainActivity extends AppCompatActivity implements StatusListener
                 break;
             }
         }
-        selectDrawerItem(navView.getMenu().getItem(startingFragmentIndex), getIntent().getBundleExtra(Constants.FRAGMENT_ARG_EXTRA));
-
-        tutorial.startMain(widgetService);
+        selectDrawerItem(navView.getMenu().getItem(startingFragmentIndex), fragmentArg);
     }
 
     public void permissionsResult(boolean granted)
