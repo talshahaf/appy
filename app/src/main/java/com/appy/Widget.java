@@ -189,7 +189,7 @@ public class Widget extends RemoteViewsService
         }
     }
 
-    class Task<T>
+    class Task<T> implements Runnable
     {
         public Task(Runner<T> torun, T... args)
         {
@@ -1937,7 +1937,7 @@ public class Widget extends RemoteViewsService
         if (refresh)
         {
             Log.d("APPY", "File " + pythonFile.path + " modified, reloading");
-            refreshPythonFile(pythonFile, true, false);
+            refreshPythonFile(pythonFile);
         }
         else
         {
@@ -2235,20 +2235,8 @@ public class Widget extends RemoteViewsService
 
     public void refreshPythonFile(PythonFile file)
     {
-        refreshPythonFile(file, true, false);
-    }
-
-    public void refreshPythonFile(PythonFile file, boolean usePool, boolean skipRefresh)
-    {
-        Task task = new Task<>(new CallImportTask(), file, skipRefresh);
-        if (usePool)
-        {
-            addTask(Constants.IMPORT_TASK_QUEUE, task, false);
-        }
-        else
-        {
-            task.run();
-        }
+        Task task = new Task<>(new CallImportTask(), file, false);
+        addTask(Constants.IMPORT_TASK_QUEUE, task, false);
     }
 
     public static String getPreferredScriptDirStatic(Context context)
@@ -2283,8 +2271,11 @@ public class Widget extends RemoteViewsService
         ArrayList<PythonFile> files = getPythonFiles();
         for (PythonFile f : files)
         {
-            refreshPythonFile(f, false, true);
+            // python cannot do multithreaded imports
+            Task task = new Task<>(new CallImportTask(), f, true);
+            task.run();
         }
+
         if (updateListener != null)
         {
             updateListener.refreshManagers();
