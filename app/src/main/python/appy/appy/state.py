@@ -1,57 +1,112 @@
 import pprint, copy, time
 from . import java
 from .utils import AttrDict, dumps, loads
+import urllib.parse
+import threading
 
 java_widget_manager = None
+global_state = None
+
+state_lock = threading.Lock()
 
 def default_state():
-    return AttrDict({
+    return AttrDict.make({
         'globals': {},
         'nonlocals': {},
         'locals': {},
     })
 
-global_state = None
+def escape_join(keys):
+    return ':'.join(urllib.parse.quote_from_bytes(str(key).encode('utf8', errors="surrogatepass")) for key in keys)
 
-def safe_copy(d):
-    out = {}
-    for k in list(d.keys()):
+def unescape_join(s):
+    return [urllib.parse.unquote_to_bytes(key).decode('utf8', errors="surrogatepass") for key in s.split(':')]
+
+def load_state():
+    global global_state
+
+    saved_state = java_widget_manager.loadAllState()
+
+    with state_lock:
+        global_state = default_state()
+
+        for _, value in saved_state:
+            scope_name, scope_key, key, value = loads(value)
+            global_state[scope_name].setdefault(scope_key, AttrDict())[key] = value
+
+        AttrDict.__recursive_resetmodified__(global_state)
+
+def save_modified():
+    modified = []
+    with state_lock:
+        shallow_global_snapshot = AttrDict(global_state)
+    for scope_name, scope_dict in shallow_global_snapshot.items():
+        #ignore keyerrors from race conditions
         try:
-            v = d[k]
-            if isinstance(v, AttrDict):
-                out[k] = AttrDict(safe_copy(v))
-            elif isinstance(v, dict):
-                out[k] = safe_copy(v)
-            else:
-                out[k] = copy.deepcopy(v)
+            with state_lock:
+                shallow_scope_snapshot = AttrDict(scope_dict)
+            for scope_key, d in shallow_scope_snapshot.items():
+                try:
+                    with state_lock:
+                        shallow_d_snapshot = AttrDict(d)
+                    for k,v in shallow_d_snapshot.items():
+                        try:
+                            with state_lock:
+                                if AttrDict.__recursive_ismodified__(v):
+                                    modified.append((scope_name, scope_key, k))
+                                    AttrDict.__recursive_resetmodified__(v)
+                        except KeyError:
+                            pass
+                    changed_keys = shallow_d_snapshot.keys() if shallow_d_snapshot.__modified__ is True else shallow_d_snapshot.__modified__
+                    for k in changed_keys:
+                        modified.append((scope_name, scope_key, k))
+                    d.__resetmodified__()
+                except KeyError:
+                    pass
         except KeyError:
             pass
-    return out
 
-def dumps_state():
-    return dumps(AttrDict({k: safe_copy(v) for k,v in global_state.items()}))
+    if not modified:
+        return
 
-def save():
-    java_widget_manager.saveState(dumps_state())
+    keys = []
+    values = []
+    deleteds = []
+    for scope_name, scope_key, key in modified:
+        try:
+            # save keys as strings, just for uniqueness
+            # save fully typed keys as dumps
+            keys.append(escape_join((scope_name, scope_key, key)))
+            values.append(dumps((scope_name, scope_key, key, global_state[scope_name].get(scope_key, {}).get(key))))
+            deleteds.append(scope_key not in global_state[scope_name] or key not in global_state[scope_name][scope_key])
+        except KeyError:
+            #race condition?
+            continue
 
-def setter(d, k, value=None, delete=None):
-    if delete:
-        del d[k]
-    else:
-        d[k] = value
+    java_widget_manager.saveSpecificState(java.new.java.lang.String[()](keys),
+                                          java.jboolean[()](deleteds),
+                                          java.new.java.lang.String[()](values))
 
-def getter(d, k):
-    return d.get(k), k in d
+def setter(d, key, value=None, delete=None):
+    with state_lock:
+        if delete:
+            del d[key]
+        else:
+            d[key] = AttrDict.make(value)
+
+def getter(d, key):
+    return d.get(key), key in d
 
 class State:
     def __init__(self, widget_name, widget_id):
-        self.__dict__['__info__'] = AttrDict(scope_keys=AttrDict(locals=widget_id, nonlocals=widget_name, globals=None), scopes={})
-    
-    def __getscope__(self, scope_name, scope_key):
-        return global_state[scope_name].setdefault(scope_key, {}) if scope_key is not None else global_state[scope_name]
+        if widget_name is None or widget_id is None:
+            raise ValueError('Cannot initialize state without widget_name and widget_id')
+        self.__dict__['__info__'] = AttrDict(scope_keys=AttrDict(locals=widget_id, nonlocals=widget_name, globals='globals'), scopes={})
         
     def __act__(self, f, scope_name, scope_key, attr, **kwargs):
-        return f(self.__getscope__(scope_name, scope_key), attr, **kwargs)
+        scope_dict = global_state[scope_name].setdefault(scope_key, AttrDict())
+
+        return f(scope_dict, attr, **kwargs)
         
     def nonlocals(self, *attrs):
         for attr in attrs:
@@ -83,10 +138,8 @@ class State:
         raise AttributeError(attr)
 
     def __changeattr__(self, attr, **kwargs):
-        if attr in self.__info__['scopes']:
-            self.__act__(setter, self.__info__['scopes'][attr], self.__info__['scope_keys'][self.__info__['scopes'][attr]], attr, **kwargs)
-        else:
-            self.__act__(setter, 'locals', self.__info__['scope_keys']['locals'], attr, **kwargs)
+        attr_scope = self.__info__['scopes'].get(attr, 'locals')
+        self.__act__(setter, attr_scope, self.__info__['scope_keys'][attr_scope], attr, **kwargs)
         
     def __setattr__(self, attr, value):
         self.__changeattr__(attr, value=value)
@@ -105,10 +158,19 @@ class State:
         
     def __dir__(self):
         return list(
-                        set(self.__getscope__('locals', self.__info__['scope_keys']['locals']).keys()) |
-                        set(self.__getscope__('nonlocals', self.__info__['scope_keys']['nonlocals']).keys()) |
-                        set(self.__getscope__('globals', self.__info__['scope_keys']['globals']).keys())
+                        set(self.locals_dir()) |
+                        set(self.nonlocals_dir()) |
+                        set(self.globals_dir())
                     )
+
+    def globals_dir(self):
+        return list(global_state['globals'].get(self.__info__['scope_keys']['globals'], {}).keys())
+
+    def nonlocals_dir(self):
+        return list(global_state['nonlocals'].get(self.__info__['scope_keys']['nonlocals'], {}).keys())
+
+    def locals_dir(self):
+        return list(global_state['locals'].get(self.__info__['scope_keys']['locals'], {}).keys())
 
     def __contains__(self, attr):
         return hasattr(self, attr)
@@ -123,17 +185,17 @@ class State:
             setattr(self, attr, default)
             return default
 
-    def __save__(self):
-        save()
+    def scopes(self):
+        result = {}
+        for k,v in self.__info__['scopes']:
+            result.setdefault(v, []).append(k)
+        return result
 
 def init():
-    global java_widget_manager, global_state
+    global java_widget_manager
     java_widget_manager = java.get_java_arg()
-    state = java_widget_manager.loadState()
-    if state != java.Null:
-        global_state = AttrDict(loads(str(state)))
-    else:
-        global_state = default_state()
+
+    load_state()
         
 def state_layout():
     global global_state
@@ -154,35 +216,35 @@ def print_state():
 def wipe_state():
     global global_state
     global_state = default_state()
-    save()
+    java_widget_manager.deleteSavedState()
     
 def clean_state(scope, widget, key):
-    if scope == 'globals':
+    try:
+        if scope in ('nonlocals', 'locals') and widget is None:
+            raise ValueError(f'invalid operation: {scope} {widget} {key}')
+
+        state = State(widget if scope == 'nonlocals' else '', widget if scope == 'locals' else -1)
+        scope_funcs = {'globals': (state.globals, state.globals_dir),
+                       'nonlocals': (state.nonlocals, state.nonlocals_dir),
+                       'locals': (state.locals, state.locals_dir)}
+        if scope not in scope_funcs:
+            raise ValueError(f'no such scope {scope}')
+
+        scope_def, scope_dir = scope_funcs[scope]
+
         if key is not None:
-            del global_state.globals[None][key]
+            scope_def(key)
+            del state[key]
         else:
-            #delete all global
-            global_state.globals.clear()
-    elif scope == 'nonlocals':
-        if widget is not None and key is not None:
-            del global_state.nonlocals[widget][key]
-        elif widget is not None:
-            #delete all nonlocals of widget
-            global_state.nonlocals.pop(widget, None)
-        else:
-            raise ValueError(f'invalid operation: {scope} {widget} {key}')
-    elif scope == 'locals':
-        if widget is not None and key is not None:
-            del global_state.locals[widget][key]
-        elif widget is not None:
-            #delete all locals of widget id
-            global_state.locals.pop(widget, None)
-        else:
-            raise ValueError(f'invalid operation: {scope} {widget} {key}')
-    else:
-        raise ValueError(f'no such scope {scope}')
-        
-    save()
+            keys = scope_dir()
+            scope_def(*keys)
+            for key in keys:
+                del state[key]
+
+        save_modified()
+    except KeyError:
+        pass #already cleared
+
 
 def clean_nonlocal_state(name):
     clean_state('nonlocals', name, None)

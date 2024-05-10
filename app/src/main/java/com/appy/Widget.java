@@ -10,6 +10,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
@@ -42,7 +43,6 @@ import android.os.AsyncTask;
 import android.os.Binder;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.Environment;
 import android.os.FileObserver;
 import android.os.Handler;
 import android.os.IBinder;
@@ -1797,11 +1797,6 @@ public class Widget extends RemoteViewsService
         }
     }
 
-    public void deferredStateDump()
-    {
-        addTask(Constants.IMPORT_TASK_QUEUE, new Task<>(new StateDumpTask()), true);
-    }
-
     public long setTimer(long millis, int type, int widgetId, String data)
     {
         return setTimer(System.currentTimeMillis(), millis, type, widgetId, data, -1);
@@ -2491,18 +2486,60 @@ public class Widget extends RemoteViewsService
         dumpPythonStacktrace();
     }
 
-    public void saveState(String state)
+    public void deleteSavedState()
     {
         SharedPreferences sharedPref = getSharedPreferences("appy", Context.MODE_PRIVATE);
         SharedPreferences.Editor editor = sharedPref.edit();
-        editor.putString("state", state);
+
+        Set<? extends Map.Entry<String, ?>> entries = sharedPref.getAll().entrySet();
+        for (Map.Entry<String, ?> entry : entries)
+        {
+            String key = entry.getKey();
+            if (key.startsWith("state_"))
+            {
+                editor.remove(key);
+            }
+        }
+
         editor.apply();
     }
 
-    public String loadState()
+    public void saveSpecificState(String[] keys, boolean[] deleteds, String[] datas)
     {
         SharedPreferences sharedPref = getSharedPreferences("appy", Context.MODE_PRIVATE);
-        return sharedPref.getString("state", null);
+        SharedPreferences.Editor editor = sharedPref.edit();
+        for (int i = 0; i < keys.length; i++)
+        {
+            String saveKey = "state_" + keys[i];
+            if (deleteds[i])
+            {
+                editor.remove(saveKey);
+            }
+            else
+            {
+                editor.putString(saveKey, datas[i]);
+            }
+        }
+        editor.apply();
+    }
+
+    public String[][] loadAllState()
+    {
+        SharedPreferences sharedPref = getSharedPreferences("appy", Context.MODE_PRIVATE);
+        Set<? extends Map.Entry<String, ?>> entries = sharedPref.getAll().entrySet();
+        String[][] stateEntries = new String[entries.size()][];
+        int c = 0;
+        for (Map.Entry<String, ?> entry : entries)
+        {
+            String key = entry.getKey();
+            if (key.startsWith("state_"))
+            {
+                stateEntries[c] = new String[]{key.substring("state_".length()), (String)entry.getValue()};
+                c++;
+            }
+        }
+
+        return Arrays.copyOfRange(stateEntries, 0, c);
     }
 
     public Configurations getConfigurations()
@@ -3210,25 +3247,6 @@ public class Widget extends RemoteViewsService
         }
     }
 
-    private class StateDumpTask implements Runner<Object>
-    {
-        @Override
-        public void run(Object... args)
-        {
-            callStateDump();
-        }
-    }
-
-    public void callStateDump()
-    {
-        if (updateListener != null)
-        {
-            String state = updateListener.dumpState();
-            // Log.d("APPY", "dumping state: "+state.length()+" bytes");
-            saveState(state);
-        }
-    }
-
     public void callConfigWidget(int widgetId, final String key)
     {
         callWidgetChangingCallback(widgetId, new CallbackCaller()
@@ -3311,10 +3329,6 @@ public class Widget extends RemoteViewsService
             Log.e("APPY", "Exception in python", e);
             setSpecificErrorWidget(androidWidgetId, widgetId, e);
             return true;
-        }
-        finally
-        {
-            deferredStateDump();
         }
 
         return false;

@@ -578,7 +578,7 @@ def clear_module(path):
     sys.modules.pop(module_name(path), None)
 
 def obtain_manager_state():
-    manager_state = state.State(None, -1) #special own scope
+    manager_state = state.State('__widgetmanager__', -1) #special own scope
     manager_state.locals('__token__')
     manager_state.locals('chosen')
     token = 1
@@ -725,8 +725,7 @@ def refresh_widgets(path, removed=False):
             if removed:
                 unchoose_widget(widget_id)
             widgets.Widget(widget_id, None).invalidate()
-    if removed:
-        state.save()
+    state.save_modified()
 
 class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
     def export(self, input, output):
@@ -740,6 +739,7 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
         if input is not None and input == out:
             return None
 
+        state.save_modified()
         return json.dumps(out)
 
     def import_(self, s):
@@ -764,7 +764,7 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
     def onDelete(self, widget_id):
         print(f'python got onDelete')
         unchoose_widget(widget_id)
-        state.save()
+        state.save_modified()
 
     @java.override
     def onItemClick(self, widget_id, views_str, collection_id, position, view_id):
@@ -826,7 +826,15 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
     @java.override
     def wipeStateRequest(self):
         print('wipe state request called')
+        manager_state = obtain_manager_state()
+        token = manager_state.__token__
+        chosen_copy = manager_state.chosen.copy()
         state.wipe_state()
+        #don't lose manager
+        manager_state.chosen = chosen_copy
+        manager_state.__token__ = token
+        state.save_modified()
+
 
     @java.override
     def importFile(self, path, skip_refresh):
@@ -877,7 +885,7 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
         #flatten globals
         
         if layout['globals']:
-            layout['globals'] = layout['globals'][None]
+            layout['globals'] = layout['globals']['globals']
         
         #layout:
         #  globals:
@@ -908,10 +916,6 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
     def findWidgetsByMame(self, name):
         widgets = get_widgets_by_name(name)
         return java.jint[()](widgets)
-
-    @java.override
-    def dumpState(self):
-        return state.dumps_state()
 
     @java.override
     def syncConfig(self, serialized_onfig):

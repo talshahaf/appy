@@ -30,12 +30,44 @@ def get_args(f):
     kwargs += kwonlyargs
     return args, kwargs, varargs is not None, varkw is not None
 
+def settermethod(use_key=True):
+    def dec(f):
+        def wrapper(self, *args, **kwargs):
+            if use_key and len(args) > 0 and args[0] in self.reserved:
+                raise AttributeError(f'The following keys are reserved: {", ".join(self.reserved)}')
+            ret = f(self, *args, **kwargs)
+            self.__setmodified__(args[0] if use_key and len(args) > 0 else None, use_key and len(args) > 0)
+            return ret
+        return wrapper
+    return dec
+
 class AttrDict(dict):
+    reserved = ['__modified__']
     def __init__(self, *args, **kwargs):
         if len(args) == 1 and isinstance(args[0], AttrDict):
             super().__init__({k:v for k,v in args[0].items()})
+            object.__setattr__(self, '__modified__', args[0].__modified__)
         else:
             super().__init__(*args, **kwargs)
+            self.__resetmodified__()
+
+        if any(res in self for res in self.reserved):
+            raise KeyError(f'The following keys are reserved: {", ".join(self.reserved)}')
+
+    def __resetmodified__(self):
+        object.__setattr__(self, '__modified__', set())
+
+    def __setmodified__(self, key, use_key):
+        if use_key:
+            modified = self.__dict__.setdefault('__modified__', set())
+            # once modified is True, there's no point adding keys until reset
+            if modified is not True:
+                modified.add(key)
+        else:
+            # everything was modified
+            object.__setattr__(self, '__modified__', True)
+
+    ###attr dict
 
     def __getattr__(self, key):
         try:
@@ -43,18 +75,51 @@ class AttrDict(dict):
         except KeyError as e:
             raise AttributeError from e
 
+    @settermethod(True)
     def __delattr__(self, key):
         try:
             return self.__delitem__(key)
         except KeyError as e:
             raise AttributeError from e
 
+    @settermethod(True)
     def __setattr__(self, key, value):
         try:
             return self.__setitem__(key, value)
         except KeyError as e:
             raise AttributeError from e
 
+    ###all dict setters
+
+    @settermethod(True)
+    def __setitem__(self, *args, **kwargs):
+        return super().__setitem__(*args, **kwargs)
+
+    @settermethod(True)
+    def __delitem__(self, *args, **kwargs):
+        return super().__delitem__(*args, **kwargs)
+
+    @settermethod(False)
+    def clear(self, *args, **kwargs):
+        return super().clear(*args, **kwargs)
+
+    @settermethod(True)
+    def setdefault(self, *args, **kwargs):
+        return super().setdefault(*args, **kwargs)
+
+    @settermethod(False)
+    def pop(self, *args, **kwargs):
+        return super().pop(*args, **kwargs)
+
+    @settermethod(False)
+    def popitem(self, *args, **kwargs):
+        return super().popitem(*args, **kwargs)
+
+    @settermethod(False)
+    def update(self, *args, **kwargs):
+        return super().update(*args, **kwargs)
+
+    #################
 
     @classmethod
     def make(cls, d):
@@ -73,6 +138,18 @@ class AttrDict(dict):
         else:
             return d
 
+    @classmethod
+    def __recursive_ismodified__(cls, d):
+        if not isinstance(d, AttrDict):
+            return False
+        return any(cls.__recursive_ismodified__(v) for v in d.values()) or d.__modified__
+
+    @classmethod
+    def __recursive_resetmodified__(cls, d):
+        if isinstance(d, AttrDict):
+            for v in d.values():
+                cls.__recursive_resetmodified__(v)
+            d.__resetmodified__()
 
 def prepare_image_cache_dir():
     #TODO somehow cleanup cache every now and then
