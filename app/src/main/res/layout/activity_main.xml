@@ -14,7 +14,8 @@
 
     <RelativeLayout
         android:layout_width="match_parent"
-        android:layout_height="match_parent">
+        android:layout_height="match_parent"
+        >
 
         <include
             layout="@layout/toolbar"
@@ -24,8 +25,22 @@
         <FrameLayout
             android:id="@+id/container"
             android:layout_below="@+id/toolbar"
+            android:layout_above="@id/bottomtext"
             android:layout_width="match_parent"
             android:layout_height="match_parent" />
+
+        <TextView
+            android:id="@+id/bottomtext"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:layout_marginEnd="8dp"
+            android:layout_marginBottom="8dp"
+            android:layout_alignParentBottom="true"
+            android:layout_gravity="bottom"
+            android:text="All time location permission not granted.\nExpect unresponsiveness due to android killing the service"
+            android:textColor="#DD3A3A"
+            />
     </RelativeLayout>
 
     <com.google.android.material.navigation.NavigationView
@@ -34,6 +49,7 @@
         android:layout_height="match_parent"
         android:layout_gravity="start"
         app:menu="@menu/drawer"/>
+
 
 </androidx.drawerlayout.widget.DrawerLayout>
 
