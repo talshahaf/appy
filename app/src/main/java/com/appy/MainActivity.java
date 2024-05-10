@@ -214,7 +214,7 @@ public class MainActivity extends AppCompatActivity implements StatusListener
         int neededStep = checkPermissions();
         if (neededStep != -1)
         {
-            Log.d("APPY", "Requesting location permissions step" + neededStep);
+            Log.d("APPY", "Requesting location permissions step " + neededStep);
             if (!permissionDialogShown && !permission_ask_message.isEmpty() && getShowPermissionDialog())
             {
                 permissionDialogShown = true;
@@ -470,7 +470,6 @@ public class MainActivity extends AppCompatActivity implements StatusListener
         }
         if (tutorial == null || tutorial.isFinished())
         {
-            Log.d("APPY", "you?");
             int neededStep = checkPermissions();
             permissionsResult(neededStep == -1);
         }
