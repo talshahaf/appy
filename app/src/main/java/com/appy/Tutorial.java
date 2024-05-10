@@ -273,6 +273,12 @@ public class Tutorial implements OverlayHoleView.OnHoleClick, TutorialStepListen
         tutorialDone = sharedPref.getBoolean("tutorial_done", false);
     }
 
+    public boolean isFinished()
+    {
+        readIsDone();
+        return tutorialDone;
+    }
+
     public void writeIsDone(boolean done)
     {
         SharedPreferences.Editor editor = PreferenceManager.getDefaultSharedPreferences(this.activity.getApplicationContext()).edit();
