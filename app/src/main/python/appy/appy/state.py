@@ -7,8 +7,6 @@ import threading
 java_widget_manager = None
 global_state = None
 
-state_lock = threading.Lock()
-
 def default_state():
     return AttrDict.make({
         'globals': {},
@@ -27,37 +25,29 @@ def load_state():
 
     saved_state = java_widget_manager.loadAllState()
 
-    with state_lock:
-        global_state = default_state()
+    global_state = default_state()
 
-        for _, value in saved_state:
-            scope_name, scope_key, key, value = loads(value)
-            global_state[scope_name].setdefault(scope_key, AttrDict())[key] = value
+    for _, value in saved_state:
+        scope_name, scope_key, key, value = loads(value)
+        global_state[scope_name].setdefault(scope_key, AttrDict())[key] = value
 
-        AttrDict.__recursive_resetmodified__(global_state)
+    AttrDict.__recursive_resetmodified__(global_state)
 
 def save_modified():
     modified = []
-    with state_lock:
-        shallow_global_snapshot = AttrDict(global_state)
-    for scope_name, scope_dict in shallow_global_snapshot.items():
+    for scope_name, scope_dict in list(global_state.items()):
         #ignore keyerrors from race conditions
         try:
-            with state_lock:
-                shallow_scope_snapshot = AttrDict(scope_dict)
-            for scope_key, d in shallow_scope_snapshot.items():
+            for scope_key, d in list(scope_dict.items()):
                 try:
-                    with state_lock:
-                        shallow_d_snapshot = AttrDict(d)
-                    for k,v in shallow_d_snapshot.items():
+                    for k,v in list(d.items()):
                         try:
-                            with state_lock:
-                                if AttrDict.__recursive_ismodified__(v):
-                                    modified.append((scope_name, scope_key, k))
-                                    AttrDict.__recursive_resetmodified__(v)
+                            if AttrDict.__recursive_ismodified__(v):
+                                modified.append((scope_name, scope_key, k))
+                                AttrDict.__recursive_resetmodified__(v)
                         except KeyError:
                             pass
-                    changed_keys = shallow_d_snapshot.keys() if shallow_d_snapshot.__modified__ is True else shallow_d_snapshot.__modified__
+                    changed_keys = list(d.keys()) if d.__modified__ is True else d.__modified__
                     for k in changed_keys:
                         modified.append((scope_name, scope_key, k))
                     d.__resetmodified__()
@@ -76,7 +66,7 @@ def save_modified():
         try:
             # save keys as strings, just for uniqueness
             # save fully typed keys as dumps
-            keys.append(escape_join((scope_name, scope_key, key)))
+            keys.append(escape_join((scope_name, repr(scope_key), repr(key))))
             values.append(dumps((scope_name, scope_key, key, global_state[scope_name].get(scope_key, {}).get(key))))
             deleteds.append(scope_key not in global_state[scope_name] or key not in global_state[scope_name][scope_key])
         except KeyError:
@@ -88,11 +78,10 @@ def save_modified():
                                           java.new.java.lang.String[()](values))
 
 def setter(d, key, value=None, delete=None):
-    with state_lock:
-        if delete:
-            del d[key]
-        else:
-            d[key] = AttrDict.make(value)
+    if delete:
+        del d[key]
+    else:
+        d[key] = AttrDict.make(value)
 
 def getter(d, key):
     return d.get(key), key in d

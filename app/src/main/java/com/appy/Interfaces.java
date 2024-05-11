@@ -49,6 +49,8 @@ interface WidgetUpdateListener
 
     void cleanState(String scope, String widget, String key);
 
+    void saveState();
+
     int[] findWidgetsByMame(String name);
 
     void syncConfig(String serializedConfig);

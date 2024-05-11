@@ -1406,15 +1406,6 @@ public class Widget extends RemoteViewsService
         }
     }
 
-    public void putWidget(int widgetId, String json)
-    {
-        synchronized (lock)
-        {
-            widgets.put(widgetId, DynamicView.toJSONString(DynamicView.fromJSONArray(json))); //assign ids
-        }
-        saveWidgets();
-    }
-
     public void loadWidgets()
     {
         try
@@ -2495,6 +2486,33 @@ public class Widget extends RemoteViewsService
         editor.apply();
     }
 
+    private class SaveTask implements Runner<Boolean>
+    {
+        @Override
+        public void run(Boolean... args)
+        {
+            callSave(args[0]);
+        }
+    }
+
+    public void callSave(boolean saveWidgets)
+    {
+        if (updateListener != null)
+        {
+            updateListener.saveState();
+        }
+
+        if (saveWidgets)
+        {
+            saveWidgets();
+        }
+    }
+
+    public void deferredSave(boolean saveWidgets)
+    {
+        addTask(Constants.IMPORT_TASK_QUEUE, new Task<>(new SaveTask(), saveWidgets), true);
+    }
+
     public void saveSpecificState(String[] keys, boolean[] deleteds, String[] datas)
     {
         SharedPreferences sharedPref = getSharedPreferences("appy", Context.MODE_PRIVATE);
@@ -3290,6 +3308,8 @@ public class Widget extends RemoteViewsService
             return false;
         }
 
+        Log.d("APPY", "widgetChangingCallback Start");
+
         int androidWidgetId = getAndroidWidget(widgetId);
         String widget;
         synchronized (lock)
@@ -3300,18 +3320,29 @@ public class Widget extends RemoteViewsService
         boolean updated = false;
         try
         {
-            String newwidget = caller.call(widgetId, widget);
-            if (newwidget != null)
+            String newWidget = caller.call(widgetId, widget);
+            ArrayList<DynamicView> unpacked = null;
+            if (newWidget != null)
             {
-                putWidget(widgetId, newwidget);
-                widget = newwidget;
+                unpacked = DynamicView.fromJSONArray(newWidget);
+                String backToJson = DynamicView.toJSONString(unpacked); //assign ids
+                synchronized (lock)
+                {
+                    widgets.put(widgetId, backToJson);
+                }
+
                 updated = true;
+            }
+            else if (widget != null)
+            {
+                unpacked = DynamicView.fromJSONArray(widget);
             }
 
             //if we were loading we refresh anyways
-            if ((updated || needUpdateWidgets.contains(widgetId)) && widget != null)
+            if ((updated || needUpdateWidgets.contains(widgetId)) && unpacked != null)
             {
-                setWidget(androidWidgetId, widgetId, DynamicView.fromJSONArray(widget), true);
+                setWidget(androidWidgetId, widgetId, unpacked, true);
+                Log.d("APPY", "widgetChangingCallback End");
                 return true;
             }
         }
@@ -3320,6 +3351,10 @@ public class Widget extends RemoteViewsService
             Log.e("APPY", "Exception in python", e);
             setSpecificErrorWidget(androidWidgetId, widgetId, e);
             return true;
+        }
+        finally
+        {
+            deferredSave(updated);
         }
 
         return false;
