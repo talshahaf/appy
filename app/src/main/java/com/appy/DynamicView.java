@@ -1,5 +1,7 @@
 package com.appy;
 
+import android.util.Log;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -273,7 +275,7 @@ public class DynamicView
     {
         try
         {
-            return toJSON(views).toString(2);
+            return toJSON(views).toString();
         }
         catch (JSONException e)
         {

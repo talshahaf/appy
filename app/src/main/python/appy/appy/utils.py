@@ -142,12 +142,12 @@ class AttrDict(dict):
     def __recursive_ismodified__(cls, d):
         if not isinstance(d, AttrDict):
             return False
-        return any(cls.__recursive_ismodified__(v) for v in d.values()) or d.__modified__
+        return any(cls.__recursive_ismodified__(v) for v in list(d.values())) or d.__modified__
 
     @classmethod
     def __recursive_resetmodified__(cls, d):
         if isinstance(d, AttrDict):
-            for v in d.values():
+            for v in list(d.values()):
                 cls.__recursive_resetmodified__(v)
             d.__resetmodified__()
 

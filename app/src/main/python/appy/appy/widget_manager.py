@@ -729,7 +729,6 @@ def refresh_widgets(path, removed=False):
 
 class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
     def export(self, input, output):
-        #TODO save state
         if not output:
             return None
         if not isinstance(output, (list, tuple)):
@@ -739,7 +738,6 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
         if input is not None and input == out:
             return None
 
-        state.save_modified()
         return json.dumps(out)
 
     def import_(self, s):
@@ -911,6 +909,10 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
         except KeyError:
             # if can't delete, ignore
             pass
+
+    @java.override
+    def saveState(self):
+        state.save_modified()
 
     @java.override
     def findWidgetsByMame(self, name):
