@@ -2589,6 +2589,16 @@ public class Widget extends RemoteViewsService
         }
     }
 
+    public void toast(String text, boolean longDuration)
+    {
+        handler.post(new Runnable() {
+            @Override
+            public void run() {
+                Toast.makeText(Widget.this, text, longDuration ? Toast.LENGTH_LONG : Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
     HashMap<Integer, Object> activeRequests = new HashMap<>();
     final Object notifier = new Object();
 

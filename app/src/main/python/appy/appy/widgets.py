@@ -1,4 +1,4 @@
-from . import java, state, widget_manager, utils, configs
+from . import java, state, widget_manager, utils, configs, colors
 
 def checkable_click_hook(kwargs):
     if 'checked' in kwargs:
@@ -176,7 +176,20 @@ def show_dialog(title, text, buttons=('Yes', 'No'), edittext=None, icon_res=None
         return result.first
     return result.first, result.second
 
-def color(r=0, g=0, b=0, a=255):
+def color(*args, **kwargs):
+    if len(args) == 1 and isinstance(args[0], str):
+        return colors.find_color(args[0])
+    if 'name' in kwargs:
+        return colors.find_color(kwargs['name'])
+    
+    lst_get = lambda l, i, d: l[i] if len(l) > i else d
+    float_handler = lambda f: int(f * 0xff) if isinstance(f, float) else f
+    
+    r = float_handler(kwargs.get('r', kwargs.get('R', lst_get(args, 0, 0x0 ))))
+    g = float_handler(kwargs.get('g', kwargs.get('G', lst_get(args, 1, 0x0 ))))
+    b = float_handler(kwargs.get('b', kwargs.get('B', lst_get(args, 2, 0x0 ))))
+    a = float_handler(kwargs.get('a', kwargs.get('A', lst_get(args, 3, 0xff))))
+    
     return ((a & 0xff) << 24) + \
            ((r & 0xff) << 16) + \
            ((g & 0xff) << 8) + \
@@ -185,6 +198,9 @@ def color(r=0, g=0, b=0, a=255):
 def restart():
     print('restarting')
     widget_manager.java_context().restart()
+
+def toast(text, long=False):
+    widget_manager.java_context().toast(str(text), long)
 
 def color_(**kwargs):
     return color(**kwargs)
