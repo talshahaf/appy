@@ -186,6 +186,9 @@ def restart():
     print('restarting')
     widget_manager.java_context().restart()
 
+def toast(text, long=False):
+    widget_manager.java_context().toast(str(text), long)
+
 def color_(**kwargs):
     return color(**kwargs)
     
