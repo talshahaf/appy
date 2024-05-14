@@ -100,7 +100,7 @@ public class DialogActivity extends Activity
 
             editTextViews[i].setLayoutParams(params);
             editTextViews[i].setText(editTexts[i]);
-            if (i < editHints.length)
+            if (i < editHints.length && editHints[i] != null)
             {
                 editTextViews[i].setHint(editHints[i]);
             }

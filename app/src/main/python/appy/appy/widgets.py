@@ -171,13 +171,13 @@ def _request_permissions(request, *permissions, timeout=None):
 
 @dataclass
 class DialogEditText:
-    text: str
-    hint: str = None
+    initial_text: str = ''
+    hint: str = ''
 
 def show_dialog(title, text, buttons=('Yes', 'No'), edittexts: tuple[DialogEditText, ...] = tuple(), icon_res=None, timeout=None):
     result = widget_manager.java_context().showAndWaitForDialog(icon_res, title, text,
                                                                 java.new.java.lang.String[()](buttons),
-                                                                java.new.java.lang.String[()](edittext.text for edittext in edittexts),
+                                                                java.new.java.lang.String[()](edittext.initial_text for edittext in edittexts),
                                                                 java.new.java.lang.String[()](edittext.hint for edittext in edittexts),
                                                                 int(timeout * 1000) if timeout is not None else -1)
     if result == java.Null:
