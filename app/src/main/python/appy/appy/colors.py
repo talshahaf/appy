@@ -4,8 +4,7 @@ def find_color(name):
         return int(f'0x{name[1:].ljust(6, "0").rjust(8, "f")}', 16)
     return names[name]
 
-names = 
-{
+names = {
     'aliceblue':            0xFFF0F8FF,
     'antiquewhite':         0xFFFAEBD7,
     'aqua':                 0xFF00FFFF,

@@ -2173,7 +2173,7 @@ public class Widget extends RemoteViewsService
             return false;
         }
 
-        Pair<Integer, String> pair = showAndWaitForDialog(null, "Add Python File", "Allow widget to add the python file \"" + new File(path).getName() + "\"?", new String[]{"OK", "CANCEL"}, null, -1);
+        Pair<Integer, String[]> pair = showAndWaitForDialog(null, "Add Python File", "Allow widget to add the python file \"" + new File(path).getName() + "\"?", new String[]{"OK", "CANCEL"}, new String[0], new String[0], -1);
         if (pair.first == 0)
         {
             return addPythonFileByPath(path);
@@ -2677,7 +2677,7 @@ public class Widget extends RemoteViewsService
         return (Pair<String[], int[]>) waitForAsyncReport(requestCode, timeoutMilli);
     }
 
-    public int showDialogNoWait(Integer icon, String title, String text, String[] buttons, String editText)
+    public int showDialogNoWait(Integer icon, String title, String text, String[] buttons, String[] editText, String[] editHints)
     {
         int requestCode = generateRequestCode();
         Intent intent = new Intent(this, DialogActivity.class);
@@ -2686,10 +2686,8 @@ public class Widget extends RemoteViewsService
         intent.putExtra(DialogActivity.EXTRA_TITLE, title);
         intent.putExtra(DialogActivity.EXTRA_TEXT, text);
         intent.putExtra(DialogActivity.EXTRA_BUTTONS, buttons);
-        if (editText != null)
-        {
-            intent.putExtra(DialogActivity.EXTRA_EDITTEXT, editText);
-        }
+        intent.putExtra(DialogActivity.EXTRA_EDITTEXT_TEXT, editText);
+        intent.putExtra(DialogActivity.EXTRA_EDITTEXT_HINT, editHints);
         if (icon != null)
         {
             intent.putExtra(DialogActivity.EXTRA_ICON, icon.intValue());
@@ -2698,16 +2696,16 @@ public class Widget extends RemoteViewsService
         return requestCode;
     }
 
-    public Pair<Integer, String> showAndWaitForDialog(Integer icon, String title, String text, String[] buttons, String editText, int timeoutMilli)
+    public Pair<Integer, String[]> showAndWaitForDialog(Integer icon, String title, String text, String[] buttons, String[] editTexts, String[] editHints, int timeoutMilli)
     {
         if (Looper.myLooper() != null)
         {
             throw new IllegalStateException("showAndWaitForDialog must be called on a Task thread");
         }
 
-        int requestCode = showDialogNoWait(icon, title, text, buttons, editText);
+        int requestCode = showDialogNoWait(icon, title, text, buttons, editTexts, editHints);
 
-        return (Pair<Integer, String>) waitForAsyncReport(requestCode, timeoutMilli);
+        return (Pair<Integer, String[]>) waitForAsyncReport(requestCode, timeoutMilli);
     }
 
     public void asyncReport(int requestCode, @NonNull Object result)
@@ -3815,7 +3813,7 @@ public class Widget extends RemoteViewsService
 
                                         Log.d("APPY", "showing error of " + path);
 
-                                        showDialogNoWait(null, title, path + "\n\n" + error, new String[]{"Close"}, null);
+                                        showDialogNoWait(null, title, path + "\n\n" + error, new String[]{"Close"}, new String[0], new String[0]);
                                         break;
                                 }
                             }

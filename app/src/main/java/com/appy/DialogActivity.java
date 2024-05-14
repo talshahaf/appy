@@ -8,13 +8,11 @@ import android.content.Intent;
 import android.content.ServiceConnection;
 import android.os.Bundle;
 import android.os.IBinder;
-import android.util.Log;
 import android.util.Pair;
 import android.util.TypedValue;
 import android.view.ViewGroup;
 import android.widget.EditText;
-import android.widget.FrameLayout;
-
+import android.widget.LinearLayout;
 import androidx.appcompat.app.AlertDialog;
 
 public class DialogActivity extends Activity
@@ -25,7 +23,8 @@ public class DialogActivity extends Activity
     public static final String EXTRA_BUTTONS = "EXTRA_BUTTONS";
     public static final String EXTRA_REQUEST_CODE = "EXTRA_REQUEST_CODE";
     public static final String EXTRA_ICON = "EXTRA_ICON";
-    public static final String EXTRA_EDITTEXT = "EXTRA_EDITTEXT";
+    public static final String EXTRA_EDITTEXT_TEXT = "EXTRA_EDITTEXT_TEXT";
+    public static final String EXTRA_EDITTEXT_HINT = "EXTRA_EDITTEXT_HINT";
 
     private Widget widgetService;
 
@@ -39,7 +38,8 @@ public class DialogActivity extends Activity
                     getIntent().getStringExtra(EXTRA_TITLE),
                     getIntent().getStringExtra(EXTRA_TEXT),
                     getIntent().getStringArrayExtra(EXTRA_BUTTONS),
-                    getIntent().getStringExtra(EXTRA_EDITTEXT));
+                    getIntent().getStringArrayExtra(EXTRA_EDITTEXT_TEXT),
+                    getIntent().getStringArrayExtra(EXTRA_EDITTEXT_HINT));
         }
 
         public void onServiceDisconnected(ComponentName className)
@@ -50,14 +50,22 @@ public class DialogActivity extends Activity
 
     public interface DialogActivityButtonClick
     {
-        void onClick(int which, String editText);
+        void onClick(int which, String[] editTexts);
     }
 
-    ;
-
-    public void makeDialog(int request, int icon, String title, String text, String[] buttons, String edittext)
+    public static String[] getEditTexts(EditText[] editTextViews)
     {
-        if (request == -1 || title == null || text == null || buttons == null || buttons.length == 0)
+        String[] texts = new String[editTextViews.length];
+        for (int i = 0; i < texts.length; i++)
+        {
+            texts[i] = editTextViews[i].getText().toString();
+        }
+        return texts;
+    }
+
+    public void makeDialog(int request, int icon, String title, String text, String[] buttons, String[] editTexts, String[] editHints)
+    {
+        if (request == -1 || title == null || text == null || buttons == null || buttons.length == 0 || editTexts == null || editHints == null)
         {
             return;
         }
@@ -65,9 +73,9 @@ public class DialogActivity extends Activity
         final DialogActivityButtonClick onClick = new DialogActivityButtonClick()
         {
             @Override
-            public void onClick(int which, String editText)
+            public void onClick(int which, String[] editTexts)
             {
-                widgetService.asyncReport(request, new Pair<>(which, editText));
+                widgetService.asyncReport(request, new Pair<>(which, editTexts));
             }
         };
 
@@ -78,28 +86,34 @@ public class DialogActivity extends Activity
         {
             builder.setIcon(icon);
         }
-        final EditText editTextView = new EditText(this);
-        if (edittext != null)
+        final EditText[] editTextViews = new EditText[editTexts.length];
+        LinearLayout container = new LinearLayout(this);
+        container.setOrientation(LinearLayout.VERTICAL);
+        for (int i = 0; i < editTextViews.length; i++)
         {
-            FrameLayout container = new FrameLayout(this);
-            FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            editTextViews[i] = new EditText(this);
+
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
             float margin = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 20, getResources().getDisplayMetrics());
             params.leftMargin = (int) margin;
             params.rightMargin = (int) margin;
 
-            editTextView.setLayoutParams(params);
-            editTextView.setText(edittext);
-            container.addView(editTextView);
-
-            builder.setView(container);
+            editTextViews[i].setLayoutParams(params);
+            editTextViews[i].setText(editTexts[i]);
+            if (i < editHints.length)
+            {
+                editTextViews[i].setHint(editHints[i]);
+            }
+            container.addView(editTextViews[i]);
         }
+        builder.setView(container);
 
         builder.setOnCancelListener(new DialogInterface.OnCancelListener()
         {
             @Override
             public void onCancel(DialogInterface dialog)
             {
-                onClick.onClick(-1, edittext != null ? editTextView.getText().toString() : null);
+                onClick.onClick(-1, getEditTexts(editTextViews));
                 finish();
             }
         });
@@ -121,7 +135,7 @@ public class DialogActivity extends Activity
                         which = 0;
                         break;
                 }
-                onClick.onClick(which, edittext != null ? editTextView.getText().toString() : null);
+                onClick.onClick(which, getEditTexts(editTextViews));
                 finish();
             }
         };
