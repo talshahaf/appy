@@ -171,13 +171,13 @@ def _request_permissions(request, *permissions, timeout=None):
 
 @dataclass
 class DialogEditText:
-    text: str
-    hint: str = None
+    initial_text: str = ''
+    hint: str = ''
 
 def show_dialog(title, text, buttons=('Yes', 'No'), edittexts: tuple[DialogEditText, ...] = tuple(), icon_res=None, timeout=None):
     result = widget_manager.java_context().showAndWaitForDialog(icon_res, title, text,
                                                                 java.new.java.lang.String[()](buttons),
-                                                                java.new.java.lang.String[()](edittext.text for edittext in edittexts),
+                                                                java.new.java.lang.String[()](edittext.initial_text for edittext in edittexts),
                                                                 java.new.java.lang.String[()](edittext.hint for edittext in edittexts),
                                                                 int(timeout * 1000) if timeout is not None else -1)
     if result == java.Null:
@@ -186,18 +186,19 @@ def show_dialog(title, text, buttons=('Yes', 'No'), edittexts: tuple[DialogEditT
     return result.first, *result.second
 
 def color(*args, **kwargs):
-    if len(args) == 1 and isinstance(args[0], str):
-        return colors.find_color(args[0])
-    if 'name' in kwargs:
-        return colors.find_color(kwargs['name'])
-    
     lst_get = lambda l, i, d: l[i] if len(l) > i else d
     float_handler = lambda f: int(f * 0xff) if isinstance(f, float) else f
-    
+
     r = float_handler(kwargs.get('r', kwargs.get('R', lst_get(args, 0, 0x0 ))))
     g = float_handler(kwargs.get('g', kwargs.get('G', lst_get(args, 1, 0x0 ))))
     b = float_handler(kwargs.get('b', kwargs.get('B', lst_get(args, 2, 0x0 ))))
     a = float_handler(kwargs.get('a', kwargs.get('A', lst_get(args, 3, 0xff))))
+
+    name = kwargs.get('name', kwargs.get('code', lst_get(args, 0, '')))
+
+    found = colors.find_color(name, alpha=a)
+    if found:
+        return found
     
     return ((a & 0xff) << 24) + \
            ((r & 0xff) << 16) + \

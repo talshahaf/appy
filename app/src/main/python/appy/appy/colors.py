@@ -1,8 +1,14 @@
 
-def find_color(name):
+def find_color(name, alpha=255):
+    name = name.lower()
     if name.startswith('#'):
-        return int(f'0x{name[1:].ljust(6, "0").rjust(8, "f")}', 16)
-    return names[name]
+        v = int(f'0x{name[1:].ljust(6, "0").rjust(8, "f")}', 16)
+    else:
+        if name not in names:
+            return None
+        v = names[name]
+    #apply alpha
+    return v & ((alpha << 24) | 0xffffff) # keep transparent colors, doesn't really work if both v and alpha have non trivial values.
 
 names = {
     'aliceblue':            0xFFF0F8FF,
