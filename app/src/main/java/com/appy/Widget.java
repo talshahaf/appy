@@ -94,8 +94,6 @@ public class Widget extends RemoteViewsService
     HashMap<Integer, TaskQueue> widgetsTasks = new HashMap<>();
 
     HashMap<Integer, String> widgets = new HashMap<>();
-    HashMap<Integer, Integer> androidToWidget = new HashMap<>();
-    HashMap<Integer, Integer> widgetToAndroid = new HashMap<>();
     HashMap<Long, Timer> activeTimers = new HashMap<>();
     HashMap<Long, PendingIntent[]> activeTimersIntents = new HashMap<>();
     HashMap<Pair<Integer, Integer>, HashMap<Integer, ListFactory>> factories = new HashMap<>();
@@ -1287,6 +1285,9 @@ public class Widget extends RemoteViewsService
         updateListener = listener;
     }
 
+    HashMap<Integer, Integer> androidToWidget = new HashMap<>();
+    HashMap<Integer, Integer> widgetToAndroid = new HashMap<>();
+
     public int newWidgetId()
     {
         int counter = 1;
@@ -1369,6 +1370,14 @@ public class Widget extends RemoteViewsService
             widgetToAndroid.put(widget, newAndroidWidget);
             androidToWidget.put(newAndroidWidget, widget);
         }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
+        {
+            AppWidgetManager manager = AppWidgetManager.getInstance(this);
+            Bundle options = manager.getAppWidgetOptions(newAndroidWidget);
+            options.putBoolean(AppWidgetManager.OPTION_APPWIDGET_RESTORE_COMPLETED, true);
+            manager.updateAppWidgetOptions(newAndroidWidget, options);
+        }
     }
 
     public void deleteWidgetMappings(int widget)
@@ -1448,6 +1457,69 @@ public class Widget extends RemoteViewsService
             editor.putString("widgetToAndroid", new MapSerialize<Integer, Integer>().serialize(widgetToAndroid, new MapSerialize.IntKey(), new MapSerialize.IntValue()));
         }
         editor.apply();
+    }
+
+
+    private boolean isBundleOptionBad(Bundle bundle, String option)
+    {
+        return bundle.containsKey(option) && bundle.getInt(option) == 0;
+    }
+
+    public int[] filterBadAndroidWidgets(int[] ids)
+    {
+        ArrayList<Integer> filtered = new ArrayList<>();
+        for (int id : ids)
+        {
+            Bundle bundle = AppWidgetManager.getInstance(this).getAppWidgetOptions(id);
+
+            boolean hasSizes = Build.VERSION.SDK_INT < 31 || bundle.containsKey("appWidgetSizes");
+
+            if (bundle.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH, 0) != 0 &&
+                    bundle.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, 0) != 0 &&
+                    hasSizes)
+            {
+                filtered.add(id);
+            }
+        }
+
+        int[] out = new int[filtered.size()];
+        for (int i = 0; i < out.length; i++)
+        {
+            out[i] = filtered.get(i);
+        }
+        return out;
+    }
+
+    public int[] requestAndroidWidgets()
+    {
+        Class<?>[] widgetReceivers = new Class[]{WidgetReceiver1x1.class, WidgetReceiver2x1.class,
+                WidgetReceiver2x2.class, WidgetReceiver3x2.class,
+                WidgetReceiver3x3.class, WidgetReceiver4x2.class,
+                WidgetReceiver4x3.class, WidgetReceiver4x4.class};
+        ArrayList<int[]> allIds = new ArrayList<>();
+        int totalSize = 0;
+
+        AppWidgetManager manager = AppWidgetManager.getInstance(this);
+        for (Class<?> clazz : widgetReceivers)
+        {
+            ComponentName thisWidget = new ComponentName(this, clazz);
+            int[] receiverIds = manager.getAppWidgetIds(thisWidget);
+            allIds.add(receiverIds);
+            totalSize += receiverIds.length;
+        }
+
+        int[] ids = new int[totalSize];
+        int c = 0;
+        for (int[] arr : allIds)
+        {
+            for (int i : arr)
+            {
+                ids[c] = i;
+                c++;
+            }
+        }
+
+        return filterBadAndroidWidgets(ids);
     }
 
     public void saveWidgets()
@@ -2901,67 +2973,6 @@ public class Widget extends RemoteViewsService
         setWidget(androidWidgetId, Constants.SPECIAL_WIDGET_ID, views, false);
 
         needUpdateWidgets.add(widgetId);
-    }
-
-    private boolean isBundleOptionBad(Bundle bundle, String option)
-    {
-        return bundle.containsKey(option) && bundle.getInt(option) == 0;
-    }
-
-    public int[] filterBadAndroidWidgets(int[] ids)
-    {
-        ArrayList<Integer> filtered = new ArrayList<>();
-        for (int id : ids)
-        {
-            Bundle bundle = AppWidgetManager.getInstance(this).getAppWidgetOptions(id);
-
-            boolean hasSizes = Build.VERSION.SDK_INT < 31 || bundle.containsKey("appWidgetSizes");
-
-            if (bundle.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH, 0) != 0 &&
-                    bundle.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, 0) != 0 &&
-                    hasSizes)
-            {
-                filtered.add(id);
-            }
-        }
-
-        int[] out = new int[filtered.size()];
-        for (int i = 0; i < out.length; i++)
-        {
-            out[i] = filtered.get(i);
-        }
-        return out;
-    }
-
-    public int[] requestAndroidWidgets()
-    {
-        Class<?>[] widgetReceivers = new Class[]{WidgetReceiver1x1.class, WidgetReceiver2x1.class,
-                WidgetReceiver2x2.class, WidgetReceiver3x2.class,
-                WidgetReceiver3x3.class, WidgetReceiver4x2.class,
-                WidgetReceiver4x3.class, WidgetReceiver4x4.class};
-        ArrayList<int[]> allIds = new ArrayList<>();
-        int totalSize = 0;
-
-        for (Class<?> clazz : widgetReceivers)
-        {
-            ComponentName thisWidget = new ComponentName(this, clazz);
-            int[] receiverIds = AppWidgetManager.getInstance(this).getAppWidgetIds(thisWidget);
-            allIds.add(receiverIds);
-            totalSize += receiverIds.length;
-        }
-
-        int[] ids = new int[totalSize];
-        int c = 0;
-        for (int[] arr : allIds)
-        {
-            for (int i : arr)
-            {
-                ids[c] = i;
-                c++;
-            }
-        }
-
-        return filterBadAndroidWidgets(ids);
     }
 
     public void setAllWidgets(boolean error)
