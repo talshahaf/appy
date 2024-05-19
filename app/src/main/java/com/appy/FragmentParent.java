@@ -30,6 +30,11 @@ public class FragmentParent extends MyFragment
         }
     }
 
+    public DictObj.Dict getDict()
+    {
+        return new DictObj.Dict();
+    }
+
     public static class ChildFragment extends MyFragment
     {
         FragmentParent parent;

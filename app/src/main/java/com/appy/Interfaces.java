@@ -19,21 +19,21 @@ interface BroadcastInterface
 
 interface WidgetUpdateListener
 {
-    String onCreate(int widgetId);
+    DictObj.List onCreate(int widgetId);
 
-    String onUpdate(int widgetId, String views);
+    DictObj.List onUpdate(int widgetId, DictObj.List views);
 
     void onDelete(int widgetId);
 
-    Object[] onItemClick(int widgetId, String views, long collectionId, int position, long id);
+    Object[] onItemClick(int widgetId, DictObj.List views, long collectionId, int position, long id);
 
-    String onClick(int widgetId, String views, long id, boolean checked);
+    DictObj.List onClick(int widgetId, DictObj.List views, long id, boolean checked);
 
-    String onTimer(long timerId, int widgetId, String views, String data);
+    DictObj.List onTimer(long timerId, int widgetId, DictObj.List views, String data);
 
-    String onPost(int widgetId, String views, String data);
+    DictObj.List onPost(int widgetId, DictObj.List views, String data);
 
-    String onConfig(int widgetId, String views, String key);
+    DictObj.List onConfig(int widgetId, DictObj.List views, String key);
 
     void wipeStateRequest();
 
@@ -45,7 +45,7 @@ interface WidgetUpdateListener
 
     String onError(int widgetId, String error);
 
-    String getStateLayout();
+    DictObj.Dict getStateLayoutSnapshot();
 
     void cleanState(String scope, String widget, String key);
 
@@ -53,7 +53,7 @@ interface WidgetUpdateListener
 
     int[] findWidgetsByMame(String name);
 
-    void syncConfig(String serializedConfig);
+    void syncConfig(DictObj.Dict config);
 
     void dumpStacktrace(String path);
 

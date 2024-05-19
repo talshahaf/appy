@@ -9,6 +9,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Proxy;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.stream.Stream;
@@ -551,14 +552,14 @@ public class Reflection
         }
     }
 
-    public static byte[] stringToBytes(String s) throws UnsupportedEncodingException
+    public static byte[] stringToBytes(String s)
     {
-        return s.getBytes("UTF-8");
+        return s.getBytes(StandardCharsets.UTF_8);
     }
 
-    public static String bytesToString(byte[] bytes) throws UnsupportedEncodingException
+    public static String bytesToString(byte[] bytes)
     {
-        return new String(bytes, "UTF-8");
+        return new String(bytes, StandardCharsets.UTF_8);
     }
 
     public static class ProxyListener implements java.lang.reflect.InvocationHandler

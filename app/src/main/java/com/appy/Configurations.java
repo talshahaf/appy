@@ -2,26 +2,21 @@ package com.appy;
 
 import android.content.Context;
 import android.content.SharedPreferences;
-import android.util.Log;
+import android.util.Base64;
 import android.util.Pair;
-
-import org.json.JSONException;
-import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.Map;
 import java.util.Set;
 
 public class Configurations
 {
     private final Object lock = new Object();
     // widget -> key -> (current value, default value)
-    private HashMap<String, HashMap<String, Pair<String, String>>> widgetConfigurations = new HashMap<>();
+    //private HashMap<String, HashMap<String, Pair<String, String>>> widgetConfigurations = new HashMap<>();
+    private DictObj.Dict configurations = new DictObj.Dict();
 
-    private Context context;
+    private final Context context;
 
     interface ChangeListener
     {
@@ -41,9 +36,9 @@ public class Configurations
         synchronized (lock)
         {
             HashMap<String, Integer> ret = new HashMap<>();
-            for (Map.Entry<String, HashMap<String, Pair<String, String>>> entry : widgetConfigurations.entrySet())
+            for (DictObj.Entry entry : configurations.entries())
             {
-                ret.put(entry.getKey(), entry.getValue().size());
+                ret.put(entry.key, ((DictObj.Dict)entry.value).size());
             }
             return ret;
         }
@@ -53,13 +48,13 @@ public class Configurations
     {
         synchronized (lock)
         {
-            HashMap<String, Pair<String, String>> configs = widgetConfigurations.get(widget);
+            DictObj.Dict configs = configurations.getDict(widget);
             HashMap<String, String> values = new HashMap<>();
             if (configs != null)
             {
-                for (Map.Entry<String, Pair<String, String>> entry : configs.entrySet())
+                for (DictObj.Entry entry : configs.entries())
                 {
-                    values.put(entry.getKey(), entry.getValue().first);
+                    values.put(entry.key, ((DictObj.Dict)entry.value).getString("value"));
                 }
             }
             return values;
@@ -69,26 +64,28 @@ public class Configurations
     public void resetKey(String widget, String key)
     {
         boolean changed = false;
-        String serialized = null;
+        byte[] serialized = null;
         synchronized (lock)
         {
-            HashMap<String, Pair<String, String>> configs = widgetConfigurations.get(widget);
+            DictObj.Dict configs = configurations.getDict(widget);
             if (configs != null)
             {
-                Pair<String, String> values = configs.get(key);
+                DictObj.Dict values = configs.getDict(key);
                 if (values != null)
                 {
-                    if (!values.first.equals(values.second))
+                    String currentValue = values.getString("value");
+                    String defaultValue = values.getString("default");
+                    if (!currentValue.equals(defaultValue))
                     {
                         changed = true;
                     }
-                    configs.put(key, new Pair<>(values.second, values.second));
+                    values.put("value", defaultValue);
                 }
             }
 
             if (changed)
             {
-                serialized = serialize();
+                serialized = configurations.serialize();
             }
         }
 
@@ -102,29 +99,31 @@ public class Configurations
     public void resetWidget(String widget)
     {
         boolean changed = false;
-        String serialized = null;
+        byte[] serialized = null;
         synchronized (lock)
         {
-            HashMap<String, Pair<String, String>> configs = widgetConfigurations.get(widget);
+            DictObj.Dict configs = configurations.getDict(widget);
             if (configs != null)
             {
-                for (String key : configs.keySet())
+                for (DictObj.Entry entry : configs.entries())
                 {
-                    Pair<String, String> values = configs.get(key);
+                    DictObj.Dict values = (DictObj.Dict)entry.value;
                     if (values != null)
                     {
-                        if (!values.first.equals(values.second))
+                        String currentValue = values.getString("value");
+                        String defaultValue = values.getString("default");
+                        if (!currentValue.equals(defaultValue))
                         {
                             changed = true;
                         }
-                        configs.put(key, new Pair<>(values.second, values.second));
+                        values.put("value", defaultValue);
                     }
                 }
             }
 
             if (changed)
             {
-                serialized = serialize();
+                serialized = configurations.serialize();
             }
         }
 
@@ -138,17 +137,17 @@ public class Configurations
     public void deleteKey(String widget, String key)
     {
         boolean changed = false;
-        String serialized = null;
+        byte[] serialized = null;
         synchronized (lock)
         {
-            HashMap<String, Pair<String, String>> configs = widgetConfigurations.get(widget);
+            DictObj.Dict configs = configurations.getDict(widget);
             if (configs != null)
             {
-                if (configs.containsKey(key))
+                if (configs.hasKey(key))
                 {
                     configs.remove(key);
                     changed = true;
-                    serialized = serialize();
+                    serialized = configurations.serialize();
                 }
             }
         }
@@ -163,14 +162,14 @@ public class Configurations
     public void deleteWidget(String widget)
     {
         boolean changed = false;
-        String serialized = null;
+        byte[] serialized = null;
         synchronized (lock)
         {
-            if (widgetConfigurations.containsKey(widget))
+            if (configurations.hasKey(widget))
             {
-                widgetConfigurations.remove(widget);
+                configurations.remove(widget);
                 changed = true;
-                serialized = serialize();
+                serialized = configurations.serialize();
             }
         }
 
@@ -181,12 +180,12 @@ public class Configurations
         }
     }
 
-    public void setDefaultConfig(String widget, String[] keys, String[] values)
+    public void setDefaultConfig(String widget, DictObj.Dict defaults)
     {
         boolean changed = false;
-        for (int i = 0; i < keys.length; i++)
-        {
-            if (setConfigNoSave(widget, keys[i], values[i], true))
+        for (DictObj.Entry entry : defaults.entries())
+             {
+            if (setConfigNoSave(widget, entry.key, (String)entry.value, true))
             {
                 changed = true;
             }
@@ -194,7 +193,7 @@ public class Configurations
 
         if (changed)
         {
-            save(serialize());
+            save(configurations.serialize());
         }
     }
 
@@ -202,42 +201,45 @@ public class Configurations
     {
         if (setConfigNoSave(widget, key, value, false))
         {
-            save(serialize());
+            save(configurations.serialize());
         }
     }
 
-    public boolean setConfigNoSave(String widget, String key, String value, boolean defaultValue)
+    public boolean setConfigNoSave(String widget, String key, String value, boolean isDefaultValue)
     {
         boolean changed = false;
         synchronized (lock)
         {
-            HashMap<String, Pair<String, String>> widgetConfig = widgetConfigurations.get(widget);
+            DictObj.Dict widgetConfig = configurations.getDict(widget);
             if (widgetConfig == null)
             {
-                widgetConfig = new HashMap<>();
-                widgetConfigurations.put(widget, widgetConfig);
+                widgetConfig = new DictObj.Dict();
+                configurations.put(widget, widgetConfig);
             }
 
-            Pair<String, String> values = widgetConfig.get(key);
+            DictObj.Dict values = widgetConfig.getDict(key);
             if (values == null)
             {
-                values = new Pair<>(value, value);
+                values = new DictObj.Dict();
+                values.put("value", value);
+                values.put("default", value);
+                widgetConfig.put(key, values);
                 changed = true;
             }
             else
             {
                 // override previous pair changing only one of its values
-                if (!defaultValue && !values.first.equals(value))
+                if (!isDefaultValue && !values.get("value").equals(value))
                 {
+                    values.put("value", value);
                     changed = true;
                 }
-                if (defaultValue && !values.second.equals(value))
+                if (isDefaultValue && !values.get("default").equals(value))
                 {
+                    values.put("default", value);
                     changed = true;
                 }
-                values = new Pair<>(defaultValue ? values.first : value, defaultValue ? value : values.second);
             }
-            widgetConfig.put(key, values);
         }
 
         if (changed)
@@ -245,64 +247,6 @@ public class Configurations
             configurationUpdate(widget, key);
         }
         return changed;
-    }
-
-    public String serialize()
-    {
-        try
-        {
-            synchronized (lock)
-            {
-                JSONObject obj = new JSONObject();
-                for (Map.Entry<String, HashMap<String, Pair<String, String>>> pair : widgetConfigurations.entrySet())
-                {
-                    JSONObject widgetObj = new JSONObject();
-                    for (Map.Entry<String, Pair<String, String>> pair2 : pair.getValue().entrySet())
-                    {
-                        JSONObject values = new JSONObject();
-                        values.put("value", pair2.getValue().first);
-                        values.put("default", pair2.getValue().second);
-                        widgetObj.put(pair2.getKey(), values);
-                    }
-                    obj.put(pair.getKey(), widgetObj);
-                }
-                return obj.toString();
-            }
-        }
-        catch (JSONException e)
-        {
-            throw new IllegalStateException(e);
-        }
-    }
-
-    public static HashMap<String, HashMap<String, Pair<String, String>>> deserialize(String data)
-    {
-        try
-        {
-            HashMap<String, HashMap<String, Pair<String, String>>> result = new HashMap<>();
-            JSONObject obj = new JSONObject(data);
-            Iterator<String> it = obj.keys();
-            while (it.hasNext())
-            {
-                String widgetKey = it.next();
-                HashMap<String, Pair<String, String>> configs = new HashMap<>();
-                JSONObject widgetObj = obj.getJSONObject(widgetKey);
-                Iterator<String> it2 = widgetObj.keys();
-                while (it2.hasNext())
-                {
-                    String configKey = it2.next();
-                    JSONObject values = widgetObj.getJSONObject(configKey);
-                    configs.put(configKey, new Pair<>(values.getString("value"), values.getString("default")));
-                }
-                result.put(widgetKey, configs);
-            }
-
-            return result;
-        }
-        catch (JSONException e)
-        {
-            throw new IllegalStateException(e);
-        }
     }
 
     public void load()
@@ -314,21 +258,21 @@ public class Configurations
             return;
         }
 
-        HashMap<String, HashMap<String, Pair<String, String>>> result = deserialize(config);
+        DictObj.Dict result = DictObj.Dict.deserialize(Base64.decode(config, Base64.DEFAULT));
         synchronized (lock)
         {
-            widgetConfigurations = result;
+            configurations = result;
         }
 
         configurationUpdate(null, null);
     }
 
-    public void replaceConfiguration(HashMap<String, HashMap<String, Pair<String, String>>> newConfig)
+    public void replaceConfiguration(DictObj.Dict newConfig)
     {
         ArrayList<Pair<String, String>> changed = new ArrayList<>();
         synchronized (lock)
         {
-            Pair<Set<String>, Set<String>> intersectionAndXor = Utils.intersectionAndXor(widgetConfigurations.keySet(), newConfig.keySet());
+            Pair<Set<String>, Set<String>> intersectionAndXor = Utils.intersectionAndXor(configurations.keyset(), newConfig.keyset());
 
             //all new widgets and removed widgets
             for (String widget : intersectionAndXor.second)
@@ -338,7 +282,7 @@ public class Configurations
 
             for (String widget : intersectionAndXor.first)
             {
-                Pair<Set<String>, Set<String>> intersectionAndXorWidget = Utils.intersectionAndXor(widgetConfigurations.get(widget).keySet(), newConfig.get(widget).keySet());
+                Pair<Set<String>, Set<String>> intersectionAndXorWidget = Utils.intersectionAndXor(configurations.getDict(widget).keyset(), newConfig.getDict(widget).keyset());
 
                 //all new keys and removed keys
                 for (String key : intersectionAndXorWidget.second)
@@ -350,21 +294,20 @@ public class Configurations
                 for (String key : intersectionAndXorWidget.first)
                 {
                     //only check changed value
-                    if (!widgetConfigurations.get(widget).get(key).first.equals(newConfig.get(widget).get(key).first))
+                    if (!configurations.getDict(widget).getDict(key).getString("value").equals(newConfig.getDict(widget).getDict(key).getString("value")))
                     {
                         changed.add(new Pair<>(widget, key));
                     }
 
-                    if (!widgetConfigurations.get(widget).get(key).second.equals(newConfig.get(widget).get(key).second))
+                    if (!configurations.getDict(widget).getDict(key).getString("default").equals(newConfig.getDict(widget).getDict(key).get("default")))
                     {
                         //don't override default
-                        newConfig.get(widget).put(key,
-                                new Pair<>(newConfig.get(widget).get(key).first, widgetConfigurations.get(widget).get(key).second));
+                        newConfig.getDict(widget).getDict(key).put("default", configurations.getDict(widget).getDict(key).getString("value"));
                     }
                 }
             }
 
-            widgetConfigurations = newConfig;
+            configurations = newConfig;
         }
 
         for (Pair<String, String> change : changed)
@@ -381,11 +324,16 @@ public class Configurations
         }
     }
 
-    private void save(String serialized)
+    public DictObj.Dict getDict()
+    {
+        return configurations;
+    }
+
+    private void save(byte[] serialized)
     {
         SharedPreferences sharedPref = context.getSharedPreferences("appy", Context.MODE_PRIVATE);
         SharedPreferences.Editor editor = sharedPref.edit();
-        editor.putString("configurations", serialized);
+        editor.putString("configurations", Base64.encodeToString(serialized, Base64.DEFAULT));
         editor.apply();
     }
 }

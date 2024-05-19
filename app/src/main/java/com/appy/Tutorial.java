@@ -194,6 +194,12 @@ public class Tutorial implements OverlayHoleView.OnHoleClick, TutorialStepListen
 
     public void onStepError(int step)
     {
+        if (step == 1)
+        {
+            //can't go back
+            finishTutorial();
+            return;
+        }
         // Go back one
         mStepsDone = step - 2;
         doNextStep();

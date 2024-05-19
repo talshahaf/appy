@@ -49,6 +49,7 @@ jclass integer_class = NULL;
 jclass long_class = NULL;
 jclass float_class = NULL;
 jclass double_class = NULL;
+jclass string_class = NULL;
 
 jmethodID booleanCtor = NULL;
 jmethodID byteCtor = NULL;
@@ -490,6 +491,12 @@ static void populate_common_java_objects(JNIEnv * env)
         jclass local = env->FindClass("java/lang/Double");
         CHECK_JAVA_EXC(env);
         double_class = (jclass) make_global_java_ref(env, (jobject) local);
+    }
+    if (string_class == NULL)
+    {
+        jclass local = env->FindClass("java/lang/String");
+        CHECK_JAVA_EXC(env);
+        string_class = (jclass) make_global_java_ref(env, (jobject)local);
     }
     populate_common_java_objects_stage = 5;
     //----------------------------------
@@ -2136,11 +2143,1046 @@ static PyObject * check_is_jclass_castable(PyObject * self, PyObject * args)
     return NULL;
 }
 
+static jclass dict_class = NULL;
+static jclass dict_list_class = NULL;
+static jclass dict_entry_class = NULL;
+static jmethodID dict_ctor = NULL;
+static jmethodID dict_list_ctor = NULL;
+static jmethodID dict_put_dictobj = NULL;
+static jmethodID dict_list_add_dictobj = NULL;
+
+static jmethodID dict_put_boolean = NULL;
+static jmethodID dict_put_int = NULL;
+static jmethodID dict_put_long = NULL;
+static jmethodID dict_put_double = NULL;
+static jmethodID dict_put_string = NULL;
+
+static jmethodID dict_list_array = NULL;
+static jmethodID dict_entries = NULL;
+
+static jfieldID dict_entry_key = NULL;
+static jfieldID dict_entry_value = NULL;
+
+static bool dict_fields_inited = false;
+
+static void init_dict_fields(JNIEnv * env)
+{
+    if (dict_fields_inited)
+    {
+        return;
+    }
+
+    jclass local_dict_class = env->FindClass("com/appy/DictObj$Dict");
+    CHECK_JAVA_EXC(env);
+    if (local_dict_class == NULL)
+    {
+        LOG("no dict_class");
+        return;
+    }
+    dict_class = (jclass) make_global_java_ref(env, (jobject)local_dict_class);
+
+    jclass local_dict_list_class = env->FindClass("com/appy/DictObj$List");
+    CHECK_JAVA_EXC(env);
+    if (local_dict_list_class == NULL)
+    {
+        LOG("no dict_list_class");
+        return;
+    }
+    dict_list_class = (jclass) make_global_java_ref(env, (jobject)local_dict_list_class);
+
+    jclass local_dict_entry_class = env->FindClass("com/appy/DictObj$Entry");
+    CHECK_JAVA_EXC(env);
+    if (local_dict_entry_class == NULL)
+    {
+        LOG("no dict_entry_class");
+        return;
+    }
+    dict_entry_class = (jclass) make_global_java_ref(env, (jobject)local_dict_entry_class);
+
+    dict_ctor = env->GetMethodID(dict_class, "<init>", "()V");
+    CHECK_JAVA_EXC(env);
+    if (dict_ctor == NULL)
+    {
+        LOG("no dict_ctor");
+        return;
+    }
+
+    dict_list_ctor = env->GetMethodID(dict_list_class, "<init>", "()V");
+    CHECK_JAVA_EXC(env);
+    if (dict_list_ctor == NULL)
+    {
+        LOG("no dict_list_ctor");
+        return;
+    }
+
+    dict_put_dictobj = env->GetMethodID(dict_class, "put", "([BLcom/appy/DictObj;)V");
+    CHECK_JAVA_EXC(env);
+    if (dict_put_dictobj == NULL)
+    {
+        LOG("no dict_put_dictobj");
+        return;
+    }
+
+    dict_list_add_dictobj = env->GetMethodID(dict_list_class, "add", "(Lcom/appy/DictObj;)V");
+    CHECK_JAVA_EXC(env);
+    if (dict_list_add_dictobj == NULL)
+    {
+        LOG("no dict_list_add_dictobj");
+        return;
+    }
+
+    dict_put_boolean = env->GetMethodID(dict_class, "put", "([BZ)V");
+    CHECK_JAVA_EXC(env);
+    if (dict_put_boolean == NULL)
+    {
+        LOG("no dict_put_boolean");
+        return;
+    }
+    dict_put_int = env->GetMethodID(dict_class, "put", "([BI)V");
+    CHECK_JAVA_EXC(env);
+    if (dict_put_int == NULL)
+    {
+        LOG("no dict_put_int");
+        return;
+    }
+    dict_put_long = env->GetMethodID(dict_class, "put", "([BJ)V");
+    CHECK_JAVA_EXC(env);
+    if (dict_put_long == NULL)
+    {
+        LOG("no dict_put_long");
+        return;
+    }
+    dict_put_double = env->GetMethodID(dict_class, "put", "([BD)V");
+    CHECK_JAVA_EXC(env);
+    if (dict_put_double == NULL)
+    {
+        LOG("no dict_put_double");
+        return;
+    }
+    dict_put_string = env->GetMethodID(dict_class, "put", "([B[B)V");
+    CHECK_JAVA_EXC(env);
+    if (dict_put_string == NULL)
+    {
+        LOG("no dict_put_string");
+        return;
+    }
+
+    dict_list_array = env->GetMethodID(dict_list_class, "array", "()[Ljava/lang/Object;");
+    CHECK_JAVA_EXC(env);
+    if (dict_list_array == NULL)
+    {
+        LOG("no dict_list_array");
+        return;
+    }
+
+    dict_entries = env->GetMethodID(dict_class, "entries", "()[Lcom/appy/DictObj$Entry;");
+    CHECK_JAVA_EXC(env);
+    if (dict_entries == NULL)
+    {
+        LOG("no dict_entries");
+        return;
+    }
+
+    dict_entry_key = env->GetFieldID(dict_entry_class, "key", "Ljava/lang/String;");
+    CHECK_JAVA_EXC(env);
+    if (dict_entry_key == NULL)
+    {
+        LOG("no dict_entry_key");
+        return;
+    }
+    dict_entry_value = env->GetFieldID(dict_entry_class, "value", "Ljava/lang/Object;");
+    CHECK_JAVA_EXC(env);
+    if (dict_entry_value == NULL)
+    {
+        LOG("no dict_entry_value");
+        return;
+    }
+
+    dict_fields_inited = true;
+}
+
+static jobject build_java_dict_object(PyObject * obj, JNIEnv * env)
+{
+    PyObject *key_obj, *value_obj;
+    Py_ssize_t pos = 0;
+    Py_ssize_t cstr_size = 0;
+
+    if (PyDict_Check(obj))
+    {
+        jobject javadict = env->NewObject(dict_class, dict_ctor);
+        if (env->ExceptionCheck())
+        {
+            return NULL;
+        }
+        if (javadict == NULL)
+        {
+            return NULL;
+        }
+
+        while (PyDict_Next(obj, &pos, &key_obj, &value_obj))
+        {
+            const char *key_cstr = PyUnicode_AsUTF8AndSize(key_obj, &cstr_size); //TODO multithread?
+            if (key_cstr == NULL)
+            {
+                env->DeleteLocalRef(javadict);
+                return NULL;
+            }
+
+            jbyteArray keyarr = env->NewByteArray(cstr_size);
+            if (keyarr == NULL)
+            {
+                env->DeleteLocalRef(javadict);
+                return NULL;
+            }
+
+            jbyte * key_bytes = env->GetByteArrayElements(keyarr, NULL);
+            if (key_bytes == NULL)
+            {
+                env->DeleteLocalRef(keyarr);
+                env->DeleteLocalRef(javadict);
+                return NULL;
+            }
+
+            memcpy(key_bytes, key_cstr, cstr_size);
+            env->ReleaseByteArrayElements(keyarr, key_bytes, 0);
+
+            if (env->ExceptionCheck())
+            {
+                env->DeleteLocalRef(keyarr);
+                env->DeleteLocalRef(javadict);
+                return NULL;
+            }
+
+            if (PyDict_Check(value_obj) || PyList_Check(value_obj) || PyTuple_Check(value_obj))
+            {
+                jobject val = build_java_dict_object(value_obj, env);
+                if (val == NULL)
+                {
+                    env->DeleteLocalRef(keyarr);
+                    env->DeleteLocalRef(javadict);
+                    return NULL;
+                }
+                env->CallVoidMethod(javadict, dict_put_dictobj, keyarr, val);
+                env->DeleteLocalRef(val);
+                env->DeleteLocalRef(keyarr);
+            }
+            else if (PyBool_Check(value_obj))
+            {
+                bool val = value_obj == Py_True;
+                env->CallVoidMethod(javadict, dict_put_boolean, keyarr, val);
+                env->DeleteLocalRef(keyarr);
+            }
+            else if (PyLong_Check(value_obj))
+            {
+                long val = PyLong_AsLong(value_obj);
+                if (PyErr_Occurred())
+                {
+                    env->DeleteLocalRef(keyarr);
+                    env->DeleteLocalRef(javadict);
+                    return NULL;
+                }
+                env->CallVoidMethod(javadict, dict_put_long, keyarr, val);
+                env->DeleteLocalRef(keyarr);
+            }
+            else if (PyUnicode_Check(value_obj))
+            {
+                const char *value_cstr = PyUnicode_AsUTF8AndSize(value_obj, &cstr_size); //TODO multithread?
+                if (value_cstr == NULL)
+                {
+                    env->DeleteLocalRef(keyarr);
+                    env->DeleteLocalRef(javadict);
+                    return NULL;
+                }
+
+                jbyteArray valuearr = env->NewByteArray(cstr_size);
+                if (valuearr == NULL)
+                {
+                    env->DeleteLocalRef(keyarr);
+                    env->DeleteLocalRef(javadict);
+                    return NULL;
+                }
+
+                jbyte * value_bytes = env->GetByteArrayElements(valuearr, NULL);
+                if (value_bytes == NULL)
+                {
+                    env->DeleteLocalRef(valuearr);
+                    env->DeleteLocalRef(keyarr);
+                    env->DeleteLocalRef(javadict);
+                    return NULL;
+                }
+
+                memcpy(value_bytes, value_cstr, cstr_size);
+                env->ReleaseByteArrayElements(valuearr, value_bytes, 0);
+
+                if (env->ExceptionCheck())
+                {
+                    env->DeleteLocalRef(valuearr);
+                    env->DeleteLocalRef(keyarr);
+                    env->DeleteLocalRef(javadict);
+                    return NULL;
+                }
+
+                env->CallVoidMethod(javadict, dict_put_string, keyarr, valuearr);
+                env->DeleteLocalRef(valuearr);
+                env->DeleteLocalRef(keyarr);
+            }
+            else if (PyFloat_Check(value_obj))
+            {
+                double val = PyFloat_AsDouble(value_obj);
+                if (PyErr_Occurred())
+                {
+                    env->DeleteLocalRef(keyarr);
+                    env->DeleteLocalRef(javadict);
+                    return NULL;
+                }
+                env->CallVoidMethod(javadict, dict_put_double, keyarr, val);
+                env->DeleteLocalRef(keyarr);
+            }
+            else if (value_obj == Py_None)
+            {
+                env->CallVoidMethod(javadict, dict_put_dictobj, keyarr, (jobject)NULL);
+                env->DeleteLocalRef(keyarr);
+            }
+            else
+            {
+                env->DeleteLocalRef(keyarr);
+            }
+
+            if (env->ExceptionCheck())
+            {
+                env->DeleteLocalRef(javadict);
+                return NULL;
+            }
+        }
+
+        return javadict;
+    }
+    else if (PyList_Check(obj) || PyTuple_Check(obj))
+    {
+        bool is_list = PyList_Check(obj);
+        jobject javalist = env->NewObject(dict_list_class, dict_list_ctor);
+        if (env->ExceptionCheck())
+        {
+            return NULL;
+        }
+        if (javalist == NULL)
+        {
+            return NULL;
+        }
+
+        unsigned int size = is_list ? PyList_Size(obj) : PyTuple_Size(obj);
+        if (PyErr_Occurred())
+        {
+            env->DeleteLocalRef(javalist);
+            return NULL;
+        }
+        for (unsigned int i = 0; i < size; i++)
+        {
+            PyObject * item = is_list ? PyList_GetItem(obj, i) : PyTuple_GetItem(obj, i);
+            if (item == NULL || PyErr_Occurred())
+            {
+                env->DeleteLocalRef(javalist);
+                return NULL;
+            }
+            if (PyDict_Check(item) || PyList_Check(item) || PyTuple_Check(item))
+            {
+                jobject val = build_java_dict_object(item, env);
+                if (val == NULL)
+                {
+                    env->DeleteLocalRef(javalist);
+                    return NULL;
+                }
+                env->CallVoidMethod(javalist, dict_list_add_dictobj, val);
+                env->DeleteLocalRef(val);
+            }
+            else if (item == Py_None)
+            {
+                env->CallVoidMethod(javalist, dict_list_add_dictobj, (jobject)NULL);
+            }
+            if (env->ExceptionCheck())
+            {
+                env->DeleteLocalRef(javalist);
+                return NULL;
+            }
+        }
+
+        return javalist;
+    }
+
+    return NULL;
+}
+
+static PyObject * build_java_dict(PyObject * self, PyObject * args)
+{
+    try
+    {
+        PyObject * obj = NULL;
+        if (!PyArg_ParseTuple(args, "O", &obj))
+        {
+            return NULL;
+        }
+
+        if (obj == NULL || obj == Py_None)
+        {
+            PyErr_SetString(PyExc_TypeError, "object is None");
+            return NULL;
+        }
+
+        //not using GET_JNI_ENV because build_java_dict_object allocates an unknown amount of local refs
+        JNIEnv * env = _get_jni_env();
+
+        init_dict_fields(env);
+        if (!dict_fields_inited)
+        {
+            PyErr_SetString(PyExc_TypeError, "dict fields init failed");
+            return NULL;
+        }
+
+        jobject local_jobj = build_java_dict_object(obj, env);
+        CHECK_JAVA_EXC(env);
+        if (local_jobj == NULL)
+        {
+            PyErr_SetString(PyExc_TypeError, "failed to build java dict object");
+            return NULL;
+        }
+
+        return PyLong_FromUnsignedLong((unsigned long)make_global_java_ref(env, local_jobj));
+    }
+    catch (java_exception & e)
+    {
+        PyErr_SetString(PyExc_RuntimeError, e.what());
+    }
+    catch (jni_exception & e)
+    {
+        PyErr_SetString(PyExc_RuntimeError, e.what());
+    }
+    return NULL;
+}
+
+static PyObject * build_python_dict(jobject obj, JNIEnv * env)
+{
+    if (env->IsInstanceOf(obj, dict_class))
+    {
+        jobjectArray entryarray = (jobjectArray)env->CallObjectMethod(obj, dict_entries);
+        if (env->ExceptionCheck() || entryarray == NULL)
+        {
+            return NULL;
+        }
+
+        int size = env->GetArrayLength(entryarray);
+        PyObject * pyobj = PyDict_New();
+        if (pyobj == NULL)
+        {
+            env->DeleteLocalRef(entryarray);
+            return NULL;
+        }
+        for (unsigned int i = 0; i < size; i++)
+        {
+            jobject entry = env->GetObjectArrayElement(entryarray, i);
+            if (env->ExceptionCheck() || entry == NULL)
+            {
+                Py_DECREF(pyobj);
+                env->DeleteLocalRef(entryarray);
+                return NULL;
+            }
+
+            jstring key = (jstring)env->GetObjectField(entry, dict_entry_key);
+            if (env->ExceptionCheck() || key == NULL)
+            {
+                env->DeleteLocalRef(entry);
+                Py_DECREF(pyobj);
+                env->DeleteLocalRef(entryarray);
+                return NULL;
+            }
+            jstring value = (jstring)env->GetObjectField(entry, dict_entry_value);
+            if (env->ExceptionCheck())
+            {
+                env->DeleteLocalRef(key);
+                env->DeleteLocalRef(entry);
+                Py_DECREF(pyobj);
+                env->DeleteLocalRef(entryarray);
+                return NULL;
+            }
+            env->DeleteLocalRef(entry);
+
+            int keylen = env->GetStringUTFLength(key);
+            const char * key_mem = env->GetStringUTFChars(key, NULL);
+            if (key_mem == NULL)
+            {
+                env->DeleteLocalRef(value);
+                env->DeleteLocalRef(key);
+                Py_DECREF(pyobj);
+                env->DeleteLocalRef(entryarray);
+                return NULL;
+            }
+
+            PyObject * pykey = PyUnicode_FromStringAndSize(key_mem, keylen);
+            env->ReleaseStringUTFChars(key, key_mem);
+            env->DeleteLocalRef(key);
+            if (pykey == NULL)
+            {
+                env->DeleteLocalRef(value);
+                Py_DECREF(pyobj);
+                env->DeleteLocalRef(entryarray);
+                return NULL;
+            }
+
+            if (value == NULL)
+            {
+                int err = PyDict_SetItem(pyobj, pykey, Py_None);
+                Py_DECREF(pykey);
+                if (err != 0)
+                {
+                    Py_DECREF(pyobj);
+                    env->DeleteLocalRef(entryarray);
+                    return NULL;
+                }
+            }
+            else if (env->IsInstanceOf(value, dict_class) || env->IsInstanceOf(value, dict_list_class))
+            {
+                PyObject * pyvalue = build_python_dict(value, env);
+                env->DeleteLocalRef(value);
+                if (pyvalue == NULL)
+                {
+                    Py_DECREF(pykey);
+                    Py_DECREF(pyobj);
+                    env->DeleteLocalRef(entryarray);
+                    return NULL;
+                }
+
+                int err = PyDict_SetItem(pyobj, pykey, pyvalue);
+                Py_DECREF(pykey);
+                Py_DECREF(pyvalue);
+                if (err != 0)
+                {
+                    Py_DECREF(pyobj);
+                    env->DeleteLocalRef(entryarray);
+                    return NULL;
+                }
+            }
+            else if (env->IsInstanceOf(value, boolean_class))
+            {
+                bool v = env->CallBooleanMethod(value, booleanValueMethod);
+                env->DeleteLocalRef(value);
+                if (env->ExceptionCheck())
+                {
+                    Py_DECREF(pykey);
+                    Py_DECREF(pyobj);
+                    env->DeleteLocalRef(entryarray);
+                    return NULL;
+                }
+
+                int err = PyDict_SetItem(pyobj, pykey, v ? Py_True : Py_False);
+                Py_DECREF(pykey);
+                if (err != 0)
+                {
+                    Py_DECREF(pyobj);
+                    env->DeleteLocalRef(entryarray);
+                    return NULL;
+                }
+            }
+            else if (env->IsInstanceOf(value, double_class) || env->IsInstanceOf(value, float_class))
+            {
+                double v = env->IsInstanceOf(value, double_class) ? env->CallDoubleMethod(value, doubleValueMethod) :
+                            env->CallFloatMethod(value, floatValueMethod);
+                env->DeleteLocalRef(value);
+                if (env->ExceptionCheck())
+                {
+                    Py_DECREF(pykey);
+                    Py_DECREF(pyobj);
+                    env->DeleteLocalRef(entryarray);
+                    return NULL;
+                }
+
+                PyObject * pyvalue = PyFloat_FromDouble(v);
+                if (pyvalue == NULL)
+                {
+                    Py_DECREF(pykey);
+                    Py_DECREF(pyobj);
+                    env->DeleteLocalRef(entryarray);
+                    return NULL;
+                }
+
+                int err = PyDict_SetItem(pyobj, pykey, pyvalue);
+                Py_DECREF(pykey);
+                Py_DECREF(pyvalue);
+                if (err != 0)
+                {
+                    Py_DECREF(pyobj);
+                    env->DeleteLocalRef(entryarray);
+                    return NULL;
+                }
+            }
+            else if (env->IsInstanceOf(value, short_class) || env->IsInstanceOf(value, integer_class) || env->IsInstanceOf(value, long_class))
+            {
+                long v = env->IsInstanceOf(value, short_class) ? env->CallShortMethod(value, shortValueMethod) :
+                         (env->IsInstanceOf(value, integer_class) ? env->CallIntMethod(value, intValueMethod) :
+                         env->CallLongMethod(value, longValueMethod));
+                env->DeleteLocalRef(value);
+                if (env->ExceptionCheck())
+                {
+                    Py_DECREF(pykey);
+                    Py_DECREF(pyobj);
+                    env->DeleteLocalRef(entryarray);
+                    return NULL;
+                }
+
+                PyObject * pyvalue = PyLong_FromLong(v);
+                if (pyvalue == NULL)
+                {
+                    Py_DECREF(pykey);
+                    Py_DECREF(pyobj);
+                    env->DeleteLocalRef(entryarray);
+                    return NULL;
+                }
+
+                int err = PyDict_SetItem(pyobj, pykey, pyvalue);
+                Py_DECREF(pykey);
+                Py_DECREF(pyvalue);
+                if (err != 0)
+                {
+                    Py_DECREF(pyobj);
+                    env->DeleteLocalRef(entryarray);
+                    return NULL;
+                }
+            }
+            else if (env->IsInstanceOf(value, string_class))
+            {
+                int valuelen = env->GetStringUTFLength(value);
+                const char * value_mem = env->GetStringUTFChars(value, NULL);
+                if (value_mem == NULL)
+                {
+                    env->DeleteLocalRef(value);
+                    Py_DECREF(pykey);
+                    Py_DECREF(pyobj);
+                    env->DeleteLocalRef(entryarray);
+                    return NULL;
+                }
+
+                PyObject * pyvalue = PyUnicode_FromStringAndSize(value_mem, valuelen);
+                env->ReleaseStringUTFChars(value, value_mem);
+                env->DeleteLocalRef(value);
+                if (pyvalue == NULL)
+                {
+                    Py_DECREF(pykey);
+                    Py_DECREF(pyobj);
+                    env->DeleteLocalRef(entryarray);
+                    return NULL;
+                }
+
+                int err = PyDict_SetItem(pyobj, pykey, pyvalue);
+                Py_DECREF(pykey);
+                Py_DECREF(pyvalue);
+                if (err != 0)
+                {
+                    Py_DECREF(pyobj);
+                    env->DeleteLocalRef(entryarray);
+                    return NULL;
+                }
+            }
+            else
+            {
+                //unknown object
+                env->DeleteLocalRef(value);
+                int err = PyDict_SetItem(pyobj, pykey, Py_None);
+                Py_DECREF(pykey);
+                if (err != 0)
+                {
+                    Py_DECREF(pyobj);
+                    env->DeleteLocalRef(entryarray);
+                    return NULL;
+                }
+            }
+        }
+        env->DeleteLocalRef(entryarray);
+        return pyobj;
+    }
+    else if (env->IsInstanceOf(obj, dict_list_class))
+    {
+        jobjectArray entryarray = (jobjectArray)env->CallObjectMethod(obj, dict_list_array);
+        if (env->ExceptionCheck() || entryarray == NULL)
+        {
+            return NULL;
+        }
+        int size = env->GetArrayLength(entryarray);
+
+        PyObject * pyobj = PyList_New(size);
+        if (pyobj == NULL)
+        {
+            env->DeleteLocalRef(entryarray);
+            return NULL;
+        }
+
+        for (unsigned int i = 0; i < size; i++)
+        {
+            jobject item = env->GetObjectArrayElement(entryarray, i);
+            if (env->ExceptionCheck())
+            {
+                Py_DECREF(pyobj);
+                env->DeleteLocalRef(entryarray);
+                return NULL;
+            }
+
+            if (item == NULL)
+            {
+                PyList_SetItem(pyobj, i, Py_None);
+            }
+            else if (env->IsInstanceOf(item, dict_class) || env->IsInstanceOf(item, dict_list_class))
+            {
+                PyObject  * pyitem = build_python_dict(item, env);
+                env->DeleteLocalRef(item);
+                if (pyitem == NULL)
+                {
+                    Py_DECREF(pyobj);
+                    env->DeleteLocalRef(entryarray);
+                    return NULL;
+                }
+                PyList_SetItem(pyobj, i, pyitem);
+            }
+        }
+        return pyobj;
+    }
+}
+
+static PyObject * build_python_dict_from_java(PyObject * self, PyObject * args)
+{
+    try
+    {
+        unsigned long ref_lng = 0;
+        if (!PyArg_ParseTuple(args, "k", &ref_lng))
+        {
+            return NULL;
+        }
+
+        if (ref_lng == 0)
+        {
+            PyErr_SetString(PyExc_TypeError, "object is Null");
+            return NULL;
+        }
+
+        //not using GET_JNI_ENV because build_python_dict allocats an unknown amount of local refs
+        JNIEnv * env = _get_jni_env();
+
+        init_dict_fields(env);
+        if (!dict_fields_inited)
+        {
+            PyErr_SetString(PyExc_TypeError, "json fields init failed");
+            return NULL;
+        }
+
+        PyObject * pyobj = build_python_dict((jobject)ref_lng, env);
+        if (pyobj == NULL)
+        {
+            PyErr_SetString(PyExc_TypeError, "failed to build python dict");
+            return NULL;
+        }
+        if (env->ExceptionCheck())
+        {
+            Py_DECREF(pyobj);
+            CHECK_JAVA_EXC(env);
+        }
+
+        return pyobj;
+    }
+    catch (java_exception & e)
+    {
+        PyErr_SetString(PyExc_RuntimeError, e.what());
+    }
+    catch (jni_exception & e)
+    {
+        PyErr_SetString(PyExc_RuntimeError, e.what());
+    }
+    return NULL;
+}
+
+static bool python_initialized = false;
+
+extern "C" JNIEXPORT jbyteArray JNICALL Java_com_appy_DictObj_DictObjtojson(JNIEnv * env, jclass clazz, jobject Dict)
+{
+    try
+    {
+        if (!python_initialized)
+        {
+            env->ThrowNew(python_exception_class, "Python uninitialized");
+            return NULL;
+        }
+
+        if (Dict == NULL)
+        {
+            return NULL;
+        }
+
+        PyGILState_STATE gstate;
+        gstate = PyGILState_Ensure();
+
+        scope_guards guards;
+        guards += [&gstate] { PyGILState_Release(gstate); };
+
+        static PyObject * dumps_func = NULL;
+        if (dumps_func == NULL)
+        {
+            PyObject * scope = PyDict_New();
+            if (scope == NULL)
+            {
+                return NULL;
+            }
+            dumps_func = PyRun_String("exec('import json') or json.dumps", Py_eval_input, scope, scope);
+            Py_DECREF(scope);
+            if (PyErr_Occurred())
+            {
+                PyErr_Clear();
+                env->ThrowNew(python_exception_class, "Exception in dumps_func");
+                return NULL;
+            }
+        }
+
+        if (dumps_func == NULL)
+        {
+            return NULL;
+        }
+
+        init_dict_fields(env);
+        if (!dict_fields_inited)
+        {
+            return NULL;
+        }
+
+        PyObject * pyobj = build_python_dict(Dict, env);
+        if (pyobj == NULL || PyErr_Occurred())
+        {
+            PyErr_Clear();
+            env->ThrowNew(python_exception_class, "Exception in build_python_dict");
+            return NULL;
+        }
+
+        PyObject * ser = PyObject_CallOneArg(dumps_func, pyobj);
+        Py_DECREF(pyobj);
+        if (PyErr_Occurred() || ser == NULL)
+        {
+            PyObject * type = NULL, * value = NULL, * traceback = NULL;
+            PyErr_Fetch(&type, &value, &traceback);
+
+            if (value != NULL)
+            {
+                PyObject *str = PyObject_Str(value);
+                if (str != NULL)
+                {
+                    Py_ssize_t cstr_size = 0;
+                    const char *python_cstr = PyUnicode_AsUTF8AndSize(str, &cstr_size);
+                    env->ThrowNew(python_exception_class, python_cstr);
+                    Py_DECREF(str);
+                }
+                else
+                {
+                    PyErr_Clear();
+                    env->ThrowNew(python_exception_class, "Exception in str call");
+                }
+            }
+            else
+            {
+                PyErr_Clear();
+                env->ThrowNew(python_exception_class, "Exception in dumps call");
+            }
+            Py_XDECREF(type);
+            Py_XDECREF(value);
+            Py_XDECREF(traceback);
+            return NULL;
+        }
+
+        Py_ssize_t size = 0;
+        const char * cstr = PyUnicode_AsUTF8AndSize(ser, &size);
+        if (cstr == NULL)
+        {
+            Py_DECREF(ser);
+            env->ThrowNew(python_exception_class, "Exception in PyUnicode_AsUTF8AndSize");
+            return NULL;
+        }
+
+        jbyteArray arr = env->NewByteArray(size);
+        if (arr == NULL)
+        {
+            Py_DECREF(ser);
+            return NULL;
+        }
+
+        jbyte * arr_mem = env->GetByteArrayElements(arr, NULL);
+        if (arr_mem == NULL)
+        {
+            env->DeleteLocalRef(arr);
+            Py_DECREF(ser);
+            return NULL;
+        }
+
+        memcpy(arr_mem, cstr, size);
+        env->ReleaseByteArrayElements(arr, arr_mem, 0);
+
+        Py_DECREF(ser);
+
+        return arr;
+    }
+    catch (java_exception & e)
+    {
+        env->ThrowNew(python_exception_class, e.what());
+    }
+    catch (jni_exception & e)
+    {
+        env->ThrowNew(python_exception_class, e.what());
+    }
+    catch (std::exception & e)
+    {
+        LOG("exception: %s %s", typeid(e).name(), e.what());
+        env->ThrowNew(python_exception_class, e.what());
+    }
+    catch (...)
+    {
+        env->ThrowNew(python_exception_class, "exception was thrown from DictObjtojson");
+    }
+    return NULL;
+}
+
+extern "C" JNIEXPORT jobject JNICALL Java_com_appy_DictObj_jsontoDictObj(JNIEnv * env, jclass clazz, jbyteArray json)
+{
+    try
+    {
+        if (!python_initialized)
+        {
+            env->ThrowNew(python_exception_class, "Python uninitialized");
+            return NULL;
+        }
+
+        if (json == NULL)
+        {
+            return NULL;
+        }
+
+        PyGILState_STATE gstate;
+        gstate = PyGILState_Ensure();
+
+        scope_guards guards;
+        guards += [&gstate] { PyGILState_Release(gstate); };
+
+        static PyObject * loads_func = NULL;
+        if (loads_func == NULL)
+        {
+            PyObject * scope = PyDict_New();
+            if (scope == NULL)
+            {
+                return NULL;
+            }
+
+            loads_func = PyRun_String("exec('import json') or json.loads", Py_eval_input, scope, scope);
+            Py_DECREF(scope);
+            if (PyErr_Occurred())
+            {
+                PyErr_Clear();
+                env->ThrowNew(python_exception_class, "Exception in loads_func");
+                return NULL;
+            }
+        }
+
+        if (loads_func == NULL)
+        {
+            return NULL;
+        }
+
+        init_dict_fields(env);
+        if (!dict_fields_inited)
+        {
+            return NULL;
+        }
+
+        int json_size = env->GetArrayLength(json);
+        jbyte * json_mem = env->GetByteArrayElements(json, NULL);
+        if (json_mem == NULL)
+        {
+            return NULL;
+        }
+
+        PyObject * pystr = PyUnicode_FromStringAndSize((const char *)json_mem, json_size);
+        env->ReleaseByteArrayElements(json, json_mem, 0);
+        if (pystr == NULL)
+        {
+            PyErr_Clear();
+            env->ThrowNew(python_exception_class, "Exception in PyUnicode_FromStringAndSize");
+            return NULL;
+        }
+
+        PyObject * deser = PyObject_CallOneArg(loads_func, pystr);
+        Py_DECREF(pystr);
+        if (PyErr_Occurred() || deser == NULL)
+        {
+            PyObject * type = NULL, * value = NULL, * traceback = NULL;
+            PyErr_Fetch(&type, &value, &traceback);
+
+            if (value != NULL)
+            {
+                PyObject *str = PyObject_Str(value);
+                if (str != NULL)
+                {
+                    Py_ssize_t cstr_size = 0;
+                    const char *python_cstr = PyUnicode_AsUTF8AndSize(str, &cstr_size);
+                    env->ThrowNew(python_exception_class, python_cstr);
+                    Py_DECREF(str);
+                }
+                else
+                {
+                    PyErr_Clear();
+                    env->ThrowNew(python_exception_class, "Exception in str call");
+                }
+            }
+            else
+            {
+                PyErr_Clear();
+                env->ThrowNew(python_exception_class, "Exception in loads call");
+            }
+            Py_XDECREF(type);
+            Py_XDECREF(value);
+            Py_XDECREF(traceback);
+            return NULL;
+        }
+
+        jobject obj = build_java_dict_object(deser, env);
+        Py_DECREF(deser);
+        if (obj == NULL || PyErr_Occurred())
+        {
+            PyErr_Clear();
+            env->ThrowNew(python_exception_class, "Exception in build_java_dict_object");
+            return NULL;
+        }
+
+        return obj;
+    }
+    catch (java_exception & e)
+    {
+        env->ThrowNew(python_exception_class, e.what());
+    }
+    catch (jni_exception & e)
+    {
+        env->ThrowNew(python_exception_class, e.what());
+    }
+    catch (std::exception & e)
+    {
+        LOG("exception: %s %s", typeid(e).name(), e.what());
+        env->ThrowNew(python_exception_class, e.what());
+    }
+    catch (...)
+    {
+        env->ThrowNew(python_exception_class, "exception was thrown from jsontoDictObj");
+    }
+    return NULL;
+}
+
 extern "C" JNIEXPORT jobject JNICALL
 Java_com_appy_Widget_pythonCall(JNIEnv * env, jclass clazz, jobjectArray args)
 {
     try
     {
+        if (!python_initialized)
+        {
+            env->ThrowNew(python_exception_class, "Python uninitialized");
+            return NULL;
+        }
+
         populate_common_java_objects(env);
 
         if (callback == NULL)
@@ -2185,16 +3227,23 @@ Java_com_appy_Widget_pythonCall(JNIEnv * env, jclass clazz, jobjectArray args)
             if (value != NULL)
             {
                 PyObject * str = PyObject_Str(value);
-                Py_ssize_t cstr_size = 0;
-                const char * python_cstr = PyUnicode_AsUTF8AndSize(str, &cstr_size);
-                if (python_cstr != NULL)
+                if (str != NULL)
                 {
-                    python_msg = new char[cstr_size + 1];
-                    for (unsigned int i = 0; i < cstr_size; i++)
+                    Py_ssize_t cstr_size = 0;
+                    const char *python_cstr = PyUnicode_AsUTF8AndSize(str, &cstr_size);
+                    if (python_cstr != NULL)
                     {
-                        python_msg[i] = python_cstr[i] < 0x80 ? python_cstr[i] : '_';
+                        python_msg = new char[cstr_size + 1];
+                        for (unsigned int i = 0; i < cstr_size; i++)
+                        {
+                            python_msg[i] = python_cstr[i] < 0x80 ? python_cstr[i] : '_';
+                        }
+                        python_msg[cstr_size] = 0;
                     }
-                    python_msg[cstr_size] = 0;
+                }
+                else
+                {
+                    PyErr_Clear();
                 }
                 Py_XDECREF(str);
             }
@@ -2281,6 +3330,8 @@ static PyMethodDef native_appy_methods[] = {
         {"get_java_init_arg",               get_java_init_arg,               METH_VARARGS, "gets the arg passed from java on init"},
         {"check_is_jclass_castable",        check_is_jclass_castable,        METH_VARARGS, "checks whether an object can be cast into class"},
         {"logcat_write",                    logcat_write,                    METH_VARARGS, "writes to logcat"},
+        {"build_java_dict",                 build_java_dict,                 METH_VARARGS, "builds json object from dict, list or tuple"},
+        {"build_python_dict_from_java",     build_python_dict_from_java,     METH_VARARGS, "builds a python dict from json object or json array"},
         {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
@@ -2347,6 +3398,24 @@ static void preload_shared_libraries(const std::string & dirpath)
     }
 }
 
+int stdout_to_file(const char * path)
+{
+    setvbuf(stdout, 0, _IOLBF, 0);
+    setvbuf(stderr, 0, _IONBF, 0);
+
+    int fd = open(path, O_WRONLY | O_APPEND | O_CREAT, 0644);
+    if (fd == -1)
+    {
+        LOG("cannot open logger");
+        return -1;
+    }
+
+    dup2(fd, 1);
+    dup2(fd, 2);
+    return 0;
+}
+
+
 extern "C" JNIEXPORT void JNICALL
 Java_com_appy_Widget_pythonInit(JNIEnv * env, jclass clazz, jstring j_pythonhome,
                                 jstring j_cachepath, jstring j_pythonlib, jstring j_scriptpath,
@@ -2390,6 +3459,8 @@ Java_com_appy_Widget_pythonInit(JNIEnv * env, jclass clazz, jstring j_pythonhome
         auto pythonlib = jstring_to_stdstring(env, j_pythonlib);
         auto scriptpath = jstring_to_stdstring(env, j_scriptpath);
         auto nativepath = jstring_to_stdstring(env, j_nativepath);
+
+        //stdout_to_file("/sdcard/Android/media/com.appy.widgets/stdout.txt");
 
         auto exepath = pythonhome + "/bin/python3";
 
@@ -2455,32 +3526,7 @@ Java_com_appy_Widget_pythonInit(JNIEnv * env, jclass clazz, jstring j_pythonhome
 
         LOG("executing init script");
 
-        static const bool debug_mainpy = false;
-        int stds[2];
-
-        if (debug_mainpy)
-        {
-            setvbuf(stdout, 0, _IONBF, 0); // make stdout line-buffered
-            setvbuf(stderr, 0, _IONBF, 0); // make stderr unbuffered
-
-            /* create the pipe and redirect stdout and stderr */
-            pipe(stds);
-            dup2(stds[1], STDOUT_FILENO);
-            dup2(stds[1], STDERR_FILENO);
-        }
-
         ret = PyRun_SimpleFileExFlags(fh, scriptpath.c_str(), 1, NULL);
-
-        if (debug_mainpy)
-        {
-            static char buf[256] = {};
-            int readret = 0;
-            while ((readret = read(stds[0], buf, sizeof(buf) - 1)) == (sizeof(buf) - 1))
-            {
-                buf[readret] = 0;
-                LOG("%s", buf);
-            }
-        }
 
         LOG("done executing init script");
         PyEval_InitThreads();
@@ -2495,6 +3541,7 @@ Java_com_appy_Widget_pythonInit(JNIEnv * env, jclass clazz, jstring j_pythonhome
         }
 
         LOG("python init done");
+        python_initialized = true;
         return;
     }
     catch (java_exception & e)

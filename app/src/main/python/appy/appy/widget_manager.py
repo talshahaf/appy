@@ -53,7 +53,7 @@ class Reference:
         self.factor = factor
 
     def compile(self):
-        return dict(id=self.id, type=self.key, factor=self.factor)
+        return dict(id=self.id, type=self.key, factor=float(self.factor))
 
 class AttributeBase:
     pass
@@ -103,7 +103,7 @@ class AttributeValue(AttributeBase):
                 refs.append(e.compile())
             else:
                 amount += e
-        return dict(function='IDENTITY', arguments=[dict(amount=amount, references=refs)])
+        return dict(function='IDENTITY', arguments=[dict(amount=float(amount), references=refs)])
 
 class AttributeFunction(AttributeBase):
     def __init__(self, function, *attrs):
@@ -212,7 +212,7 @@ def deserialize_arg(arg):
         return arg['value']
 
     #gotta go to java
-    return java.clazz.appy.Serializer().deserializeString(json.dumps(arg))
+    return java.clazz.appy.RemoteMethodCall().parameterFromDict(java.build_java_dict(arg))
 
 def serialize_arg(arg):
     #probably already serialized
@@ -226,7 +226,7 @@ def serialize_arg(arg):
         return AttrDict(type='primitive', value=arg)
 
     #gotta go to java
-    return json.loads(java.clazz.appy.Serializer().serializeToString(arg))
+    return java.build_python_dict_from_java(java.clazz.appy.RemoteMethodCall().parameterToDict(arg))
 
 element_event_hooks = {} #global for all
 class Element:
@@ -737,13 +737,13 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
         out = [e.dict(do_copy=True) for e in output]
         if input is not None and input == out:
             return None
+        return java.build_java_dict(out)
 
-        return json.dumps(out)
-
-    def import_(self, s):
-        d = json.loads(s)
-        d2 = json.loads(s)
-        return d, elist(Element(e) for e in d2)
+    def import_(self, java_list):
+        #make two copies
+        d1 = java.build_python_dict_from_java(java_list)
+        d2 = copy.deepcopy(d1)
+        return d1, elist(Element(e) for e in d2)
 
     @java.override
     def onCreate(self, widget_id):
@@ -752,10 +752,10 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
         return self.export(None, widget_manager_create(widget, manager_state))
 
     @java.override
-    def onUpdate(self, widget_id, views_str):
+    def onUpdate(self, widget_id, views_java_list):
         print(f'python got onUpdate')
         widget, manager_state = create_widget(widget_id)
-        input, views = self.import_(views_str)
+        input, views = self.import_(views_java_list)
         return self.export(input, widget_manager_update(widget, manager_state, views))
 
     @java.override
@@ -765,9 +765,9 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
         state.save_modified()
 
     @java.override
-    def onItemClick(self, widget_id, views_str, collection_id, position, view_id):
+    def onItemClick(self, widget_id, views_java_list, collection_id, position, view_id):
         print(f'python got onitemclick {widget_id} {collection_id} {position} {view_id}')
-        input, views = self.import_(views_str)
+        input, views = self.import_(views_java_list)
         try:
             collection = views.find_id(collection_id)
             view = collection.children.find_id(view_id) if view_id != 0 else None
@@ -782,9 +782,9 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
         return java.new.java.lang.Object[()]([handled, self.export(input, views)])
 
     @java.override
-    def onClick(self, widget_id, views_str, view_id, checked):
+    def onClick(self, widget_id, views_java_list, view_id, checked):
         print(f'python got on click {widget_id} {view_id} {checked}')
-        input, views = self.import_(views_str)
+        input, views = self.import_(views_java_list)
         try:
             v = views.find_id(view_id)
         except KeyError:
@@ -797,27 +797,27 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
         return self.export(input, views)
 
     @java.override
-    def onTimer(self, timer_id, widget_id, views_str, data):
+    def onTimer(self, timer_id, widget_id, views_java_list, data):
         print('timer called', widget_id, timer_id)
-        input, views = self.import_(views_str)
+        input, views = self.import_(views_java_list)
         func, captures = loads(data)
         widget, manager_state = create_widget(widget_id)
         call_function(func, captures, timer_id=timer_id, widget=widget, views=views)
         return self.export(input, views)
 
     @java.override
-    def onPost(self, widget_id, views_str, data):
+    def onPost(self, widget_id, views_java_list, data):
         print('post called')
-        input, views = self.import_(views_str)
+        input, views = self.import_(views_java_list)
         func, captures = loads(data)
         widget, manager_state = create_widget(widget_id)
         call_function(func, captures, widget=widget, views=views)
         return self.export(input, views)
 
     @java.override
-    def onConfig(self, widget_id, views_str, key):
+    def onConfig(self, widget_id, views_java_list, key):
         print('onConfig called', key)
-        input, views = self.import_(views_str)
+        input, views = self.import_(views_java_list)
         widget, manager_state = create_widget(widget_id)
         return self.export(input, widget_manager_config(widget, manager_state, views, key))
 
@@ -861,7 +861,7 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
         return set_error_to_widget_id(widget_id, error)
 
     @java.override
-    def getStateLayout(self):
+    def getStateLayoutSnapshot(self):
         layout = state.state_layout()
         new_locals = {}
         #convert locals[widget_id] to locals[widget][widget_id]
@@ -892,7 +892,7 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
         #     {widget_name -> {key -> repr(value)}}  
         #  locals:
         #     {widget_name -> {widget_id -> {key -> repr(value)}}}
-        return json.dumps(layout)
+        return java.build_java_dict(layout)
     
     @java.override
     def cleanState(self, scope, widget, key):
@@ -920,9 +920,11 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
         return java.jint[()](widgets)
 
     @java.override
-    def syncConfig(self, serialized_onfig):
+    def syncConfig(self, config_java_dict):
         print('sync config called')
-        configs.sync(serialized_onfig)
+
+        config_dict = java.build_python_dict_from_java(config_java_dict)
+        configs.sync(config_dict)
 
     @java.override
     def dumpStacktrace(self, path):

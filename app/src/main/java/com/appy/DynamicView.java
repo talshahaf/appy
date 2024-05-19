@@ -1,11 +1,9 @@
 package com.appy;
 
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
+import android.util.Log;
+
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.Random;
 
 /**
@@ -42,9 +40,9 @@ public class DynamicView
         return id;
     }
 
-    public String toString()
+    public DynamicView()
     {
-        return toJSON();
+
     }
 
     public DynamicView(String type)
@@ -76,24 +74,12 @@ public class DynamicView
         return id;
     }
 
-    public static DynamicView fromJSON(String json)
-    {
-        try
-        {
-            return fromJSON(new JSONObject(json));
-        }
-        catch (JSONException e)
-        {
-            throw new IllegalArgumentException("json deserialization failed", e);
-        }
-    }
-
-    private static DynamicView fromJSON(JSONObject obj) throws JSONException
+    public static DynamicView fromDict(DictObj.Dict obj)
     {
         long id;
-        if (obj.has("id"))
+        if (obj.hasKey("id"))
         {
-            id = obj.getLong("id");
+            id = obj.getLong("id", 0);
         }
         else
         {
@@ -103,78 +89,63 @@ public class DynamicView
         int xml_id = 0;
         int container_id = 0;
         int view_id = 0;
-        if (obj.has("xmlId"))
+
+        xml_id = (int)obj.getLong("xmlId", 0);
+        if (obj.hasKey("containerId"))
         {
-            xml_id = obj.getInt("xmlId");
+            view_id = (int)obj.getLong("containerId", 0);
         }
-        if (obj.has("containerId"))
+        if (obj.hasKey("viewId"))
         {
-            view_id = obj.getInt("containerId");
-        }
-        if (obj.has("viewId"))
-        {
-            view_id = obj.getInt("viewId");
+            view_id = (int)obj.getLong("viewId", 0);
         }
 
         DynamicView view = new DynamicView(id, obj.getString("type"), view_id, container_id, xml_id);
 
         //Log.d("APPY", "building "+view.id+" "+view.type);
 
-        if (obj.has("tag"))
-        {
-            view.tag = obj.get("tag");
-        }
+        view.tag = (DictObj) obj.get("tag");
 
-        if (obj.has("actualWidth"))
-        {
-            view.actualWidth = obj.getInt("actualWidth");
-        }
+        view.actualWidth = (int)obj.getLong("actualWidth", 0);
+        view.actualHeight = (int)obj.getLong("actualHeight", 0);
 
-        if (obj.has("actualHeight"))
+        if (obj.hasKey("selectors"))
         {
-            view.actualHeight = obj.getInt("actualHeight");
-        }
-
-        if (obj.has("selectors"))
-        {
-            JSONObject selectors = obj.getJSONObject("selectors");
-            Iterator<String> it = selectors.keys();
-            while (it.hasNext())
+            for(DictObj.Entry entry : obj.getDict("selectors").entries())
             {
-                String key = it.next();
-                view.selectors.put(key, selectors.getString(key));
+                view.selectors.put(entry.key, (String)entry.value);
             }
         }
 
-        if (obj.has("attributes"))
+        if (obj.hasKey("attributes"))
         {
-            view.attributes = Attributes.fromJSON(obj.getJSONObject("attributes"));
+            view.attributes = Attributes.fromDict(obj.getDict("attributes"));
         }
 
-        if (obj.has("methodCalls"))
+        if (obj.hasKey("methodCalls"))
         {
-            JSONArray callsarr = obj.getJSONArray("methodCalls");
+            DictObj.List callsarr = obj.getList("methodCalls");
             //Log.d("APPY", callsarr.length() + " calls");
-            for (int i = 0; i < callsarr.length(); i++)
+            for (int i = 0; i < callsarr.size(); i++)
             {
-                view.methodCalls.add(RemoteMethodCall.fromJSON(callsarr.getJSONObject(i)));
+                view.methodCalls.add(RemoteMethodCall.fromDict(callsarr.getDict(i)));
             }
         }
-        if (obj.has("children"))
+        if (obj.hasKey("children"))
         {
-            JSONArray childarr = obj.getJSONArray("children");
+            DictObj.List childarr = obj.getList("children");
             //Log.d("APPY", childarr.length() + " children");
-            for (int i = 0; i < childarr.length(); i++)
+            for (int i = 0; i < childarr.size(); i++)
             {
-                view.children.add(DynamicView.fromJSONArray(childarr.getJSONArray(i)));
+                view.children.add(DynamicView.fromDictList(childarr.getList(i)));
             }
         }
         return view;
     }
 
-    private JSONObject toJSONObj() throws JSONException
+    public DictObj.Dict toDict()
     {
-        JSONObject obj = new JSONObject();
+        DictObj.Dict obj = new DictObj.Dict();
         obj.put("id", id);
         obj.put("type", type);
         obj.put("xmlId", xml_id);
@@ -185,7 +156,7 @@ public class DynamicView
 
         if (!selectors.isEmpty())
         {
-            JSONObject selectorsObj = new JSONObject();
+            DictObj.Dict selectorsObj = new DictObj.Dict();
             for (String key : selectors.keySet())
             {
                 selectorsObj.put(key, selectors.get(key));
@@ -195,88 +166,81 @@ public class DynamicView
 
         if (tag != null)
         {
-            obj.put("tag", tag);
+            if (tag instanceof String)
+            {
+                obj.put("tag", (String)tag);
+            }
+            else if (tag instanceof Long)
+            {
+                obj.put("tag", (Long)tag);
+            }
+            else if (tag instanceof Integer)
+            {
+                obj.put("tag", (Integer)tag);
+            }
+            else if (tag instanceof DictObj)
+            {
+                obj.put("tag", (DictObj)tag);
+            }
+            else
+            {
+                throw new IllegalArgumentException("unsupported tag: " + tag.getClass().getName());
+            }
         }
 
         if (!attributes.attributes.isEmpty())
         {
-            obj.put("attributes", attributes.toJSON());
+            obj.put("attributes", attributes.toDict());
         }
 
         if (!methodCalls.isEmpty())
         {
-            JSONArray callarr = new JSONArray();
+            DictObj.List callarr = new DictObj.List();
             for (RemoteMethodCall call : methodCalls)
             {
-                callarr.put(call.toJSONObj());
+                callarr.add(call.toDict());
             }
             obj.put("methodCalls", callarr);
         }
         if (!children.isEmpty())
         {
-            JSONArray childarr = new JSONArray();
+            DictObj.List childarr = new DictObj.List();
             for (ArrayList<DynamicView> views : children)
             {
-                childarr.put(toJSON(views));
+                childarr.add(DynamicView.toDictList(views));
             }
             obj.put("children", childarr);
         }
         return obj;
     }
 
-    public String toJSON()
+    public DynamicView copy()
     {
-        try
-        {
-            return toJSONObj().toString(2);
-        }
-        catch (JSONException e)
-        {
-            throw new IllegalArgumentException("json serialization failed", e);
-        }
+        return fromDict(toDict());
     }
 
-    public static ArrayList<DynamicView> fromJSONArray(JSONArray array) throws JSONException
+    public static ArrayList<DynamicView> fromDictList(DictObj.List list)
     {
         ArrayList<DynamicView> ret = new ArrayList<>();
-        for (int i = 0; i < array.length(); i++)
+        for (int i = 0; i < list.size(); i++)
         {
-            ret.add(DynamicView.fromJSON(array.getJSONObject(i)));
+            ret.add(DynamicView.fromDict(list.getDict(i)));
         }
         return ret;
     }
 
-    public static ArrayList<DynamicView> fromJSONArray(String json)
+    public static DictObj.List toDictList(ArrayList<DynamicView> views)
     {
-        try
-        {
-            return fromJSONArray(new JSONArray(json));
-        }
-        catch (JSONException e)
-        {
-            throw new IllegalArgumentException("json deserialization failed", e);
-        }
-    }
-
-    public static JSONArray toJSON(ArrayList<DynamicView> views) throws JSONException
-    {
-        JSONArray viewarr = new JSONArray();
+        DictObj.List viewarr = new DictObj.List();
         for (DynamicView view : views)
         {
-            viewarr.put(view.toJSONObj());
+            viewarr.add(view.toDict());
         }
         return viewarr;
     }
 
-    public static String toJSONString(ArrayList<DynamicView> views)
+    public static ArrayList<DynamicView> copyArray(ArrayList<DynamicView> arr)
     {
-        try
-        {
-            return toJSON(views).toString();
-        }
-        catch (JSONException e)
-        {
-            throw new IllegalArgumentException("json serialization failed", e);
-        }
+        return DynamicView.fromDictList(DynamicView.toDictList(arr));
     }
 }

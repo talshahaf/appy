@@ -1,13 +1,13 @@
 package com.appy;
 
+import android.content.res.ColorStateList;
 import android.content.res.Resources;
-import android.util.Log;
+import android.net.Uri;
+import android.os.Parcel;
+import android.os.Parcelable;
+import android.util.Base64;
 import android.util.Pair;
 import android.widget.RemoteViews;
-
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
@@ -196,18 +196,6 @@ public class RemoteMethodCall
         return identifier;
     }
 
-    public String toString()
-    {
-        try
-        {
-            return toJSONObj().toString(2);
-        }
-        catch (JSONException e)
-        {
-            return "failed to string";
-        }
-    }
-
     public boolean isParentCall()
     {
         return parentCall;
@@ -260,53 +248,202 @@ public class RemoteMethodCall
         }
     }
 
-    public static RemoteMethodCall fromJSON(String json)
+    public static Object parameterFromDict(DictObj.Dict dict)
     {
+        String type = dict.getString("type");
+
+        if (type.equals("null"))
+        {
+            return null;
+        }
+        else if (type.equals("primitive"))
+        {
+            return dict.get("value");
+        }
+
+        if (!dict.hasKey("class"))
+        {
+            throw new IllegalArgumentException("required key class not found in dict");
+        }
+
         try
         {
-            return fromJSON(new JSONObject(json));
+            Class clazz = Class.forName(dict.getString("class"));
+            switch (type) {
+                case "enum":
+                {
+                    return Enum.valueOf(clazz, dict.getString("value"));
+                }
+                case "stringable":
+                {
+                    if (Uri.class.isAssignableFrom(clazz)) {
+                        return Uri.parse(dict.getString("value"));
+                    }
+                    //...
+                    else
+                    {
+                        throw new IllegalArgumentException("unsupported stringable class: " + clazz.getName());
+                    }
+                }
+                case "parcelable":
+                {
+                    Parcel parcel = Parcel.obtain();
+                    try {
+                        byte[] b = Base64.decode(dict.getString("value"), Base64.DEFAULT);
+                        parcel.unmarshall(b, 0, b.length);
+                        parcel.setDataPosition(0);
+
+                        if (ColorStateList.class.isAssignableFrom(clazz))
+                        {
+                            return ColorStateList.CREATOR.createFromParcel(parcel);
+                        }
+                        //...
+                        else
+                        {
+                            throw new IllegalArgumentException("unsupported parcellable class: " + clazz.getName());
+                        }
+                    } finally {
+                        parcel.recycle();
+                    }
+                }
+            }
         }
-        catch (JSONException e)
+        catch (ClassNotFoundException e)
         {
-            throw new IllegalArgumentException("json deserialization failed", e);
+            throw new IllegalArgumentException("unknown class: " + dict.getString("class"));
         }
+
+        throw new IllegalArgumentException("unknown type: " + type);
     }
 
-    public static RemoteMethodCall fromJSON(JSONObject obj) throws JSONException
+    public static RemoteMethodCall fromDict(DictObj.Dict obj)
     {
         Object[] args = new Object[0];
-        if (obj.has("arguments"))
+        if (obj.hasKey("arguments"))
         {
-            JSONArray jsonargs = obj.getJSONArray("arguments");
-            args = new Object[jsonargs.length()];
-            for (int i = 0; i < jsonargs.length(); i++)
+            DictObj.List dictargs = obj.getList("arguments");
+            args = new Object[dictargs.size()];
+            for (int i = 0; i < dictargs.size(); i++)
             {
-                args[i] = Serializer.deserialize(jsonargs.getJSONObject(i));
+                args[i] = parameterFromDict(dictargs.getDict(i));
             }
         }
 
         boolean parentCall = false;
-        if (obj.has("parentCall"))
+        if (obj.hasKey("parentCall"))
         {
-            parentCall = obj.getBoolean("parentCall");
+            parentCall = obj.getBoolean("parentCall", false);
         }
         return new RemoteMethodCall(obj.getString("identifier"), parentCall, obj.getString("method"), args);
     }
 
-    public JSONObject toJSONObj() throws JSONException
+    public static DictObj.Dict parameterToDict(Object param)
     {
-        JSONObject obj = new JSONObject();
+        DictObj.Dict dict = new DictObj.Dict();
+
+        if (param == null)
+        {
+            dict.put("type", "null");
+        }
+        else if (param instanceof Boolean)
+        {
+            dict.put("type", "primitive");
+            dict.put("value", (Boolean)param);
+        }
+        else if (param instanceof Byte)
+        {
+            dict.put("type", "primitive");
+            dict.put("value", (Byte)param);
+        }
+        else if (param instanceof Character)
+        {
+            dict.put("type", "primitive");
+            dict.put("value", (Character)param);
+        }
+        else if (param instanceof Short)
+        {
+            dict.put("type", "primitive");
+            dict.put("value", (Short)param);
+        }
+        else if (param instanceof Integer)
+        {
+            dict.put("type", "primitive");
+            dict.put("value", (Integer)param);
+        }
+        else if (param instanceof Long)
+        {
+            dict.put("type", "primitive");
+            dict.put("value", (Long)param);
+        }
+        else if (param instanceof Float)
+        {
+            dict.put("type", "primitive");
+            dict.put("value", (Float)param);
+        }
+        else if (param instanceof Double)
+        {
+            dict.put("type", "primitive");
+            dict.put("value", (Double)param);
+        }
+        else if (param instanceof String)
+        {
+            dict.put("type", "primitive");
+            dict.put("value", (String)param);
+        }
+        else if (param instanceof CharSequence)
+        {
+            dict.put("type", "primitive");
+            dict.put("value", ((CharSequence)param).toString());
+        }
+        else if (param.getClass().isEnum())
+        {
+            dict.put("type", "enum");
+            dict.put("class", param.getClass().getName());
+            dict.put("value", ((Enum<?>) param).name());
+        }
+        else if (param instanceof Uri)
+        {
+            dict.put("type", "stringable");
+            dict.put("class", param.getClass().getName());
+            dict.put("value", param.toString());
+        }
+        else if (param instanceof Parcelable)
+        {
+            dict.put("type", "parcelable");
+            dict.put("class", param.getClass().getName());
+            Parcel parcel = Parcel.obtain();
+            try
+            {
+                ((ColorStateList) param).writeToParcel(parcel, 0);
+                dict.put("value", Base64.encodeToString(parcel.marshall(), Base64.DEFAULT));
+            }
+            finally
+            {
+                parcel.recycle();
+            }
+        }
+        else
+        {
+            throw new IllegalArgumentException("cannot serialize remote call parameter " + param.getClass().getName() + " " + param.toString());
+        }
+
+        return dict;
+    }
+
+    public DictObj.Dict toDict()
+    {
+        DictObj.Dict obj = new DictObj.Dict();
         obj.put("identifier", identifier);
         obj.put("parentCall", parentCall);
         obj.put("method", method.getName());
         if (arguments.length > 0)
         {
-            JSONArray jsonargs = new JSONArray();
+            DictObj.List args = new DictObj.List();
             for (Object arg : arguments)
             {
-                jsonargs.put(Serializer.serialize(arg));
+                args.add(parameterToDict(arg));
             }
-            obj.put("arguments", jsonargs);
+            obj.put("arguments", args);
         }
         return obj;
     }
