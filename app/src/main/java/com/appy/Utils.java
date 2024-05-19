@@ -26,6 +26,7 @@ import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -138,7 +139,7 @@ public class Utils
         return defaultName;
     }
 
-    public static <T> Pair<Set<T>, Set<T>> intersectionAndXor(Set<T> a, Set<T> b)
+    public static <T> Pair<Set<T>, Set<T>> intersectionAndXor(Collection<T> a, Collection<T> b)
     {
         Set<T> union = new HashSet<>(a);
         union.addAll(b);

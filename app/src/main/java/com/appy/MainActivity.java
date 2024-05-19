@@ -124,6 +124,8 @@ public class MainActivity extends AppCompatActivity implements StatusListener
         boolean inTutorialMode = tutorial.startMain(widgetService);
         if (inTutorialMode)
         {
+            //start on control
+            selectDrawerItem(navView.getMenu().getItem(0), null);
             return;
         }
 

@@ -79,9 +79,7 @@ public class ConfigsFragment extends FragmentParent
                     File exportFile = exportFilePath();
                     try
                     {
-                        FileWriter writer = new FileWriter(exportFile, false);
-                        writer.write(configurations.serialize());
-                        writer.close();
+                        Utils.writeFile(exportFile, configurations.getDict().serialize());
                         Toast.makeText(getActivity(), "Configurations exported to " + exportFile.getAbsolutePath(), Toast.LENGTH_LONG).show();
                     }
                     catch (IOException e)
@@ -129,8 +127,8 @@ public class ConfigsFragment extends FragmentParent
 
             try
             {
-                String content = Utils.readAndHashFileAsString(new File(files[0]), Constants.CONFIG_IMPORT_MAX_SIZE).first;
-                HashMap<String, HashMap<String, Pair<String, String>>> newConfig = Configurations.deserialize(content);
+                byte[] content = Utils.readAndHashFile(new File(files[0]), Constants.CONFIG_IMPORT_MAX_SIZE).first;
+                DictObj.Dict newConfig = DictObj.Dict.deserialize(content);
 
                 Utils.showConfirmationDialog(getActivity(),
                         "Import Configuration", "This will overwrite all existing configurations", android.R.drawable.ic_dialog_alert,

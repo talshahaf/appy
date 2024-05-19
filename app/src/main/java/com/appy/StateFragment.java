@@ -1,45 +1,23 @@
 package com.appy;
 
-import android.content.Context;
-import android.content.DialogInterface;
 import android.os.Bundle;
-
-import androidx.fragment.app.FragmentTransaction;
 import androidx.appcompat.app.AlertDialog;
-
-import android.text.InputType;
-import android.text.TextUtils;
-import android.util.Pair;
 import android.view.ContextMenu;
-import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
-import android.widget.BaseAdapter;
-import android.widget.Button;
-import android.widget.EditText;
 import android.widget.ListView;
-import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
-
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
-
-import java.io.File;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
-import static java.util.prefs.Preferences.MAX_VALUE_LENGTH;
 
 public class StateFragment extends FragmentParent
 {
+    DictObj.Dict stateSnapshot = null;
+
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState)
@@ -61,9 +39,18 @@ public class StateFragment extends FragmentParent
             return;
         }
 
+        stateSnapshot = getWidgetService().getStateLayoutSnapshot();
+
         WidgetSelectFragment fragment = new WidgetSelectFragment();
+        fragment.setParent(this);
         fragment.setKeyPath();
         switchTo(fragment, true);
+    }
+
+    @Override
+    public DictObj.Dict getDict()
+    {
+        return stateSnapshot;
     }
 
     @Override
@@ -83,27 +70,43 @@ public class StateFragment extends FragmentParent
         ListView list;
         ArrayList<String> keyPath;
 
+        public DictObj.Dict traverse()
+        {
+            DictObj.Dict current = parent.getDict();
+            for (String key : keyPath)
+            {
+                if (current == null)
+                {
+                    return null;
+                }
+                current = current.getDict(key);
+            }
+            return current;
+        }
+
         public void refresh()
         {
             ArrayList<ListFragmentAdapter.Item> adapterList = new ArrayList<>();
             if (keyPath.isEmpty())
             {
-                for (String scope : StateLayout.listScopes())
+                for (String scope : scopes)
                 {
                     adapterList.add(new ListFragmentAdapter.Item(scope, "", false, false));
                 }
             }
             else
             {
-                StateLayout stateLayout = getWidgetService().getStateLayout();
-
-                int depth = StateLayout.getDepth(keyPath.get(0));
+                int depth = getScopeDepth(keyPath.get(0));
                 boolean leaves = depth == keyPath.size();
                 boolean inLocalScopeView = depth - 1 == keyPath.size() && depth == 3;
 
-                for (String key : stateLayout.listDict(keyPath))
+                DictObj.Dict current = traverse();
+                if (current != null)
                 {
-                    adapterList.add(new ListFragmentAdapter.Item(key, leaves ? stateLayout.getValue(keyPath, key) : "", leaves, inLocalScopeView));
+                    for (String key : current.keys())
+                    {
+                        adapterList.add(new ListFragmentAdapter.Item(key, leaves ? current.get(key).toString() : "", leaves, inLocalScopeView));
+                    }
                 }
             }
             list.setAdapter(new ListFragmentAdapter(getActivity(), adapterList));
@@ -179,7 +182,7 @@ public class StateFragment extends FragmentParent
                 boolean hasContextList = true;
                 if (!keyPath.isEmpty())
                 {
-                    int depth = StateLayout.getDepth(keyPath.get(0));
+                    int depth = getScopeDepth(keyPath.get(0));
                     if (depth != keyPath.size() && depth - 1 != keyPath.size())
                     {
                         //only two deepest levels has menu
@@ -227,7 +230,7 @@ public class StateFragment extends FragmentParent
                         {
                             if (keyPath.isEmpty())
                             {
-                                if (StateLayout.getDepth(item.key) != 1)
+                                if (getScopeDepth(item.key) != 1)
                                 {
                                     Toast.makeText(getActivity(), "Too many inner levels to delete", Toast.LENGTH_SHORT).show();
                                 }
@@ -248,6 +251,28 @@ public class StateFragment extends FragmentParent
                         }
                     });
             return true;
+        }
+
+        public static final String[] scopes = new String[] {"globals", "nonlocals", "locals"};
+
+        public static int getScopeDepth(String scope)
+        {
+            if (scope.equals("globals"))
+            {
+                return 1;
+            }
+
+            if (scope.equals("nonlocals"))
+            {
+                return 2;
+            }
+
+            if (scope.equals("locals"))
+            {
+                return 3;
+            }
+
+            throw new IllegalArgumentException("unknown scope");
         }
     }
 }

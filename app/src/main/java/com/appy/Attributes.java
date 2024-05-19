@@ -1,14 +1,10 @@
 package com.appy;
 
+import android.util.Log;
 import android.util.Pair;
-
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.Map;
 
 /**
@@ -17,7 +13,7 @@ import java.util.Map;
 
 public class Attributes
 {
-    enum Type
+    public enum Type
     {
         LEFT,
         TOP,
@@ -27,9 +23,10 @@ public class Attributes
         HEIGHT,
     }
 
-    static class AttributeValue
+    public static class AttributeValue
     {
-        static class Reference
+        //such as text.top * 2
+        public static class Reference
         {
             public long id;
             public Type type;
@@ -50,7 +47,10 @@ public class Attributes
             MAX,
         }
 
+        // such as min(text.top + widget.height / 5 + 10, text.bottom - 10)
         public Function function = Function.IDENTITY;
+
+        // list elements such as (text.top * 2 + widget.height / 5 + 1)
         public ArrayList<Pair<ArrayList<Reference>, Double>> arguments = new ArrayList<>();
         public Double resolvedValue;
 
@@ -64,54 +64,59 @@ public class Attributes
             return !arguments.isEmpty();
         }
 
-        public static AttributeValue fromJSON(JSONObject obj) throws JSONException
+        public AttributeValue()
+        {
+
+        }
+
+        public static AttributeValue fromDict(DictObj.Dict obj)
         {
             AttributeValue ret = new AttributeValue();
 
             ret.function = Function.valueOf(obj.getString("function"));
 
-            JSONArray argumentsArray = obj.getJSONArray("arguments");
-            for (int i = 0; i < argumentsArray.length(); i++)
+            DictObj.List argumentsArray = obj.getList("arguments");
+            for (int i = 0; i < argumentsArray.size(); i++)
             {
-                JSONObject argumentObj = argumentsArray.getJSONObject(i);
+                DictObj.Dict argumentObj = argumentsArray.getDict(i);
 
                 ArrayList<Reference> references = new ArrayList<>();
-                JSONArray referenceArray = argumentObj.getJSONArray("references");
-                for (int j = 0; j < referenceArray.length(); j++)
+                DictObj.List referenceArray = argumentObj.getList("references");
+                for (int j = 0; j < referenceArray.size(); j++)
                 {
-                    JSONObject referenceObj = referenceArray.getJSONObject(j);
+                    DictObj.Dict referenceObj = referenceArray.getDict(j);
 
-                    Reference ref = new Reference(referenceObj.getLong("id"), Type.valueOf(referenceObj.getString("type")), referenceObj.getDouble("factor"));
+                    Reference ref = new Reference(referenceObj.getLong("id", 0), Type.valueOf(referenceObj.getString("type")), referenceObj.getDouble("factor", 0));
                     references.add(ref);
                 }
 
-                ret.arguments.add(new Pair<>(references, argumentObj.getDouble("amount")));
+                ret.arguments.add(new Pair<>(references, argumentObj.getDouble("amount", 0)));
             }
 
             return ret;
         }
 
-        public JSONObject toJSON() throws JSONException
+        public DictObj.Dict toDict()
         {
-            JSONObject obj = new JSONObject();
+            DictObj.Dict obj = new DictObj.Dict();
             obj.put("function", function.name());
-            JSONArray argArray = new JSONArray();
+            DictObj.List argArray = new DictObj.List();
             for (Pair<ArrayList<Reference>, Double> arg : arguments)
             {
-                JSONObject argObj = new JSONObject();
+                DictObj.Dict argObj = new DictObj.Dict();
                 argObj.put("amount", arg.second);
 
-                JSONArray refArray = new JSONArray();
+                DictObj.List refArray = new DictObj.List();
                 for (Reference ref : arg.first)
                 {
-                    JSONObject refObj = new JSONObject();
+                    DictObj.Dict refObj = new DictObj.Dict();
                     refObj.put("id", ref.id);
                     refObj.put("type", ref.type.name());
                     refObj.put("factor", ref.factor);
-                    refArray.put(refObj);
+                    refArray.add(refObj);
                 }
                 argObj.put("references", refArray);
-                argArray.put(argObj);
+                argArray.add(argObj);
             }
             obj.put("arguments", argArray);
             if (resolvedValue != null)
@@ -119,18 +124,6 @@ public class Attributes
                 obj.put("resolvedValue", resolvedValue);
             }
             return obj;
-        }
-
-        public String toString()
-        {
-            try
-            {
-                return toJSON().toString(2);
-            }
-            catch (JSONException e)
-            {
-                throw new IllegalArgumentException("json serialization failed", e);
-            }
         }
     }
 
@@ -145,50 +138,36 @@ public class Attributes
         }
     }
 
-    public JSONObject toJSON() throws JSONException
+    public DictObj.Dict toDict()
     {
-        JSONObject obj = new JSONObject();
+        DictObj.Dict obj = new DictObj.Dict();
         for (Map.Entry<Type, AttributeValue> e : attributes.entrySet())
         {
-            obj.put(e.getKey().toString(), e.getValue().toJSON());
+            obj.put(e.getKey().toString(), e.getValue().toDict());
         }
         return obj;
     }
 
-    public static Attributes fromJSON(JSONObject obj) throws JSONException
+    public static Attributes fromDict(DictObj.Dict obj)
     {
         Attributes attributes = new Attributes();
-        Iterator<String> it = obj.keys();
-        while (it.hasNext())
+        for (DictObj.Entry entry : obj.entries())
         {
-            String key = it.next();
-            attributes.attributes.put(Type.valueOf(key), AttributeValue.fromJSON(obj.getJSONObject(key)));
+            attributes.attributes.put(Type.valueOf(entry.key), AttributeValue.fromDict((DictObj.Dict)entry.value));
         }
         return attributes;
     }
 
-    public ArrayList<AttributeValue> unresolved()
+    public HashMap<Type, AttributeValue> unresolved()
     {
-        ArrayList<AttributeValue> ret = new ArrayList<>();
+        HashMap<Type, AttributeValue> ret = new HashMap<>();
         for (Map.Entry<Type, AttributeValue> e : attributes.entrySet())
         {
             if (e.getValue().resolvedValue == null)
             {
-                ret.add(e.getValue());
+                ret.put(e.getKey(), e.getValue());
             }
         }
         return ret;
-    }
-
-    public String toString()
-    {
-        try
-        {
-            return toJSON().toString(2);
-        }
-        catch (JSONException e)
-        {
-            throw new IllegalArgumentException("json serialization failed", e);
-        }
     }
 }

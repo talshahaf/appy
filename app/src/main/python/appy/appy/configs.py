@@ -1,4 +1,4 @@
-import json
+import json, copy
 from .utils import AttrDict
 from . import java
 
@@ -9,24 +9,26 @@ class ConfigDict(AttrDict):
 
 global_configs = ConfigDict()
 global_raw_configs = ConfigDict()
-previous_serialized_config = ''
+previous_dict_config = ''
 
 def set_defaults(widget, dic):
-    pairs = ((k, json.dumps(v) if not k.endswith('_nojson') else v) for k,v in dic.items())
-    ks, vs = zip(*pairs)
+    jsoned = {k : (json.dumps(v) if not k.endswith('_nojson') else v) for k,v in dic.items()}
     configurations = java.get_java_arg().getConfigurations()
-    configurations.setDefaultConfig(widget, java.new.java.lang.String[()](ks), java.new.java.lang.String[()](vs))
-    sync(configurations.serialize())
+    configurations.setDefaultConfig(widget, java.build_java_dict(jsoned))
+    sync(java.build_python_dict_from_java(configurations.getDict()))
 
-def sync(serialized_config):
-    global global_configs, global_raw_configs, previous_serialized_config
+def sync(config_dict):
+    global global_configs, global_raw_configs, previous_dict_config
 
-    if serialized_config == previous_serialized_config:
+    if config_dict == previous_dict_config:
         # no update needed
         return
 
-    global_configs = ConfigDict.make(json.loads(serialized_config))
-    global_raw_configs = ConfigDict.make(json.loads(serialized_config))
+    global_configs = ConfigDict.make(copy.deepcopy(config_dict))
+    global_raw_configs = ConfigDict.make(copy.deepcopy(config_dict))
+
+    previous_dict_config = config_dict
+
     for widget, widget_configs in global_configs.items():
         for key in widget_configs:
             value = widget_configs[key]['value']

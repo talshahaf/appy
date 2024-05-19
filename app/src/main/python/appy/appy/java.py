@@ -360,6 +360,12 @@ def implements(*ifaces):
 def get_java_arg():
     return wrap(bridge.get_java_arg())[0]
 
+def build_java_dict(obj):
+    return wrap(bridge.build_java_dict(obj))[0]
+
+def build_python_dict_from_java(java_obj):
+    return bridge.build_python_dict_from_java(java_obj.bridge)
+
 #TODO think about scope
 #package = Path(path_func=set_package)
 

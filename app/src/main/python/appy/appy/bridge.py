@@ -27,6 +27,12 @@ class jref:
     def __bool__(self):
         return bool(self.handle)
 
+    def __deepcopy__(self,el):
+        raise RuntimeError("cannot copy java reference")
+
+    def __copy__(self):
+        raise RuntimeError("cannot copy java reference")
+
 def know_class(clazz):
     if clazz.class_name not in known_classes:
         known_classes[clazz.class_name] = clazz
@@ -524,6 +530,12 @@ def callback(arg):
         except Exception as e:
             tb = f'Unable to get traceback, format_exc raised an exception: {e}'
         raise Exception('Python Exception\n\nThe above exception was the direct cause of the following exception:\n\n' + tb)
+
+def build_java_dict(obj):
+    return upcast(jobject(jref(native_appy.build_java_dict(obj)), 'jsonobject'))
+
+def build_python_dict_from_java(java_obj):
+    return native_appy.build_python_dict_from_java(java_obj.ref.handle)
 
 native_appy.set_python_callback(callback)
 
