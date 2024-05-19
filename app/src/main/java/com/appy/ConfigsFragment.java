@@ -79,7 +79,7 @@ public class ConfigsFragment extends FragmentParent
                     File exportFile = exportFilePath();
                     try
                     {
-                        Utils.writeFile(exportFile, configurations.getDict().serialize());
+                        Utils.writeFile(exportFile, DictObj.makeJson(configurations.getDict()));
                         Toast.makeText(getActivity(), "Configurations exported to " + exportFile.getAbsolutePath(), Toast.LENGTH_LONG).show();
                     }
                     catch (IOException e)
@@ -127,26 +127,33 @@ public class ConfigsFragment extends FragmentParent
 
             try
             {
-                byte[] content = Utils.readAndHashFile(new File(files[0]), Constants.CONFIG_IMPORT_MAX_SIZE).first;
-                DictObj.Dict newConfig = DictObj.Dict.deserialize(content);
+                String content = Utils.readAndHashFileAsString(new File(files[0]), Constants.CONFIG_IMPORT_MAX_SIZE).first;
 
-                Utils.showConfirmationDialog(getActivity(),
-                        "Import Configuration", "This will overwrite all existing configurations", android.R.drawable.ic_dialog_alert,
-                        null, null, new Runnable()
-                        {
-                            @Override
-                            public void run()
-                            {
-                                configurations.replaceConfiguration(newConfig);
-                                Toast.makeText(getActivity(), "Configurations imported from " + files[0], Toast.LENGTH_LONG).show();
-                                tryStart();
-                            }
-                        });
-            }
-            catch (IllegalStateException e)
-            {
-                Toast.makeText(getActivity(), "File is not in a valid JSON format", Toast.LENGTH_SHORT).show();
-                Log.e("APPY", "deserialize failed", e);
+                DictObj.Dict newConfig = null;
+                try
+                {
+                    newConfig = (DictObj.Dict)DictObj.fromJson(content);
+                }
+                catch (Exception e)
+                {
+                    Toast.makeText(getActivity(), "File is not in a valid/expected JSON format", Toast.LENGTH_SHORT).show();
+                    Log.e("APPY", "deserialize failed", e);
+                }
+
+                if (newConfig != null)
+                {
+                    final DictObj.Dict finalConfig = newConfig;
+                    Utils.showConfirmationDialog(getActivity(),
+                            "Import Configuration", "This will overwrite all existing configurations", android.R.drawable.ic_dialog_alert,
+                            null, null, new Runnable() {
+                                @Override
+                                public void run() {
+                                    configurations.replaceConfiguration(finalConfig);
+                                    Toast.makeText(getActivity(), "Configurations imported from " + files[0], Toast.LENGTH_LONG).show();
+                                    tryStart();
+                                }
+                            });
+                }
             }
             catch (IOException e)
             {

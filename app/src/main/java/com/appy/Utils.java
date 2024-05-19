@@ -283,6 +283,11 @@ public class Utils
         }
     }
 
+    public static void writeFile(File path, String data) throws IOException
+    {
+        writeFile(path, data.getBytes(StandardCharsets.UTF_8));
+    }
+
     public static void writeFile(File path, byte[] data) throws IOException
     {
         try(OutputStream os = new FileOutputStream(path))

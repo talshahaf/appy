@@ -26,6 +26,11 @@ public class DictObj
         return new String(DictObjtojson(obj), StandardCharsets.UTF_8);
     }
 
+    public static DictObj fromJson(String json)
+    {
+        return (DictObj) jsontoDictObj(json.getBytes(StandardCharsets.UTF_8));
+    }
+
     public String serializeB64()
     {
         return Base64.encodeToString(serialize(), Base64.DEFAULT);
