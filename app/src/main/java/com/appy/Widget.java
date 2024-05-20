@@ -439,20 +439,28 @@ public class Widget extends RemoteViewsService
         @Override
         public int getCount()
         {
+            if (startupState != Constants.StartupState.COMPLETED)
+            {
+                return 0;
+            }
             return listview.children.size();
         }
 
         @Override
         public RemoteViews getViewAt(int position)
         {
+            if (startupState != Constants.StartupState.COMPLETED)
+            {
+                return null;
+            }
             try
             {
                 synchronized (lock)
                 {
+
                     if (position < listview.children.size())
                     {
                         ArrayList<DynamicView> child = listview.children.get(position);
-                        // copy is needed as resolveDimensions modifies the view
                         RemoteViews remoteView = resolveDimensions(context, widgetId, child, Constants.collection_layout_type.get(listview.type), new Object[]{listview.getId(), position}, listview.actualWidth, listview.actualHeight).first;
                         Intent fillIntent = new Intent(context, WidgetReceiver2x2.class);
                         if (child.size() == 1)
@@ -1572,7 +1580,8 @@ public class Widget extends RemoteViewsService
         ArrayList<DynamicView> widget = widgets.get(widgetId);
         if (widget == null)
         {
-            throw new RuntimeException("widget entry is null?");
+            return;
+            //throw new RuntimeException("widget entry is null?");
         }
 
         String widgetString = Base64.encodeToString(DynamicView.toDictList(widget).serialize(), Base64.DEFAULT);
