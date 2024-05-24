@@ -1,8 +1,6 @@
 package com.appy;
 
 import android.content.Context;
-import android.content.SharedPreferences;
-import android.util.Base64;
 import android.util.Pair;
 
 import java.util.ArrayList;
@@ -64,7 +62,7 @@ public class Configurations
     public void resetKey(String widget, String key)
     {
         boolean changed = false;
-        byte[] serialized = null;
+        DictObj.Dict copy = null;
         synchronized (lock)
         {
             DictObj.Dict configs = configurations.getDict(widget);
@@ -85,21 +83,21 @@ public class Configurations
 
             if (changed)
             {
-                serialized = configurations.serialize();
+                copy = (DictObj.Dict) configurations.copy(false);
             }
         }
 
         if (changed)
         {
             configurationUpdate(widget, key);
-            save(serialized);
+            save(copy);
         }
     }
 
     public void resetWidget(String widget)
     {
         boolean changed = false;
-        byte[] serialized = null;
+        DictObj.Dict copy = null;
         synchronized (lock)
         {
             DictObj.Dict configs = configurations.getDict(widget);
@@ -123,21 +121,21 @@ public class Configurations
 
             if (changed)
             {
-                serialized = configurations.serialize();
+                copy = (DictObj.Dict) configurations.copy(false);
             }
         }
 
         if (changed)
         {
             configurationUpdate(widget, null);
-            save(serialized);
+            save(copy);
         }
     }
 
     public void deleteKey(String widget, String key)
     {
         boolean changed = false;
-        byte[] serialized = null;
+        DictObj.Dict copy = null;
         synchronized (lock)
         {
             DictObj.Dict configs = configurations.getDict(widget);
@@ -147,36 +145,40 @@ public class Configurations
                 {
                     configs.remove(key);
                     changed = true;
-                    serialized = configurations.serialize();
                 }
+            }
+
+            if (changed)
+            {
+                copy = (DictObj.Dict) configurations.copy(false);
             }
         }
 
         if (changed)
         {
             configurationUpdate(widget, key);
-            save(serialized);
+            save(copy);
         }
     }
 
     public void deleteWidget(String widget)
     {
         boolean changed = false;
-        byte[] serialized = null;
+        DictObj.Dict copy = null;
         synchronized (lock)
         {
             if (configurations.hasKey(widget))
             {
                 configurations.remove(widget);
+                copy = (DictObj.Dict) configurations.copy(false);
                 changed = true;
-                serialized = configurations.serialize();
             }
         }
 
         if (changed)
         {
             configurationUpdate(widget, null);
-            save(serialized);
+            save(copy);
         }
     }
 
@@ -184,8 +186,8 @@ public class Configurations
     {
         boolean changed = false;
         for (DictObj.Entry entry : defaults.entries())
-             {
-            if (setConfigNoSave(widget, entry.key, (String)entry.value, true))
+        {
+            if (setConfigNoSave(widget, entry.key, (String) entry.value, true))
             {
                 changed = true;
             }
@@ -193,7 +195,12 @@ public class Configurations
 
         if (changed)
         {
-            save(configurations.serialize());
+            DictObj.Dict copy;
+            synchronized (lock)
+            {
+                copy = (DictObj.Dict) configurations.copy(false);
+            }
+            save(copy);
         }
     }
 
@@ -201,7 +208,12 @@ public class Configurations
     {
         if (setConfigNoSave(widget, key, value, false))
         {
-            save(configurations.serialize());
+            DictObj.Dict copy;
+            synchronized (lock)
+            {
+                copy = (DictObj.Dict) configurations.copy(false);
+            }
+            save(copy);
         }
     }
 
@@ -251,17 +263,16 @@ public class Configurations
 
     public void load()
     {
-        SharedPreferences sharedPref = context.getSharedPreferences("appy", Context.MODE_PRIVATE);
-        String config = sharedPref.getString("configurations", null);
+        StoreData store = StoreData.Factory.create(context, "configuration");
+        DictObj.Dict config = store.getDict("configurations");
         if (config == null)
         {
             return;
         }
 
-        DictObj.Dict result = DictObj.Dict.deserialize(Base64.decode(config, Base64.DEFAULT));
         synchronized (lock)
         {
-            configurations = result;
+            configurations = config;
         }
 
         configurationUpdate(null, null);
@@ -314,6 +325,13 @@ public class Configurations
         {
             configurationUpdate(change.first, change.second);
         }
+
+        DictObj.Dict copy;
+        synchronized (lock)
+        {
+            copy = (DictObj.Dict) configurations.copy(false);
+        }
+        save(copy);
     }
 
     private void configurationUpdate(String widget, String key)
@@ -329,11 +347,10 @@ public class Configurations
         return configurations;
     }
 
-    private void save(byte[] serialized)
+    private void save(DictObj.Dict dict)
     {
-        SharedPreferences sharedPref = context.getSharedPreferences("appy", Context.MODE_PRIVATE);
-        SharedPreferences.Editor editor = sharedPref.edit();
-        editor.putString("configurations", Base64.encodeToString(serialized, Base64.DEFAULT));
-        editor.apply();
+        StoreData store = StoreData.Factory.create(context, "configuration");
+        store.put("configurations", dict);
+        store.apply();
     }
 }

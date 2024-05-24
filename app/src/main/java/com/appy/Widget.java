@@ -57,7 +57,6 @@ import androidx.preference.PreferenceManager;
 
 import android.system.ErrnoException;
 import android.system.Os;
-import android.util.Base64;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.util.Pair;
@@ -92,11 +91,10 @@ public class Widget extends RemoteViewsService
 
     final Object lock = new Object();
     HashMap<Integer, TaskQueue> widgetsTasks = new HashMap<>();
-
     HashMap<Integer, ArrayList<DynamicView>> widgets = new HashMap<>();
     HashMap<Long, Timer> activeTimers = new HashMap<>();
     HashMap<Long, PendingIntent[]> activeTimersIntents = new HashMap<>();
-    HashMap<Pair<Integer, Integer>, HashMap<Integer, ListFactory>> factories = new HashMap<>();
+    final HashMap<Long, ListFactory> factories = new HashMap<>();
     ArrayList<PythonFile> pythonFiles = new ArrayList<>();
     PythonFile unknownPythonFile = new PythonFile("Unknown file");
     HashSet<Integer> needUpdateWidgets = new HashSet<>();
@@ -372,42 +370,52 @@ public class Widget extends RemoteViewsService
         return true;
     }
 
-    public ListFactory getFactory(Context context, int widgetId, int xml, int view, DynamicView listview)
+    public void prepareFactory(Context context, int widgetId, int xml, int view, DynamicView listview)
     {
-        Pair<Integer, Integer> key = new Pair<>(widgetId, xml);
-        HashMap<Integer, ListFactory> inWidgetXml = factories.get(key);
-        if (inWidgetXml == null)
-        {
-            inWidgetXml = new HashMap<>();
-            factories.put(key, inWidgetXml);
-        }
+        long key = widgetId + ((long)view << 10) + ((long)xml << 36); //good enough
 
-        ListFactory foundFactory = inWidgetXml.get(view);
-        if (foundFactory == null)
+        ListFactory factory;
+        synchronized (factories)
         {
-            foundFactory = new ListFactory(context, widgetId, listview.copy());
-            inWidgetXml.put(view, foundFactory);
+            factory = factories.get(key);
+            if (factory == null)
+            {
+                factory = new ListFactory(context, widgetId);
+                factories.put(key, factory);
+            }
         }
-        else
-        {
-            foundFactory.reload(listview.copy());
-        }
-
-        return foundFactory;
+        factory.reload(listview.copy());
     }
 
-    class ListFactory implements RemoteViewsFactory
+    public ListFactory getFactory(Context context, int widgetId, int xml, int view)
+    {
+        long key = widgetId + ((long)view << 10) + ((long)xml << 36); //good enough
+
+        ListFactory factory;
+        synchronized (factories)
+        {
+            factory = factories.get(key);
+        }
+
+        if (factory == null)
+        {
+            Log.w("APPY", "null factory for "+widgetId+" "+xml+" "+view);
+            factory = new ListFactory(context, widgetId);
+        }
+        return factory;
+    }
+
+    public class ListFactory implements RemoteViewsFactory
     {
         final Object lock = new Object();
         int widgetId;
         Context context;
-        DynamicView listview;
+        DynamicView listview = null;
 
-        public ListFactory(Context context, int widgetId, DynamicView listview)
+        public ListFactory(Context context, int widgetId)
         {
             this.context = context;
             this.widgetId = widgetId;
-            reload(listview);
         }
 
         public void reload(DynamicView listview)
@@ -439,7 +447,7 @@ public class Widget extends RemoteViewsService
         @Override
         public int getCount()
         {
-            if (startupState != Constants.StartupState.COMPLETED)
+            if (listview == null || startupState != Constants.StartupState.COMPLETED)
             {
                 return 0;
             }
@@ -449,7 +457,7 @@ public class Widget extends RemoteViewsService
         @Override
         public RemoteViews getViewAt(int position)
         {
-            if (startupState != Constants.StartupState.COMPLETED)
+            if (listview == null || startupState != Constants.StartupState.COMPLETED)
             {
                 return null;
             }
@@ -457,10 +465,10 @@ public class Widget extends RemoteViewsService
             {
                 synchronized (lock)
                 {
-
                     if (position < listview.children.size())
                     {
                         ArrayList<DynamicView> child = listview.children.get(position);
+                        //Log.d("APPY", "getViewAt: "+position+", "+DictObj.makeJson(DynamicView.toDictList(child)));
                         RemoteViews remoteView = resolveDimensions(context, widgetId, child, Constants.collection_layout_type.get(listview.type), new Object[]{listview.getId(), position}, listview.actualWidth, listview.actualHeight).first;
                         Intent fillIntent = new Intent(context, WidgetReceiver2x2.class);
                         if (child.size() == 1)
@@ -814,15 +822,15 @@ public class Widget extends RemoteViewsService
                 if (!forMeasurement)
                 {
                     clickIntent.putExtra(Constants.COLLECTION_ITEM_ID_EXTRA, layout.getId());
-                    //request code has to be unique at any given time
-                    remoteView.setPendingIntentTemplate(layout.view_id, PendingIntent.getBroadcast(context, widgetId + ((int) layout.getId() << 10), clickIntent, PendingIntent.FLAG_CANCEL_CURRENT | PendingIntent.FLAG_MUTABLE));
 
-                    //prepare factory
-                    getFactory(context, widgetId, layout.xml_id, layout.view_id, layout);
+                    int key = widgetId + ((int) (layout.xml_id ^ layout.view_id) << 10);
+                    //request code has to be unique at any given time
+                    remoteView.setPendingIntentTemplate(layout.view_id, PendingIntent.getBroadcast(context, key, clickIntent, PendingIntent.FLAG_CANCEL_CURRENT | PendingIntent.FLAG_MUTABLE));
+
+                    prepareFactory(context, widgetId, layout.xml_id, layout.view_id, layout);
 
                     Intent listintent = new Intent(context, Widget.class);
                     listintent.putExtra(Constants.WIDGET_ID_EXTRA, widgetId);
-                    listintent.putExtra(Constants.LIST_SERIALIZED_EXTRA, layout.toDict().serialize());
                     listintent.putExtra(Constants.XML_ID_EXTRA, layout.xml_id);
                     listintent.putExtra(Constants.VIEW_ID_EXTRA, layout.view_id);
                     listintent.setData(Uri.parse(listintent.toUri(Intent.URI_INTENT_SCHEME)));
@@ -1210,7 +1218,7 @@ public class Widget extends RemoteViewsService
             if (!unresolved.isEmpty())
             {
                 Map.Entry<Attributes.Type, Attributes.AttributeValue> example = unresolved.entrySet().iterator().next();
-                throw new IllegalArgumentException(unresolved.size() + " unresolved after iterations, maybe circular? example: " + example.getKey() + ": " + DictObj.makeJson(example.getValue().toDict()) + " from: " + dynamicView.getId() + ", " + dynamicView.type + ": " + DictObj.makeJson(dynamicView.attributes.toDict()));
+                throw new IllegalArgumentException(unresolved.size() + " unresolved after iterations, maybe circular? example: " + example.getKey() + ": " + DictObj.makeJson(example.getValue().toDict()) + " from: " + dynamicView.getId() + ", " + dynamicView.type);
             }
         }
 
@@ -1289,8 +1297,7 @@ public class Widget extends RemoteViewsService
         int widgetId = intent.getIntExtra(Constants.WIDGET_ID_EXTRA, -1);
         int xmlId = intent.getIntExtra(Constants.XML_ID_EXTRA, 0);
         int viewId = intent.getIntExtra(Constants.VIEW_ID_EXTRA, 0);
-        DynamicView listview = DynamicView.fromDict(DictObj.Dict.deserialize(intent.getByteArrayExtra(Constants.LIST_SERIALIZED_EXTRA)));
-        return getFactory(this, widgetId, xmlId, viewId, listview);
+        return getFactory(this, widgetId, xmlId, viewId);
     }
 
     public void registerOnWidgetUpdate(WidgetUpdateListener listener)
@@ -1431,21 +1438,18 @@ public class Widget extends RemoteViewsService
     public void loadWidgets()
     {
         try {
-            SharedPreferences sharedPref = getSharedPreferences("appy", Context.MODE_PRIVATE);
-            Map<String, ?> allprefs = sharedPref.getAll();
+            StoreData store = StoreData.Factory.create(this, "widgets");
+            Set<String> keys = store.getAll();
 
             HashMap<Integer, ArrayList<DynamicView>> newwidgets = new HashMap<>();
 
-            for (Map.Entry<String, ?> pref : allprefs.entrySet())
+            for (String widget : keys)
             {
-                String key = pref.getKey();
-                Object value = pref.getValue();
-
-                if (value != null && key.startsWith("widget_"))
+                DictObj.List list = store.getList(widget);
+                if (list != null)
                 {
-                    int widgetId = Integer.parseInt(key.substring("widget_".length()));
-
-                    newwidgets.put(widgetId, DynamicView.fromDictList(DictObj.List.deserialize(Base64.decode((String)value, Base64.DEFAULT))));
+                    int widgetId = Integer.parseInt(widget);
+                    newwidgets.put(widgetId, DynamicView.fromDictList(list));
                 }
             }
 
@@ -1454,13 +1458,13 @@ public class Widget extends RemoteViewsService
                 widgets = newwidgets;
             }
 
-            String widgetToAndroidString = (String)allprefs.get("widgetToAndroid");
-            if (widgetToAndroidString != null)
+            store = StoreData.Factory.create(this, "etc");
+            DictObj.Dict widgetToAndroidDict = store.getDict("widgetToAndroid");
+            if (widgetToAndroidDict != null)
             {
                 HashMap<Integer, Integer> newWidgetToAndroid = new HashMap<>();
-                DictObj.Dict widgetToAndroidList = DictObj.Dict.deserialize(Base64.decode(widgetToAndroidString, Base64.DEFAULT));
 
-                for (DictObj.Entry entry : widgetToAndroidList.entries())
+                for (DictObj.Entry entry : widgetToAndroidDict.entries())
                 {
                     newWidgetToAndroid.put(Integer.parseInt(entry.key), ((Long)entry.value).intValue());
                 }
@@ -1486,8 +1490,7 @@ public class Widget extends RemoteViewsService
 
     public void saveWidgetMapping()
     {
-        SharedPreferences sharedPref = getSharedPreferences("appy", Context.MODE_PRIVATE);
-        SharedPreferences.Editor editor = sharedPref.edit();
+        StoreData store = StoreData.Factory.create(this, "etc");
 
         DictObj.Dict widgetToAndroidDict = new DictObj.Dict();
         synchronized (lock)
@@ -1498,8 +1501,8 @@ public class Widget extends RemoteViewsService
             }
         }
 
-        editor.putString("widgetToAndroid", Base64.encodeToString(widgetToAndroidDict.serialize(), Base64.DEFAULT));
-        editor.apply();
+        store.put("widgetToAndroid", widgetToAndroidDict);
+        store.apply();
     }
 
 
@@ -1567,29 +1570,30 @@ public class Widget extends RemoteViewsService
 
     public void removeWidgetFromStorage(int widgetId)
     {
-        SharedPreferences sharedPref = getSharedPreferences("appy", Context.MODE_PRIVATE);
-        SharedPreferences.Editor editor = sharedPref.edit();
-        editor.remove("widget_" + widgetId);
-        editor.apply();
+        StoreData store = StoreData.Factory.create(this, "widgets");
+        store.remove(widgetId+"");
+        store.apply();
     }
 
-    public void saveWidget(int widgetId) {
-        SharedPreferences sharedPref = getSharedPreferences("appy", Context.MODE_PRIVATE);
-        SharedPreferences.Editor editor = sharedPref.edit();
+    public void saveWidget(int widgetId, boolean noSave)
+    {
+        StoreData store = StoreData.Factory.create(this, "widgets");
 
-        ArrayList<DynamicView> widget = widgets.get(widgetId);
-        if (widget == null)
-        {
-            return;
-            //throw new RuntimeException("widget entry is null?");
-        }
-
-        String widgetString = Base64.encodeToString(DynamicView.toDictList(widget).serialize(), Base64.DEFAULT);
         synchronized (lock)
         {
-            editor.putString("widget_" + widgetId, widgetString);
+            ArrayList<DynamicView> widget = widgets.get(widgetId);
+            if (widget == null)
+            {
+                return;
+                //throw new RuntimeException("widget entry is null?");
+            }
+            store.put(widgetId + "", DynamicView.toDictList(widget));
         }
-        editor.apply();
+
+        if (!noSave)
+        {
+            store.apply();
+        }
     }
 
     public void saveAllWidgets()
@@ -1599,21 +1603,12 @@ public class Widget extends RemoteViewsService
         {
             for (Integer widgetId : widgetIds)
             {
-                saveWidget(widgetId);
+                saveWidget(widgetId, true);
             }
         }
+        StoreData store = StoreData.Factory.create(this, "widgets");
+        store.apply();
     }
-
-//    public void saveWidgets()
-//    {
-//        SharedPreferences sharedPref = getSharedPreferences("appy", Context.MODE_PRIVATE);
-//        SharedPreferences.Editor editor = sharedPref.edit();
-//        synchronized (lock)
-//        {
-//            editor.putString("widgets", new MapSerialize<Integer, String>().serialize(widgets, new MapSerialize.IntKey(), new MapSerialize.StringValue()));
-//        }
-//        editor.apply();
-//    }
 
     public float[] getCorrectionFactors()
     {
@@ -1913,6 +1908,21 @@ public class Widget extends RemoteViewsService
         }
     }
 
+    public void shareWithWidget(int widgetId, String mimetype, String text, DictObj.Dict datas)
+    {
+        addTask(widgetId, new Task<>(new CallShareTask(), widgetId, mimetype, text, datas), false);
+    }
+
+    public DictObj.Dict getAllWidgetNames()
+    {
+        if (updateListener == null)
+        {
+            return null;
+        }
+
+        return updateListener.getAllWidgetNames();
+    }
+
     public long setTimer(long millis, int type, int widgetId, String data)
     {
         return setTimer(System.currentTimeMillis(), millis, type, widgetId, data, -1);
@@ -2023,14 +2033,13 @@ public class Widget extends RemoteViewsService
     {
         try
         {
-            SharedPreferences sharedPref = getSharedPreferences("appy", Context.MODE_PRIVATE);
-            String timersString = sharedPref.getString("timers", null);
-            if (timersString != null)
+            StoreData store = StoreData.Factory.create(this, "timers");
+            DictObj.List timersList = store.getList("timers");
+            if (timersList != null)
             {
-                DictObj.List timersList = DictObj.List.deserialize(Base64.decode(timersString, Base64.DEFAULT));
                 for (int i = 0; i < timersList.size(); i++)
                 {
-                    DictObj.Dict timer = (DictObj.Dict) timersList.get(i);
+                    DictObj.Dict timer = timersList.getDict(i);
 
                     setTimer(timer.getLong("since", 0),
                             timer.getLong("millis", 0),
@@ -2246,21 +2255,21 @@ public class Widget extends RemoteViewsService
     {
         try
         {
-            SharedPreferences sharedPref = getSharedPreferences("appy", Context.MODE_PRIVATE);
-            String pythonfilesString = sharedPref.getString("pythonfiles", null);
-            if (pythonfilesString != null)
+            StoreData store = StoreData.Factory.create(this, "pythonfiles");
+            DictObj.List pythonfilesList = store.getList("pythonfiles");
+            if (pythonfilesList != null)
             {
                 synchronized (lock)
                 {
-                    pythonFiles = PythonFile.deserializeArray(Base64.decode(pythonfilesString, Base64.DEFAULT));
+                    pythonFiles = PythonFile.fromList(pythonfilesList);
                 }
             }
-            String unknownPythonFileString = sharedPref.getString("unknownpythonfile", null);
-            if (unknownPythonFileString != null)
+            DictObj.Dict unknownPythonFileDict = store.getDict("unknownpythonfile");
+            if (unknownPythonFileDict != null)
             {
                 synchronized (lock)
                 {
-                    unknownPythonFile = PythonFile.deserializeArray(Base64.decode(unknownPythonFileString, Base64.DEFAULT)).get(0);
+                    unknownPythonFile = PythonFile.fromDict(unknownPythonFileDict);
                 }
             }
         }
@@ -2274,14 +2283,13 @@ public class Widget extends RemoteViewsService
 
     public void savePythonFiles()
     {
-        SharedPreferences sharedPref = getSharedPreferences("appy", Context.MODE_PRIVATE);
-        SharedPreferences.Editor editor = sharedPref.edit();
+        StoreData store = StoreData.Factory.create(this, "pythonfiles");
         synchronized (lock)
         {
-            editor.putString("pythonfiles", Base64.encodeToString(PythonFile.serializeArray(pythonFiles), Base64.DEFAULT));
-            editor.putString("unknownpythonfile", Base64.encodeToString(PythonFile.serializeArray(Collections.singletonList(unknownPythonFile)), Base64.DEFAULT));
+            store.put("pythonfiles", PythonFile.toList(pythonFiles));
+            store.put("unknownpythonfile", unknownPythonFile.toDict());
         }
-        editor.apply();
+        store.apply();
     }
 
     public boolean addPythonFileByPath(String path)
@@ -2471,8 +2479,7 @@ public class Widget extends RemoteViewsService
 
     public void saveTimers()
     {
-        SharedPreferences sharedPref = getSharedPreferences("appy", Context.MODE_PRIVATE);
-        SharedPreferences.Editor editor = sharedPref.edit();
+        StoreData store = StoreData.Factory.create(this, "timers");
 
         DictObj.List timersList = new DictObj.List();
         synchronized (lock)
@@ -2483,8 +2490,8 @@ public class Widget extends RemoteViewsService
             }
         }
 
-        editor.putString("timers", Base64.encodeToString(timersList.serialize(), Base64.DEFAULT));
-        editor.apply();
+        store.put("timers", timersList);
+        store.apply();
     }
 
     public void clearWidget(int widgetId)
@@ -2542,28 +2549,41 @@ public class Widget extends RemoteViewsService
     {
         Log.d("APPY", "restarting process");
         setAllWidgets(false);
-        saveAllWidgets();
-        saveWidgetMapping();
-        handler.post(new Runnable()
+
+        new Thread(new Runnable()
         {
             @Override
             public void run()
             {
-                Intent intent = new Intent(Widget.this, getClass());
-                PendingIntent pendingIntent;
-                if (needForeground())
+                saveTimers();
+                saveAllWidgets();
+                saveWidgetMapping();
+                savePythonFiles();
+                new Task<>(new SaveTask(), -1).run();
+
+                StoreData.Factory.waitForAllSaves();
+                handler.post(new Runnable()
                 {
-                    pendingIntent = PendingIntent.getForegroundService(getApplicationContext(), 1, intent, PendingIntent.FLAG_CANCEL_CURRENT | PendingIntent.FLAG_MUTABLE);
-                }
-                else
-                {
-                    pendingIntent = PendingIntent.getService(getApplicationContext(), 1, intent, PendingIntent.FLAG_CANCEL_CURRENT | PendingIntent.FLAG_MUTABLE);
-                }
-                AlarmManager mgr = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
-                mgr.set(AlarmManager.RTC, System.currentTimeMillis() + 100, pendingIntent);
-                System.exit(0);
+                    @Override
+                    public void run()
+                    {
+                        Intent intent = new Intent(Widget.this, getClass());
+                        PendingIntent pendingIntent;
+                        if (needForeground())
+                        {
+                            pendingIntent = PendingIntent.getForegroundService(getApplicationContext(), 1, intent, PendingIntent.FLAG_CANCEL_CURRENT | PendingIntent.FLAG_MUTABLE);
+                        }
+                        else
+                        {
+                            pendingIntent = PendingIntent.getService(getApplicationContext(), 1, intent, PendingIntent.FLAG_CANCEL_CURRENT | PendingIntent.FLAG_MUTABLE);
+                        }
+                        AlarmManager mgr = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
+                        mgr.set(AlarmManager.RTC, System.currentTimeMillis() + 100, pendingIntent);
+                        System.exit(0);
+                    }
+                });
             }
-        });
+        }).start();
     }
 
     public String pythonVersion()
@@ -2609,20 +2629,9 @@ public class Widget extends RemoteViewsService
 
     public void deleteSavedState()
     {
-        SharedPreferences sharedPref = getSharedPreferences("appy", Context.MODE_PRIVATE);
-        SharedPreferences.Editor editor = sharedPref.edit();
-
-        Set<? extends Map.Entry<String, ?>> entries = sharedPref.getAll().entrySet();
-        for (Map.Entry<String, ?> entry : entries)
-        {
-            String key = entry.getKey();
-            if (key.startsWith("state_"))
-            {
-                editor.remove(key);
-            }
-        }
-
-        editor.apply();
+        StoreData store = StoreData.Factory.create(this, "state");
+        store.removeAll();
+        store.apply();
     }
 
     private class SaveTask implements Runner<Integer>
@@ -2643,7 +2652,7 @@ public class Widget extends RemoteViewsService
 
         if (widgetId != -1)
         {
-            saveWidget(widgetId);
+            saveWidget(widgetId, false);
         }
     }
 
@@ -2652,42 +2661,43 @@ public class Widget extends RemoteViewsService
         addTask(Constants.IMPORT_TASK_QUEUE, new Task<>(new SaveTask(), widgetId), true);
     }
 
-    public void saveSpecificState(String[] keys, boolean[] deleteds, String[] datas)
+    public void saveSpecificState(DictObj.Dict statesModified)
     {
-        SharedPreferences sharedPref = getSharedPreferences("appy", Context.MODE_PRIVATE);
-        SharedPreferences.Editor editor = sharedPref.edit();
-        for (int i = 0; i < keys.length; i++)
+        StoreData store = StoreData.Factory.create(this, "state");
+        for (DictObj.Entry entry : statesModified.entries())
         {
-            String saveKey = "state_" + keys[i];
-            if (deleteds[i])
+            DictObj.Dict value = (DictObj.Dict) entry.value;
+            if (value.getBoolean("deleted", false))
             {
-                editor.remove(saveKey);
+                store.remove(entry.key);
             }
             else
             {
-                editor.putString(saveKey, datas[i]);
+                store.put(entry.key, value);
             }
         }
-        editor.apply();
+        store.apply();
     }
 
-    public String[][] loadAllState()
+    public DictObj.Dict loadAllState()
     {
-        SharedPreferences sharedPref = getSharedPreferences("appy", Context.MODE_PRIVATE);
-        Set<? extends Map.Entry<String, ?>> entries = sharedPref.getAll().entrySet();
-        String[][] stateEntries = new String[entries.size()][];
-        int c = 0;
-        for (Map.Entry<String, ?> entry : entries)
+        try
         {
-            String key = entry.getKey();
-            if (key.startsWith("state_"))
+            StoreData store = StoreData.Factory.create(this, "state");
+            Set<String> keys = store.getAll();
+            DictObj.Dict state = new DictObj.Dict();
+            for (String key : keys)
             {
-                stateEntries[c] = new String[]{key.substring("state_".length()), (String)entry.getValue()};
-                c++;
+                state.put(key, store.getDict(key));
             }
-        }
 
-        return Arrays.copyOfRange(stateEntries, 0, c);
+            return state;
+        }
+        catch (Exception e)
+        {
+            Log.e("APPY", "loading state failed", e);
+        }
+        return null;
     }
 
     public Configurations getConfigurations()
@@ -2697,15 +2707,14 @@ public class Widget extends RemoteViewsService
 
     public void setPythonUnpacked(int version)
     {
-        SharedPreferences sharedPref = getSharedPreferences("appy", Context.MODE_PRIVATE);
-        SharedPreferences.Editor editor = sharedPref.edit();
+        SharedPreferences.Editor editor = PreferenceManager.getDefaultSharedPreferences(getApplicationContext()).edit();
         editor.putInt("unpacked_version", version);
         editor.apply();
     }
 
     public int getPythonUnpacked()
     {
-        SharedPreferences sharedPref = getSharedPreferences("appy", Context.MODE_PRIVATE);
+        SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
         return sharedPref.getInt("unpacked_version", 0);
     }
 
@@ -2916,6 +2925,7 @@ public class Widget extends RemoteViewsService
 
                     Pair<RemoteViews, HashSet<Integer>> view = resolveDimensions(Widget.this, widgetId, views, Constants.CollectionLayout.NOT_COLLECTION, null, widthLimit, heightLimit);
                     appWidgetManager.updateAppWidget(androidWidgetId, view.first);
+
                     for (Integer collection_view : view.second)
                     {
                         appWidgetManager.notifyAppWidgetViewDataChanged(androidWidgetId, collection_view);
@@ -3350,6 +3360,27 @@ public class Widget extends RemoteViewsService
             public DictObj.List call(int widgetId, DictObj.List current)
             {
                 return updateListener.onConfig(widgetId, current, key);
+            }
+        });
+    }
+
+    private class CallShareTask implements Runner<Object>
+    {
+        @Override
+        public void run(Object... args)
+        {
+            callShareWidget((int) args[0], (String) args[1], (String) args[2], (DictObj.Dict) args[3]);
+        }
+    }
+
+    public void callShareWidget(int widgetId, final String mimeType, final String text, DictObj.Dict datas)
+    {
+        callWidgetChangingCallback(widgetId, new CallbackCaller()
+        {
+            @Override
+            public DictObj.List call(int widgetId, DictObj.List current)
+            {
+                return updateListener.onShare(widgetId, current, mimeType, text, datas);
             }
         });
     }

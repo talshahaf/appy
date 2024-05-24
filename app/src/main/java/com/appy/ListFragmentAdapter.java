@@ -15,8 +15,7 @@ public class ListFragmentAdapter extends BaseAdapter
     {
         String key;
         String value;
-        boolean leaf;
-        boolean inLocalScopeView;
+        String keyPrefix;
         Object arg;
 
         @Override
@@ -25,28 +24,22 @@ public class ListFragmentAdapter extends BaseAdapter
             return key;
         }
 
-        public Item(String key, String value, boolean leaf, boolean inLocalScopeView, Object arg)
+        public Item(String key, String value, String keyPrefix, Object arg)
         {
             this.key = key;
             this.value = value;
-            this.leaf = leaf;
-            this.inLocalScopeView = inLocalScopeView;
+            this.keyPrefix = keyPrefix;
             this.arg = arg;
-        }
-
-        public Item(String key, String value, boolean leaf, boolean inLocalScopeView)
-        {
-            this(key, value, leaf, inLocalScopeView, null);
         }
 
         public Item(String key, String value)
         {
-            this(key, value, false, false, null);
+            this(key, value, "", null);
         }
 
         public Item(String key, String value, Object arg)
         {
-            this(key, value, false, false, arg);
+            this(key, value, "", arg);
         }
     }
     public static int MAX_VALUE_LENGTH = 100;
@@ -97,14 +90,7 @@ public class ListFragmentAdapter extends BaseAdapter
         TextView text1 = twoLineListItem.findViewById(R.id.text1);
         TextView text2 = twoLineListItem.findViewById(R.id.text2);
 
-        if (items.get(position).inLocalScopeView)
-        {
-            text1.setText("widget #" + items.get(position).key);
-        }
-        else
-        {
-            text1.setText(items.get(position).key);
-        }
+        text1.setText(items.get(position).keyPrefix + items.get(position).key);
 
         String value = items.get(position).value;
         if (value.length() > MAX_VALUE_LENGTH)

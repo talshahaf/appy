@@ -35,6 +35,8 @@ interface WidgetUpdateListener
 
     DictObj.List onConfig(int widgetId, DictObj.List views, String key);
 
+    DictObj.List onShare(int widgetId, DictObj.List views, String mimeType, String text, DictObj.Dict datas);
+
     void wipeStateRequest();
 
     void importFile(String path, boolean skipRefresh);
@@ -52,6 +54,8 @@ interface WidgetUpdateListener
     void saveState();
 
     int[] findWidgetsByMame(String name);
+
+    DictObj.Dict getAllWidgetNames();
 
     void syncConfig(DictObj.Dict config);
 

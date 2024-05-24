@@ -91,21 +91,22 @@ public class StateFragment extends FragmentParent
             {
                 for (String scope : scopes)
                 {
-                    adapterList.add(new ListFragmentAdapter.Item(scope, "", false, false));
+                    adapterList.add(new ListFragmentAdapter.Item(scope, "", "", false));
                 }
             }
             else
             {
                 int depth = getScopeDepth(keyPath.get(0));
-                boolean leaves = depth == keyPath.size();
+                boolean areLeaves = depth == keyPath.size();
                 boolean inLocalScopeView = depth - 1 == keyPath.size() && depth == 3;
+                String keyPrefix = inLocalScopeView ? "widget #" : "";
 
                 DictObj.Dict current = traverse();
                 if (current != null)
                 {
                     for (String key : current.keys())
                     {
-                        adapterList.add(new ListFragmentAdapter.Item(key, leaves ? current.get(key).toString() : "", leaves, inLocalScopeView));
+                        adapterList.add(new ListFragmentAdapter.Item(key, areLeaves ? current.get(key).toString() : "", keyPrefix, areLeaves));
                     }
                 }
             }
@@ -140,7 +141,7 @@ public class StateFragment extends FragmentParent
         public void onItemClick(AdapterView<?> adapter, View view, int position, long id)
         {
             ListFragmentAdapter.Item item = (ListFragmentAdapter.Item) adapter.getItemAtPosition(position);
-            if (!item.leaf)
+            if (!(Boolean)item.arg)
             {
                 //select that widget
                 WidgetSelectFragment fragment = new WidgetSelectFragment();
@@ -219,9 +220,11 @@ public class StateFragment extends FragmentParent
             ArrayList<String> fullPath = new ArrayList<>(keyPath);
             fullPath.add(item.key);
 
+            boolean leaf = (Boolean)item.arg;
+
             Utils.showConfirmationDialog(getActivity(),
-                    item.leaf ? "Delete state" : "Delete all",
-                    (item.leaf ? "Delete " : "Delete all ") + String.join(".", fullPath) + " ?",
+                    leaf ? "Delete state" : "Delete all",
+                    (leaf ? "Delete " : "Delete all ") + String.join(".", fullPath) + " ?",
                     android.R.drawable.ic_dialog_alert,
                     null, null, new Runnable()
                     {
@@ -239,7 +242,7 @@ public class StateFragment extends FragmentParent
                                     getWidgetService().cleanState(item.key, null, null);
                                 }
                             }
-                            else if (!item.leaf)
+                            else if (!leaf)
                             {
                                 getWidgetService().cleanState(keyPath.get(0), item.key, null);
                             }

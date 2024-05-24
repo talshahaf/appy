@@ -27,9 +27,9 @@ def load_state():
 
     global_state = default_state()
 
-    for _, value in saved_state:
-        scope_name, scope_key, key, value = loads(value)
-        global_state[scope_name].setdefault(scope_key, AttrDict())[key] = value
+    if saved_state:
+        for value in java.build_python_dict_from_java(saved_state).values():
+            global_state[value['scope_name']].setdefault(value['scope_key'], AttrDict())[value['key']] = loads(value['value'])
 
     AttrDict.__recursive_resetmodified__(global_state)
 
@@ -59,23 +59,20 @@ def save_modified():
     if not modified:
         return
 
-    keys = []
-    values = []
-    deleteds = []
+    saveSpecificStateDict = {}
     for scope_name, scope_key, key in modified:
         try:
             # save keys as strings, just for uniqueness
-            # save fully typed keys as dumps
-            keys.append(escape_join((scope_name, repr(scope_key), repr(key))))
-            values.append(dumps((scope_name, scope_key, key, global_state[scope_name].get(scope_key, {}).get(key))))
-            deleteds.append(scope_key not in global_state[scope_name] or key not in global_state[scope_name][scope_key])
+            saveSpecificStateDict[escape_join((scope_name, repr(scope_key), repr(key)))] = dict(scope_name=scope_name,
+                                                                                                scope_key=scope_key,
+                                                                                                key=key,
+                                                                                                value=dumps(global_state[scope_name].get(scope_key, {}).get(key)),
+                                                                                                deleted=scope_key not in global_state[scope_name] or key not in global_state[scope_name][scope_key])
         except KeyError:
             #race condition?
             continue
 
-    java_widget_manager.saveSpecificState(java.new.java.lang.String[()](keys),
-                                          java.jboolean[()](deleteds),
-                                          java.new.java.lang.String[()](values))
+    java_widget_manager.saveSpecificState(java.build_java_dict(saveSpecificStateDict))
 
 def setter(d, key, value=None, delete=None):
     if delete:
