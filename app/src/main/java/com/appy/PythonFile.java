@@ -41,7 +41,7 @@ public class PythonFile
 
     public static SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ssZ");
 
-    public DictObj.Dict serialize()
+    public DictObj.Dict toDict()
     {
         DictObj.Dict obj = new DictObj.Dict();
         obj.put("path", path);
@@ -57,7 +57,7 @@ public class PythonFile
         return obj;
     }
 
-    public static PythonFile deserialize(DictObj.Dict obj)
+    public static PythonFile fromDict(DictObj.Dict obj)
     {
         String lastError = null;
         Date lastErrorDate = null;
@@ -80,24 +80,23 @@ public class PythonFile
         return new PythonFile(obj.getString("path"), lastError, lastErrorDate);
     }
 
-    public static ArrayList<PythonFile> deserializeArray(byte[] arr)
+    public static ArrayList<PythonFile> fromList(DictObj.List list)
     {
         ArrayList<PythonFile> result = new ArrayList<>();
-        DictObj.List list = DictObj.List.deserialize(arr);
         for (int i = 0; i < list.size(); i++)
         {
-            result.add(PythonFile.deserialize(list.getDict(i)));
+            result.add(PythonFile.fromDict(list.getDict(i)));
         }
         return result;
     }
 
-    public static byte[] serializeArray(List<PythonFile> files)
+    public static DictObj.List toList(List<PythonFile> files)
     {
         DictObj.List list = new DictObj.List();
         for (PythonFile f : files)
         {
-            list.add(f.serialize());
+            list.add(f.toDict());
         }
-        return list.serialize();
+        return list;
     }
 }

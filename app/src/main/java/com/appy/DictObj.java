@@ -16,14 +16,10 @@ public class DictObj
     public static native Object jsontoDictObj(byte[] json);
     public static native byte[] DictObjtojson(Object dict);
 
-    public DictObj copy()
-    {
-        return deserialize(serialize());
-    }
-
     public static String makeJson(DictObj obj)
     {
-        return new String(DictObjtojson(obj), StandardCharsets.UTF_8);
+        DictObj copy = obj.copy(true);
+        return new String(DictObjtojson(copy), StandardCharsets.UTF_8);
     }
 
     public static DictObj fromJson(String json)
@@ -31,7 +27,12 @@ public class DictObj
         return (DictObj) jsontoDictObj(json.getBytes(StandardCharsets.UTF_8));
     }
 
-    public String serializeB64()
+    public DictObj copy(boolean makeJsonable)
+    {
+        return deserialize(serialize(), makeJsonable);
+    }
+
+    public String serializeToString()
     {
         return Base64.encodeToString(serialize(), Base64.DEFAULT);
     }
@@ -80,6 +81,12 @@ public class DictObj
             parcel.writeByte((byte)'S');
             parcel.writeString((String)obj);
         }
+        else if (obj instanceof byte[])
+        {
+            parcel.writeByte((byte)'A');
+            parcel.writeInt(((byte[]) obj).length);
+            parcel.writeByteArray((byte[])obj);
+        }
         else if (obj instanceof Boolean)
         {
             parcel.writeByte((byte)'B');
@@ -97,28 +104,27 @@ public class DictObj
         }
     }
 
-    public static DictObj deserializeB64(String arr)
+    public static DictObj deserializeFromString(String arr)
     {
-        return deserialize(Base64.decode(arr, Base64.DEFAULT));
+        return deserialize(Base64.decode(arr, Base64.DEFAULT), false);
     }
 
-    public static DictObj deserialize(byte[] arr)
+    public static DictObj deserialize(byte[] arr, boolean jsonable)
     {
         Parcel parcel = Parcel.obtain();
         try
         {
             parcel.unmarshall(arr, 0, arr.length);
             parcel.setDataPosition(0);
-            return (DictObj) deserialize_inner(parcel);
+            return (DictObj) deserialize_inner(parcel, jsonable);
         }
         finally
         {
             parcel.recycle();
         }
-        //return (DictObj) jsontoDictObj(json.getBytes(StandardCharsets.UTF_8));
     }
 
-    public static Object deserialize_inner(Parcel parcel)
+    public static Object deserialize_inner(Parcel parcel, boolean makeJsonable)
     {
 
         char type = (char)parcel.readByte();
@@ -131,7 +137,7 @@ public class DictObj
                 DictObj.Dict obj = new DictObj.Dict();
                 int size = parcel.readInt();
                 for (int i = 0; i < size; i++) {
-                    obj.put((String) deserialize_inner(parcel), deserialize_inner(parcel));
+                    obj.put((String) deserialize_inner(parcel, makeJsonable), deserialize_inner(parcel, makeJsonable));
                 }
                 return obj;
             }
@@ -140,12 +146,27 @@ public class DictObj
                 DictObj.List obj = new DictObj.List();
                 int size = parcel.readInt();
                 for (int i = 0; i < size; i++) {
-                    obj.add(deserialize_inner(parcel));
+                    obj.add(deserialize_inner(parcel, makeJsonable));
                 }
                 return obj;
             }
             case 'S':
                 return parcel.readString();
+            case 'A':
+            {
+                int size = parcel.readInt();
+                if (size > 100 * 1024 * 1024)
+                {
+                    throw new RuntimeException("size too large: " + size);
+                }
+                byte[] arr = new byte[size];
+                parcel.readByteArray(arr);
+                if (makeJsonable)
+                {
+                    return Base64.encodeToString(arr, Base64.DEFAULT);
+                }
+                return arr;
+            }
             case 'B':
                 return parcel.readByte() == 1;
             case 'L':
@@ -154,7 +175,7 @@ public class DictObj
                 return parcel.readDouble();
         }
 
-        throw new RuntimeException("unknown type: " + type + "(" + (int)type + ")");
+        throw new RuntimeException("unknown type: " + type + "(" + (int)type + ") at "+parcel.dataPosition());
     }
 
     public static class List extends DictObj
@@ -204,6 +225,11 @@ public class DictObj
         public String getString(int index)
         {
             return (String)get(index);
+        }
+
+        public byte[] getBytes(int index)
+        {
+            return (byte[])get(index);
         }
 
         public long getLong(int index, long def)
@@ -261,9 +287,9 @@ public class DictObj
             set(index, (Object)val);
         }
 
-        public void set(int index, byte[] val)
+        public void set(int index, byte[] val, boolean string)
         {
-            set(index, (Object)(new String(val, StandardCharsets.UTF_8)));
+            set(index, (Object)(string ? new String(val, StandardCharsets.UTF_8) : val));
         }
 
         public void set(int index, long val)
@@ -306,9 +332,9 @@ public class DictObj
             add((Object)val);
         }
 
-        public void add(byte[] val)
+        public void add(byte[] val, boolean string)
         {
-            add((Object)(new String(val, StandardCharsets.UTF_8)));
+            add((Object)(string ? new String(val, StandardCharsets.UTF_8) : val));
         }
 
         public void add(long val)
@@ -346,9 +372,19 @@ public class DictObj
             return list.remove(index);
         }
 
+        public void removeAll()
+        {
+            list.clear();
+        }
+
         public static DictObj.List deserialize(byte[] arr)
         {
-            return (DictObj.List) DictObj.deserialize(arr);
+            return (DictObj.List) DictObj.deserialize(arr, false);
+        }
+
+        public static DictObj.List deserializeFromString(String str)
+        {
+            return (DictObj.List) DictObj.deserializeFromString(str);
         }
     }
 
@@ -417,6 +453,10 @@ public class DictObj
             return (String) get(key);
         }
 
+        public byte[] getBytes(String key) {
+            return (byte[]) get(key);
+        }
+
         public long getLong(String key, long def) {
             Long val = (Long) get(key);
             if (val == null) {
@@ -460,6 +500,9 @@ public class DictObj
         public void put(String key, String val) {
             put(key, (Object) val);
         }
+        public void put(String key, byte[] val, boolean string) {
+            put(key, (Object) (string ? new String(val, StandardCharsets.UTF_8) : val));
+        }
 
         public void put(String key, long val) {
             put(key, Long.valueOf(val));
@@ -489,8 +532,8 @@ public class DictObj
             put(new String(key, StandardCharsets.UTF_8), (Object) val);
         }
 
-        public void put(byte[] key, byte[] val) {
-            put(new String(key, StandardCharsets.UTF_8), (Object)(new String(val, StandardCharsets.UTF_8)));
+        public void put(byte[] key, byte[] val, boolean string) {
+            put(new String(key, StandardCharsets.UTF_8), (Object)(string ? new String(val, StandardCharsets.UTF_8) : val));
         }
 
         public void put(byte[] key, long val) {
@@ -522,9 +565,19 @@ public class DictObj
             return items.remove(key);
         }
 
+        public void removeAll()
+        {
+            items.clear();
+        }
+
         public static DictObj.Dict deserialize(byte[] arr)
         {
-            return (DictObj.Dict) DictObj.deserialize(arr);
+            return (DictObj.Dict) DictObj.deserialize(arr, false);
+        }
+
+        public static DictObj.Dict deserializeFromString(String str)
+        {
+            return (DictObj.Dict) DictObj.deserializeFromString(str);
         }
     }
 }

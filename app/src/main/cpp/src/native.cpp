@@ -50,6 +50,7 @@ jclass long_class = NULL;
 jclass float_class = NULL;
 jclass double_class = NULL;
 jclass string_class = NULL;
+jclass bytearray_class = NULL;
 
 jmethodID booleanCtor = NULL;
 jmethodID byteCtor = NULL;
@@ -497,6 +498,12 @@ static void populate_common_java_objects(JNIEnv * env)
         jclass local = env->FindClass("java/lang/String");
         CHECK_JAVA_EXC(env);
         string_class = (jclass) make_global_java_ref(env, (jobject)local);
+    }
+    if (bytearray_class == NULL)
+    {
+        jclass local = env->FindClass("[B");
+        CHECK_JAVA_EXC(env);
+        bytearray_class = (jclass) make_global_java_ref(env, (jobject)local);
     }
     populate_common_java_objects_stage = 5;
     //----------------------------------
@@ -2155,7 +2162,7 @@ static jmethodID dict_put_boolean = NULL;
 static jmethodID dict_put_int = NULL;
 static jmethodID dict_put_long = NULL;
 static jmethodID dict_put_double = NULL;
-static jmethodID dict_put_string = NULL;
+static jmethodID dict_put_string_bytes = NULL;
 
 static jmethodID dict_list_array = NULL;
 static jmethodID dict_entries = NULL;
@@ -2259,11 +2266,11 @@ static void init_dict_fields(JNIEnv * env)
         LOG("no dict_put_double");
         return;
     }
-    dict_put_string = env->GetMethodID(dict_class, "put", "([B[B)V");
+    dict_put_string_bytes = env->GetMethodID(dict_class, "put", "([B[BZ)V");
     CHECK_JAVA_EXC(env);
-    if (dict_put_string == NULL)
+    if (dict_put_string_bytes == NULL)
     {
-        LOG("no dict_put_string");
+        LOG("no dict_put_string_bytes");
         return;
     }
 
@@ -2384,17 +2391,29 @@ static jobject build_java_dict_object(PyObject * obj, JNIEnv * env)
                 env->CallVoidMethod(javadict, dict_put_long, keyarr, val);
                 env->DeleteLocalRef(keyarr);
             }
-            else if (PyUnicode_Check(value_obj))
+            else if (PyUnicode_Check(value_obj) || PyBytes_Check(value_obj))
             {
-                const char *value_cstr = PyUnicode_AsUTF8AndSize(value_obj, &cstr_size); //TODO multithread?
-                if (value_cstr == NULL)
+                bool is_unicode = PyUnicode_Check(value_obj);
+
+                Py_ssize_t mem_size = 0;
+                char *value_mem = NULL;
+                if (is_unicode)
+                {
+                    value_mem = (char *)PyUnicode_AsUTF8AndSize(value_obj, &mem_size);
+                }
+                else
+                {
+                    PyBytes_AsStringAndSize(value_obj, &value_mem, &mem_size);
+                }
+
+                if (value_mem == NULL)
                 {
                     env->DeleteLocalRef(keyarr);
                     env->DeleteLocalRef(javadict);
                     return NULL;
                 }
 
-                jbyteArray valuearr = env->NewByteArray(cstr_size);
+                jbyteArray valuearr = env->NewByteArray(mem_size);
                 if (valuearr == NULL)
                 {
                     env->DeleteLocalRef(keyarr);
@@ -2411,7 +2430,7 @@ static jobject build_java_dict_object(PyObject * obj, JNIEnv * env)
                     return NULL;
                 }
 
-                memcpy(value_bytes, value_cstr, cstr_size);
+                memcpy(value_bytes, value_mem, mem_size);
                 env->ReleaseByteArrayElements(valuearr, value_bytes, 0);
 
                 if (env->ExceptionCheck())
@@ -2422,7 +2441,8 @@ static jobject build_java_dict_object(PyObject * obj, JNIEnv * env)
                     return NULL;
                 }
 
-                env->CallVoidMethod(javadict, dict_put_string, keyarr, valuearr);
+                env->CallVoidMethod(javadict, dict_put_string_bytes, keyarr, valuearr, is_unicode);
+
                 env->DeleteLocalRef(valuearr);
                 env->DeleteLocalRef(keyarr);
             }
@@ -2594,7 +2614,7 @@ static PyObject * build_python_dict(jobject obj, JNIEnv * env)
                 env->DeleteLocalRef(entryarray);
                 return NULL;
             }
-            jstring value = (jstring)env->GetObjectField(entry, dict_entry_value);
+            jobject value = (jstring)env->GetObjectField(entry, dict_entry_value);
             if (env->ExceptionCheck())
             {
                 env->DeleteLocalRef(key);
@@ -2748,8 +2768,8 @@ static PyObject * build_python_dict(jobject obj, JNIEnv * env)
             }
             else if (env->IsInstanceOf(value, string_class))
             {
-                int valuelen = env->GetStringUTFLength(value);
-                const char * value_mem = env->GetStringUTFChars(value, NULL);
+                int valuelen = env->GetStringUTFLength((jstring)value);
+                const char * value_mem = env->GetStringUTFChars((jstring)value, NULL);
                 if (value_mem == NULL)
                 {
                     env->DeleteLocalRef(value);
@@ -2760,7 +2780,41 @@ static PyObject * build_python_dict(jobject obj, JNIEnv * env)
                 }
 
                 PyObject * pyvalue = PyUnicode_FromStringAndSize(value_mem, valuelen);
-                env->ReleaseStringUTFChars(value, value_mem);
+                env->ReleaseStringUTFChars((jstring)value, value_mem);
+                env->DeleteLocalRef(value);
+                if (pyvalue == NULL)
+                {
+                    Py_DECREF(pykey);
+                    Py_DECREF(pyobj);
+                    env->DeleteLocalRef(entryarray);
+                    return NULL;
+                }
+
+                int err = PyDict_SetItem(pyobj, pykey, pyvalue);
+                Py_DECREF(pykey);
+                Py_DECREF(pyvalue);
+                if (err != 0)
+                {
+                    Py_DECREF(pyobj);
+                    env->DeleteLocalRef(entryarray);
+                    return NULL;
+                }
+            }
+            else if (env->IsInstanceOf(value, bytearray_class))
+            {
+                int valuelen = env->GetArrayLength((jarray)value);
+                jbyte * value_mem = env->GetByteArrayElements((jbyteArray)value, NULL);
+                if (value_mem == NULL)
+                {
+                    env->DeleteLocalRef(value);
+                    Py_DECREF(pykey);
+                    Py_DECREF(pyobj);
+                    env->DeleteLocalRef(entryarray);
+                    return NULL;
+                }
+
+                PyObject * pyvalue = PyBytes_FromStringAndSize((const char *)value_mem, valuelen);
+                env->ReleaseByteArrayElements((jbyteArray)value, value_mem, 0);
                 env->DeleteLocalRef(value);
                 if (pyvalue == NULL)
                 {

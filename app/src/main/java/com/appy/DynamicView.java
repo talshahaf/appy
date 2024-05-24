@@ -104,7 +104,7 @@ public class DynamicView
 
         //Log.d("APPY", "building "+view.id+" "+view.type);
 
-        view.tag = (DictObj) obj.get("tag");
+        view.tag = obj.get("tag");
 
         view.actualWidth = (int)obj.getLong("actualWidth", 0);
         view.actualHeight = (int)obj.getLong("actualHeight", 0);

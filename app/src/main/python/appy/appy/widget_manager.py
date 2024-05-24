@@ -1,4 +1,4 @@
-import json, functools, copy, traceback, inspect, threading, os, collections, importlib.util, sys, hashlib, struct, re, time, faulthandler
+import json, functools, copy, traceback, inspect, threading, os, collections, importlib.util, sys, hashlib, struct, re, time, faulthandler, base64
 from .utils import AttrDict, dumps, loads, cap, get_args, prepare_image_cache_dir, preferred_script_dir, timeit
 from . import widgets, java, state, configs, __version__
 
@@ -607,6 +607,10 @@ def get_widget_name(widget_id):
 def get_widgets_by_name(name):
     manager_state = obtain_manager_state()
     return [widget_id for widget_id, chosen in manager_state.chosen.items() if chosen is not None and chosen.name == name]
+
+def get_all_widget_names():
+    manager_state = obtain_manager_state()
+    return {widget_id: (chosen.get('name') if chosen else None) for widget_id, chosen in manager_state.chosen.items()}
     
 def choose_widget(widget, name):
     print(f'choosing widget: {widget.widget_id} -> {name}')
@@ -677,13 +681,13 @@ def widget_manager_update(widget, manager_state, views):
             return views
     return widget_manager_create(widget, manager_state) #maybe present error widget
 
-def widget_manager_config(widget, manager_state, views, key):
+def widget_manager_callback(widget, manager_state, views, callback_key, **kwargs):
     chosen = manager_state.chosen[widget.widget_id]
     if chosen is not None and chosen.name is not None and chosen.inited:
         available_widget = available_widgets[chosen.name]
-        on_config = available_widget['on_config']
-        if on_config:
-            call_general_function(on_config, widget=widget, views=views, key=key)
+        cb = available_widget[callback_key]
+        if cb:
+            call_general_function(cb, widget=widget, views=views, **kwargs)
     return views
 
 def set_error_to_widget_id(widget_id, error):
@@ -819,7 +823,17 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
         print('onConfig called', key)
         input, views = self.import_(views_java_list)
         widget, manager_state = create_widget(widget_id)
-        return self.export(input, widget_manager_config(widget, manager_state, views, key))
+        return self.export(input, widget_manager_callback(widget, manager_state, views, 'on_config', key=key))
+
+    @java.override
+    def onShare(self, widget_id, views_java_list, mime, text, datas):
+        datas = java.build_python_dict_from_java(datas)
+        text = text if text != java.Null else None
+        print('onShare called', mime, text, len(datas))
+
+        input, views = self.import_(views_java_list)
+        widget, manager_state = create_widget(widget_id)
+        return self.export(input, widget_manager_callback(widget, manager_state, views, 'on_share', mimetype=mime, text=text, data=datas))
 
     @java.override
     def wipeStateRequest(self):
@@ -920,6 +934,10 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
         return java.jint[()](widgets)
 
     @java.override
+    def getAllWidgetNames(self):
+        return java.build_java_dict({str(k): v for k,v in get_all_widget_names().items()})
+
+    @java.override
     def syncConfig(self, config_java_dict):
         print('sync config called')
 
@@ -957,7 +975,7 @@ def reload_python_file(path):
 def add_python_file(path):
     return java_context().addPythonFileByPathWithDialog(path)
     
-def register_widget(name, create, update=None, config=None, on_config=None, debug=False):
+def register_widget(name, create, update=None, config=None, on_config=None, on_share=None, debug=False):
     path = getattr(__importing_module, 'path', None)
     if path is None:
         raise ValueError('register_widget can only be called on import')
@@ -968,7 +986,8 @@ def register_widget(name, create, update=None, config=None, on_config=None, debu
     dumps(create)
     dumps(update)
     dumps(on_config)
+    dumps(on_share)
 
-    available_widgets[name] = dict(pythonfile=path, create=create, update=update, on_config=on_config, debug=bool(debug))
+    available_widgets[name] = dict(pythonfile=path, create=create, update=update, on_config=on_config, on_share=on_share, debug=bool(debug))
     if config is not None:
         configs.set_defaults(name, config)
