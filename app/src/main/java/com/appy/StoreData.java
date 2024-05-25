@@ -3,6 +3,7 @@ package com.appy;
 import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
+import android.database.CursorWindow;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.util.Base64;
@@ -12,6 +13,7 @@ import android.util.Pair;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -58,6 +60,17 @@ public class StoreData
             if (executor == null)
             {
                 executor = new ThreadPoolExecutor(1, 1, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>());
+
+                try
+                {
+                    Field field = CursorWindow.class.getDeclaredField("sCursorWindowSize");
+                    field.setAccessible(true);
+                    field.set(null, Constants.STORE_CURSOR_SIZE);
+                }
+                catch (Exception e)
+                {
+                    Log.e("APPY", "Failed to set cursor window size", e);
+                }
             }
             synchronized (lock)
             {
