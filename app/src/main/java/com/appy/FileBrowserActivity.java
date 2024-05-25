@@ -345,10 +345,36 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
             Toast.makeText(this, "Please select only one file.", Toast.LENGTH_SHORT).show();
             return;
         }
-        Intent intent = new Intent();
-        intent.putExtra(RESULT_FILES, files);
-        setResult(RESULT_OK, intent);
-        finish();
+
+        boolean endingWithPy = true;
+        for (String file : files)
+        {
+            if (!file.toLowerCase().endsWith(".py"))
+            {
+                endingWithPy = false;
+                break;
+            }
+        }
+
+        if (!endingWithPy)
+        {
+            //just to confirm
+            Utils.showConfirmationDialog(this,
+                    "Import " + files.length + " files?",
+                    "At least one file does not end with .py, continue?",
+                    android.R.drawable.ic_dialog_alert,
+                    "Import", "Cancel", new Runnable()
+            {
+                @Override
+                public void run()
+                {
+                    Intent intent = new Intent();
+                    intent.putExtra(RESULT_FILES, files);
+                    setResult(RESULT_OK, intent);
+                    finish();
+                }
+            });
+        }
     }
 
     public String[] getSelectedFiles()
