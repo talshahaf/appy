@@ -380,11 +380,28 @@ public class Widget extends RemoteViewsService
             factory = factories.get(key);
             if (factory == null)
             {
-                factory = new ListFactory(context, widgetId);
+                factory = new ListFactory(context, widgetId, listview.copy());
                 factories.put(key, factory);
             }
+            else
+            {
+                boolean wasDefault = factory.isDefaultListView();
+                factory.reload(listview.copy());
+
+                if (wasDefault)
+                {
+                    try
+                    {
+                        int androidWidget = getAndroidWidget(widgetId);
+                        AppWidgetManager.getInstance(context).notifyAppWidgetViewDataChanged(androidWidget, view);
+                    }
+                    catch (WidgetDestroyedException ignored)
+                    {
+
+                    }
+                }
+            }
         }
-        factory.reload(listview.copy());
     }
 
     public ListFactory getFactory(Context context, int widgetId, int xml, int view)
@@ -400,7 +417,12 @@ public class Widget extends RemoteViewsService
         if (factory == null)
         {
             Log.w("APPY", "null factory for "+widgetId+" "+xml+" "+view);
-            factory = new ListFactory(context, widgetId);
+
+            synchronized (factories)
+            {
+                factory = new ListFactory(context, widgetId, null);
+                factories.put(key, factory);
+            }
         }
         return factory;
     }
@@ -411,11 +433,34 @@ public class Widget extends RemoteViewsService
         int widgetId;
         Context context;
         DynamicView listview = null;
+        boolean defaultListView;
 
-        public ListFactory(Context context, int widgetId)
+        public DynamicView buildDefaultList()
+        {
+            DynamicView defaultList = new DynamicView("ListView");
+            DynamicView defaultElement = new DynamicView("TextView");
+            defaultElement.methodCalls.add(new RemoteMethodCall("setText", false, Constants.getSetterMethod(defaultElement.type, "setText"), "setText", "List error"));
+            defaultElement.methodCalls.add(new RemoteMethodCall("setTextColor", false, Constants.getSetterMethod(defaultElement.type, "setTextColor"), "setTextColor", Constants.TEXT_COLOR));
+            ArrayList<DynamicView> child = new ArrayList<>();
+            child.add(defaultElement);
+            defaultList.children.add(child);
+            return defaultList;
+        }
+
+        public ListFactory(Context context, int widgetId, DynamicView listview)
         {
             this.context = context;
             this.widgetId = widgetId;
+
+            if (listview != null)
+            {
+                reload(listview);
+            }
+            else
+            {
+                reload(buildDefaultList());
+                defaultListView = true;
+            }
         }
 
         public void reload(DynamicView listview)
@@ -424,6 +469,12 @@ public class Widget extends RemoteViewsService
             {
                 this.listview = listview;
             }
+            defaultListView = false;
+        }
+
+        public boolean isDefaultListView()
+        {
+            return defaultListView;
         }
 
         @Override
