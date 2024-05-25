@@ -97,6 +97,7 @@ public class ConfigsFragment extends FragmentParent
             Log.d("APPY", "Import click");
             Intent intent = new Intent(getActivity(), FileBrowserActivity.class);
             intent.putExtra(FileBrowserActivity.REQUEST_ALLOW_RETURN_MULTIPLE, false);
+            intent.putExtra(FileBrowserActivity.REQUEST_SPECIFIC_EXTENSION_CONFIRMATION, ".json");
             startActivityForResult(intent, REQUEST_IMPORT_PATH);
             return true;
         }

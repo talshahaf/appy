@@ -660,7 +660,7 @@ def widget_manager_create(widget, manager_state):
 def widget_manager_update(widget, manager_state, views):
     manager_state.chosen.setdefault(widget.widget_id, None)
     chosen = manager_state.chosen[widget.widget_id]
-    if chosen is not None and chosen.name is not None:
+    if chosen is not None and chosen.name is not None and chosen.name in available_widgets:
         available_widget = available_widgets[chosen.name]
         on_create, on_update, debug = available_widget['create'], available_widget['update'], available_widget['debug']
         if not chosen.inited:
@@ -697,7 +697,7 @@ def set_error_to_widget_id(widget_id, error):
         #try to get the create or update functions
         widget, manager_state = create_widget(widget_id)
         chosen = manager_state.chosen.get(widget.widget_id)
-        if chosen is not None and chosen.name is not None:
+        if chosen is not None and chosen.name is not None and chosen.name in available_widgets:
             available_widget = available_widgets[chosen.name]
             func = None
             if available_widget['create'] is not None:

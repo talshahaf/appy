@@ -28,7 +28,10 @@ def load_state():
     global_state = default_state()
 
     if saved_state:
-        for value in java.build_python_dict_from_java(saved_state).values():
+        for key, value in java.build_python_dict_from_java(saved_state).items():
+            if not value:
+                print(f'state {key} is null?')
+                continue
             global_state[value['scope_name']].setdefault(value['scope_key'], AttrDict())[value['key']] = loads(value['value'])
 
     AttrDict.__recursive_resetmodified__(global_state)
