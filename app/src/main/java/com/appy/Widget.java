@@ -2547,9 +2547,6 @@ public class Widget extends RemoteViewsService
 
     public void restart()
     {
-        Log.d("APPY", "restarting process");
-        setAllWidgets(false);
-
         new Thread(new Runnable()
         {
             @Override
@@ -2561,12 +2558,15 @@ public class Widget extends RemoteViewsService
                 savePythonFiles();
                 new Task<>(new SaveTask(), -1).run();
 
-                StoreData.Factory.waitForAllSaves();
+                StoreData.Factory.commitAll();
                 handler.post(new Runnable()
                 {
                     @Override
                     public void run()
                     {
+                        Log.d("APPY", "restarting process");
+                        setAllWidgets(false);
+
                         Intent intent = new Intent(Widget.this, getClass());
                         PendingIntent pendingIntent;
                         if (needForeground())

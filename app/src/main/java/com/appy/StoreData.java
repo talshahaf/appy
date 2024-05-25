@@ -85,7 +85,7 @@ public class StoreData
         }
 
         //waits for all applys called before this, and maybe some applys called after
-        public static void waitForAllSaves()
+        public static void commitAll()
         {
             ArrayList<StoreData> copy;
             synchronized (lock)
@@ -94,7 +94,7 @@ public class StoreData
             }
             for (StoreData store : copy)
             {
-                store.waitForSave();
+                store.commitAll();
             }
         }
 
@@ -112,8 +112,6 @@ public class StoreData
     private final StoreDbHelper dbHelper;
 //    private final File path;
 //    private final File tmppath;
-
-    private static final Object notifier = new Object();
 
 //    private static Pair<File, File> buildFiles(Context context, String domain)
 //    {
@@ -142,7 +140,11 @@ public class StoreData
                 {
                     int identifierIndex = cursor.getColumnIndexOrThrow("identifier");
                     int valueIndex = cursor.getColumnIndexOrThrow("value");
-                    domainObj.put(cursor.getString(identifierIndex), DictObj.deserialize(cursor.getBlob(valueIndex), false));
+                    byte[] value = cursor.getBlob(valueIndex);
+                    if (value != null)
+                    {
+                        domainObj.put(cursor.getString(identifierIndex), DictObj.deserialize(value, false));
+                    }
                 }
             }
             finally
@@ -200,91 +202,55 @@ public class StoreData
             Set<String> changedCopy;
             synchronized (objlock)
             {
-                db.beginTransaction();
-                try
+                if (!changed.isEmpty())
                 {
-                    changedCopy = new HashSet<>(changed);
-
-                    for (String key : changedCopy)
+                    db.beginTransaction();
+                    try
                     {
-                        ContentValues values = new ContentValues();
-                        values.put("domain", domain);
-                        values.put("identifier", key);
-                        values.put("value", ((DictObj) store.get(key)).serialize());
+                        changedCopy = new HashSet<>(changed);
 
-                        db.insert("store", null, values);
+                        for (String key : changedCopy)
+                        {
+                            DictObj value = (DictObj) store.get(key);
+                            if (value == null)
+                            {
+                                //key removed
+                                db.delete("store", "domain = ? AND identifier = ?", new String[]{domain, key});
+                            }
+                            else
+                            {
+                                ContentValues values = new ContentValues();
+                                values.put("domain", domain);
+                                values.put("identifier", key);
+                                values.put("value", value.serialize());
+
+                                db.insert("store", null, values);
+                            }
+                        }
+                        changed.clear();
+                        db.setTransactionSuccessful();
                     }
-                    changed.clear();
-                    db.setTransactionSuccessful();
-                }
-                finally
-                {
-                    db.endTransaction();
+                    finally
+                    {
+                        db.endTransaction();
+                    }
                 }
             }
         }
-        finally
-        {
-            synchronized (notifier)
-            {
-                notifier.notifyAll();
-            }
-        }
-
-//        try
-//        {
-//            byte[] data;
-//            synchronized (objlock)
-//            {
-//                data = store.serialize();
-//                changed.clear();
-//            }
-//            synchronized (filelock)
-//            {
-//                Utils.writeFile(tmppath, data);
-//                if (!tmppath.renameTo(path))
-//                {
-//                    throw new RuntimeException("renaming store failed");
-//                }
-//            }
-//        }
-//        catch (IOException e)
-//        {
-//            Log.e("APPY", "StoreData commit failed", e);
-//            throw new RuntimeException(e);
-//        }
-//        finally
-//        {
-//            synchronized (notifier)
-//            {
-//                notifier.notifyAll();
-//            }
-//        }
     }
 
-    public void waitForSave()
+    public void commitAll()
     {
-        synchronized (notifier)
+        while (true)
         {
-            while (true)
+            synchronized (objlock)
             {
-                synchronized (objlock)
+                if (changed.isEmpty())
                 {
-                    if (changed.isEmpty())
-                    {
-                        return;
-                    }
-                }
-
-                try
-                {
-                    notifier.wait();
-                }
-                catch (InterruptedException ignored)
-                {
-
+                    return;
                 }
             }
+            commit();
         }
     }
 

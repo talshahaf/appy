@@ -59,7 +59,10 @@ public class FilesFragment extends MyFragment implements FileGridAdapter.ItemAct
             @Override
             public void onClick(View v)
             {
-                startActivityForResult(new Intent(getActivity(), FileBrowserActivity.class), REQUEST_FILES);
+                Intent intent = new Intent(getActivity(), FileBrowserActivity.class);
+                intent.putExtra(FileBrowserActivity.REQUEST_ALLOW_RETURN_MULTIPLE, true);
+                intent.putExtra(FileBrowserActivity.REQUEST_SPECIFIC_EXTENSION_CONFIRMATION, ".py");
+                startActivityForResult(intent, REQUEST_FILES);
             }
         });
 

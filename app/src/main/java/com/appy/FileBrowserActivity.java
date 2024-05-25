@@ -51,6 +51,7 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
 {
     public static final String RESULT_FILES = "RESULT_FILES";
     public static final String REQUEST_ALLOW_RETURN_MULTIPLE = "REQUEST_ALLOW_RETURN_MULTIPLE";
+    public static final String REQUEST_SPECIFIC_EXTENSION_CONFIRMATION = "REQUEST_SPECIFIC_EXTENSION_CONFIRMATION";
     public static final int REQUEST_PERMISSION_STORAGE = 101;
     public static final int REQUEST_ALL_STORAGE = 102;
     public static final int MEDIA_STORAGE_INDEX = 1;
@@ -70,6 +71,7 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
 
     boolean cantViewSharedStorage;
     boolean allowReturnMultipleFiles;
+    String specificExtensionConfirmation;
 
     private String[] preset_names;
     private String[] preset_paths;
@@ -81,6 +83,7 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
         setContentView(R.layout.filebrowser);
 
         allowReturnMultipleFiles = getIntent().getBooleanExtra(REQUEST_ALLOW_RETURN_MULTIPLE, true);
+        specificExtensionConfirmation = getIntent().getStringExtra(REQUEST_SPECIFIC_EXTENSION_CONFIRMATION);
 
         list = findViewById(R.id.filelist);
         toolbar = findViewById(R.id.toolbar);
@@ -346,22 +349,26 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
             return;
         }
 
-        boolean endingWithPy = true;
-        for (String file : files)
+        boolean needConfirmation = false;
+
+        if (specificExtensionConfirmation != null)
         {
-            if (!file.toLowerCase().endsWith(".py"))
+            for (String file : files)
             {
-                endingWithPy = false;
-                break;
+                if (!file.toLowerCase().endsWith(specificExtensionConfirmation))
+                {
+                    needConfirmation = true;
+                    break;
+                }
             }
         }
 
-        if (!endingWithPy)
+        if (needConfirmation)
         {
             //just to confirm
             Utils.showConfirmationDialog(this,
                     "Import " + files.length + " files?",
-                    "At least one file does not end with .py, continue?",
+                    "At least one file does not end with " + specificExtensionConfirmation + ", continue?",
                     android.R.drawable.ic_dialog_alert,
                     "Import", "Cancel", new Runnable()
             {
@@ -374,6 +381,13 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
                     finish();
                 }
             });
+        }
+        else
+        {
+            Intent intent = new Intent();
+            intent.putExtra(RESULT_FILES, files);
+            setResult(RESULT_OK, intent);
+            finish();
         }
     }
 
