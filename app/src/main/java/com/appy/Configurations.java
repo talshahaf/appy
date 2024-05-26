@@ -4,6 +4,8 @@ import android.content.Context;
 import android.util.Pair;
 
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Set;
 
@@ -62,7 +64,6 @@ public class Configurations
     public void resetKey(String widget, String key)
     {
         boolean changed = false;
-        DictObj.Dict copy = null;
         synchronized (lock)
         {
             DictObj.Dict configs = configurations.getDict(widget);
@@ -83,21 +84,19 @@ public class Configurations
 
             if (changed)
             {
-                copy = (DictObj.Dict) configurations.copy(false);
+                saveChanges(configurations, Collections.singleton(new Pair<>(widget, key)));
             }
         }
 
         if (changed)
         {
-            configurationUpdate(widget, key);
-            save(copy);
+            notifyConfigurationUpdate(widget, key);
         }
     }
 
     public void resetWidget(String widget)
     {
-        boolean changed = false;
-        DictObj.Dict copy = null;
+        ArrayList<Pair<String, String>> changed = new ArrayList<>();
         synchronized (lock)
         {
             DictObj.Dict configs = configurations.getDict(widget);
@@ -112,30 +111,28 @@ public class Configurations
                         String defaultValue = values.getString("default");
                         if (!currentValue.equals(defaultValue))
                         {
-                            changed = true;
+                            changed.add(new Pair<>(widget, entry.key));
                         }
                         values.put("value", defaultValue);
                     }
                 }
             }
 
-            if (changed)
+            if (!changed.isEmpty())
             {
-                copy = (DictObj.Dict) configurations.copy(false);
+                saveChanges(configurations, changed);
             }
         }
 
-        if (changed)
+        if (!changed.isEmpty())
         {
-            configurationUpdate(widget, null);
-            save(copy);
+            notifyConfigurationUpdate(widget, null);
         }
     }
 
     public void deleteKey(String widget, String key)
     {
         boolean changed = false;
-        DictObj.Dict copy = null;
         synchronized (lock)
         {
             DictObj.Dict configs = configurations.getDict(widget);
@@ -150,57 +147,54 @@ public class Configurations
 
             if (changed)
             {
-                copy = (DictObj.Dict) configurations.copy(false);
+                saveChanges(configurations, Collections.singleton(new Pair<>(widget, key)));
             }
         }
 
         if (changed)
         {
-            configurationUpdate(widget, key);
-            save(copy);
+            notifyConfigurationUpdate(widget, key);
         }
     }
 
     public void deleteWidget(String widget)
     {
-        boolean changed = false;
-        DictObj.Dict copy = null;
+        ArrayList<Pair<String, String>> changed = new ArrayList<>();
         synchronized (lock)
         {
             if (configurations.hasKey(widget))
             {
-                configurations.remove(widget);
-                copy = (DictObj.Dict) configurations.copy(false);
-                changed = true;
+                for (String key : configurations.getDict(widget).keyset())
+                {
+                    changed.add(new Pair<>(widget, key));
+                }
+                saveChanges(configurations, changed);
             }
         }
 
-        if (changed)
+        if (!changed.isEmpty())
         {
-            configurationUpdate(widget, null);
-            save(copy);
+            notifyConfigurationUpdate(widget, null);
         }
     }
 
     public void setDefaultConfig(String widget, DictObj.Dict defaults)
     {
-        boolean changed = false;
+        ArrayList<Pair<String, String>> changed = new ArrayList<>();
         for (DictObj.Entry entry : defaults.entries())
         {
             if (setConfigNoSave(widget, entry.key, (String) entry.value, true))
             {
-                changed = true;
+                changed.add(new Pair<>(widget, entry.key));
             }
         }
 
-        if (changed)
+        if (!changed.isEmpty())
         {
-            DictObj.Dict copy;
             synchronized (lock)
             {
-                copy = (DictObj.Dict) configurations.copy(false);
+                saveChanges(configurations, changed);
             }
-            save(copy);
         }
     }
 
@@ -208,12 +202,10 @@ public class Configurations
     {
         if (setConfigNoSave(widget, key, value, false))
         {
-            DictObj.Dict copy;
             synchronized (lock)
             {
-                copy = (DictObj.Dict) configurations.copy(false);
+                saveChanges(configurations, Collections.singleton(new Pair<>(widget, key)));
             }
-            save(copy);
         }
     }
 
@@ -256,31 +248,62 @@ public class Configurations
 
         if (changed)
         {
-            configurationUpdate(widget, key);
+            notifyConfigurationUpdate(widget, key);
         }
         return changed;
     }
 
     public void load()
     {
-        StoreData store = StoreData.Factory.create(context, "configuration");
-        DictObj.Dict config = store.getDict("configurations");
-        if (config == null)
+        StoreData store = StoreData.Factory.create(context, "configurations");
+        Set<String> storeKeys = store.getAll();
+
+        DictObj.Dict newconfig = new DictObj.Dict();
+
+        for (String storeKey : storeKeys)
         {
-            return;
+            DictObj.Dict obj = store.getDict(storeKey);
+            if (obj == null)
+            {
+                continue;
+            }
+
+            String widget = obj.getString("widget");
+            String key = obj.getString("key");
+            String value = obj.getString("value");
+            String default_ = obj.getString("default");
+
+            if (widget == null || key == null)
+            {
+                continue;
+            }
+
+            DictObj.Dict widgetConfig = newconfig.getDict(widget);
+            if (widgetConfig == null)
+            {
+                widgetConfig = new DictObj.Dict();
+                newconfig.put(widget, widgetConfig);
+            }
+
+            DictObj.Dict configDict = new DictObj.Dict();
+            configDict.put("value", value);
+            configDict.put("default", default_);
+
+            widgetConfig.put(key, configDict);
         }
 
         synchronized (lock)
         {
-            configurations = config;
+            configurations = newconfig;
         }
 
-        configurationUpdate(null, null);
+        notifyConfigurationUpdate(null, null);
     }
 
     public void replaceConfiguration(DictObj.Dict newConfig)
     {
         ArrayList<Pair<String, String>> changed = new ArrayList<>();
+        ArrayList<Pair<String, String>> changedExplicit = new ArrayList<>();
         synchronized (lock)
         {
             Pair<Set<String>, Set<String>> intersectionAndXor = Utils.intersectionAndXor(configurations.keyset(), newConfig.keyset());
@@ -318,23 +341,37 @@ public class Configurations
                 }
             }
 
+            for (Pair<String, String> change : changed)
+            {
+                if (change.second != null)
+                {
+                    changedExplicit.add(new Pair<>(change.first, change.second));
+                }
+                else
+                {
+                    // get deleted keys explicitly
+                    for (String key : configurations.getDict(change.first).keyset())
+                    {
+                        changedExplicit.add(new Pair<>(change.first, key));
+                    }
+                }
+            }
+
             configurations = newConfig;
+        }
+
+        synchronized (lock)
+        {
+            saveChanges(configurations, changedExplicit);
         }
 
         for (Pair<String, String> change : changed)
         {
-            configurationUpdate(change.first, change.second);
+            notifyConfigurationUpdate(change.first, change.second);
         }
-
-        DictObj.Dict copy;
-        synchronized (lock)
-        {
-            copy = (DictObj.Dict) configurations.copy(false);
-        }
-        save(copy);
     }
 
-    private void configurationUpdate(String widget, String key)
+    private void notifyConfigurationUpdate(String widget, String key)
     {
         if (listener != null)
         {
@@ -347,10 +384,45 @@ public class Configurations
         return configurations;
     }
 
-    private void save(DictObj.Dict dict)
+    public static String buildKey(String widget, String key)
     {
-        StoreData store = StoreData.Factory.create(context, "configuration");
-        store.put("configurations", dict);
+        // has to be unique
+        return widget.replace(":", ":_") + "::" + key.replace(":", ":_");
+    }
+
+    private void saveChanges(DictObj.Dict configDict, Collection<Pair<String, String>> changes)
+    {
+        StoreData store = StoreData.Factory.create(context, "configurations");
+        for (Pair<String, String> change : changes)
+        {
+            String widget = change.first;
+            String key = change.second;
+
+            DictObj.Dict widgetConfig = configDict.getDict(widget);
+            if (widgetConfig == null)
+            {
+                // deleted
+                store.remove(buildKey(widget, key));
+            }
+            else
+            {
+                DictObj.Dict configObj = widgetConfig.getDict(key);
+                if (configObj == null)
+                {
+                    // deleted
+                    store.remove(buildKey(widget, key));
+                }
+                else
+                {
+                    DictObj.Dict obj = new DictObj.Dict();
+                    obj.put("widget", widget);
+                    obj.put("key", key);
+                    obj.put("value", configObj.getString("value"));
+                    obj.put("default", configObj.getString("default"));
+                    store.put(buildKey(widget, key), obj);
+                }
+            }
+        }
         store.apply();
     }
 }

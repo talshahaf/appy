@@ -110,22 +110,11 @@ public class StoreData
     private final Set<String> changed = new HashSet<>();
     private final String domain;
     private final StoreDbHelper dbHelper;
-//    private final File path;
-//    private final File tmppath;
-
-//    private static Pair<File, File> buildFiles(Context context, String domain)
-//    {
-//        return new Pair<>(new File(context.getFilesDir(), domain + ".store"),
-//                new File(context.getFilesDir(), domain + ".store.tmp"));
-//    }
 
     private StoreData(StoreDbHelper dbHelper, String domain)
     {
-        //Pair<File, File> paths = buildFiles(context, domain);
         this.dbHelper = dbHelper;
         this.domain = domain;
-        //this.path = paths.first;
-        //this.tmppath = paths.second;
     }
 
     public void load()
