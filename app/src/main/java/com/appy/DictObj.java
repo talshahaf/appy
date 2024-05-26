@@ -14,6 +14,7 @@ import java.util.Set;
 public class DictObj
 {
     public static native Object jsontoDictObj(byte[] json);
+
     public static native byte[] DictObjtojson(Object dict);
 
     public static String makeJson(DictObj obj)
@@ -55,13 +56,13 @@ public class DictObj
     {
         if (obj == null)
         {
-            parcel.writeByte((byte)'N');
+            parcel.writeByte((byte) 'N');
         }
         else if (obj instanceof DictObj.Dict)
         {
             parcel.writeByte((byte) '{');
             parcel.writeInt(((DictObj.Dict) obj).size());
-            for (DictObj.Entry entry : ((DictObj.Dict)obj).entries())
+            for (DictObj.Entry entry : ((DictObj.Dict) obj).entries())
             {
                 serialize_inner(parcel, entry.key);
                 serialize_inner(parcel, entry.value);
@@ -71,36 +72,36 @@ public class DictObj
         {
             parcel.writeByte((byte) '[');
             parcel.writeInt(((DictObj.List) obj).size());
-            for (Object item : ((DictObj.List)obj).list)
+            for (Object item : ((DictObj.List) obj).list)
             {
                 serialize_inner(parcel, item);
             }
         }
         else if (obj instanceof String)
         {
-            parcel.writeByte((byte)'S');
-            parcel.writeString((String)obj);
+            parcel.writeByte((byte) 'S');
+            parcel.writeString((String) obj);
         }
         else if (obj instanceof byte[])
         {
-            parcel.writeByte((byte)'A');
+            parcel.writeByte((byte) 'A');
             parcel.writeInt(((byte[]) obj).length);
-            parcel.writeByteArray((byte[])obj);
+            parcel.writeByteArray((byte[]) obj);
         }
         else if (obj instanceof Boolean)
         {
-            parcel.writeByte((byte)'B');
-            parcel.writeByte((byte)(((Boolean)obj) ? 1 : 0));
+            parcel.writeByte((byte) 'B');
+            parcel.writeByte((byte) (((Boolean) obj) ? 1 : 0));
         }
         else if (obj instanceof Long)
         {
-            parcel.writeByte((byte)'L');
-            parcel.writeLong((Long)obj);
+            parcel.writeByte((byte) 'L');
+            parcel.writeLong((Long) obj);
         }
         else if (obj instanceof Double)
         {
-            parcel.writeByte((byte)'D');
-            parcel.writeDouble((Double)obj);
+            parcel.writeByte((byte) 'D');
+            parcel.writeDouble((Double) obj);
         }
     }
 
@@ -127,7 +128,7 @@ public class DictObj
     public static Object deserialize_inner(Parcel parcel, boolean makeJsonable)
     {
 
-        char type = (char)parcel.readByte();
+        char type = (char) parcel.readByte();
         switch (type)
         {
             case 'N':
@@ -136,7 +137,8 @@ public class DictObj
             {
                 DictObj.Dict obj = new DictObj.Dict();
                 int size = parcel.readInt();
-                for (int i = 0; i < size; i++) {
+                for (int i = 0; i < size; i++)
+                {
                     obj.put((String) deserialize_inner(parcel, makeJsonable), deserialize_inner(parcel, makeJsonable));
                 }
                 return obj;
@@ -145,7 +147,8 @@ public class DictObj
             {
                 DictObj.List obj = new DictObj.List();
                 int size = parcel.readInt();
-                for (int i = 0; i < size; i++) {
+                for (int i = 0; i < size; i++)
+                {
                     obj.add(deserialize_inner(parcel, makeJsonable));
                 }
                 return obj;
@@ -175,7 +178,7 @@ public class DictObj
                 return parcel.readDouble();
         }
 
-        throw new RuntimeException("unknown type: " + type + "(" + (int)type + ") at "+parcel.dataPosition());
+        throw new RuntimeException("unknown type: " + type + "(" + (int) type + ") at " + parcel.dataPosition());
     }
 
     public static class List extends DictObj
@@ -214,27 +217,27 @@ public class DictObj
 
         public DictObj.Dict getDict(int index)
         {
-            return (DictObj.Dict)get(index);
+            return (DictObj.Dict) get(index);
         }
 
         public DictObj.List getList(int index)
         {
-            return (DictObj.List)get(index);
+            return (DictObj.List) get(index);
         }
 
         public String getString(int index)
         {
-            return (String)get(index);
+            return (String) get(index);
         }
 
         public byte[] getBytes(int index)
         {
-            return (byte[])get(index);
+            return (byte[]) get(index);
         }
 
         public long getLong(int index, long def)
         {
-            Long val = (Long)get(index);
+            Long val = (Long) get(index);
             if (val == null)
             {
                 return def;
@@ -244,7 +247,7 @@ public class DictObj
 
         public double getDouble(int index, double def)
         {
-            Double val = (Double)get(index);
+            Double val = (Double) get(index);
             if (val == null)
             {
                 return def;
@@ -254,22 +257,22 @@ public class DictObj
 
         public float getFloat(int index, float def)
         {
-            return (float)getDouble(index, def);
+            return (float) getDouble(index, def);
         }
 
         public short getShort(int index, short def)
         {
-            return (short)getLong(index, def);
+            return (short) getLong(index, def);
         }
 
         public int getInt(int index, int def)
         {
-            return (int)getLong(index, def);
+            return (int) getLong(index, def);
         }
 
         public boolean getBoolean(int index, boolean def)
         {
-            Boolean val = (Boolean)get(index);
+            Boolean val = (Boolean) get(index);
             if (val == null)
             {
                 return def;
@@ -279,17 +282,17 @@ public class DictObj
 
         public void set(int index, DictObj val)
         {
-            set(index, (Object)val);
+            set(index, (Object) val);
         }
 
         public void set(int index, String val)
         {
-            set(index, (Object)val);
+            set(index, (Object) val);
         }
 
         public void set(int index, byte[] val, boolean string)
         {
-            set(index, (Object)(string ? new String(val, StandardCharsets.UTF_8) : val));
+            set(index, (Object) (string ? new String(val, StandardCharsets.UTF_8) : val));
         }
 
         public void set(int index, long val)
@@ -304,17 +307,17 @@ public class DictObj
 
         public void set(int index, float val)
         {
-            set(index, (double)val);
+            set(index, (double) val);
         }
 
         public void set(int index, short val)
         {
-            set(index, (long)val);
+            set(index, (long) val);
         }
 
         public void set(int index, int val)
         {
-            set(index, (long)val);
+            set(index, (long) val);
         }
 
         public void set(int index, boolean val)
@@ -324,17 +327,17 @@ public class DictObj
 
         public void add(DictObj val)
         {
-            add((Object)val);
+            add((Object) val);
         }
 
         public void add(String val)
         {
-            add((Object)val);
+            add((Object) val);
         }
 
         public void add(byte[] val, boolean string)
         {
-            add((Object)(string ? new String(val, StandardCharsets.UTF_8) : val));
+            add((Object) (string ? new String(val, StandardCharsets.UTF_8) : val));
         }
 
         public void add(long val)
@@ -349,17 +352,17 @@ public class DictObj
 
         public void add(float val)
         {
-            add((double)val);
+            add((double) val);
         }
 
         public void add(short val)
         {
-            add((long)val);
+            add((long) val);
         }
 
         public void add(int val)
         {
-            add((long)val);
+            add((long) val);
         }
 
         public void add(boolean val)
@@ -394,18 +397,22 @@ public class DictObj
         public Object value;
     }
 
-    public static class Dict extends DictObj {
+    public static class Dict extends DictObj
+    {
 
         private final HashMap<String, Object> items = new HashMap<>();
 
-        public Dict() {
+        public Dict()
+        {
 
         }
 
-        public DictObj.Entry[] entries() {
+        public DictObj.Entry[] entries()
+        {
             DictObj.Entry[] entries = new DictObj.Entry[items.size()];
             int c = 0;
-            for (Map.Entry<String, Object> entry : items.entrySet()) {
+            for (Map.Entry<String, Object> entry : items.entrySet())
+            {
                 entries[c] = new Entry();
                 entries[c].key = entry.getKey();
                 entries[c].value = entry.getValue();
@@ -425,138 +432,177 @@ public class DictObj
             return items.keySet();
         }
 
-        public int size() {
+        public int size()
+        {
             return items.size();
         }
 
-        public boolean hasKey(String key) {
+        public boolean hasKey(String key)
+        {
             return items.containsKey(key);
         }
 
-        public Object get(String key) {
+        public Object get(String key)
+        {
             return items.get(key);
         }
 
-        private void put(String key, Object val) {
+        private void put(String key, Object val)
+        {
+            if (key == null)
+            {
+                throw new RuntimeException("Dict key cannot be null");
+            }
             items.put(key, val);
         }
 
-        public DictObj.Dict getDict(String key) {
+        public DictObj.Dict getDict(String key)
+        {
             return (Dict) get(key);
         }
 
-        public DictObj.List getList(String key) {
+        public DictObj.List getList(String key)
+        {
             return (DictObj.List) get(key);
         }
 
-        public String getString(String key) {
+        public String getString(String key)
+        {
             return (String) get(key);
         }
 
-        public byte[] getBytes(String key) {
+        public byte[] getBytes(String key)
+        {
             return (byte[]) get(key);
         }
 
-        public long getLong(String key, long def) {
+        public long getLong(String key, long def)
+        {
             Long val = (Long) get(key);
-            if (val == null) {
+            if (val == null)
+            {
                 return def;
             }
             return val;
         }
 
-        public double getDouble(String key, double def) {
+        public double getDouble(String key, double def)
+        {
             Double val = (Double) get(key);
-            if (val == null) {
+            if (val == null)
+            {
                 return def;
             }
             return val;
         }
 
-        public float getFloat(String key, float def) {
+        public float getFloat(String key, float def)
+        {
             return (float) getDouble(key, def);
         }
 
-        public short getShort(String key, short def) {
+        public short getShort(String key, short def)
+        {
             return (short) getLong(key, def);
         }
 
-        public int getInt(String key, int def) {
+        public int getInt(String key, int def)
+        {
             return (int) getLong(key, def);
         }
 
-        public boolean getBoolean(String key, boolean def) {
+        public boolean getBoolean(String key, boolean def)
+        {
             Boolean val = (Boolean) get(key);
-            if (val == null) {
+            if (val == null)
+            {
                 return def;
             }
             return val;
         }
 
-        public void put(String key, DictObj val) {
+        public void put(String key, DictObj val)
+        {
             put(key, (Object) val);
         }
 
-        public void put(String key, String val) {
+        public void put(String key, String val)
+        {
             put(key, (Object) val);
         }
-        public void put(String key, byte[] val, boolean string) {
+
+        public void put(String key, byte[] val, boolean string)
+        {
             put(key, (Object) (string ? new String(val, StandardCharsets.UTF_8) : val));
         }
 
-        public void put(String key, long val) {
+        public void put(String key, long val)
+        {
             put(key, Long.valueOf(val));
         }
 
-        public void put(String key, double val) {
+        public void put(String key, double val)
+        {
             put(key, Double.valueOf(val));
         }
 
-        public void put(String key, float val) {
+        public void put(String key, float val)
+        {
             put(key, (double) val);
         }
 
-        public void put(String key, short val) {
+        public void put(String key, short val)
+        {
             put(key, (long) val);
         }
 
-        public void put(String key, int val) {
+        public void put(String key, int val)
+        {
             put(key, (long) val);
         }
 
-        public void put(String key, boolean val) {
+        public void put(String key, boolean val)
+        {
             put(key, Boolean.valueOf(val));
         }
 
-        public void put(byte[] key, DictObj val) {
+        public void put(byte[] key, DictObj val)
+        {
             put(new String(key, StandardCharsets.UTF_8), (Object) val);
         }
 
-        public void put(byte[] key, byte[] val, boolean string) {
-            put(new String(key, StandardCharsets.UTF_8), (Object)(string ? new String(val, StandardCharsets.UTF_8) : val));
+        public void put(byte[] key, byte[] val, boolean string)
+        {
+            put(new String(key, StandardCharsets.UTF_8), (Object) (string ? new String(val, StandardCharsets.UTF_8) : val));
         }
 
-        public void put(byte[] key, long val) {
+        public void put(byte[] key, long val)
+        {
             put(new String(key, StandardCharsets.UTF_8), Long.valueOf(val));
         }
 
-        public void put(byte[] key, double val) {
+        public void put(byte[] key, double val)
+        {
             put(new String(key, StandardCharsets.UTF_8), Double.valueOf(val));
         }
 
-        public void put(byte[] key, float val) {
+        public void put(byte[] key, float val)
+        {
             put(new String(key, StandardCharsets.UTF_8), (double) val);
         }
 
-        public void put(byte[] key, short val) {
+        public void put(byte[] key, short val)
+        {
             put(new String(key, StandardCharsets.UTF_8), (long) val);
         }
 
-        public void put(byte[] key, int val) {
+        public void put(byte[] key, int val)
+        {
             put(new String(key, StandardCharsets.UTF_8), (long) val);
         }
 
-        public void put(byte[] key, boolean val) {
+        public void put(byte[] key, boolean val)
+        {
             put(new String(key, StandardCharsets.UTF_8), Boolean.valueOf(val));
         }
 

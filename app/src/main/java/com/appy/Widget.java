@@ -385,21 +385,7 @@ public class Widget extends RemoteViewsService
             }
             else
             {
-                boolean wasDefault = factory.isDefaultListView();
                 factory.reload(listview.copy());
-
-                if (wasDefault)
-                {
-                    try
-                    {
-                        int androidWidget = getAndroidWidget(widgetId);
-                        AppWidgetManager.getInstance(context).notifyAppWidgetViewDataChanged(androidWidget, view);
-                    }
-                    catch (WidgetDestroyedException ignored)
-                    {
-
-                    }
-                }
             }
         }
     }
@@ -3476,7 +3462,7 @@ public class Widget extends RemoteViewsService
             return false;
         }
 
-        Log.d("APPY", "widgetChangingCallback Start");
+        //Log.d("APPY", "widgetChangingCallback Start");
 
         int androidWidgetId = getAndroidWidget(widgetId);
         ArrayList<DynamicView> widget = null;
@@ -3505,7 +3491,7 @@ public class Widget extends RemoteViewsService
             if ((updated || needUpdateWidgets.contains(widgetId)) && widget != null)
             {
                 setWidget(androidWidgetId, widgetId, widget, true);
-                Log.d("APPY", "widgetChangingCallback End");
+                //Log.d("APPY", "widgetChangingCallback End");
                 return true;
             }
         }
