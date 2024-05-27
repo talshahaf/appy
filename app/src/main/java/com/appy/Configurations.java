@@ -1,6 +1,7 @@
 package com.appy;
 
 import android.content.Context;
+import android.util.Log;
 import android.util.Pair;
 
 import java.util.ArrayList;
@@ -168,6 +169,7 @@ public class Configurations
                 {
                     changed.add(new Pair<>(widget, key));
                 }
+                configurations.remove(widget);
                 saveChanges(configurations, changed);
             }
         }
