@@ -39,7 +39,7 @@ public class StateFragment extends FragmentParent
             return;
         }
 
-        stateSnapshot = getWidgetService().getStateLayoutSnapshot();
+        updateDict();
 
         WidgetSelectFragment fragment = new WidgetSelectFragment();
         fragment.setParent(this);
@@ -51,6 +51,11 @@ public class StateFragment extends FragmentParent
     public DictObj.Dict getDict()
     {
         return stateSnapshot;
+    }
+
+    public void updateDict()
+    {
+        stateSnapshot = getWidgetService().getStateLayoutSnapshot();
     }
 
     @Override
@@ -86,6 +91,8 @@ public class StateFragment extends FragmentParent
 
         public void refresh()
         {
+            parent.updateDict();
+
             ArrayList<ListFragmentAdapter.Item> adapterList = new ArrayList<>();
             if (keyPath.isEmpty())
             {
