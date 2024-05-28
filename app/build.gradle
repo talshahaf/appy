@@ -13,8 +13,8 @@ android {
         applicationId "com.appy.widgets"
         minSdkVersion 21
         targetSdkVersion 34
-        versionCode 21
-        versionName "1.21"
+        versionCode 10
+        versionName "1.10"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         externalNativeBuild {
             cmake {
@@ -90,18 +90,11 @@ android {
     flavorDimensions "abi"
 
     productFlavors {
-        /*arm {
-            dimension "abi"
-            ndk {
-                abiFilter "armeabi-v7a"
-                versionCode = 0     + android.defaultConfig.versionCode
-            }
-        }*/
         arm64 {
             dimension "abi"
             ndk {
                 abiFilter "arm64-v8a"
-                versionCode = 10000 + android.defaultConfig.versionCode
+                versionCode = android.defaultConfig.versionCode
             }
         }
     }
