@@ -1,5 +1,6 @@
 package com.appy;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
 
@@ -50,17 +51,7 @@ public class ControlFragment extends MyFragment
             @Override
             public void onClick(final View v)
             {
-                Utils.showConfirmationDialog(getActivity(),
-                    "Clear widgets", "Clear all widgets?", android.R.drawable.ic_dialog_alert,
-                        null, null, new Runnable()
-                        {
-                            @Override
-                            public void run()
-                            {
-                                getWidgetService().resetWidgets();
-                                debounce(v);
-                            }
-                        });
+                startActivity(new Intent(getActivity(), WidgetClearActivity.class));
             }
         });
 

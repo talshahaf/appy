@@ -180,7 +180,7 @@ public class ConfigsFragment extends FragmentParent
         }
 
         String widget = fragmentArg.getString(Constants.FRAGMENT_ARG_WIDGET);
-        HashMap<String, String> configs = getWidgetService().getConfigurations().getValues(widget);
+        HashMap<String, Pair<String, String>> configs = getWidgetService().getConfigurations().getValues(widget);
         if (configs.isEmpty())
         {
             switchTo(new WidgetSelectFragment(), true);
@@ -245,10 +245,11 @@ public class ConfigsFragment extends FragmentParent
             }
             else
             {
-                HashMap<String, String> values = getWidgetService().getConfigurations().getValues(widget);
-                for (Map.Entry<String, String> item : values.entrySet())
+                HashMap<String, Pair<String, String>> values = getWidgetService().getConfigurations().getValues(widget);
+                for (Map.Entry<String, Pair<String, String>> item : values.entrySet())
                 {
-                    ListFragmentAdapter.Item listitem = new ListFragmentAdapter.Item(item.getKey(), item.getValue());
+                    String subtitle = item.getValue().first != null ? (item.getValue().first+" (" + item.getValue().second + ")") : item.getValue().second;
+                    ListFragmentAdapter.Item listitem = new ListFragmentAdapter.Item(item.getKey(), subtitle, item.getValue().second);
                     if (config != null && item.getKey().equals(config))
                     {
                         selectedConfigItem = listitem;
@@ -314,14 +315,22 @@ public class ConfigsFragment extends FragmentParent
 
             final EditText input = new EditText(getActivity());
 
-            try
+            if (item.arg != null)
             {
-                input.setText(new JSONObject(item.value).toString(2));
+                try
+                {
+                    input.setText(new JSONObject((String) item.arg).toString(2));
+                }
+                catch (JSONException e)
+                {
+                    input.setText((String) item.arg);
+                }
             }
-            catch (JSONException e)
+            else
             {
-                input.setText(item.value);
+                input.setText("");
             }
+
             input.setInputType(InputType.TYPE_TEXT_FLAG_MULTI_LINE);
             input.setSingleLine(false);
             input.setGravity(Gravity.START | Gravity.TOP);
@@ -338,7 +347,7 @@ public class ConfigsFragment extends FragmentParent
                     {
                         if (requestCode != 0)
                         {
-                            getWidgetService().asyncReport(requestCode, item.value);
+                            getWidgetService().asyncReport(requestCode, (String)item.arg);
                         }
                         parent.finishActivity();
                     }

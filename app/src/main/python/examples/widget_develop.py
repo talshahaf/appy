@@ -13,9 +13,12 @@ def reset_timer_if_needed(widget):
     if widget.state.enabled:
         # set to 1 second so we can have a countdown
         widget.set_interval(1, on_timer)
+    else:
+        widget.state.auto_disable_counter = 0
 
 def on_timer(widget, views):
     widget.state.interval_counter = widget.state.setdefault('interval_counter', 0) + 1
+    widget.state.auto_disable_counter += 1
     
     interval = max(1, int(widget.config.interval))
     
@@ -24,6 +27,10 @@ def on_timer(widget, views):
     if widget.state.interval_counter >= interval:
         # using post so that countdown text changes before on_refresh call
         widget.post(on_refresh)
+        
+    if widget.config.auto_disable_after and widget.state.auto_disable_counter >= widget.config.auto_disable_after:
+        views['enabled'].checked = False
+        on_enable(widget, False)
 
 def drive_url_convert(url):
     # extracting file id and using it with a different url to download file directly
@@ -162,13 +169,14 @@ def create(widget):
                             imageResource=R.drawable.ic_action_refresh)
     
     widget.state.enabled = True
+    widget.state.auto_disable_counter = 0
+    
     enabled = Switch(name='enabled', checked=widget.state.enabled, click=on_enable, top=20, left=10)
     
-    widget.state.current_interval = None
     reset_timer_if_needed(widget)
     
     widget.post(on_refresh)
     
     return [bg, text, countdown, refresh, enabled]
     
-register_widget('widget_develop', create, config=dict(interval=5, files=[{'url': 'https://www.example.com/widget.py&download=1', 'local': 'widget.py'}]), on_config=on_config)
+register_widget('widget_develop', create, config=dict(interval=5, auto_disable_after=3600, files=[{'url': 'https://www.example.com/widget.py&download=1', 'local': 'widget.py'}]), on_config=on_config)
