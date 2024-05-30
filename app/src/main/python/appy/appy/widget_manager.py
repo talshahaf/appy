@@ -975,13 +975,30 @@ def reload_python_file(path):
 def add_python_file(path):
     return java_context().addPythonFileByPathWithDialog(path)
     
-def register_widget(name, create, update=None, config=None, on_config=None, on_share=None, debug=False):
+def register_widget(name, create, update=None, config=None, config_description=None, on_config=None, on_share=None, debug=False):
     path = getattr(__importing_module, 'path', None)
     if path is None:
         raise ValueError('register_widget can only be called on import')
 
     if name in available_widgets and available_widgets[name]['pythonfile'] != path:
         raise ValueError(f'name {name} exists')
+
+    if config is not None:
+        if isinstance(config, dict):
+            if any(not isinstance(key, str) for key in config.keys()):
+                raise ValueError('config must be dict(str: ...)')
+        else:
+            raise ValueError('config must be dict(str: ...)')
+
+    if config_description is not None:
+        if isinstance(config_description, dict):
+            if any(not isinstance(key, str) or not isinstance(value, str) for key, value in config_description.items()):
+                raise ValueError('config_description must be dict(str: str)')
+            for desc in config_description.keys():
+                if config is None or desc not in config:
+                    raise ValueError(f'{desc} key in config_description is not in config')
+        else:
+            raise ValueError('config_description must be dict(str: str)')
 
     dumps(create)
     dumps(update)
@@ -990,4 +1007,4 @@ def register_widget(name, create, update=None, config=None, on_config=None, on_s
 
     available_widgets[name] = dict(pythonfile=path, create=create, update=update, on_config=on_config, on_share=on_share, debug=bool(debug))
     if config is not None:
-        configs.set_defaults(name, config)
+        configs.set_defaults(name, config, config_description)

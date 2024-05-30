@@ -174,7 +174,6 @@ public class DialogActivity extends Activity
     {
         if (widgetService != null)
         {
-            widgetService.setStatusListener(null);
             unbindService(mConnection);
             widgetService = null;
         }

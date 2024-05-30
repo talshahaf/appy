@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Objects;
 import java.util.Set;
 
 public class Configurations
@@ -45,17 +46,17 @@ public class Configurations
         }
     }
 
-    public HashMap<String, String> getValues(String widget)
+    public HashMap<String, Pair<String, String>> getValues(String widget)
     {
         synchronized (lock)
         {
             DictObj.Dict configs = configurations.getDict(widget);
-            HashMap<String, String> values = new HashMap<>();
+            HashMap<String, Pair<String, String>> values = new HashMap<>();
             if (configs != null)
             {
                 for (DictObj.Entry entry : configs.entries())
                 {
-                    values.put(entry.key, ((DictObj.Dict)entry.value).getString("value"));
+                    values.put(entry.key, new Pair<>(((DictObj.Dict)entry.value).getString("description"), ((DictObj.Dict)entry.value).getString("value")));
                 }
             }
             return values;
@@ -185,7 +186,9 @@ public class Configurations
         ArrayList<Pair<String, String>> changed = new ArrayList<>();
         for (DictObj.Entry entry : defaults.entries())
         {
-            if (setConfigNoSave(widget, entry.key, (String) entry.value, true))
+            String def = ((DictObj.Dict)entry.value).getString("default");
+            String desc = ((DictObj.Dict)entry.value).getString("description");
+            if (setConfigOrDefaultNoSave(widget, entry.key, def, desc, true))
             {
                 changed.add(new Pair<>(widget, entry.key));
             }
@@ -202,7 +205,7 @@ public class Configurations
 
     public void setConfig(String widget, String key, String value)
     {
-        if (setConfigNoSave(widget, key, value, false))
+        if (setConfigOrDefaultNoSave(widget, key, value, null, false))
         {
             synchronized (lock)
             {
@@ -211,7 +214,7 @@ public class Configurations
         }
     }
 
-    public boolean setConfigNoSave(String widget, String key, String value, boolean isDefaultValue)
+    public boolean setConfigOrDefaultNoSave(String widget, String key, String value, String description, boolean isDefaultValue)
     {
         boolean changed = false;
         synchronized (lock)
@@ -229,20 +232,26 @@ public class Configurations
                 values = new DictObj.Dict();
                 values.put("value", value);
                 values.put("default", value);
+                values.put("description", description);
                 widgetConfig.put(key, values);
                 changed = true;
             }
             else
             {
                 // override previous pair changing only one of its values
-                if (!isDefaultValue && !values.get("value").equals(value))
+                if (!isDefaultValue && !Objects.equals(values.get("value"), value))
                 {
                     values.put("value", value);
                     changed = true;
                 }
-                if (isDefaultValue && !values.get("default").equals(value))
+                if (isDefaultValue && !Objects.equals(values.get("default"), value))
                 {
                     values.put("default", value);
+                    changed = true;
+                }
+                if (isDefaultValue && !Objects.equals(values.get("description"), description))
+                {
+                    values.put("description", description);
                     changed = true;
                 }
             }
@@ -274,6 +283,7 @@ public class Configurations
             String key = obj.getString("key");
             String value = obj.getString("value");
             String default_ = obj.getString("default");
+            String description = obj.getString("description");
 
             if (widget == null || key == null)
             {
@@ -290,6 +300,7 @@ public class Configurations
             DictObj.Dict configDict = new DictObj.Dict();
             configDict.put("value", value);
             configDict.put("default", default_);
+            configDict.put("description", description);
 
             widgetConfig.put(key, configDict);
         }
@@ -335,11 +346,9 @@ public class Configurations
                         changed.add(new Pair<>(widget, key));
                     }
 
-                    if (!configurations.getDict(widget).getDict(key).getString("default").equals(newConfig.getDict(widget).getDict(key).get("default")))
-                    {
-                        //don't override default
-                        newConfig.getDict(widget).getDict(key).put("default", configurations.getDict(widget).getDict(key).getString("value"));
-                    }
+                    //don't override default
+                    newConfig.getDict(widget).getDict(key).put("default", configurations.getDict(widget).getDict(key).getString("default"));
+                    newConfig.getDict(widget).getDict(key).put("description", configurations.getDict(widget).getDict(key).getString("description"));
                 }
             }
 
@@ -421,6 +430,7 @@ public class Configurations
                     obj.put("key", key);
                     obj.put("value", configObj.getString("value"));
                     obj.put("default", configObj.getString("default"));
+                    obj.put("description", configObj.getString("description"));
                     store.put(buildKey(widget, key), obj);
                 }
             }

@@ -11,8 +11,8 @@ global_configs = ConfigDict()
 global_raw_configs = ConfigDict()
 previous_dict_config = ''
 
-def set_defaults(widget, dic):
-    jsoned = {k : (json.dumps(v) if not k.endswith('_nojson') else v) for k,v in dic.items()}
+def set_defaults(widget, dic, descriptions):
+    jsoned = {k : {'default': (json.dumps(v) if not k.endswith('_nojson') else v), 'description': descriptions.get(k) if descriptions else None} for k,v in dic.items()}
     configurations = java.get_java_arg().getConfigurations()
     configurations.setDefaultConfig(widget, java.build_java_dict(jsoned))
     sync(java.build_python_dict_from_java(configurations.getDict()))

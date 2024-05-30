@@ -93,6 +93,10 @@ public class ListFragmentAdapter extends BaseAdapter
         text1.setText(items.get(position).keyPrefix + items.get(position).key);
 
         String value = items.get(position).value;
+        if (value == null)
+        {
+            value = "null";
+        }
         if (value.length() > MAX_VALUE_LENGTH)
         {
             value = value.substring(0, MAX_VALUE_LENGTH - 3) + "...";
