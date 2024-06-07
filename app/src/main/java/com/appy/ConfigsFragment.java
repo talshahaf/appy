@@ -248,7 +248,7 @@ public class ConfigsFragment extends FragmentParent
                 HashMap<String, Pair<String, String>> values = getWidgetService().getConfigurations().getValues(widget);
                 for (Map.Entry<String, Pair<String, String>> item : values.entrySet())
                 {
-                    String subtitle = item.getValue().first != null ? (item.getValue().first+" (" + item.getValue().second + ")") : item.getValue().second;
+                    String subtitle = item.getValue().first != null ? (item.getValue().first + "\n" + item.getValue().second) : item.getValue().second;
                     ListFragmentAdapter.Item listitem = new ListFragmentAdapter.Item(item.getKey(), subtitle, item.getValue().second);
                     if (config != null && item.getKey().equals(config))
                     {

@@ -70,6 +70,26 @@ public class ListFragmentAdapter extends BaseAdapter
         return position;
     }
 
+    public static String trimValue(String value)
+    {
+        if (value.length() > MAX_VALUE_LENGTH)
+        {
+            value = value.substring(0, MAX_VALUE_LENGTH - 3) + "...";
+        }
+        return value;
+    }
+
+    public static String trimValuePerLine(String value, int maxlines)
+    {
+        String[] lines = value.split("\n");
+        String[] result = new String[Math.min(lines.length, maxlines)];
+        for (int i = 0; i < result.length; i++)
+        {
+            result[i] = trimValue(lines[i]);
+        }
+        return String.join("\n", result);
+    }
+
     @Override
     public View getView(int position, View convertView, ViewGroup parent)
     {
@@ -90,19 +110,15 @@ public class ListFragmentAdapter extends BaseAdapter
         TextView text1 = twoLineListItem.findViewById(R.id.text1);
         TextView text2 = twoLineListItem.findViewById(R.id.text2);
 
-        text1.setText(items.get(position).keyPrefix + items.get(position).key);
+        text1.setText(trimValue(items.get(position).keyPrefix + items.get(position).key));
 
         String value = items.get(position).value;
         if (value == null)
         {
             value = "null";
         }
-        if (value.length() > MAX_VALUE_LENGTH)
-        {
-            value = value.substring(0, MAX_VALUE_LENGTH - 3) + "...";
-        }
 
-        text2.setText(value);
+        text2.setText(trimValuePerLine(value, 2));
 
         return twoLineListItem;
     }

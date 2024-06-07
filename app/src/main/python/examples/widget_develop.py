@@ -179,4 +179,7 @@ def create(widget):
     
     return [bg, text, countdown, refresh, enabled]
     
-register_widget('widget_develop', create, config=dict(interval=5, auto_disable_after=3600, files=[{'url': 'https://www.example.com/widget.py&download=1', 'local': 'widget.py'}]), on_config=on_config)
+register_widget('widget_develop', create, 
+                    config=dict(interval=5, auto_disable_after=3600, files=[{'url': 'https://www.example.com/widget.py&download=1', 'local': 'widget.py'}]), 
+                    config_description=dict(interval='Check url every `interval` seconds', auto_disable_after="Disable after some time (in seconds) so it doesn't run forever", files="List of dicts with keys: 'url', 'local'. Downloads from 'url' to optional 'local'"),
+                    on_config=on_config)

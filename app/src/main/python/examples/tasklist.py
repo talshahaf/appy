@@ -52,6 +52,7 @@ register_widget('tasklist', create,
                     # Also refresh list every update so we can call invalidate from other tasklists
                     update_list,
                     # no json so it would be easier to read and to change
-                    config=dict(list_nojson='Task 1, Task 2, Task 3', newline_delimiter=False, delimiter=', '),
+                    config=dict(list_nojson='Task 1\nTask 2\nTask 3', newline_delimiter=True, delimiter=', '),
+                    config_description=dict(newline_delimiter='Use newlines to split the task list', delimiter='Use this delimiter, works only if newline_delimiter is False'),
                     # Refresh list every config change
                     on_config=update_list)
