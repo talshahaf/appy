@@ -224,7 +224,7 @@ def update_counter(widget, views):
     
 def ping_click(widget):
     # Choose whether to open an html page or to display a notification according to config
-    if widget.config.true_for_html_false_for_notification:
+    if widget.config.method == 'html':
         display_page(widget.widget_id, str(widget.state.counter + 1))
     else:
         notification_permission = 'POST_NOTIFICATIONS'
@@ -247,5 +247,5 @@ def create(widget):
     widget.post(update_counter)
     return [background(), counter, ping]
     
-register_widget(widget_name, create, config=dict(true_for_html_false_for_notification=False))
+register_widget(widget_name, create, config=dict(method='notification'), config_description=dict(method="Can be either 'html' or 'notification'"))
 register_receivers()
