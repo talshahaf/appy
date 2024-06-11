@@ -38,7 +38,7 @@ def update_list(widget, views):
     views['list'].children = children
 
 def create(widget):
-    lst = ListView(name='list')
+    lst = ListView(name='list', paddingTop=20, paddingBottom=50)
     edit_btn = ImageView(adjustViewBounds=True,
                            colorFilter=0xffffffff, width=80, height=80,
                            right=10, bottom=10,

@@ -103,6 +103,12 @@ public class ShareActivity extends WidgetSelectActivity
     }
 
     @Override
+    public boolean hasContextMenu()
+    {
+        return false;
+    }
+
+    @Override
     protected void onCreate(Bundle savedInstanceState)
     {
         super.onCreate(savedInstanceState);

@@ -271,6 +271,8 @@ class Element:
             del self.d.selectors[key]
         elif key in ('children',):
             self.d[key].clear()
+        elif key in ('paddingLeft', 'paddingTop', 'paddingRight', 'paddingBottom'):
+            del self.d[key]
         elif key in ('tag',):
             raise AttributeError(f'{key} can not be deleted')
         elif 'tag' in self.d and key in self.d.tag:
@@ -289,6 +291,8 @@ class Element:
             return getattr(self.d.selectors, item)
         if item == 'checked':
             return self.compoundButtonChecked
+        if item in ('paddingLeft', 'paddingTop', 'paddingRight', 'paddingBottom'):
+            return getattr(self.d, item, 0)
         if self.d.type == 'Chronometer' and item in ('base', 'format', 'started'):
             try:
                 return self.chronometer[('base', 'format', 'started').index(item)]
@@ -387,6 +391,9 @@ class Element:
                 self.drawableTint = (background, value, java.clazz.android.graphics.PorterDuff.Mode().SRC)
         elif key == 'checked':
             self.compoundButtonChecked = value
+        elif key in ('paddingLeft', 'paddingTop', 'paddingRight', 'paddingBottom'):
+            self.d[key] = value
+            self.viewPadding = (self.d.get('paddingLeft', 0), self.d.get('paddingTop', 0), self.d.get('paddingRight', 0), self.d.get('paddingBottom', 0))
         elif self.d.type == 'Chronometer' and key in ('base', 'format', 'started'):
             try:
                 old_base, old_format, old_started = self.chronometer
@@ -626,13 +633,16 @@ def unchoose_widget(widget_id):
     manager_state.chosen.pop(widget_id, None)
     last_func_for_widget_id.pop(widget_id, None)
 
-def debug_button_click(widget):
-    print('debug button click')
+def recreate_widget(widget_id):
+    print('recreate widget ', widget_id)
     manager_state = obtain_manager_state()
-    if widget.widget_id in manager_state.chosen:
-        chosen = manager_state.chosen[widget.widget_id]
+    if widget_id in manager_state.chosen:
+        chosen = manager_state.chosen[widget_id]
         chosen.inited = False
-        widget.invalidate()
+        widgets.Widget(widget_id, None).invalidate()
+
+def debug_button_click(widget):
+    recreate_widget(widget.widget_id)
 
 def widget_manager_create(widget, manager_state):
     print('widget_manager_create')
@@ -847,7 +857,6 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
         manager_state.__token__ = token
         state.save_modified()
 
-
     @java.override
     def importFile(self, path, skip_refresh):
         print(f'import file request called on {path}')
@@ -865,6 +874,9 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
         if not skip_refresh:
             refresh_managers()
 
+    @java.override
+    def recreateWidget(self, widget_id):
+        recreate_widget(widget_id)
 
     @java.override
     def refreshManagers(self):
