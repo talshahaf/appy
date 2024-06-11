@@ -7,6 +7,9 @@ import android.content.Intent;
 import android.content.ServiceConnection;
 import android.os.Bundle;
 import android.os.IBinder;
+import android.view.ContextMenu;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ListView;
@@ -102,8 +105,17 @@ public abstract class WidgetSelectActivity extends AppCompatActivity implements 
         }
     }
 
-    public abstract void onWidgetSelected(int widgetId, String widgetName);
-    public abstract String getToolbarHeader();
+    protected abstract void onWidgetSelected(int widgetId, String widgetName);
+    protected abstract String getToolbarHeader();
+    protected abstract boolean hasContextMenu();
+    protected void onWidgetCreateContextMenu(ContextMenu menu, View v, ContextMenu.ContextMenuInfo menuInfo, int widgetId, String widgetName)
+    {
+
+    }
+    protected boolean onWidgetContextSelected(int itemid, int widgetId, String widgetName)
+    {
+        return false;
+    }
 
     @Override
     public void onItemClick(AdapterView<?> adapter, View view, int position, long id)
@@ -115,5 +127,36 @@ public abstract class WidgetSelectActivity extends AppCompatActivity implements 
 
         ListFragmentAdapter.Item item = (ListFragmentAdapter.Item) adapter.getItemAtPosition(position);
         onWidgetSelected((Integer)item.arg, item.value);
+    }
+
+    @Override
+    public void onCreateContextMenu(ContextMenu menu, View v, ContextMenu.ContextMenuInfo menuInfo)
+    {
+        super.onCreateContextMenu(menu, v, menuInfo);
+
+        ListView list = (ListView)v;
+        AdapterView.AdapterContextMenuInfo info = (AdapterView.AdapterContextMenuInfo) menuInfo;
+
+        ListFragmentAdapter.Item item = (ListFragmentAdapter.Item)list.getAdapter().getItem(info.position);
+
+        onWidgetCreateContextMenu(menu, v, menuInfo, (Integer)item.arg, item.value);
+    }
+
+    @Override
+    public boolean onContextItemSelected(MenuItem item)
+    {
+        AdapterView.AdapterContextMenuInfo info = (AdapterView.AdapterContextMenuInfo) item.getMenuInfo();
+        if (info == null)
+        {
+            return super.onContextItemSelected(item);
+        }
+        ListFragmentAdapter.Item listitem = (ListFragmentAdapter.Item) listview.getAdapter().getItem(info.position);
+
+        if (onWidgetContextSelected(item.getItemId(), (Integer)listitem.arg, listitem.value))
+        {
+            return true;
+        }
+
+        return super.onContextItemSelected(item);
     }
 }

@@ -43,6 +43,8 @@ interface WidgetUpdateListener
 
     void deimportFile(String path, boolean skipRefresh);
 
+    void recreateWidget(int widgetId);
+
     void refreshManagers();
 
     String onError(int widgetId, String error);

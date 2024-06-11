@@ -2541,6 +2541,14 @@ public class Widget extends RemoteViewsService
         update(widgetId);
     }
 
+    public void recreateWidget(int widgetId)
+    {
+        if (updateListener != null)
+        {
+            updateListener.recreateWidget(widgetId);
+        }
+    }
+
     public DictObj.Dict getStateLayoutSnapshot()
     {
         if (updateListener == null)
