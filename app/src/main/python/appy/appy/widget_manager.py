@@ -228,6 +228,9 @@ def serialize_arg(arg):
     #gotta go to java
     return java.build_python_dict_from_java(java.clazz.appy.RemoteMethodCall().parameterToDict(arg))
 
+element_attr_aliases = dict(checked='compoundButtonChecked',
+                            compoundDrawables='textViewCompoundDrawables',
+                            compoundDrawablesRelative='textViewCompoundDrawablesRelative')
 element_event_hooks = {} #global for all
 class Element:
     __slots__ = ('d',)
@@ -273,6 +276,8 @@ class Element:
             self.d[key].clear()
         elif key in ('paddingLeft', 'paddingTop', 'paddingRight', 'paddingBottom'):
             del self.d[key]
+        elif key in element_attr_aliases:
+            delattr(self, element_attr_aliases[key])
         elif key in ('tag',):
             raise AttributeError(f'{key} can not be deleted')
         elif 'tag' in self.d and key in self.d.tag:
@@ -289,8 +294,8 @@ class Element:
             return getattr(self.d, item)
         if item in ('style', 'alignment'):
             return getattr(self.d.selectors, item)
-        if item == 'checked':
-            return self.compoundButtonChecked
+        if item in element_attr_aliases:
+            return getattr(self, element_attr_aliases[key])
         if item in ('paddingLeft', 'paddingTop', 'paddingRight', 'paddingBottom'):
             return getattr(self.d, item, 0)
         if self.d.type == 'Chronometer' and item in ('base', 'format', 'started'):
@@ -377,7 +382,7 @@ class Element:
             param_setter, method = get_param_setter(self.d.type, attr)
             if param_setter is not None:
                  # android 9+
-                 setattr(self, attr, java.clazz.android.content.res.ColorStateList().valueOf(value))
+                 setattr(self, attr, value)
 
                  if get_param_setter(self.d.type, mode_attr)[0] is not None:
                     # android 10+
@@ -389,8 +394,8 @@ class Element:
             elif validate_remoteviews_method('setDrawableTint'):
                 # android 9+
                 self.drawableTint = (background, value, java.clazz.android.graphics.PorterDuff.Mode().SRC)
-        elif key == 'checked':
-            self.compoundButtonChecked = value
+        elif key in element_attr_aliases:
+            setattr(self, element_attr_aliases[key], value)
         elif key in ('paddingLeft', 'paddingTop', 'paddingRight', 'paddingBottom'):
             self.d[key] = value
             self.viewPadding = (self.d.get('paddingLeft', 0), self.d.get('paddingTop', 0), self.d.get('paddingRight', 0), self.d.get('paddingBottom', 0))
