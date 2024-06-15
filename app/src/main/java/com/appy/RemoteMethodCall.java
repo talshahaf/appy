@@ -20,10 +20,10 @@ import java.util.HashMap;
  */
 public class RemoteMethodCall
 {
-    private String identifier;
-    private boolean parentCall;
-    private Method method;
-    private Object[] arguments;
+    private final String identifier;
+    private final boolean parentCall;
+    private final Method method;
+    private final Object[] arguments;
     public static HashMap<String, Method> remoteViewMethods = new HashMap<>();
     public static ArrayList<Pair<String, String>> resolveResourcePrefix = new ArrayList<>();
 
@@ -108,7 +108,7 @@ public class RemoteMethodCall
         }
         long lng;
         double dbl;
-        Class cls = obj.getClass();
+        Class<?> cls = obj.getClass();
 
         if (cls == Byte.class)
         {
@@ -168,6 +168,14 @@ public class RemoteMethodCall
         else if (required == Double.class || required == Double.TYPE)
         {
             return dbl;
+        }
+        else if (required.isEnum())
+        {
+            return required.cast((int)lng);
+        }
+        else if (required == ColorStateList.class)
+        {
+            return ColorStateList.valueOf((int)lng);
         }
         return (int) lng;
     }
