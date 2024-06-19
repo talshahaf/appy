@@ -279,7 +279,7 @@ class Element:
         elif key in element_attr_aliases:
             delattr(self, element_attr_aliases[key])
         elif key in ('tag',):
-            raise AttributeError(f'{key} can not be deleted')
+            self.tag.clear()
         elif 'tag' in self.d and key in self.d.tag:
             del self.d.tag[key]
         else:
@@ -361,7 +361,8 @@ class Element:
                 self.d.tag = {}
             self.d.tag[key] = value
         elif key in ('tag',):
-            raise AttributeError(f'{key} can not be modified')
+            self.tag.clear()
+            self.tag.update(value)
         elif key in ('style', 'alignment'):
             if 'selectors' not in self.d:
                 self.d.selectors = {}
@@ -659,8 +660,6 @@ def widget_manager_create(widget, manager_state):
     bg = widgets.RelativeLayout(width=widget_dims.width, height=widget_dims.height)
     bg.backgroundResource = R.drawable.rect
     bg.backgroundTint = widgets.color(r=0, g=0, b=0, a=100)
-    
-    #restart_btn = widgets.ImageButton(style='danger_oval_pad', adjustViewBounds=True, click=widgets.restart, colorFilter=0xffffffff, width=80, height=80, right=0, bottom=0, imageResource=androidR.drawable.ic_lock_power_off)
 
     #calling java releases the gil and available_widgets might be changed while iterating it
     names = [name for name in available_widgets]
@@ -683,7 +682,7 @@ def widget_manager_update(widget, manager_state, views):
             if on_create:
                 elements = call_general_function(on_create, widget=widget)
                 if debug:
-                    debug_button = widgets.Button(click=debug_button_click, backgroundTint=0xffff0000, style='success_oval_nopad', width=40, height=40, top=10, right=10)
+                    debug_button = widgets.Button(click=debug_button_click, backgroundTint=0xffff0000, style='success_oval_sml', viewPadding=(0, 0, 0, 0), width=40, height=40, top=10, right=10)
                     if isinstance(elements, list):
                         elements.append(debug_button)
                     elif isinstance(elements, tuple):
