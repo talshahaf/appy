@@ -51,7 +51,7 @@ def refresh_button(click, name=None, size=None, initial_refresh=None, widget=Non
         except:
             w, h = (80, 80)
 
-    btn = ImageButton(style='dark_oval_pad', adjustViewBounds=True, colorFilter=0xffffffff, width=w, height=h, left=0, bottom=0, imageResource=widgets.R.drawable.ic_action_refresh)
+    btn = ImageButton(style='dark_oval_sml', viewPadding=(10, 10, 10, 10), adjustViewBounds=True, colorFilter=0xffffffff, width=w, height=h, left=0, bottom=0, imageResource=widgets.R.drawable.ic_action_refresh)
     btn.click = (refresh_button_click, dict(on_click=click, id=btn.id))
     if name is not None:
         btn.name = name
@@ -198,7 +198,8 @@ def keyboard(widget, layout=None):
         line, line_width, line_height, top = resolved_line
         for e in line:
             key_dict, left = e
-            btn = Button(style='secondary_nopad',
+            btn = Button(style='secondary_sml',
+                         viewPadding=(0, 0, 0, 0),
                          text=key_dict['label'],
                          width=key_dict['width'],
                          height=key_dict['height'],
