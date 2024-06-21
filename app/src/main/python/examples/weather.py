@@ -1,6 +1,6 @@
 import requests, datetime, io
 from appy.widgets import register_widget, ImageView, TextView, AttributeFunction
-from appy.templates import background, refresh_button, reset_refresh_buttons_if_needed
+from appy.templates import background, RefreshButton, refresh_button_update_func
 from appy import widgets, java
 
 # inaccurate location is enough
@@ -63,7 +63,7 @@ def on_config(widget, views):
     
 def create(widget):
     bg = background()
-    refresh = refresh_button(on_refresh, widget=widget, initial_refresh=True, interval=4*3600)
+    refresh = RefreshButton(on_refresh, widget=widget, initial_refresh=True, interval=4*3600)
     # moving refresh button
     del refresh.left
     refresh.right = 0
@@ -75,4 +75,4 @@ def create(widget):
     return [bg, img, temp_text, location_text, refresh]
     
 # no custom update callback is needed, just recover refresh button on error,    location is configurable in configurations tab
-register_widget('weather', create, reset_refresh_buttons_if_needed, config=dict(lat=32.08, lon=34.78), on_config=on_config)
+register_widget('weather', create, refresh_button_update_func, config=dict(lat=32.08, lon=34.78), on_config=on_config)

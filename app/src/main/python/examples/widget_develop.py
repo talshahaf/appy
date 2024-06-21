@@ -165,7 +165,7 @@ def create(widget):
     text = TextView(name='text', textSize=30, hcenter=widget.hcenter, vcenter=widget.vcenter)
     countdown = TextView(name='countdown', textColor=0xb3ffffff, textSize=20, bottom=text.itop + 10, hcenter=text.hcenter)
     refresh = ImageButton(click=on_refresh, name='refresh_btn', top=text.ibottom + 10, hcenter=text.hcenter,
-                            style='dark_oval_sml', viewPadding=(10, 10, 10, 10), adjustViewBounds=True, colorFilter=0xffffffff,
+                            style='dark_oval_sml', padding=(10, 10, 10, 10), adjustViewBounds=True, colorFilter=0xffffffff,
                             imageResource=R.drawable.ic_action_refresh)
     
     widget.state.enabled = True
