@@ -243,4 +243,24 @@ public class DynamicView
     {
         return DynamicView.fromDictList(DynamicView.toDictList(arr));
     }
+
+    public static DynamicView findById(ArrayList<DynamicView> arr, long id)
+    {
+        for (DynamicView e : arr)
+        {
+            if (e.id == id)
+            {
+                return e;
+            }
+            for (ArrayList<DynamicView> child : e.children)
+            {
+                DynamicView found = findById(child, id);
+                if (found != null)
+                {
+                    return found;
+                }
+            }
+        }
+        return null;
+    }
 }

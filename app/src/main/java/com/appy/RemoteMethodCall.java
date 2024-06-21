@@ -6,6 +6,7 @@ import android.net.Uri;
 import android.os.Parcel;
 import android.os.Parcelable;
 import android.util.Base64;
+import android.util.Log;
 import android.util.Pair;
 import android.widget.RemoteViews;
 
@@ -23,6 +24,7 @@ public class RemoteMethodCall
     private final String identifier;
     private final boolean parentCall;
     private final Method method;
+    private final Object[] originalArguments;
     private final Object[] arguments;
     public static HashMap<String, Method> remoteViewMethods = new HashMap<>();
     public static ArrayList<Pair<String, String>> resolveResourcePrefix = new ArrayList<>();
@@ -91,7 +93,6 @@ public class RemoteMethodCall
                     {
                         return resolved;
                     }
-
                     throw new Resources.NotFoundException("Resource '" + prefix.second + "." + path + "' does not exist");
                 }
             }
@@ -190,11 +191,14 @@ public class RemoteMethodCall
         {
             throw new IllegalArgumentException("no remotable method " + methodName + " " + identifier);
         }
+
+        this.originalArguments = args;
+
         Class<?>[] types = this.method.getParameterTypes();
-        this.arguments = new Object[args.length];
-        for (int i = 0; i < args.length; i++)
+        this.arguments = new Object[originalArguments.length];
+        for (int i = 0; i < originalArguments.length; i++)
         {
-            arguments[i] = tryResolveXmlResource(args[i], types[i + 1]);
+            arguments[i] = tryResolveXmlResource(originalArguments[i], types[i + 1]);
             arguments[i] = cast(arguments[i], types[i + 1]);
         }
     }
@@ -447,7 +451,7 @@ public class RemoteMethodCall
         if (arguments.length > 0)
         {
             DictObj.List args = new DictObj.List();
-            for (Object arg : arguments)
+            for (Object arg : originalArguments)
             {
                 args.add(parameterToDict(arg));
             }

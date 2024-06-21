@@ -436,4 +436,6 @@
         <item name="android:textColor">@color/color_outline_dark_text</item>
     </style>
 
+    <style name="ExposedDropdownMenu" parent="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"/>
+
 </resources>

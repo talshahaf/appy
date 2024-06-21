@@ -1,7 +1,7 @@
 import requests, io
 from xml.etree import ElementTree as ET
 from appy.widgets import register_widget, TextView, ImageView, Button, AdapterViewFlipper
-from appy.templates import background, refresh_button, reset_refresh_buttons_if_needed
+from appy.templates import background, RefreshButton, refresh_button_update_func
 from appy import widgets
 
 FEED = 'http://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml'
@@ -87,8 +87,8 @@ def update(widget, views):
     widget.post(setimage, index=0)
     
 def create(widget):
-    # using only refresh_button
-    refresh = refresh_button(update, widget=widget, initial_refresh=True, interval=4*3600)
+    # using only RefreshButton
+    refresh = RefreshButton(update, widget=widget, initial_refresh=True, interval=4*3600)
     # moving it to the top right
     del refresh.left
     del refresh.bottom
@@ -102,4 +102,4 @@ def create(widget):
     return [AdapterViewFlipper(name='flipper'), prev_btn, next_btn, refresh]
         
 #                             recover refresh_button visibility on error
-register_widget('rss', create, reset_refresh_buttons_if_needed)
+register_widget('rss', create, refresh_button_update_func)

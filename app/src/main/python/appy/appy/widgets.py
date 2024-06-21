@@ -173,6 +173,7 @@ def _request_permissions(request, *permissions, timeout=None):
 class DialogEditText:
     initial_text: str = ''
     hint: str = ''
+    options: list[str] = None
 
 def show_dialog(title, text, buttons=('Yes', 'No'), edittexts: tuple[DialogEditText, ...] | DialogEditText = tuple(), icon_res=None, timeout=None):
     if isinstance(edittexts, DialogEditText):
@@ -181,6 +182,7 @@ def show_dialog(title, text, buttons=('Yes', 'No'), edittexts: tuple[DialogEditT
                                                                 java.new.java.lang.String[()](buttons),
                                                                 java.new.java.lang.String[()](edittext.initial_text for edittext in edittexts),
                                                                 java.new.java.lang.String[()](edittext.hint for edittext in edittexts),
+                                                                java.new.java.lang.String[()][()]((java.new.java.lang.String[()](edittext.options) if edittext.options else None) for edittext in edittexts),
                                                                 int(timeout * 1000) if timeout is not None else -1)
     if result == java.Null:
         raise RuntimeError('timeout')

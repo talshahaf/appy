@@ -230,7 +230,8 @@ def serialize_arg(arg):
 
 element_attr_aliases = dict(checked='compoundButtonChecked',
                             compoundDrawables='textViewCompoundDrawables',
-                            compoundDrawablesRelative='textViewCompoundDrawablesRelative')
+                            compoundDrawablesRelative='textViewCompoundDrawablesRelative',
+                            padding='viewPadding')
 element_event_hooks = {} #global for all
 class Element:
     __slots__ = ('d',)
@@ -682,7 +683,7 @@ def widget_manager_update(widget, manager_state, views):
             if on_create:
                 elements = call_general_function(on_create, widget=widget)
                 if debug:
-                    debug_button = widgets.Button(click=debug_button_click, backgroundTint=0xffff0000, style='success_oval_sml', viewPadding=(0, 0, 0, 0), width=40, height=40, top=10, right=10)
+                    debug_button = widgets.Button(click=debug_button_click, backgroundTint=0xffff0000, style='success_oval_sml', padding=(0, 0, 0, 0), width=40, height=40, top=10, right=10)
                     if isinstance(elements, list):
                         elements.append(debug_button)
                     elif isinstance(elements, tuple):
@@ -809,7 +810,7 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
             #element not found, must be stale pendingintent
             #just invalidate
             print('Clicked element does not exist, invalidating')
-            return java.new.java.lang.Object[()]([True, self.export(None, views)])
+            return self.export(None, views)
         widget, manager_state = create_widget(widget_id)
         v.__event__('click', widget=widget, views=views, view=v, checked=checked)
         return self.export(input, views)
