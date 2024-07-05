@@ -646,7 +646,9 @@ def recreate_widget(widget_id):
     if widget_id in manager_state.chosen:
         chosen = manager_state.chosen[widget_id]
         chosen.inited = False
-        widgets.Widget(widget_id, None).invalidate()
+        widget = widgets.Widget(widget_id, None)
+        widget.cancel_all_timers()
+        widget.invalidate()
 
 def debug_button_click(widget):
     recreate_widget(widget.widget_id)
