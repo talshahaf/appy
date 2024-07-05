@@ -21,6 +21,7 @@ import android.widget.TextView;
 
 import androidx.appcompat.app.AlertDialog;
 
+import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 
 import java.io.Serializable;
@@ -46,8 +47,7 @@ public class DialogActivity extends Activity
             widgetService = ((Widget.LocalBinder) service).getService();
             Serializable optionsObject = getIntent().getSerializableExtra(EXTRA_EDITTEXT_OPTIONS);
             String[][] options = (optionsObject instanceof String[][]) ? (String[][])optionsObject : null;
-            makeDialog(getIntent().getIntExtra(EXTRA_REQUEST_CODE, -1),
-                    getIntent().getIntExtra(EXTRA_ICON, -1),
+            makeDialog(getIntent().getIntExtra(EXTRA_ICON, -1),
                     getIntent().getStringExtra(EXTRA_TITLE),
                     getIntent().getStringExtra(EXTRA_TEXT),
                     getIntent().getStringArrayExtra(EXTRA_BUTTONS),
@@ -62,9 +62,22 @@ public class DialogActivity extends Activity
         }
     };
 
-    public interface DialogActivityButtonClick
+    private boolean resultReported = false;
+
+    public void dialogActivityResult(int which, String[] editTexts)
     {
-        void onClick(int which, String[] editTexts);
+        if (resultReported)
+        {
+            return;
+        }
+
+        int request = getIntent().getIntExtra(EXTRA_REQUEST_CODE, -1);
+        if (request == -1)
+        {
+            return;
+        }
+        widgetService.asyncReport(request, new Pair<>(which, editTexts));
+        resultReported = true;
     }
 
     public static String[] getEditTexts(View[] editTextViews)
@@ -96,8 +109,14 @@ public class DialogActivity extends Activity
     {
         TextInputLayout layout = new TextInputLayout(context, null, R.style.ExposedDropdownMenu);
         AutoCompleteTextView textview = new AutoCompleteTextView(context);
-        textview.setText(text);
-        layout.setHint(hint);
+        if (text != null)
+        {
+            textview.setText(text);
+        }
+        if (hint != null)
+        {
+            layout.setHint(hint);
+        }
         textview.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.MATCH_PARENT));
         textview.setInputType(EditorInfo.TYPE_NULL);
         textview.setAdapter(new ArrayAdapter<>(context, R.layout.dropdown_text_item, options));
@@ -111,26 +130,27 @@ public class DialogActivity extends Activity
 
     public static View makeEditText(Context context, String text, String hint)
     {
-        EditText edit = new EditText(context);
+        TextInputLayout layout = new TextInputLayout(context);
+        TextInputEditText textview = new TextInputEditText(context);
         if (text != null)
         {
-            edit.setText(text);
+            textview.setText(text);
         }
         if (hint != null)
         {
-            edit.setHint(hint);
+            layout.setHint(hint);
         }
-        return edit;
+        textview.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.MATCH_PARENT));
+        layout.addView(textview);
+        return layout;
     }
 
-    public void makeDialog(int request, int icon, String title, String text, String[] buttons, String[] editTexts, String[] editHints, String[][] editOptions)
+    public void makeDialog(int icon, String title, String text, String[] buttons, String[] editTexts, String[] editHints, String[][] editOptions)
     {
-        if (request == -1 || title == null || text == null || buttons == null || buttons.length == 0 || editTexts == null || editHints == null)
+        if (title == null || text == null || buttons == null || buttons.length == 0 || editTexts == null || editHints == null)
         {
             return;
         }
-
-        final DialogActivityButtonClick onClick = (which, editTexts1) -> widgetService.asyncReport(request, new Pair<>(which, editTexts1));
 
         AlertDialog.Builder builder = new AlertDialog.Builder(this)
                 .setTitle(title)
@@ -164,7 +184,7 @@ public class DialogActivity extends Activity
         builder.setView(container);
 
         builder.setOnCancelListener(dialog -> {
-            onClick.onClick(-1, getEditTexts(editTextViews));
+            dialogActivityResult(-1, getEditTexts(editTextViews));
             finish();
         });
 
@@ -182,7 +202,7 @@ public class DialogActivity extends Activity
                     which = 0;
                     break;
             }
-            onClick.onClick(which, getEditTexts(editTextViews));
+            dialogActivityResult(which, getEditTexts(editTextViews));
             finish();
         };
 
@@ -229,6 +249,13 @@ public class DialogActivity extends Activity
     protected void onDestroy()
     {
         super.onDestroy();
+        dialogActivityResult(-1, getIntent().getStringArrayExtra(EXTRA_EDITTEXT_TEXT));
         doUnbindService();
+    }
+
+    @Override
+    protected void onPause()
+    {
+        super.onPause();
     }
 }
