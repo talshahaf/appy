@@ -88,14 +88,14 @@ def AutoCheckBox(widget, state_name, checked_hook=None, initial_state=False, **k
 def editable_click(widget, views, view, title, hint, options, dialog_format_hook, result_format_hook):
     dialog_text = view.text
     if dialog_format_hook:
-        dialog_text = call_general_function(dialog_format_hook, text=dialog_text)
+        dialog_text = call_general_function(dialog_format_hook, text=dialog_text, widget=widget)
         if dialog_text is None:
             return
     
     btn, result_text = show_dialog(title, '', ('Ok', 'Cancel'), edittexts=(DialogEditText(dialog_text, hint, options)))
     if btn == 0:
         if result_format_hook:
-            result_text = call_general_function(result_format_hook, text=result_text)
+            result_text = call_general_function(result_format_hook, text=result_text, widget=widget)
             
         if result_text is not None:
             view.text = result_text
