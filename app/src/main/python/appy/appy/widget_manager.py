@@ -188,6 +188,9 @@ def call_function(func, captures, **kwargs):
     if 'widget' in kwargs and hasattr(kwargs['widget'], 'widget_id'):
         last_func_for_widget_id[kwargs['widget'].widget_id] = func
 
+    if not isinstance(captures, dict):
+        raise ValueError('Captures must be a keyword dict')
+
     pass_args = copy.deepcopy(captures)
     pass_args.update(kwargs) #kwargs priority
 
@@ -201,6 +204,8 @@ def call_function(func, captures, **kwargs):
 def call_general_function(func, **kwargs):
     if not isinstance(func, (list, tuple)):
         func = (func, {})
+    elif len(func) != 2:
+        raise ValueError('Only <Callable> or (<Callable>, <Capture Dict>) are supported.')
     return call_function(func[0], func[1], **kwargs)
 
 def deserialize_arg(arg):
