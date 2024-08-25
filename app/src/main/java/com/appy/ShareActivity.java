@@ -5,6 +5,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.util.Log;
+import android.view.View;
 
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
@@ -16,7 +17,7 @@ public class ShareActivity extends WidgetSelectActivity
     Handler handler;
 
     @Override
-    public void onWidgetSelected(int widgetId, String widgetName)
+    public void onWidgetSelected(View view, int widgetId, String widgetName)
     {
         if (widgetService == null)
         {

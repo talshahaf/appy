@@ -105,7 +105,7 @@ public abstract class WidgetSelectActivity extends AppCompatActivity implements 
         }
     }
 
-    protected abstract void onWidgetSelected(int widgetId, String widgetName);
+    protected abstract void onWidgetSelected(View view, int widgetId, String widgetName);
     protected abstract String getToolbarHeader();
     protected abstract boolean hasContextMenu();
     protected void onWidgetCreateContextMenu(ContextMenu menu, View v, ContextMenu.ContextMenuInfo menuInfo, int widgetId, String widgetName)
@@ -126,7 +126,7 @@ public abstract class WidgetSelectActivity extends AppCompatActivity implements 
         }
 
         ListFragmentAdapter.Item item = (ListFragmentAdapter.Item) adapter.getItemAtPosition(position);
-        onWidgetSelected((Integer)item.arg, item.value);
+        onWidgetSelected(view, (Integer)item.arg, item.value);
     }
 
     @Override

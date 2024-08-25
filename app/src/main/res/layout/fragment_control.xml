@@ -5,11 +5,11 @@
     xmlns:tools="http://schemas.android.com/tools" android:layout_width="match_parent"
     android:layout_height="match_parent">
     <Button
-        android:id="@+id/clear_widgets"
+        android:id="@+id/manage_widgets"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginTop="100dp"
-        android:text="Clear Widgets"
+        android:text="Manage Widgets"
         app:layout_constraintEnd_toEndOf="@+id/dump_stacktrace"
         app:layout_constraintStart_toStartOf="@+id/dump_stacktrace"
         app:layout_constraintTop_toTopOf="parent"
@@ -23,7 +23,7 @@
         android:text="Clear Timers"
         app:layout_constraintEnd_toEndOf="@+id/dump_stacktrace"
         app:layout_constraintStart_toStartOf="@+id/dump_stacktrace"
-        app:layout_constraintTop_toBottomOf="@+id/clear_widgets"
+        app:layout_constraintTop_toBottomOf="@+id/manage_widgets"
         style="@style/secondary_btn"/>
     <Button
         android:id="@+id/clear_state"
