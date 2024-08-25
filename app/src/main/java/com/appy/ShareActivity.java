@@ -4,7 +4,11 @@ import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.Parcelable;
 import android.util.Log;
+import android.view.Menu;
+import android.view.MenuItem;
+import android.view.View;
 
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
@@ -15,31 +19,17 @@ public class ShareActivity extends WidgetSelectActivity
     Intent shareIntent;
     Handler handler;
 
+    String shareText;
+    String shareMime;
+    ArrayList<Uri> shareUris;
+
     @Override
-    public void onWidgetSelected(int widgetId, String widgetName)
+    public void onWidgetSelected(View view, int widgetId, String widgetName)
     {
         if (widgetService == null)
         {
             return;
         }
-
-        String mimetype = shareIntent.getType();
-
-        String text = shareIntent.getStringExtra(Intent.EXTRA_TEXT);
-        Uri singleuri = shareIntent.getParcelableExtra(Intent.EXTRA_STREAM);
-        ArrayList<Uri> multipleUris = shareIntent.getParcelableArrayListExtra(Intent.EXTRA_STREAM);
-
-        ArrayList<Uri> allUris = new ArrayList<>();
-        if (singleuri != null)
-        {
-            allUris.add(singleuri);
-        }
-        if (multipleUris != null)
-        {
-            allUris.addAll(multipleUris);
-        }
-
-        final ArrayList<Uri> finalAllUris = allUris;
 
         Thread reader = new Thread()
         {
@@ -53,7 +43,7 @@ public class ShareActivity extends WidgetSelectActivity
                     int readed;
 
                     DictObj.Dict datas = new DictObj.Dict();
-                    for (Uri uri : finalAllUris)
+                    for (Uri uri : shareUris)
                     {
                         byte[] data = new byte[0];
                         try (InputStream inputStream = getContentResolver().openInputStream(uri))
@@ -75,7 +65,7 @@ public class ShareActivity extends WidgetSelectActivity
                         }
                         datas.put(uri.toString(), data, false);
                     }
-                    widgetService.shareWithWidget(widgetId, mimetype, text, datas);
+                    widgetService.shareWithWidget(widgetId, shareMime, shareText, datas);
                 }
                 catch (Exception e)
                 {
@@ -114,6 +104,7 @@ public class ShareActivity extends WidgetSelectActivity
         super.onCreate(savedInstanceState);
 
         handler = new Handler();
+        setSupportActionBar(toolbar);
 
         shareIntent = getIntent();
 
@@ -121,5 +112,76 @@ public class ShareActivity extends WidgetSelectActivity
         {
             finish();
         }
+
+        shareMime = shareIntent.getType();
+
+        shareText = shareIntent.getStringExtra(Intent.EXTRA_TEXT);
+        Parcelable stream = shareIntent.getParcelableExtra(Intent.EXTRA_STREAM);
+
+        Uri singleuri = null;
+        ArrayList<Uri> multipleUris = null;
+
+        if (stream instanceof Uri)
+        {
+            singleuri = (Uri)stream;
+        }
+        else if (stream instanceof ArrayList)
+        {
+            multipleUris = (ArrayList<Uri>)stream;
+        }
+        else
+        {
+            //unknown
+            finish();
+        }
+
+        shareUris = new ArrayList<>();
+        if (singleuri != null)
+        {
+            shareUris.add(singleuri);
+        }
+        if (multipleUris != null)
+        {
+            shareUris.addAll(multipleUris);
+        }
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item)
+    {
+        if (widgetService == null)
+        {
+            return super.onOptionsItemSelected(item);
+        }
+
+        if (item.getItemId() == R.id.action_import)
+        {
+            Log.d("APPY", "preparing to share ");
+            PythonFileImport.importPythonFromExternalUri(this, widgetService, shareUris.get(0), new Runnable()
+            {
+                @Override
+                public void run()
+                {
+                    Log.d("APPY", "prepared to share ");
+                    finish();
+                }
+            });
+            return true;
+        }
+
+        return super.onOptionsItemSelected(item);
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(final Menu menu)
+    {
+        if (shareUris.size() != 1)
+        {
+            //TODO support sharing multiple python files?
+            return false;
+        }
+
+        getMenuInflater().inflate(R.menu.share_actions, menu);
+        return super.onCreateOptionsMenu(menu);
     }
 }

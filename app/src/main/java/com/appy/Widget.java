@@ -2900,7 +2900,7 @@ public class Widget extends RemoteViewsService
     {
         int requestCode = generateRequestCode();
         Intent intent = new Intent(this, DialogActivity.class);
-        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_MULTIPLE_TASK);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
         intent.putExtra(DialogActivity.EXTRA_REQUEST_CODE, requestCode);
         intent.putExtra(DialogActivity.EXTRA_TITLE, title);
         intent.putExtra(DialogActivity.EXTRA_TEXT, text);

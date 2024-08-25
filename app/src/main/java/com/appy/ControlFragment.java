@@ -19,7 +19,7 @@ public class ControlFragment extends MyFragment
 {
     ProgressBar startupProgress;
     ImageView startupStatus;
-    Button clearWidgets;
+    Button manageWidgets;
     Button clearTimers;
     Button clearState;
     Button resetExamples;
@@ -37,7 +37,7 @@ public class ControlFragment extends MyFragment
 
         startupProgress = layout.findViewById(R.id.startup_progress);
         startupStatus = layout.findViewById(R.id.startup_status);
-        clearWidgets = layout.findViewById(R.id.clear_widgets);
+        manageWidgets = layout.findViewById(R.id.manage_widgets);
         clearTimers = layout.findViewById(R.id.clear_timers);
         clearState = layout.findViewById(R.id.clear_state);
         resetExamples = layout.findViewById(R.id.reset_examples);
@@ -46,12 +46,12 @@ public class ControlFragment extends MyFragment
 
         handler = new Handler();
 
-        clearWidgets.setOnClickListener(new View.OnClickListener()
+        manageWidgets.setOnClickListener(new View.OnClickListener()
         {
             @Override
             public void onClick(final View v)
             {
-                startActivity(new Intent(getActivity(), WidgetClearActivity.class));
+                startActivity(new Intent(getActivity(), WidgetManagerActivity.class));
             }
         });
 

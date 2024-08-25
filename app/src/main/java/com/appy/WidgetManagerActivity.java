@@ -1,58 +1,68 @@
 package com.appy;
 
-import android.content.Intent;
-import android.net.Uri;
+import android.annotation.SuppressLint;
+import android.os.Build;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.ContextMenu;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.MotionEvent;
 import android.view.View;
-import android.widget.AdapterView;
-import android.widget.ListView;
 
-import java.io.ByteArrayOutputStream;
-import java.io.InputStream;
-import java.util.ArrayList;
-
-public class WidgetClearActivity extends WidgetSelectActivity
+public class WidgetManagerActivity extends WidgetSelectActivity
 {
     public static final int CONTEXT_MENU_CLEAR = 50;
     public static final int CONTEXT_MENU_RECREATE = 51;
 
+    private float lastTouchX = Float.NaN;
+    private float lastTouchY = Float.NaN;
+
     @Override
-    public void onWidgetSelected(int widgetId, String widgetName)
+    public void onWidgetSelected(View view, int widgetId, String widgetName)
     {
         if (widgetService == null)
         {
             return;
         }
 
-        Utils.showConfirmationDialog(this,
-        "Clear widget", "Clear widget #" + widgetId + " (" + widgetName + ")?", android.R.drawable.ic_dialog_alert,
-        null, null, new Runnable()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N)
         {
-            @Override
-            public void run()
-            {
-                widgetService.clearWidget(widgetId);
-                updateWidgetList();
-            }
-        });
+            listview.showContextMenuForChild(view, !Float.isNaN(lastTouchX) ? lastTouchX - view.getX() : 0, !Float.isNaN(lastTouchY) ? lastTouchY - view.getY() : 0);
+        }
+        else
+        {
+            listview.showContextMenuForChild(view);
+        }
     }
 
     @Override
     public String getToolbarHeader()
     {
-        return "Clear Widgets";
+        return "Manage Widgets";
     }
 
+    @SuppressLint("ClickableViewAccessibility")
     @Override
     protected void onCreate(Bundle savedInstanceState)
     {
         super.onCreate(savedInstanceState);
 
         setSupportActionBar(toolbar);
+
+        listview.setOnTouchListener(new View.OnTouchListener()
+        {
+            @Override
+            public boolean onTouch(View v, MotionEvent event)
+            {
+                if (event.getAction() == MotionEvent.ACTION_DOWN)
+                {
+                    lastTouchX = event.getX();
+                    lastTouchY = event.getY();
+                }
+                return false;
+            }
+        });
+
         registerForContextMenu(listview);
     }
 
@@ -74,8 +84,17 @@ public class WidgetClearActivity extends WidgetSelectActivity
     {
         if (itemid == CONTEXT_MENU_CLEAR)
         {
-            widgetService.clearWidget(widgetId);
-            updateWidgetList();
+            Utils.showConfirmationDialog(this,
+            "Clear widget", "Clear widget #" + widgetId + " (" + widgetName + ")?", android.R.drawable.ic_dialog_alert,
+            null, null, new Runnable()
+            {
+                @Override
+                public void run()
+                {
+                    widgetService.clearWidget(widgetId);
+                    updateWidgetList();
+                }
+            });
         }
         else if (itemid == CONTEXT_MENU_RECREATE)
         {
@@ -88,7 +107,7 @@ public class WidgetClearActivity extends WidgetSelectActivity
     @Override
     public boolean onCreateOptionsMenu(final Menu menu)
     {
-        getMenuInflater().inflate(R.menu.widgetclear_actions, menu);
+        getMenuInflater().inflate(R.menu.widgetmanager_actions, menu);
         return super.onCreateOptionsMenu(menu);
     }
 

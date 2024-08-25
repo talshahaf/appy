@@ -155,6 +155,11 @@ public class Utils
 
     public static void showConfirmationDialog(Context context, String title, String message, int icon, String yes, String no, Runnable yesAction)
     {
+        showConfirmationDialog(context, title, message, icon, yes, no, yesAction, null);
+    }
+
+    public static void showConfirmationDialog(Context context, String title, String message, int icon, String yes, String no, Runnable yesAction, Runnable otherAction)
+    {
         AlertDialog.Builder builder = new AlertDialog.Builder(context)
                 .setTitle(title)
                 .setMessage(message);
@@ -172,6 +177,15 @@ public class Utils
             }
         };
 
+        DialogInterface.OnClickListener noClick = otherAction == null ? null : new DialogInterface.OnClickListener()
+        {
+            @Override
+            public void onClick(DialogInterface dialog, int which)
+            {
+                otherAction.run();
+            }
+        };
+
         if (yes == null)
         {
             builder.setPositiveButton(android.R.string.yes, yesClick);
@@ -183,12 +197,21 @@ public class Utils
 
         if (no == null)
         {
-            builder.setNegativeButton(android.R.string.no, null);
+            builder.setNegativeButton(android.R.string.no, noClick);
         }
         else
         {
-            builder.setNegativeButton(no, null);
+            builder.setNegativeButton(no, noClick);
         }
+
+        builder.setOnCancelListener(otherAction == null ? null : new DialogInterface.OnCancelListener()
+        {
+            @Override
+            public void onCancel(DialogInterface dialog)
+            {
+                otherAction.run();
+            }
+        });
 
         builder.show();
     }
