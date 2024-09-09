@@ -3,14 +3,13 @@ package com.appy;
 import android.annotation.SuppressLint;
 import android.os.Build;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.ContextMenu;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
 
-public class WidgetManageActivity extends WidgetSelectActivity
+public class WidgetManagerActivity extends WidgetSelectActivity
 {
     public static final int CONTEXT_MENU_CLEAR = 50;
     public static final int CONTEXT_MENU_RECREATE = 51;
@@ -108,7 +107,7 @@ public class WidgetManageActivity extends WidgetSelectActivity
     @Override
     public boolean onCreateOptionsMenu(final Menu menu)
     {
-        getMenuInflater().inflate(R.menu.widgetclear_actions, menu);
+        getMenuInflater().inflate(R.menu.widgetmanager_actions, menu);
         return super.onCreateOptionsMenu(menu);
     }
 

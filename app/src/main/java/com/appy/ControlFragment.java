@@ -51,7 +51,7 @@ public class ControlFragment extends MyFragment
             @Override
             public void onClick(final View v)
             {
-                startActivity(new Intent(getActivity(), WidgetManageActivity.class));
+                startActivity(new Intent(getActivity(), WidgetManagerActivity.class));
             }
         });
 

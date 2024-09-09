@@ -1,10 +1,8 @@
 package com.appy;
 
 import android.app.Activity;
-import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
@@ -13,20 +11,15 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
 import androidx.appcompat.app.AlertDialog;
 
-import android.provider.OpenableColumns;
 import android.util.Log;
-import android.util.Pair;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.GridView;
 import android.widget.ScrollView;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
 import java.util.ArrayList;
 
 /**
@@ -211,87 +204,9 @@ public class FilesFragment extends MyFragment implements FileGridAdapter.ItemAct
         {
             return;
         }
-        if (getActivity() == null)
-        {
-            return;
-        }
-        if (getWidgetService() == null)
-        {
-            return;
-        }
 
         Uri file = fragmentArg.getParcelable(Constants.FRAGMENT_ARG_FILEURI);
-        if (file != null)
-        {
-            String name = Utils.getFilenameFromUri(getActivity(), file, "unnamed.py");
-            File destPath = new File(getWidgetService().getPreferredScriptDir(), name);
-            try
-            {
-                InputStream is = getActivity().getContentResolver().openInputStream(file);
-                if (is != null)
-                {
-                    Pair<byte[], String> fileData = Utils.readAndHashFile(is, Constants.PYTHON_FILE_MAX_SIZE);
-                    boolean sameData = false;
-                    boolean fileExists = destPath.exists();
-
-                    if (fileExists)
-                    {
-                        Pair<byte[], String> existing = Utils.readAndHashFile(destPath, Constants.PYTHON_FILE_MAX_SIZE);
-                        if (existing.second.equalsIgnoreCase(fileData.second))
-                        {
-                            //same data
-                            sameData = true;
-                        }
-                    }
-
-                    Runnable copyAndImport = new Runnable()
-                    {
-                        @Override
-                        public void run()
-                        {
-                            try
-                            {
-                                Utils.writeFile(destPath, fileData.first);
-                                getWidgetService().addPythonFileByPath(destPath.getAbsolutePath());
-                            }
-                            catch (IOException e)
-                            {
-                                Log.e("APPY", "Could not process file: " + file.getPath(), e);
-                                Toast.makeText(getActivity(), "Could not process file", Toast.LENGTH_SHORT).show();
-                            }
-                        }
-                    };
-
-                    if (!fileExists)
-                    {
-                        Utils.showConfirmationDialog(getActivity(), "Import '" + name + "'?", "File will be copied to script dir", -1, "Import", "Cancel", copyAndImport);
-                    }
-                    else
-                    {
-                        if (sameData)
-                        {
-                            Utils.showConfirmationDialog(getActivity(), "Import '" + name + "'?", "", -1, "Import", "Cancel", new Runnable()
-                            {
-                                @Override
-                                public void run()
-                                {
-                                    getWidgetService().addPythonFileByPath(destPath.getAbsolutePath());
-                                }
-                            });
-                        }
-                        else
-                        {
-                            Utils.showConfirmationDialog(getActivity(), "Overwrite '" + name + "'?", "File in script dir will be overwritten", -1, "Overwrite", "Cancel", copyAndImport);
-                        }
-                    }
-                }
-            }
-            catch (IOException e)
-            {
-                Log.e("APPY", "Could not process file: " + file.getPath(), e);
-                Toast.makeText(getActivity(), "Could not process file", Toast.LENGTH_SHORT).show();
-            }
-        }
+        PythonFileImport.importPythonFromExternalUri(getActivity(), getWidgetService(), file, null);
     }
 
     public void onPythonFileStatusChange()

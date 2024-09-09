@@ -135,7 +135,7 @@ public class MainActivity extends AppCompatActivity implements StatusListener
         Bundle fragmentArg = getIntent().getBundleExtra(Constants.FRAGMENT_ARG_EXTRA);
 
         // Handle py files
-        if ("android.intent.action.VIEW".equals(getIntent().getAction()) && getIntent().getData() != null)
+        if (Intent.ACTION_VIEW.equals(getIntent().getAction()) && getIntent().getData() != null)
         {
             startingFragment = "Files";
 

@@ -45,6 +45,10 @@ abstract class MyFragment extends Fragment implements MyFragmentInterface
 
     public Widget getWidgetService()
     {
+        if (getActivity() == null)
+        {
+            return null;
+        }
         return ((MainActivity) getActivity()).widgetService;
     }
 
