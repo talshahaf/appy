@@ -1423,7 +1423,7 @@ public class Widget extends RemoteViewsService
             else
             {
                 //Old method sucks
-                dynamicView.methodCalls.add(new RemoteMethodCall("setViewPadding", true, "setViewPadding",
+                dynamicView.methodCalls.add(new RemoteMethodCall("parent_setViewPadding", true, "setViewPadding",
                         hor.first,
                         ver.first,
                         hor.second,
@@ -3120,11 +3120,10 @@ public class Widget extends RemoteViewsService
         DynamicView textView = new DynamicView("TextView");
         addMethodCall(textView, "setText", "Loading...");
         addMethodCall(textView, "setTextColor", Constants.TEXT_COLOR);
+        addMethodCall(textView, "setTextSize", "12sp");
 
-        Attributes.AttributeValue wholeWidth = attributeParse("w(p)");
-        Attributes.AttributeValue wholeHeight = attributeParse("h(p)");
-        textView.attributes.attributes.put(Attributes.Type.WIDTH, wholeWidth);
-        textView.attributes.attributes.put(Attributes.Type.HEIGHT, wholeHeight);
+        textView.attributes.attributes.put(Attributes.Type.TOP, attributeParse("15"));
+        textView.attributes.attributes.put(Attributes.Type.LEFT, attributeParse("15"));
 
         views.add(textView);
 
@@ -3161,46 +3160,33 @@ public class Widget extends RemoteViewsService
 
         ArrayList<DynamicView> views = new ArrayList<>();
 
-        DynamicView textView = new DynamicView("TextView");
-        addMethodCall(textView, "setText", "Error");
-        addMethodCall(textView, "setTextColor", Constants.TEXT_COLOR);
-
-        DynamicView restart = new DynamicView("ImageButton");
-        restart.methodCalls.add(new RemoteMethodCall("setViewPadding", true, "setViewPadding", 10, 10, 10, 10));
-        addMethodCall(restart, "setBackgroundResource", R.drawable.drawable_danger_btn_oval);
-        addMethodCall(restart, "setTextColor", R.color.color_danger_text);
-        addMethodCall(restart, "setTextSize", convertUnit(17, TypedValue.COMPLEX_UNIT_PX, TypedValue.COMPLEX_UNIT_SP));
-        addMethodCall(restart, "setViewPadding", 10, 10, 10, 10);
-        addMethodCall(restart, "setColorFilter", 0xffffffff);
-        addMethodCall(restart, "setImageResource", android.R.drawable.ic_lock_power_off);
-        restart.attributes.attributes.put(Attributes.Type.WIDTH, attributeParse("140"));
-        restart.attributes.attributes.put(Attributes.Type.HEIGHT, attributeParse("140"));
-        restart.attributes.attributes.put(Attributes.Type.RIGHT, attributeParse("0"));
-        restart.attributes.attributes.put(Attributes.Type.BOTTOM, attributeParse("0"));
-        restart.tag = Constants.SPECIAL_WIDGET_RESTART + ""; //onclick
+        DynamicView errorText = new DynamicView("TextView");
+        addMethodCall(errorText, "setText", "Error occurred");
+        addMethodCall(errorText, "setTextColor", Constants.TEXT_COLOR);
+        errorText.attributes.attributes.put(Attributes.Type.TOP, attributeParse("5"));
+        errorText.attributes.attributes.put(Attributes.Type.LEFT, attributeParse("5"));
 
         DynamicView openApp = new DynamicView("ImageView");
         addMethodCall(openApp, "setImageResource", R.mipmap.ic_launcher_foreground);
-        openApp.attributes.attributes.put(Attributes.Type.TOP, attributeParse("h(p)0.5+h(" + openApp.getId() + ")-0.5"));
-        openApp.attributes.attributes.put(Attributes.Type.LEFT, attributeParse("w(p)0.5"));
+        openApp.attributes.attributes.put(Attributes.Type.BOTTOM, attributeParse("5"));
+        openApp.attributes.attributes.put(Attributes.Type.LEFT, attributeParse("5"));
         openApp.attributes.attributes.put(Attributes.Type.WIDTH, attributeParse("140"));
         openApp.attributes.attributes.put(Attributes.Type.HEIGHT, attributeParse("140"));
         openApp.tag = Constants.SPECIAL_WIDGET_OPENAPP + "";
 
-        views.add(textView);
-        views.add(restart);
+        views.add(errorText);
         views.add(openApp);
 
         if (widgetId > 0)
         {
-            Attributes.AttributeValue afterText = attributeParse("h(" + textView.getId() + ")+10");
+            Attributes.AttributeValue afterText = attributeParse("h(" + errorText.getId() + ")+10");
 
             DynamicView clear = new DynamicView("Button");
             addMethodCall(clear, "setText", "Clear");
             addMethodCall(clear, "setBackgroundResource", R.drawable.drawable_dark_btn);
-            addMethodCall(clear, "setTextColor", R.color.color_dark_text);
-            addMethodCall(clear, "setTextSize", convertUnit(17, TypedValue.COMPLEX_UNIT_PX, TypedValue.COMPLEX_UNIT_SP));
-            addMethodCall(clear, "setViewPadding", 10, 10, 10, 10);
+            addMethodCall(clear, "setTextColor", 0xffffffff);
+            addMethodCall(clear, "setTextSize", "10sp");
+            clear.methodCalls.add(new RemoteMethodCall("setViewPadding", false, "setViewPadding", "16sp", "12sp", "16sp", "12sp"));
             clear.attributes.attributes.put(Attributes.Type.TOP, afterText);
             clear.attributes.attributes.put(Attributes.Type.LEFT, attributeParse("l(p)"));
             clear.tag = Constants.SPECIAL_WIDGET_CLEAR + "," + widgetId;
@@ -3208,11 +3194,11 @@ public class Widget extends RemoteViewsService
             DynamicView reload = new DynamicView("Button");
             addMethodCall(reload, "setText", "Reload");
             addMethodCall(reload, "setBackgroundResource", R.drawable.drawable_info_btn);
-            addMethodCall(reload, "setTextColor", R.color.color_info_text);
-            addMethodCall(reload, "setTextSize", convertUnit(17, TypedValue.COMPLEX_UNIT_PX, TypedValue.COMPLEX_UNIT_SP));
-            addMethodCall(reload, "setViewPadding", 10, 10, 10, 10);
+            addMethodCall(reload, "setTextColor", 0xffffffff);
+            addMethodCall(reload, "setTextSize", "10sp");
+            reload.methodCalls.add(new RemoteMethodCall("setViewPadding", false, "setViewPadding", "16sp", "12sp", "16sp", "12sp"));
             reload.attributes.attributes.put(Attributes.Type.TOP, afterText);
-            reload.attributes.attributes.put(Attributes.Type.RIGHT, attributeParse("r(p)"));
+            reload.attributes.attributes.put(Attributes.Type.RIGHT, attributeParse("0"));
             reload.tag = Constants.SPECIAL_WIDGET_RELOAD + "," + widgetId;
 
             views.add(clear);
@@ -3221,8 +3207,8 @@ public class Widget extends RemoteViewsService
 
         DynamicView showError = new DynamicView("ImageView");
         addMethodCall(showError, "setImageResource", R.drawable.ic_action_info);
-        showError.attributes.attributes.put(Attributes.Type.TOP, attributeParse("h(p)0.5+h(" + showError.getId() + ")-0.5"));
-        showError.attributes.attributes.put(Attributes.Type.RIGHT, attributeParse("w(p)0.5"));
+        showError.attributes.attributes.put(Attributes.Type.BOTTOM, attributeParse("5"));
+        showError.attributes.attributes.put(Attributes.Type.RIGHT, attributeParse("5"));
         showError.attributes.attributes.put(Attributes.Type.WIDTH, attributeParse("140"));
         showError.attributes.attributes.put(Attributes.Type.HEIGHT, attributeParse("140"));
         showError.tag = Constants.SPECIAL_WIDGET_SHOWERROR + "," + (path == null ? "0," : (path.length() + "," + path)) + "," + Stacktrace.stackTraceString(error);
