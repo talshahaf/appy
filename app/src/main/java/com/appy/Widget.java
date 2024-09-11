@@ -362,11 +362,88 @@ public class Widget extends RemoteViewsService
     public static boolean allowMethodCallInMeasurement(RemoteMethodCall methodCall)
     {
         // setCompoundButtonChecked triggers animation which we cannot do in our measurement thread
-        if (methodCall.getIdentifier().equals("setCompoundButtonChecked"))
+        if (methodCall.getIdentifierIgnorePrefix().equals("setCompoundButtonChecked"))
         {
             return false;
         }
         return true;
+    }
+
+    public static Object duckMul(Object source, double b)
+    {
+        if (source == null)
+        {
+            return null;
+        }
+
+        if (source instanceof Integer)
+        {
+            return (int)(((Integer)source) * b);
+        }
+        if (source instanceof Short)
+        {
+            return (short)(((Short)source) * b);
+        }
+        if (source instanceof Long)
+        {
+            return (long)(((Long)source) * b);
+        }
+        if (source instanceof Float)
+        {
+            return (float)(((Float)source) * b);
+        }
+        if (source instanceof Double)
+        {
+            return ((Double)source) * b;
+        }
+
+        throw new RuntimeException("cannot multiply " + source.getClass().getSimpleName());
+    }
+
+    // this function wraps the remote method calls to account for the size factor in specific calls
+    public static void callRemoteMethodWithSizeFactor(RemoteMethodCall methodCall, double sizeFactor, RemoteViews remoteView, int container_id, int view_id) throws InvocationTargetException, IllegalAccessException
+    {
+        if (!methodCall.isParentCall())
+        {
+            if (methodCall.getIdentifierIgnorePrefix().equals("setLineHeight") || methodCall.getIdentifierIgnorePrefix().equals("setTextSize"))
+            {
+                //single argument factor
+                Object originalArg = methodCall.getArgument(1);
+                Object factoredArg = duckMul(originalArg, sizeFactor);
+                methodCall.setArgument(1, factoredArg);
+
+                methodCall.call(remoteView, view_id);
+
+                //change back
+                methodCall.setArgument(1, originalArg);
+                return;
+            }
+            else if (methodCall.getIdentifierIgnorePrefix().equals("setViewPadding"))
+            {
+                //multiple arguments to factor
+                Object[] originalArgs = new Object[4];
+                Object[] factoredArgs = new Object[4];
+                for (int i = 0; i < originalArgs.length; i++)
+                {
+                    originalArgs[i] = methodCall.getArgument(i);
+                    factoredArgs[i] = duckMul(originalArgs[i], sizeFactor);
+                    methodCall.setArgument(i, factoredArgs[i]);
+                }
+
+                methodCall.call(remoteView, view_id);
+
+                //change back
+                for (int i = 0; i < originalArgs.length; i++)
+                {
+                    methodCall.setArgument(i, originalArgs[i]);
+                }
+
+                return;
+            }
+        }
+
+        // just call
+        methodCall.call(remoteView, methodCall.isParentCall() ? container_id : view_id);
     }
 
     public static void prepareFactory(Widget service, int widgetId, int xml, int view, DynamicView listview)
@@ -721,7 +798,7 @@ public class Widget extends RemoteViewsService
         return mostGeneralResource;
     }
 
-    public static Pair<RemoteViews, HashSet<Integer>> generate(Widget service, int widgetId, ArrayList<DynamicView> dynamicList, boolean forMeasurement, Constants.CollectionLayout collectionLayout, Object[] collectionExtraData) throws InvocationTargetException, IllegalAccessException
+    public static Pair<RemoteViews, HashSet<Integer>> generate(Widget service, int widgetId, ArrayList<DynamicView> dynamicList, boolean forMeasurement, Constants.CollectionLayout collectionLayout, Object[] collectionExtraData, double sizeFactor) throws InvocationTargetException, IllegalAccessException
     {
         boolean inCollection = collectionLayout != Constants.CollectionLayout.NOT_COLLECTION;
         HashSet<Integer> collection_views = new HashSet<>();
@@ -835,10 +912,10 @@ public class Widget extends RemoteViewsService
 
             for (RemoteMethodCall methodCall : layout.methodCalls)
             {
-//                Log.d("APPY", "calling method "+methodCall.toString());
+//              Log.d("APPY", "calling method "+methodCall.toString());
                 if (!forMeasurement || allowMethodCallInMeasurement(methodCall))
                 {
-                    methodCall.call(remoteView, methodCall.isParentCall() ? layout.container_id : layout.view_id);
+                    callRemoteMethodWithSizeFactor(methodCall, sizeFactor, remoteView, layout.container_id, layout.view_id);
                 }
             }
 
@@ -994,11 +1071,17 @@ public class Widget extends RemoteViewsService
         throw new IllegalArgumentException("unknown function " + function);
     }
 
-    public void resolveAxis(DynamicView view, Attributes.Type startType, Attributes.Type sizeType, Attributes.Type endType, double defaultStart, double defaultSize)
+    public void resolveAxis(DynamicView view, Attributes.Type startType, Attributes.Type sizeType, Attributes.Type endType, double defaultStart, double defaultSize, double sizeFactor)
     {
         Attributes.AttributeValue start = view.attributes.attributes.get(startType);
         Attributes.AttributeValue size = view.attributes.attributes.get(sizeType);
         Attributes.AttributeValue end = view.attributes.attributes.get(endType);
+
+        //only fudge if set
+        if (size.hasConstraints())
+        {
+            size.finalFactor = sizeFactor;
+        }
 
         Attributes.AttributeValue third;
         Attributes.Type[] others = new Attributes.Type[2];
@@ -1010,6 +1093,7 @@ public class Widget extends RemoteViewsService
         {
             //no constaints at all, set left and width to measured,
             start.resolvedValue = defaultStart;
+            //TODO factor here?
             size.resolvedValue = defaultSize;
 
             third = end;
@@ -1032,6 +1116,7 @@ public class Widget extends RemoteViewsService
                 !end.hasConstraints())
         {
             //if only left, set width
+            //TODO factor here?
             size.resolvedValue = defaultSize;
 
             third = end;
@@ -1139,7 +1224,7 @@ public class Widget extends RemoteViewsService
 
                 if (canBeResolved)
                 {
-                    attributeValue.resolvedValue = applyFunction(attributeValue.function, results);
+                    attributeValue.resolvedValue = applyFunction(attributeValue.function, results) * attributeValue.finalFactor;
                     resolved++;
                 }
             }
@@ -1175,7 +1260,9 @@ public class Widget extends RemoteViewsService
         //we must copy as we're changing the views
         dynamicList = DynamicView.copyArray(dynamicList);
 
-        RemoteViews remote = generate(service, widgetId, dynamicList, true, collectionLayout, collectionExtras).first;
+        float sizeFactor = 1.0f;
+
+        RemoteViews remote = generate(service, widgetId, dynamicList, true, collectionLayout, collectionExtras, sizeFactor).first;
         RelativeLayout layout = new RelativeLayout(this);
         View inflated = remote.apply(service, layout);
         layout.addView(inflated);
@@ -1253,9 +1340,9 @@ public class Widget extends RemoteViewsService
                     viewHeight = heightLimit;
                 }
 
-                resolveAxis(dynamicView, Attributes.Type.LEFT, Attributes.Type.WIDTH, Attributes.Type.RIGHT, 0, viewWidth);
+                resolveAxis(dynamicView, Attributes.Type.LEFT, Attributes.Type.WIDTH, Attributes.Type.RIGHT, 0, viewWidth, sizeFactor);
 
-                resolveAxis(dynamicView, Attributes.Type.TOP, Attributes.Type.HEIGHT, Attributes.Type.BOTTOM, 0, viewHeight);
+                resolveAxis(dynamicView, Attributes.Type.TOP, Attributes.Type.HEIGHT, Attributes.Type.BOTTOM, 0, viewHeight, sizeFactor);
 
                 params = (RelativeLayout.LayoutParams) view.getLayoutParams();
                 params.width = RelativeLayout.LayoutParams.MATCH_PARENT;
@@ -1346,7 +1433,7 @@ public class Widget extends RemoteViewsService
             }
         }
 
-        Pair<RemoteViews, HashSet<Integer>> views = generate(service, widgetId, dynamicList, false, collectionLayout, collectionExtras);
+        Pair<RemoteViews, HashSet<Integer>> views = generate(service, widgetId, dynamicList, false, collectionLayout, collectionExtras, sizeFactor);
         //only collection elements has size_filler view
         if (collectionLayout != Constants.CollectionLayout.NOT_COLLECTION)
         {
@@ -2575,6 +2662,14 @@ public class Widget extends RemoteViewsService
         }
     }
 
+    public void recreateWidgets()
+    {
+        for (int widgetId : getAllWidgets())
+        {
+            recreateWidget(widgetId);
+        }
+    }
+
     public DictObj.Dict getStateLayoutSnapshot()
     {
         if (updateListener == null)
@@ -3067,8 +3162,10 @@ public class Widget extends RemoteViewsService
         textView.methodCalls.add(new RemoteMethodCall("setTextColor", false, Constants.getSetterMethod(textView.type, "setTextColor"), "setTextColor", Constants.TEXT_COLOR));
 
         DynamicView restart = new DynamicView("ImageButton");
-        restart.selectors.put("style", "danger_oval_sml");
+        //TODO small
         restart.methodCalls.add(new RemoteMethodCall("setViewPadding", true, "setViewPadding", 10, 10, 10, 10));
+        restart.methodCalls.add(new RemoteMethodCall("setBackgroundResource", false, Constants.getSetterMethod(restart.type, "setBackgroundResource"), "setBackgroundResource", R.drawable.drawable_danger_btn_oval));
+        restart.methodCalls.add(new RemoteMethodCall("setTextColor", false, Constants.getSetterMethod(restart.type, "setTextColor"), "setTextColor", R.color.color_danger_text));
         restart.methodCalls.add(new RemoteMethodCall("setColorFilter", false, Constants.getSetterMethod(restart.type, "setColorFilter"), "setColorFilter", 0xffffffff));
         restart.methodCalls.add(new RemoteMethodCall("setImageResource", false, Constants.getSetterMethod(restart.type, "setImageResource"), "setImageResource", android.R.drawable.ic_lock_power_off));
         restart.attributes.attributes.put(Attributes.Type.WIDTH, attributeParse("140"));
@@ -3095,14 +3192,18 @@ public class Widget extends RemoteViewsService
 
             DynamicView clear = new DynamicView("Button");
             clear.methodCalls.add(new RemoteMethodCall("setText", false, Constants.getSetterMethod(clear.type, "setText"), "setText", "Clear"));
-            clear.selectors.put("style", "dark_sml");
+            clear.methodCalls.add(new RemoteMethodCall("setBackgroundResource", false, Constants.getSetterMethod(clear.type, "setBackgroundResource"), "setBackgroundResource", R.drawable.drawable_dark_btn));
+            clear.methodCalls.add(new RemoteMethodCall("setTextColor", false, Constants.getSetterMethod(clear.type, "setTextColor"), "setTextColor", R.color.color_dark_text));
+            //TODO sml
             clear.attributes.attributes.put(Attributes.Type.TOP, afterText);
             clear.attributes.attributes.put(Attributes.Type.LEFT, attributeParse("l(p)"));
             clear.tag = Constants.SPECIAL_WIDGET_CLEAR + "," + widgetId;
 
             DynamicView reload = new DynamicView("Button");
             reload.methodCalls.add(new RemoteMethodCall("setText", false, Constants.getSetterMethod(reload.type, "setText"), "setText", "Reload"));
-            reload.selectors.put("style", "info_sml");
+            reload.methodCalls.add(new RemoteMethodCall("setBackgroundResource", false, Constants.getSetterMethod(reload.type, "setBackgroundResource"), "setBackgroundResource", R.drawable.drawable_info_btn));
+            reload.methodCalls.add(new RemoteMethodCall("setTextColor", false, Constants.getSetterMethod(reload.type, "setTextColor"), "setTextColor", R.color.color_info_text));
+            //TODO sml
             reload.attributes.attributes.put(Attributes.Type.TOP, afterText);
             reload.attributes.attributes.put(Attributes.Type.RIGHT, attributeParse("r(p)"));
             reload.tag = Constants.SPECIAL_WIDGET_RELOAD + "," + widgetId;
@@ -3749,10 +3850,10 @@ public class Widget extends RemoteViewsService
             //Force android to create dirs for us
             getExternalFilesDir(null);
             getExternalMediaDirs();
+            Utils.initDisplayMetrics(this);
 
             loadPythonFiles();
             loadCorrectionFactors(true);
-            //loadForeground();
             loadWidgets();
             loadTimers();
             configurations.load();

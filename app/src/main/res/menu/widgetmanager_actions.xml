@@ -2,6 +2,10 @@
 <menu xmlns:tools="http://schemas.android.com/tools" xmlns:android="http://schemas.android.com/apk/res/android"
       xmlns:app="http://schemas.android.com/apk/res-auto">
     <item
+        android:id="@+id/action_recreateall"
+        android:title="Recreate All"
+        app:showAsAction="always|withText"/>
+    <item
         android:id="@+id/action_clearall"
         android:title="Clear All"
         app:showAsAction="always|withText"/>
