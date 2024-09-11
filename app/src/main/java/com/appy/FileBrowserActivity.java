@@ -670,6 +670,18 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
                 });
                 return true;
             }
+            else if (item.getItemId() == R.id.action_edit)
+            {
+                final File file = selected.values().iterator().next();
+
+                Intent intent = new Intent(this, FileEditorActivity.class);
+                intent.putExtra(FileEditorActivity.FILE_EDITOR_PATH_EXTRA, file.getPath());
+                startActivity(intent);
+
+                selected.clear();
+                updateMenu();
+                return true;
+            }
         }
         return super.onOptionsItemSelected(item);
     }
@@ -697,6 +709,7 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
             menu.findItem(R.id.action_cut).setVisible(!selected.isEmpty() && !copying && !cutting);
             menu.findItem(R.id.action_delete).setVisible(!selected.isEmpty() && !copying && !cutting);
             menu.findItem(R.id.action_rename).setVisible(selected.size() == 1 && !copying && !cutting);
+            menu.findItem(R.id.action_edit).setVisible(selected.size() == 1 && !copying && !cutting);
 
             menu.findItem(R.id.action_cancel).setVisible(copying || cutting);
             menu.findItem(R.id.action_paste).setVisible(copying || cutting);
@@ -751,6 +764,8 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
     public void onResume()
     {
         super.onResume();
+
+        getDirFromRoot(currentDir());
 
         if (tutorial != null)
         {

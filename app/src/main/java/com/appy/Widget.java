@@ -2040,7 +2040,7 @@ public class Widget extends RemoteViewsService
         }
         catch (RuntimeException e)
         {
-            Toast.makeText(this, "Could not start Appy because it is lacking permissions.", Toast.LENGTH_LONG);
+            Toast.makeText(this, "Could not start Appy because it is lacking permissions.", Toast.LENGTH_LONG).show();
         }
     }
 

@@ -67,6 +67,7 @@
         </activity>
 
         <activity android:name="com.appy.FileBrowserActivity" android:exported="true"/>
+        <activity android:name="com.appy.FileEditorActivity" android:exported="true"/>
         <activity android:name="com.appy.PermissionActivity" android:excludeFromRecents="true" android:theme="@android:style/Theme.Translucent.NoTitleBar" android:exported="true"/>
         <activity android:name="com.appy.DialogActivity" android:noHistory="true" android:excludeFromRecents="true" android:theme="@style/Theme.AppCompat.Dialog" android:exported="true"/>
         <activity android:name="com.appy.ForegroundActivity" android:excludeFromRecents="true" android:theme="@android:style/Theme.Translucent.NoTitleBar" android:exported="true"/>

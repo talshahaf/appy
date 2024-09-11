@@ -38,7 +38,10 @@
         app:showAsAction="always|withText"/>
     <item
         android:id="@+id/action_rename"
-        android:icon="@drawable/ic_action_rename"
         android:title="Rename"
+        app:showAsAction="ifRoom"/>
+    <item
+        android:id="@+id/action_edit"
+        android:title="Edit"
         app:showAsAction="ifRoom"/>
 </menu>
