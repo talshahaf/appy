@@ -278,7 +278,6 @@ def style_attr_parse(type, style):
         attrs['textSize'] = sizes_text[size]
         color_res = getattr(R.color, color_name).__java__()
         attrs['textColor'] = R.resolve_color(color_res)
-    print('resolved ', style, attrs)
     return attrs
 
 element_attr_aliases = dict(checked='compoundButtonChecked',
@@ -722,7 +721,6 @@ def unchoose_widget(widget_id):
     last_func_for_widget_id.pop(widget_id, None)
 
 def recreate_widget(widget_id):
-    print('recreate widget ', widget_id)
     manager_state = obtain_manager_state()
     if widget_id in manager_state.chosen:
         chosen = manager_state.chosen[widget_id]

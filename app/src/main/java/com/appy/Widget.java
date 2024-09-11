@@ -2824,7 +2824,7 @@ public class Widget extends RemoteViewsService
 
     public void deferredSave(int widgetId)
     {
-        addTask(Constants.IMPORT_TASK_QUEUE, new Task<>(new SaveTask(), widgetId), true);
+        addTask(widgetId, new Task<>(new SaveTask(), widgetId), true);
     }
 
     public void saveSpecificState(DictObj.Dict statesModified)
