@@ -21,6 +21,9 @@ import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 
 public class FileEditorActivity extends AppCompatActivity
@@ -29,6 +32,7 @@ public class FileEditorActivity extends AppCompatActivity
 
     Toolbar toolbar;
     EditText content;
+    TextView numbers;
     File file;
     String originalContent = "";
     boolean unsaved = false;
@@ -40,9 +44,11 @@ public class FileEditorActivity extends AppCompatActivity
         setContentView(R.layout.fileeditor);
 
         toolbar = findViewById(R.id.toolbar);
+
         setSupportActionBar(toolbar);
 
         content = findViewById(R.id.content);
+        numbers = findViewById(R.id.linenumbers);
 
         content.addTextChangedListener(new TextWatcher()
         {
@@ -55,14 +61,24 @@ public class FileEditorActivity extends AppCompatActivity
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count)
             {
-                unsaved = true;
-                updateTitle();
+
             }
 
             @Override
             public void afterTextChanged(Editable s)
             {
+                String text = s.toString();
+                int lines = 1 + text.length() - text.replace("\n", "").length();
+                StringBuilder sb = new StringBuilder();
+                for (int i = 1; i <= lines; i++)
+                {
+                    sb.append(i);
+                    sb.append('\n');
+                }
+                numbers.setText(sb.toString());
 
+                unsaved = true;
+                updateTitle();
             }
         });
     }
