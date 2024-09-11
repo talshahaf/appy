@@ -3138,9 +3138,10 @@ public class Widget extends RemoteViewsService
         }
     }
 
-    public static void addMethodCall(DynamicView view, String method, Object... args)
+    public static void addMethodCall(DynamicView view, Object... args)
     {
-        view.methodCalls.add(new RemoteMethodCall(method, false, Constants.getSetterMethod(view.type, method), method, args));
+        String method = (String)args[0];
+        view.methodCalls.add(new RemoteMethodCall(method, false, Constants.getSetterMethod(view.type, method), args));
     }
 
     public void setSpecificErrorWidget(int androidWidgetId, int widgetId, Throwable error)
