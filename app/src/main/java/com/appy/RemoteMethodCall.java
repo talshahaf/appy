@@ -8,6 +8,7 @@ import android.os.Parcelable;
 import android.util.Base64;
 import android.util.Log;
 import android.util.Pair;
+import android.util.TypedValue;
 import android.widget.RemoteViews;
 
 import java.lang.reflect.Field;
@@ -25,7 +26,7 @@ public class RemoteMethodCall
     private final boolean parentCall;
     private final Method method;
     private final Object[] originalArguments;
-    private final Object[] arguments;
+    private Object[] arguments;
     public static HashMap<String, Method> remoteViewMethods = new HashMap<>();
     public static ArrayList<Pair<String, String>> resolveResourcePrefix = new ArrayList<>();
 
@@ -87,7 +88,6 @@ public class RemoteMethodCall
                 if (((String) obj).startsWith(prefix.first))
                 {
                     String path = ((String) obj).substring(prefix.first.length());
-
                     Object resolved = reflectStaticPath(prefix.second + "." + path);
                     if (resolved != null)
                     {
@@ -98,6 +98,24 @@ public class RemoteMethodCall
             }
         }
 
+        return obj;
+    }
+
+    public Object tryResolveUnits(Object obj, Class<?> required)
+    {
+        if (obj == null)
+        {
+            return null;
+        }
+        Class<?> cls = obj.getClass();
+        if (cls == String.class && (required == Integer.class || required == Integer.TYPE ||
+                                    required == Short.class || required == Short.TYPE ||
+                                    required == Long.class || required == Long.TYPE ||
+                                    required == Float.class || required == Float.TYPE ||
+                                    required == Double.class || required == Double.TYPE))
+        {
+            return Utils.parseUnit((String)obj);
+        }
         return obj;
     }
 
@@ -193,19 +211,39 @@ public class RemoteMethodCall
         }
 
         this.originalArguments = args;
+        recalculateArguments();
+    }
 
+    public void recalculateArguments()
+    {
         Class<?>[] types = this.method.getParameterTypes();
         this.arguments = new Object[originalArguments.length];
         for (int i = 0; i < originalArguments.length; i++)
         {
             arguments[i] = tryResolveXmlResource(originalArguments[i], types[i + 1]);
+            arguments[i] = tryResolveUnits(arguments[i], types[i + 1]);
             arguments[i] = cast(arguments[i], types[i + 1]);
         }
     }
 
-    public String getIdentifier()
+    //used for post fudging
+    public int argumentCount()
     {
-        return identifier;
+        return arguments.length;
+    }
+    public Object getArgument(int i)
+    {
+        return arguments[i];
+    }
+    public void setArgument(int i, Object o)
+    {
+        arguments[i] = o;
+    }
+
+    public String getIdentifierIgnorePrefix()
+    {
+        //after * or 0
+        return identifier.substring(identifier.indexOf("*") + 1);
     }
 
     public boolean isParentCall()
@@ -341,11 +379,8 @@ public class RemoteMethodCall
             }
         }
 
-        boolean parentCall = false;
-        if (obj.hasKey("parentCall"))
-        {
-            parentCall = obj.getBoolean("parentCall", false);
-        }
+        boolean parentCall = obj.getBoolean("parentCall", false);
+
         return new RemoteMethodCall(obj.getString("identifier"), parentCall, obj.getString("method"), args);
     }
 

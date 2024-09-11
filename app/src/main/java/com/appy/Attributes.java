@@ -52,6 +52,7 @@ public class Attributes
 
         // list elements such as (text.top * 2 + widget.height / 5 + 1)
         public ArrayList<Pair<ArrayList<Reference>, Double>> arguments = new ArrayList<>();
+        public double finalFactor = 1.0;
         public Double resolvedValue;
 
         public boolean isResolved()
@@ -74,6 +75,8 @@ public class Attributes
             AttributeValue ret = new AttributeValue();
 
             ret.function = Function.valueOf(obj.getString("function"));
+
+            ret.finalFactor = obj.getDouble("finalFactor", 1.0);
 
             DictObj.List argumentsArray = obj.getList("arguments");
             for (int i = 0; i < argumentsArray.size(); i++)
@@ -119,6 +122,7 @@ public class Attributes
                 argArray.add(argObj);
             }
             obj.put("arguments", argArray);
+            obj.put("finalFactor", finalFactor);
             if (resolvedValue != null)
             {
                 obj.put("resolvedValue", resolvedValue);

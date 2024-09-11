@@ -179,6 +179,10 @@ class BaseR:
     def __java__(self):
         return self.resolve_now()
 
+    @classmethod
+    def resolve_color(cls, res):
+        return java_context().getResources().getColor(res, None)
+
 androidR = BaseR(['android', 'R'])
 R = BaseR(['appy', 'R'])
 
@@ -233,6 +237,50 @@ def serialize_arg(arg):
     #gotta go to java
     return java.build_python_dict_from_java(java.clazz.appy.RemoteMethodCall().parameterToDict(arg))
 
+def style_attr_parse(type, style):
+    #parse
+    parts = style.split('_')
+    outline = parts[0] == 'outline'
+    if outline:
+        parts = parts[1:]
+
+    name = parts[0]
+
+    oval = len(parts) > 1 and parts[1] == 'oval'
+    if oval:
+        parts = parts[2:]
+    else:
+        parts = parts[1:]
+
+    size = ''
+    if parts:
+        size = parts[0]
+
+    #validate
+    if name not in ['primary', 'secondary', 'success', 'danger', 'warning', 'info', 'light', 'dark']:
+        raise ValueError(f'Unknown style color: {name}')
+    if size not in ['', 'sml', 'lg']:
+        raise ValueError(f'Unknown style size: {size}')
+
+    drawable_name = f'drawable{'_outline' if outline else ''}_{name}_btn{'_oval' if oval else ''}'
+    color_name = f'color{'_outline' if outline else ''}_{name}_text'
+
+    #left top right bottom
+    sizes_pads = {'': ('24sp', '16sp', '24sp', '16sp'),
+                  'sml': ('16sp', '12sp', '16sp', '12sp'),
+                  'lg': ('28sp', '16sp', '28sp', '16sp')}
+    sizes_text = {'': '12sp',
+                  'sml': '10sp',
+                  'lg': '15sp'}
+
+    attrs = dict(backgroundResource=getattr(R.drawable, drawable_name).export_to_views(), viewPadding=sizes_pads[size])
+    if type == 'Button':
+        attrs['textSize'] = sizes_text[size]
+        color_res = getattr(R.color, color_name).__java__()
+        attrs['textColor'] = R.resolve_color(color_res)
+    print('resolved ', style, attrs)
+    return attrs
+
 element_attr_aliases = dict(checked='compoundButtonChecked',
                             compoundDrawables='textViewCompoundDrawables',
                             compoundDrawablesRelative='textViewCompoundDrawablesRelative',
@@ -247,10 +295,17 @@ class Element:
         self.d = AttrDict.make(d)
         if 'id' not in self.d:
             self.d.id = gen_id()
+        if 'methodCalls' in self.d:
+            self.d.methodCalls = collections.OrderedDict((c.identifier, c) for c in self.d.methodCalls)
+        if 'tag' not in self.d:
+            self.d.tag = {}
+
         if 'children' in self.d:
             self.d.children = ChildrenList([c if isinstance(c, Element) else Element(c) for c in arr] for arr in self.d.children)
         else:
             self.d.children = ChildrenList()
+
+
 
     def __getstate__(self):
         return self.dict(do_copy=True)
@@ -262,13 +317,11 @@ class Element:
         event_hook = element_event_hooks.get(self.d.type, {}).get(key)
         if event_hook:
             event_hook(kwargs)
-        if 'tag' in self.d and key in self.d.tag:
+        if key in self.d.tag:
             func, captures = loads(self.d.tag[key])
             return call_function(func, captures, **kwargs)
 
     def set_handler(self, key, f, captures):
-        if 'tag' not in self.d:
-            self.d.tag = {}
         self.d.tag[key] = dumps((f, captures))
 
     def __delattr__(self, key):
@@ -276,20 +329,26 @@ class Element:
             del self.d.attributes[attrs[key]]
         elif key in write_attrs:
             write_attrs[key](self, None)
-        elif 'selectors' in self.d and key in ('style', 'alignment'):
-            del self.d.selectors[key]
-        elif key in ('children',):
+        elif 'selectors' in self.d and key == 'alignment':
+            del self.d.selectors['alignment']
+        elif key == 'children':
             self.d[key].clear()
         elif key in ('paddingLeft', 'paddingTop', 'paddingRight', 'paddingBottom'):
             del self.d[key]
         elif key in element_attr_aliases:
             delattr(self, element_attr_aliases[key])
-        elif key in ('tag',):
+        elif key == 'tag':
             self.tag.clear()
-        elif 'tag' in self.d and key in self.d.tag:
+        elif key == 'style':
+            del self.d.tag['style']
+            style_attrs = [k for k in self.d.methodCalls.keys() if k.startswith('style*')]
+            for attr in style_attrs:
+                del self.d.methodCalls[attr]
+        elif key in ('name', 'click', 'itemclick'):
             del self.d.tag[key]
         else:
-            self.d.methodCalls = [c for c in self.d.methodCalls if c.identifier != key]
+            # might throw
+            del self.d.methodCalls[key]
 
     def __getattr__(self, item):
         if item in attrs:
@@ -298,7 +357,7 @@ class Element:
             return composite_attrs[item](self)
         if item in ('type', 'id', 'children'):
             return getattr(self.d, item)
-        if item in ('style', 'alignment'):
+        if item == 'alignment':
             return getattr(self.d.selectors, item)
         if item in element_attr_aliases:
             return getattr(self, element_attr_aliases[key])
@@ -309,24 +368,27 @@ class Element:
                 return self.chronometer[('base', 'format', 'started').index(item)]
             except AttributeError:
                 raise AttributeError(item)
-        if item in ('tag',):
-            if 'tag' not in self.d:
-                self.d.tag = {}
+        if item == 'tag':
             if 'tag' not in self.d.tag:
                 self.d.tag['tag'] = AttrDict()
             if isinstance(self.d.tag['tag'], str):
                 self.d.tag['tag'] = loads(self.d.tag['tag'])
             return self.d.tag['tag']
 
-        if 'tag' in self.d and item in self.d.tag:
+        if item in self.d.tag:
             attr = self.d.tag[item]
             if item in ('click', 'itemclick'):
                 attr = loads(attr)
             return attr
 
-        args = [c.arguments if c.identifier == c.method else c.arguments[1:] for c in self.d.methodCalls if c.identifier == method_from_attr(item)] if 'methodCalls' in self.d else []
-        if args:
-            return deserialize_arg(args[0][0]) if len(args[0]) == 1 else [deserialize_arg(arg) for arg in args[0]]
+        identifier = method_from_attr(item)
+        if 'methodCalls' in self.d and identifier in self.d.methodCalls:
+            method_call = self.d.methodCalls[identifier]
+            args = method_call.arguments
+            if method_call.identifier != method_call.method:
+                args = args[1:]
+            return deserialize_arg(args[0]) if len(args) == 1 else [deserialize_arg(arg) for arg in args]
+
         raise AttributeError(item)
 
     def __setattr__(self, key, value):
@@ -362,18 +424,22 @@ class Element:
             if not isinstance(value, (list, tuple)):
                 value = (value, {})
             self.set_handler(key, value[0], value[1])
-        elif key in ('name',):
-            if 'tag' not in self.d:
-                self.d.tag = {}
-            self.d.tag[key] = value
-        elif key in ('tag',):
+        elif key == 'name':
+            self.d.tag['name'] = value
+        elif key == 'tag':
+            # goes to self.d.tag['tag'] through getattr
             self.tag.clear()
             self.tag.update(value)
-        elif key in ('style', 'alignment'):
+        elif key == 'alignment':
             if 'selectors' not in self.d:
                 self.d.selectors = {}
             self.d.selectors[key] = value
-        elif key in ('children',):
+        elif key == 'style':
+            style_attrs = style_attr_parse(self.d.type, value)
+            for k,v in style_attrs.items():
+                self.add_method_call('style', k, v, True) #order at start so it can be overwritten
+            self.d.tag['style'] = value #save for getattr
+        elif key == 'children':
             if value is None:
                 value = ChildrenList()
             elif not isinstance(value, (list, tuple)):
@@ -413,25 +479,33 @@ class Element:
                 old_base, old_format, old_started = 0, None, False
             self.chronometer = (value if key == 'base' else old_base, value if key == 'format' else old_format, value if key == 'started' else old_started)
         else:
-            param_setter, method = get_param_setter(self.d.type, key)
-            if param_setter is not None:
-                identifier = method
-                arguments = [method, value]
-                method = param_setter
-            else:
-                if not validate_remoteviews_method(method):
-                    raise AttributeError(method)
-                identifier = method
-                if not isinstance(value, (list, tuple)):
-                    value = [value]
-                arguments = value
+            self.add_method_call('', key, value, False)
 
-            if 'methodCalls' not in self.d:
-                self.d.methodCalls = []
+    def add_method_call(self, prefix, key, value, order_at_start):
+        param_setter, method = get_param_setter(self.d.type, key)
+        if param_setter is not None:
+            identifier = method
+            arguments = [method, value]
+            method = param_setter
+        else:
+            if not validate_remoteviews_method(method):
+                raise AttributeError(method)
+            identifier = method
+            if not isinstance(value, (list, tuple)):
+                value = [value]
+            arguments = value
 
-            arguments = [serialize_arg(arg) for arg in arguments]
-            self.d.methodCalls = [c for c in self.d.methodCalls if c.identifier != identifier] + [AttrDict(identifier=identifier, method=method, arguments=arguments)]
-            
+        if 'methodCalls' not in self.d:
+            self.d.methodCalls = collections.OrderedDict()
+
+        if prefix:
+            identifier = f'{prefix}*{identifier}'
+
+        arguments = [serialize_arg(arg) for arg in arguments]
+        self.d.methodCalls[identifier] = AttrDict(identifier=identifier, method=method, arguments=arguments)
+        if order_at_start:
+            self.d.methodCalls.move_to_end(identifier, False)
+
     @classmethod
     def create(cls, type, **kwargs):
         e = cls(dict(type=type))
@@ -445,7 +519,9 @@ class Element:
     def dict(self, do_copy, without_id=None):
         if 'tag' in self.d and 'tag' in self.d.tag and not isinstance(self.d.tag['tag'], str):
             self.d.tag['tag'] = dumps(self.d.tag['tag'])
-        d = {k: (copy.deepcopy(v) if do_copy else v) for k,v in self.d.items() if k != 'children' and (not without_id or k != 'id')}
+        d = {k: (copy.deepcopy(v) if do_copy else v) for k,v in self.d.items() if k != 'children' and k != 'methodCalls' and (not without_id or k != 'id')}
+        if 'methodCalls' in self.d:
+            d['methodCalls'] = list(copy.deepcopy(v) for v in self.d.methodCalls.values())
         d['children'] = [[c.dict(do_copy=do_copy, without_id=without_id) if isinstance(c, Element) else c for c in arr] for arr in self.children]
         return d
 

@@ -119,7 +119,21 @@ public class WidgetManagerActivity extends WidgetSelectActivity
             return super.onOptionsItemSelected(item);
         }
 
-        if (item.getItemId() == R.id.action_clearall)
+        if (item.getItemId() == R.id.action_recreateall)
+        {
+            Utils.showConfirmationDialog(this,
+                    "Recreate all widgets", "Recreate all widgets?", android.R.drawable.ic_dialog_alert,
+                    null, null, new Runnable()
+                    {
+                        @Override
+                        public void run()
+                        {
+                            widgetService.recreateWidgets();
+                        }
+                    });
+            return true;
+        }
+        else if (item.getItemId() == R.id.action_clearall)
         {
             Utils.showConfirmationDialog(this,
             "Clear all widgets", "Clear all widgets?", android.R.drawable.ic_dialog_alert,

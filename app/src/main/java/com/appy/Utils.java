@@ -6,8 +6,10 @@ import android.database.Cursor;
 import android.graphics.drawable.Icon;
 import android.net.Uri;
 import android.provider.OpenableColumns;
+import android.util.DisplayMetrics;
 import android.util.Log;
 import android.util.Pair;
+import android.util.TypedValue;
 
 import androidx.appcompat.app.AlertDialog;
 
@@ -111,6 +113,72 @@ public class Utils
             sb.append(String.format("%02x", b & 0xff));
         }
         return sb.toString();
+    }
+
+    public static DisplayMetrics globalDisplayMetrics = null;
+    public static void initDisplayMetrics(Context context)
+    {
+        globalDisplayMetrics = context.getResources().getDisplayMetrics();
+    }
+
+    public static double parseUnit(String s)
+    {
+        s = s.toLowerCase();
+
+        int unit;
+        int unitlen = 2;
+        if (s.endsWith("px"))
+        {
+            unit = TypedValue.COMPLEX_UNIT_PX;
+        }
+        else if (s.endsWith("sp"))
+        {
+            unit = TypedValue.COMPLEX_UNIT_SP;
+        }
+        else if (s.endsWith("dp"))
+        {
+            unit = TypedValue.COMPLEX_UNIT_DIP;
+        }
+        else if (s.endsWith("dip"))
+        {
+            unit = TypedValue.COMPLEX_UNIT_DIP;
+            unitlen = 3;
+        }
+        else if (s.endsWith("mm"))
+        {
+            unit = TypedValue.COMPLEX_UNIT_MM;
+        }
+        else if (s.endsWith("in"))
+        {
+            unit = TypedValue.COMPLEX_UNIT_IN;
+        }
+        else if (s.endsWith("pt"))
+        {
+            unit = TypedValue.COMPLEX_UNIT_PT;
+        }
+        else
+        {
+            //one last try
+            try
+            {
+                Float.parseFloat(s);
+                unit = TypedValue.COMPLEX_UNIT_PX;
+                unitlen = 0;
+            }
+            catch (NumberFormatException e)
+            {
+                throw new RuntimeException("Cannot parse unit: " + s);
+            }
+        }
+
+        if (globalDisplayMetrics == null)
+        {
+            throw new RuntimeException("globalDisplayMetrics is uninitialized");
+        }
+
+        float res = TypedValue.applyDimension(unit, Float.parseFloat(s.substring(0, s.length() - unitlen)), globalDisplayMetrics);
+        //Log.d("APPY", "applied dim: " + s + " -> " + res);
+        return res;
     }
 
     public static String getFilenameFromUri(Context context, Uri uri, String defaultName)
