@@ -276,9 +276,7 @@ def style_attr_parse(type, style):
     attrs = dict(backgroundResource=getattr(R.drawable, drawable_name).export_to_views(), viewPadding=sizes_pads[size])
     if type == 'Button':
         attrs['textSize'] = sizes_text[size]
-        color_res = getattr(R.color, color_name).__java__()
-        attrs['textColor'] = R.resolve_color(color_res)
-    print('resolved ', style, attrs)
+        attrs['textColor'] = getattr(R.color, color_name).export_to_views()
     return attrs
 
 element_attr_aliases = dict(checked='compoundButtonChecked',
@@ -722,7 +720,6 @@ def unchoose_widget(widget_id):
     last_func_for_widget_id.pop(widget_id, None)
 
 def recreate_widget(widget_id):
-    print('recreate widget ', widget_id)
     manager_state = obtain_manager_state()
     if widget_id in manager_state.chosen:
         chosen = manager_state.chosen[widget_id]
@@ -741,7 +738,7 @@ def widget_manager_create(widget, manager_state):
     #clear state
     manager_state.chosen[widget.widget_id] = None
 
-    bg = widgets.RelativeLayout(width=widget_dims.width, height=widget_dims.height)
+    bg = widgets.RelativeLayout(top=0, left=0, bottom=0, right=0)
     bg.backgroundResource = R.drawable.rect
     bg.backgroundTint = widgets.color(r=0, g=0, b=0, a=100)
 

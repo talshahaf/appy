@@ -5,18 +5,29 @@
     android:layout_height="match_parent">
 
     <EditTextPreference
+        android:defaultValue="1.0"
+        android:inputType="numberDecimal"
+        android:key="global_size_factor"
+        android:selectAllOnFocus="true" android:singleLine="true"
+        android:title="Global size factor"/>
+    <Preference
+        android:key="size_factors"
+        android:title="Setup size factors per widget"
+        android:summary=""/>
+
+    <EditTextPreference
         android:defaultValue="1"
         android:inputType="numberDecimal"
         android:key="width_correction"
         android:selectAllOnFocus="true" android:singleLine="true"
-        android:title="Width Correction"/>
+        android:title="Width correction"/>
     <EditTextPreference
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:defaultValue="1"
         android:inputType="numberDecimal" android:key="height_correction"
         android:selectAllOnFocus="true" android:singleLine="true"
-        android:title="Height Correction"/>
+        android:title="Height correction"/>
     <CheckBoxPreference
         android:defaultValue="true"
         android:key="refresh_on_modify"

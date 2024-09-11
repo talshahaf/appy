@@ -2,6 +2,7 @@ package com.appy;
 
 import android.content.Context;
 import android.content.DialogInterface;
+import android.content.res.Resources;
 import android.database.Cursor;
 import android.graphics.drawable.Icon;
 import android.net.Uri;
@@ -25,11 +26,15 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.math.RoundingMode;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.text.DecimalFormat;
+import java.text.DecimalFormatSymbols;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.zip.ZipEntry;
@@ -115,10 +120,22 @@ public class Utils
         return sb.toString();
     }
 
-    public static DisplayMetrics globalDisplayMetrics = null;
-    public static void initDisplayMetrics(Context context)
+    public static Resources globalResources = null;
+    public static void updateGlobalResources(Context context)
     {
-        globalDisplayMetrics = context.getResources().getDisplayMetrics();
+        globalResources = context.getResources();
+    }
+
+    public static int resolveColor(int colorRes)
+    {
+        return globalResources.getColor(colorRes);
+    }
+
+    public static String formatFloat(float f)
+    {
+        DecimalFormat format = new DecimalFormat("0.###"); // Choose the number of decimal places to work with in case they are different than zero and zero value will be removed
+        format.setRoundingMode(RoundingMode.HALF_DOWN); // Choose your Rounding Mode
+        return format.format(f);
     }
 
     public static double parseUnit(String s)
@@ -171,14 +188,12 @@ public class Utils
             }
         }
 
-        if (globalDisplayMetrics == null)
+        if (globalResources == null)
         {
-            throw new RuntimeException("globalDisplayMetrics is uninitialized");
+            throw new RuntimeException("globalResources is uninitialized");
         }
 
-        float res = TypedValue.applyDimension(unit, Float.parseFloat(s.substring(0, s.length() - unitlen)), globalDisplayMetrics);
-        //Log.d("APPY", "applied dim: " + s + " -> " + res);
-        return res;
+        return TypedValue.applyDimension(unit, Float.parseFloat(s.substring(0, s.length() - unitlen)), globalResources.getDisplayMetrics());
     }
 
     public static String getFilenameFromUri(Context context, Uri uri, String defaultName)

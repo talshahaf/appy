@@ -68,6 +68,11 @@ public abstract class WidgetSelectActivity extends AppCompatActivity implements 
         updateWidgetList();
     }
 
+    protected String elementValueFormat(int widgetId, String widgetName)
+    {
+        return widgetName;
+    }
+
     public void updateWidgetList()
     {
         if (widgetService == null)
@@ -83,7 +88,8 @@ public abstract class WidgetSelectActivity extends AppCompatActivity implements 
             // ignore widget managers
             if (widget.value != null)
             {
-                adapterList.add(new ListFragmentAdapter.Item(widget.key, (String) widget.value, "widget #", Integer.parseInt(widget.key)));
+                int widgetId = Integer.parseInt(widget.key);
+                adapterList.add(new ListFragmentAdapter.Item(widget.key, elementValueFormat(widgetId, (String) widget.value), "widget #", widgetId));
             }
         }
         listview.setAdapter(new ListFragmentAdapter(this, adapterList));

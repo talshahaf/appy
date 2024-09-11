@@ -93,12 +93,14 @@ public class Widget extends RemoteViewsService
     HashMap<Integer, ArrayList<DynamicView>> widgets = new HashMap<>();
     HashMap<Long, Timer> activeTimers = new HashMap<>();
     HashMap<Long, PendingIntent[]> activeTimersIntents = new HashMap<>();
+    HashMap<Integer, DictObj.Dict> widgetProps = new HashMap<>();
     final HashMap<Long, ListFactory> factories = new HashMap<>();
     ArrayList<PythonFile> pythonFiles = new ArrayList<>();
     PythonFile unknownPythonFile = new PythonFile("Unknown file");
     HashSet<Integer> needUpdateWidgets = new HashSet<>();
     float widthCorrectionFactor = 1.0f;
     float heightCorrectionFactor = 1.0f;
+    float globalSizeFactor = 1.0f;
     Configurations configurations = new Configurations(this, new Configurations.ChangeListener()
     {
         @Override
@@ -1093,7 +1095,6 @@ public class Widget extends RemoteViewsService
         {
             //no constaints at all, set left and width to measured,
             start.resolvedValue = defaultStart;
-            //TODO factor here?
             size.resolvedValue = defaultSize;
 
             third = end;
@@ -1116,7 +1117,6 @@ public class Widget extends RemoteViewsService
                 !end.hasConstraints())
         {
             //if only left, set width
-            //TODO factor here?
             size.resolvedValue = defaultSize;
 
             third = end;
@@ -1260,7 +1260,8 @@ public class Widget extends RemoteViewsService
         //we must copy as we're changing the views
         dynamicList = DynamicView.copyArray(dynamicList);
 
-        float sizeFactor = 1.0f;
+        Float widgetSizeFactor = getWidgetSizeFactor(widgetId);
+        float sizeFactor = widgetSizeFactor == null ? globalSizeFactor : widgetSizeFactor;
 
         RemoteViews remote = generate(service, widgetId, dynamicList, true, collectionLayout, collectionExtras, sizeFactor).first;
         RelativeLayout layout = new RelativeLayout(this);
@@ -1425,7 +1426,7 @@ public class Widget extends RemoteViewsService
             else
             {
                 //Old method sucks
-                dynamicView.methodCalls.add(new RemoteMethodCall("setViewPadding", true, "setViewPadding",
+                dynamicView.methodCalls.add(new RemoteMethodCall("parent_setViewPadding", true, "setViewPadding",
                         hor.first,
                         ver.first,
                         hor.second,
@@ -1760,9 +1761,121 @@ public class Widget extends RemoteViewsService
         store.apply();
     }
 
+    public void loadWidgetProps()
+    {
+        try
+        {
+            StoreData store = StoreData.Factory.create(this, "widget_props");
+            Set<String> keys = store.getAll();
+
+            HashMap<Integer, DictObj.Dict> newprops = new HashMap<>();
+            for (String widget : keys)
+            {
+                DictObj.Dict props = store.getDict(widget);
+                if (props != null)
+                {
+                    int widgetId = Integer.parseInt(widget);
+                    newprops.put(widgetId, props);
+                }
+            }
+
+            synchronized (lock)
+            {
+                widgetProps = newprops;
+            }
+        }
+        catch (Exception e)
+        {
+            Log.e("APPY", "Exception on loadWidgetProps", e);
+        }
+    }
+
+    public void saveWidgetProps(int widgetId, boolean noSave)
+    {
+        StoreData store = StoreData.Factory.create(this, "widget_props");
+
+        synchronized (lock)
+        {
+            DictObj.Dict props = widgetProps.get(widgetId);
+            if (props == null)
+            {
+                return;
+            }
+            store.put(widgetId + "", props);
+        }
+
+        if (!noSave)
+        {
+            store.apply();
+        }
+    }
+
+    public void setWidgetSizeFactor(int widgetId, Float sizeFactor)
+    {
+        if (widgetProps.get(widgetId) == null)
+        {
+            if (sizeFactor == null)
+            {
+                return;
+            }
+            widgetProps.put(widgetId, new DictObj.Dict());
+        }
+
+        DictObj.Dict props = widgetProps.get(widgetId);
+        if (sizeFactor == null)
+        {
+            if (props.hasKey("sizeFactor"))
+            {
+                props.remove("sizeFactor");
+            }
+        }
+        else
+        {
+            props.put("sizeFactor", sizeFactor);
+        }
+
+        saveWidgetProps(widgetId, false);
+    }
+
+    public Float getWidgetSizeFactor(int widgetId)
+    {
+        DictObj.Dict props = widgetProps.get(widgetId);
+        if (props == null)
+        {
+            return null;
+        }
+        if (!props.hasKey("sizeFactor"))
+        {
+            return null;
+        }
+        return props.getFloat("sizeFactor", 1.0f);
+    }
+
+    public void resetWidgetSizeFactors()
+    {
+        HashSet<Integer> widgetIds = new HashSet<>(widgets.keySet());
+        for (int widgetId : widgetIds)
+        {
+            DictObj.Dict props = widgetProps.get(widgetId);
+            if (props != null)
+            {
+                props.remove("sizeFactor");
+                saveWidgetProps(widgetId, true);
+            }
+        }
+
+        StoreData store = StoreData.Factory.create(this, "widget_props");
+        store.apply();
+    }
+
     public float[] getCorrectionFactors()
     {
         return new float[]{widthCorrectionFactor, heightCorrectionFactor};
+    }
+
+    public float getGlobalSizeFactor()
+    {
+        return globalSizeFactor;
     }
 
     public void setCorrectionFactors(float widthCorrection, float heightCorrection)
@@ -1779,6 +1892,7 @@ public class Widget extends RemoteViewsService
     {
         float widthCorrection = 1.0f;
         float heightCorrection = 1.0f;
+        float sizeFactor = 1.0f;
 
         try
         {
@@ -1801,6 +1915,15 @@ public class Widget extends RemoteViewsService
                 Log.w("APPY", "wrong number format for width");
             }
 
+            try
+            {
+                sizeFactor = Float.parseFloat(sharedPref.getString("global_size_factor", "1"));
+            }
+            catch (NumberFormatException e)
+            {
+                Log.w("APPY", "wrong number for global size factor");
+            }
+
             if (widthCorrection <= 0 || widthCorrection > 3)
             {
                 widthCorrection = 1;
@@ -1808,6 +1931,11 @@ public class Widget extends RemoteViewsService
             if (heightCorrection <= 0 || heightCorrection > 3)
             {
                 heightCorrection = 1;
+            }
+
+            if (sizeFactor <= 0 || sizeFactor > 3)
+            {
+                sizeFactor = 1;
             }
 
         }
@@ -1818,6 +1946,7 @@ public class Widget extends RemoteViewsService
 
         widthCorrectionFactor = widthCorrection;
         heightCorrectionFactor = heightCorrection;
+        globalSizeFactor = sizeFactor;
 
         Log.d("APPY", "new correction factors: " + widthCorrectionFactor + ", " + heightCorrectionFactor);
         if (!initing)
@@ -2824,7 +2953,7 @@ public class Widget extends RemoteViewsService
 
     public void deferredSave(int widgetId)
     {
-        addTask(Constants.IMPORT_TASK_QUEUE, new Task<>(new SaveTask(), widgetId), true);
+        addTask(widgetId, new Task<>(new SaveTask(), widgetId), true);
     }
 
     public void saveSpecificState(DictObj.Dict statesModified)
@@ -3122,11 +3251,10 @@ public class Widget extends RemoteViewsService
         DynamicView textView = new DynamicView("TextView");
         addMethodCall(textView, "setText", "Loading...");
         addMethodCall(textView, "setTextColor", Constants.TEXT_COLOR);
+        addMethodCall(textView, "setTextSize", "12sp");
 
-        Attributes.AttributeValue wholeWidth = attributeParse("w(p)");
-        Attributes.AttributeValue wholeHeight = attributeParse("h(p)");
-        textView.attributes.attributes.put(Attributes.Type.WIDTH, wholeWidth);
-        textView.attributes.attributes.put(Attributes.Type.HEIGHT, wholeHeight);
+        textView.attributes.attributes.put(Attributes.Type.TOP, attributeParse("15"));
+        textView.attributes.attributes.put(Attributes.Type.LEFT, attributeParse("15"));
 
         views.add(textView);
 
@@ -3138,9 +3266,10 @@ public class Widget extends RemoteViewsService
         }
     }
 
-    public static void addMethodCall(DynamicView view, String method, Object... args)
+    public static void addMethodCall(DynamicView view, Object... args)
     {
-        view.methodCalls.add(new RemoteMethodCall(method, false, Constants.getSetterMethod(view.type, method), method, args));
+        String method = (String)args[0];
+        view.methodCalls.add(new RemoteMethodCall(method, false, Constants.getSetterMethod(view.type, method), args));
     }
 
     public void setSpecificErrorWidget(int androidWidgetId, int widgetId, Throwable error)
@@ -3162,46 +3291,33 @@ public class Widget extends RemoteViewsService
 
         ArrayList<DynamicView> views = new ArrayList<>();
 
-        DynamicView textView = new DynamicView("TextView");
-        addMethodCall(textView, "setText", "Error");
-        addMethodCall(textView, "setTextColor", Constants.TEXT_COLOR);
-
-        DynamicView restart = new DynamicView("ImageButton");
-        restart.methodCalls.add(new RemoteMethodCall("setViewPadding", true, "setViewPadding", 10, 10, 10, 10));
-        addMethodCall(restart, "setBackgroundResource", R.drawable.drawable_danger_btn_oval);
-        addMethodCall(restart, "setTextColor", R.color.color_danger_text);
-        addMethodCall(restart, "setTextSize", convertUnit(17, TypedValue.COMPLEX_UNIT_PX, TypedValue.COMPLEX_UNIT_SP));
-        addMethodCall(restart, "setViewPadding", 10, 10, 10, 10);
-        addMethodCall(restart, "setColorFilter", 0xffffffff);
-        addMethodCall(restart, "setImageResource", android.R.drawable.ic_lock_power_off);
-        restart.attributes.attributes.put(Attributes.Type.WIDTH, attributeParse("140"));
-        restart.attributes.attributes.put(Attributes.Type.HEIGHT, attributeParse("140"));
-        restart.attributes.attributes.put(Attributes.Type.RIGHT, attributeParse("0"));
-        restart.attributes.attributes.put(Attributes.Type.BOTTOM, attributeParse("0"));
-        restart.tag = Constants.SPECIAL_WIDGET_RESTART + ""; //onclick
+        DynamicView errorText = new DynamicView("TextView");
+        addMethodCall(errorText, "setText", "Error occurred");
+        addMethodCall(errorText, "setTextColor", Constants.TEXT_COLOR);
+        errorText.attributes.attributes.put(Attributes.Type.TOP, attributeParse("5"));
+        errorText.attributes.attributes.put(Attributes.Type.LEFT, attributeParse("5"));
 
         DynamicView openApp = new DynamicView("ImageView");
         addMethodCall(openApp, "setImageResource", R.mipmap.ic_launcher_foreground);
-        openApp.attributes.attributes.put(Attributes.Type.TOP, attributeParse("h(p)0.5+h(" + openApp.getId() + ")-0.5"));
-        openApp.attributes.attributes.put(Attributes.Type.LEFT, attributeParse("w(p)0.5"));
+        openApp.attributes.attributes.put(Attributes.Type.BOTTOM, attributeParse("5"));
+        openApp.attributes.attributes.put(Attributes.Type.LEFT, attributeParse("5"));
         openApp.attributes.attributes.put(Attributes.Type.WIDTH, attributeParse("140"));
         openApp.attributes.attributes.put(Attributes.Type.HEIGHT, attributeParse("140"));
         openApp.tag = Constants.SPECIAL_WIDGET_OPENAPP + "";
 
-        views.add(textView);
-        views.add(restart);
+        views.add(errorText);
         views.add(openApp);
 
         if (widgetId > 0)
         {
-            Attributes.AttributeValue afterText = attributeParse("h(" + textView.getId() + ")+10");
+            Attributes.AttributeValue afterText = attributeParse("h(" + errorText.getId() + ")+10");
 
             DynamicView clear = new DynamicView("Button");
             addMethodCall(clear, "setText", "Clear");
             addMethodCall(clear, "setBackgroundResource", R.drawable.drawable_dark_btn);
-            addMethodCall(clear, "setTextColor", R.color.color_dark_text);
-            addMethodCall(clear, "setTextSize", convertUnit(17, TypedValue.COMPLEX_UNIT_PX, TypedValue.COMPLEX_UNIT_SP));
-            addMethodCall(clear, "setViewPadding", 10, 10, 10, 10);
+            addMethodCall(clear, "setTextColor", 0xffffffff);
+            addMethodCall(clear, "setTextSize", "10sp");
+            clear.methodCalls.add(new RemoteMethodCall("setViewPadding", false, "setViewPadding", "16sp", "12sp", "16sp", "12sp"));
             clear.attributes.attributes.put(Attributes.Type.TOP, afterText);
             clear.attributes.attributes.put(Attributes.Type.LEFT, attributeParse("l(p)"));
             clear.tag = Constants.SPECIAL_WIDGET_CLEAR + "," + widgetId;
@@ -3209,11 +3325,11 @@ public class Widget extends RemoteViewsService
             DynamicView reload = new DynamicView("Button");
             addMethodCall(reload, "setText", "Reload");
             addMethodCall(reload, "setBackgroundResource", R.drawable.drawable_info_btn);
-            addMethodCall(reload, "setTextColor", R.color.color_info_text);
-            addMethodCall(reload, "setTextSize", convertUnit(17, TypedValue.COMPLEX_UNIT_PX, TypedValue.COMPLEX_UNIT_SP));
-            addMethodCall(reload, "setViewPadding", 10, 10, 10, 10);
+            addMethodCall(reload, "setTextColor", 0xffffffff);
+            addMethodCall(reload, "setTextSize", "10sp");
+            reload.methodCalls.add(new RemoteMethodCall("setViewPadding", false, "setViewPadding", "16sp", "12sp", "16sp", "12sp"));
             reload.attributes.attributes.put(Attributes.Type.TOP, afterText);
-            reload.attributes.attributes.put(Attributes.Type.RIGHT, attributeParse("r(p)"));
+            reload.attributes.attributes.put(Attributes.Type.RIGHT, attributeParse("0"));
             reload.tag = Constants.SPECIAL_WIDGET_RELOAD + "," + widgetId;
 
             views.add(clear);
@@ -3222,8 +3338,8 @@ public class Widget extends RemoteViewsService
 
         DynamicView showError = new DynamicView("ImageView");
         addMethodCall(showError, "setImageResource", R.drawable.ic_action_info);
-        showError.attributes.attributes.put(Attributes.Type.TOP, attributeParse("h(p)0.5+h(" + showError.getId() + ")-0.5"));
-        showError.attributes.attributes.put(Attributes.Type.RIGHT, attributeParse("w(p)0.5"));
+        showError.attributes.attributes.put(Attributes.Type.BOTTOM, attributeParse("5"));
+        showError.attributes.attributes.put(Attributes.Type.RIGHT, attributeParse("5"));
         showError.attributes.attributes.put(Attributes.Type.WIDTH, attributeParse("140"));
         showError.attributes.attributes.put(Attributes.Type.HEIGHT, attributeParse("140"));
         showError.tag = Constants.SPECIAL_WIDGET_SHOWERROR + "," + (path == null ? "0," : (path.length() + "," + path)) + "," + Stacktrace.stackTraceString(error);
@@ -3858,12 +3974,12 @@ public class Widget extends RemoteViewsService
             //Force android to create dirs for us
             getExternalFilesDir(null);
             getExternalMediaDirs();
-            Utils.initDisplayMetrics(this);
 
             loadPythonFiles();
             loadCorrectionFactors(true);
             loadWidgets();
             loadTimers();
+            loadWidgetProps();
             configurations.load();
 
             setAllWidgets(false);
@@ -3908,6 +4024,8 @@ public class Widget extends RemoteViewsService
         Utils.setCrashHandlerIfNeeded(Utils.getCrashPath(this, Constants.CrashIndex.JAVA_CRASH_INDEX));
 
         loadForeground();
+
+        Utils.updateGlobalResources(this);
 
         if (!pythonSetup())
         {

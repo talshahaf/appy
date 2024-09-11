@@ -71,6 +71,7 @@
         <activity android:name="com.appy.DialogActivity" android:noHistory="true" android:excludeFromRecents="true" android:theme="@style/Theme.AppCompat.Dialog" android:exported="true"/>
         <activity android:name="com.appy.ForegroundActivity" android:excludeFromRecents="true" android:theme="@android:style/Theme.Translucent.NoTitleBar" android:exported="true"/>
         <activity android:name="com.appy.WidgetManagerActivity" android:label="Manage Widgets" android:exported="true" />
+        <activity android:name="com.appy.WidgetSizeFactorActivity" android:label="Widget Size Factors" android:exported="true" />
 
         <activity android:name="com.appy.ShareActivity" android:label="Share with" android:exported="true">
             <intent-filter>

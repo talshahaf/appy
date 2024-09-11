@@ -91,6 +91,10 @@ public class RemoteMethodCall
                     Object resolved = reflectStaticPath(prefix.second + "." + path);
                     if (resolved != null)
                     {
+                        if (path.startsWith("color."))
+                        {
+                            return Utils.resolveColor((Integer)resolved);
+                        }
                         return resolved;
                     }
                     throw new Resources.NotFoundException("Resource '" + prefix.second + "." + path + "' does not exist");
