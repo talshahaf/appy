@@ -1093,7 +1093,6 @@ public class Widget extends RemoteViewsService
         {
             //no constaints at all, set left and width to measured,
             start.resolvedValue = defaultStart;
-            //TODO factor here?
             size.resolvedValue = defaultSize;
 
             third = end;
@@ -1116,7 +1115,6 @@ public class Widget extends RemoteViewsService
                 !end.hasConstraints())
         {
             //if only left, set width
-            //TODO factor here?
             size.resolvedValue = defaultSize;
 
             third = end;
@@ -3859,7 +3857,6 @@ public class Widget extends RemoteViewsService
             //Force android to create dirs for us
             getExternalFilesDir(null);
             getExternalMediaDirs();
-            Utils.initDisplayMetrics(this);
 
             loadPythonFiles();
             loadCorrectionFactors(true);
@@ -3909,6 +3906,8 @@ public class Widget extends RemoteViewsService
         Utils.setCrashHandlerIfNeeded(Utils.getCrashPath(this, Constants.CrashIndex.JAVA_CRASH_INDEX));
 
         loadForeground();
+
+        Utils.updateGlobalResources(this);
 
         if (!pythonSetup())
         {

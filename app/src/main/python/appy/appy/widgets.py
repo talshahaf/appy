@@ -235,7 +235,7 @@ def background(name=None, color=None, drawable=None):
     if isinstance(drawable, str):
         drawable = getattr(R.drawable, drawable)
 
-    bg = RelativeLayout(width=widget_manager.widget_dims.width, height=widget_manager.widget_dims.height, backgroundResource=drawable)
+    bg = RelativeLayout(top=0, left=0, bottom=0, right=0, backgroundResource=drawable)
     bg.backgroundTint = color
     if name is not None:
         bg.name = name

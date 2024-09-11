@@ -2,6 +2,7 @@ package com.appy;
 
 import android.content.Context;
 import android.content.DialogInterface;
+import android.content.res.Resources;
 import android.database.Cursor;
 import android.graphics.drawable.Icon;
 import android.net.Uri;
@@ -115,10 +116,15 @@ public class Utils
         return sb.toString();
     }
 
-    public static DisplayMetrics globalDisplayMetrics = null;
-    public static void initDisplayMetrics(Context context)
+    public static Resources globalResources = null;
+    public static void updateGlobalResources(Context context)
     {
-        globalDisplayMetrics = context.getResources().getDisplayMetrics();
+        globalResources = context.getResources();
+    }
+
+    public static int resolveColor(int colorRes)
+    {
+        return globalResources.getColor(colorRes);
     }
 
     public static double parseUnit(String s)
@@ -171,14 +177,12 @@ public class Utils
             }
         }
 
-        if (globalDisplayMetrics == null)
+        if (globalResources == null)
         {
-            throw new RuntimeException("globalDisplayMetrics is uninitialized");
+            throw new RuntimeException("globalResources is uninitialized");
         }
 
-        float res = TypedValue.applyDimension(unit, Float.parseFloat(s.substring(0, s.length() - unitlen)), globalDisplayMetrics);
-        //Log.d("APPY", "applied dim: " + s + " -> " + res);
-        return res;
+        return TypedValue.applyDimension(unit, Float.parseFloat(s.substring(0, s.length() - unitlen)), globalResources.getDisplayMetrics());
     }
 
     public static String getFilenameFromUri(Context context, Uri uri, String defaultName)
