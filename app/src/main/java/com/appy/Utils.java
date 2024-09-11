@@ -26,11 +26,15 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.math.RoundingMode;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.text.DecimalFormat;
+import java.text.DecimalFormatSymbols;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.zip.ZipEntry;
@@ -125,6 +129,13 @@ public class Utils
     public static int resolveColor(int colorRes)
     {
         return globalResources.getColor(colorRes);
+    }
+
+    public static String formatFloat(float f)
+    {
+        DecimalFormat format = new DecimalFormat("0.###"); // Choose the number of decimal places to work with in case they are different than zero and zero value will be removed
+        format.setRoundingMode(RoundingMode.HALF_DOWN); // Choose your Rounding Mode
+        return format.format(f);
     }
 
     public static double parseUnit(String s)

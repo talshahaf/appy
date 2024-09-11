@@ -93,12 +93,14 @@ public class Widget extends RemoteViewsService
     HashMap<Integer, ArrayList<DynamicView>> widgets = new HashMap<>();
     HashMap<Long, Timer> activeTimers = new HashMap<>();
     HashMap<Long, PendingIntent[]> activeTimersIntents = new HashMap<>();
+    HashMap<Integer, DictObj.Dict> widgetProps = new HashMap<>();
     final HashMap<Long, ListFactory> factories = new HashMap<>();
     ArrayList<PythonFile> pythonFiles = new ArrayList<>();
     PythonFile unknownPythonFile = new PythonFile("Unknown file");
     HashSet<Integer> needUpdateWidgets = new HashSet<>();
     float widthCorrectionFactor = 1.0f;
     float heightCorrectionFactor = 1.0f;
+    float globalSizeFactor = 1.0f;
     Configurations configurations = new Configurations(this, new Configurations.ChangeListener()
     {
         @Override
@@ -1258,7 +1260,8 @@ public class Widget extends RemoteViewsService
         //we must copy as we're changing the views
         dynamicList = DynamicView.copyArray(dynamicList);
 
-        float sizeFactor = 1.0f;
+        Float widgetSizeFactor = getWidgetSizeFactor(widgetId);
+        float sizeFactor = widgetSizeFactor == null ? globalSizeFactor : widgetSizeFactor;
 
         RemoteViews remote = generate(service, widgetId, dynamicList, true, collectionLayout, collectionExtras, sizeFactor).first;
         RelativeLayout layout = new RelativeLayout(this);
@@ -1758,9 +1761,121 @@ public class Widget extends RemoteViewsService
         store.apply();
     }
 
+    public void loadWidgetProps()
+    {
+        try
+        {
+            StoreData store = StoreData.Factory.create(this, "widget_props");
+            Set<String> keys = store.getAll();
+
+            HashMap<Integer, DictObj.Dict> newprops = new HashMap<>();
+            for (String widget : keys)
+            {
+                DictObj.Dict props = store.getDict(widget);
+                if (props != null)
+                {
+                    int widgetId = Integer.parseInt(widget);
+                    newprops.put(widgetId, props);
+                }
+            }
+
+            synchronized (lock)
+            {
+                widgetProps = newprops;
+            }
+        }
+        catch (Exception e)
+        {
+            Log.e("APPY", "Exception on loadWidgetProps", e);
+        }
+    }
+
+    public void saveWidgetProps(int widgetId, boolean noSave)
+    {
+        StoreData store = StoreData.Factory.create(this, "widget_props");
+
+        synchronized (lock)
+        {
+            DictObj.Dict props = widgetProps.get(widgetId);
+            if (props == null)
+            {
+                return;
+            }
+            store.put(widgetId + "", props);
+        }
+
+        if (!noSave)
+        {
+            store.apply();
+        }
+    }
+
+    public void setWidgetSizeFactor(int widgetId, Float sizeFactor)
+    {
+        if (widgetProps.get(widgetId) == null)
+        {
+            if (sizeFactor == null)
+            {
+                return;
+            }
+            widgetProps.put(widgetId, new DictObj.Dict());
+        }
+
+        DictObj.Dict props = widgetProps.get(widgetId);
+        if (sizeFactor == null)
+        {
+            if (props.hasKey("sizeFactor"))
+            {
+                props.remove("sizeFactor");
+            }
+        }
+        else
+        {
+            props.put("sizeFactor", sizeFactor);
+        }
+
+        saveWidgetProps(widgetId, false);
+    }
+
+    public Float getWidgetSizeFactor(int widgetId)
+    {
+        DictObj.Dict props = widgetProps.get(widgetId);
+        if (props == null)
+        {
+            return null;
+        }
+        if (!props.hasKey("sizeFactor"))
+        {
+            return null;
+        }
+        return props.getFloat("sizeFactor", 1.0f);
+    }
+
+    public void resetWidgetSizeFactors()
+    {
+        HashSet<Integer> widgetIds = new HashSet<>(widgets.keySet());
+        for (int widgetId : widgetIds)
+        {
+            DictObj.Dict props = widgetProps.get(widgetId);
+            if (props != null)
+            {
+                props.remove("sizeFactor");
+                saveWidgetProps(widgetId, true);
+            }
+        }
+
+        StoreData store = StoreData.Factory.create(this, "widget_props");
+        store.apply();
+    }
+
     public float[] getCorrectionFactors()
     {
         return new float[]{widthCorrectionFactor, heightCorrectionFactor};
+    }
+
+    public float getGlobalSizeFactor()
+    {
+        return globalSizeFactor;
     }
 
     public void setCorrectionFactors(float widthCorrection, float heightCorrection)
@@ -1777,6 +1892,7 @@ public class Widget extends RemoteViewsService
     {
         float widthCorrection = 1.0f;
         float heightCorrection = 1.0f;
+        float sizeFactor = 1.0f;
 
         try
         {
@@ -1799,6 +1915,15 @@ public class Widget extends RemoteViewsService
                 Log.w("APPY", "wrong number format for width");
             }
 
+            try
+            {
+                sizeFactor = Float.parseFloat(sharedPref.getString("global_size_factor", "1"));
+            }
+            catch (NumberFormatException e)
+            {
+                Log.w("APPY", "wrong number for global size factor");
+            }
+
             if (widthCorrection <= 0 || widthCorrection > 3)
             {
                 widthCorrection = 1;
@@ -1806,6 +1931,11 @@ public class Widget extends RemoteViewsService
             if (heightCorrection <= 0 || heightCorrection > 3)
             {
                 heightCorrection = 1;
+            }
+
+            if (sizeFactor <= 0 || sizeFactor > 3)
+            {
+                sizeFactor = 1;
             }
 
         }
@@ -1816,6 +1946,7 @@ public class Widget extends RemoteViewsService
 
         widthCorrectionFactor = widthCorrection;
         heightCorrectionFactor = heightCorrection;
+        globalSizeFactor = sizeFactor;
 
         Log.d("APPY", "new correction factors: " + widthCorrectionFactor + ", " + heightCorrectionFactor);
         if (!initing)
@@ -3848,6 +3979,7 @@ public class Widget extends RemoteViewsService
             loadCorrectionFactors(true);
             loadWidgets();
             loadTimers();
+            loadWidgetProps();
             configurations.load();
 
             setAllWidgets(false);
