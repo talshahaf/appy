@@ -26,6 +26,8 @@
         <item name="android:minHeight">0dp</item>
         <item name="android:minWidth">0dp</item>
         <item name="android:textAllCaps">false</item>
+        <item name="android:background">@drawable/drawable_secondary_btn</item>
+        <item name="android:textColor">@color/color_secondary_text</item>
     </style>
 
     <style name="secondary_btn" parent="btn">

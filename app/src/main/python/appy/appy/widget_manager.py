@@ -267,7 +267,7 @@ def style_attr_parse(type, style):
 
     #left top right bottom
     sizes_pads = {'': ('24sp', '16sp', '24sp', '16sp'),
-                  'sml': ('16sp', '12sp', '16sp', '12sp'),
+                  'sml': ('14sp', '10sp', '14sp', '10sp'),
                   'lg': ('28sp', '16sp', '28sp', '16sp')}
     sizes_text = {'': '12sp',
                   'sml': '10sp',
