@@ -1106,10 +1106,12 @@ public class Widget extends RemoteViewsService
                 size.hasConstraints() &&
                 end.hasConstraints())
         {
-            //ignore right
-            third = end;
-            others[0] = startType;
-            others[1] = sizeType;
+            // To avoid an issue where ignoring one constraint would cause a circular reference, throw an error instead.
+            throw new RuntimeException("Too many constraints on the same axis: " + startType.toString().toLowerCase() + ", " + sizeType.toString().toLowerCase() + ", " + endType.toString().toLowerCase());
+//            //ignore right
+//            third = end;
+//            others[0] = startType;
+//            others[1] = sizeType;
         }
         //if 1 constrained
         else if (start.hasConstraints() &&
