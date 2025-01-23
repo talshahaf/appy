@@ -25,6 +25,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.zip.GZIPInputStream;
 
+import android.annotation.SuppressLint;
 import android.app.AlarmManager;
 import android.app.ForegroundServiceStartNotAllowedException;
 import android.app.Notification;
@@ -1989,6 +1990,8 @@ public class Widget extends RemoteViewsService
         }
     }
 
+    private static boolean foregroundWarningShown = false;
+
     public void loadForeground()
     {
         Log.d("APPY", "foreground is on");
@@ -2042,7 +2045,11 @@ public class Widget extends RemoteViewsService
         }
         catch (RuntimeException e)
         {
-            Toast.makeText(this, "Could not start Appy because it is lacking permissions.", Toast.LENGTH_LONG).show();
+            if (!foregroundWarningShown)
+            {
+                Toast.makeText(this, "Could not start Appy because it is lacking permissions.", Toast.LENGTH_LONG).show();
+                foregroundWarningShown = true;
+            }
         }
     }
 
@@ -2214,6 +2221,7 @@ public class Widget extends RemoteViewsService
         return interval - ((System.currentTimeMillis() - since) % interval);
     }
 
+    @SuppressLint("MissingPermission")
     public long setTimer(long since, long millis, int type, int widgetId, String data, long timerId)
     {
         long now = System.currentTimeMillis();
@@ -2303,7 +2311,14 @@ public class Widget extends RemoteViewsService
             else
             {
                 Log.d("APPY", "setting one time timer");
-                mgr.set(AlarmManager.RTC_WAKEUP, millis, pendingIntent[0]);
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
+                {
+                    mgr.setExact(AlarmManager.RTC_WAKEUP, millis, pendingIntent[0]);
+                }
+                else
+                {
+                    mgr.set(AlarmManager.RTC_WAKEUP, millis, pendingIntent[0]);
+                }
             }
         }
 
@@ -3047,22 +3062,6 @@ public class Widget extends RemoteViewsService
     HashMap<Integer, Object> activeRequests = new HashMap<>();
     final Object notifier = new Object();
 
-    public static Pair<int[], Boolean> getPermissionState(Context context, String[] permissions)
-    {
-        int[] granted = new int[permissions.length];
-        boolean hasDenied = false;
-        for (int i = 0; i < permissions.length; i++)
-        {
-            granted[i] = ContextCompat.checkSelfPermission(context, permissions[i]);
-            if (granted[i] != PackageManager.PERMISSION_GRANTED)
-            {
-                hasDenied = true;
-                break;
-            }
-        }
-        return new Pair<>(granted, !hasDenied);
-    }
-
     public Object waitForAsyncReport(int requestCode, int timeoutMilli)
     {
         Object result = null;
@@ -3101,7 +3100,7 @@ public class Widget extends RemoteViewsService
 
     public Pair<String[], int[]> requestPermissions(String[] permissions, boolean request, int timeoutMilli)
     {
-        Pair<int[], Boolean> state = getPermissionState(this, permissions);
+        Pair<int[], Boolean> state = PermissionActivity.getPermissionState(this, permissions);
         if (state.second || !request) //if all was granted or we should not request any, return the current state
         {
             return new Pair<>(permissions, state.first);
@@ -3110,6 +3109,11 @@ public class Widget extends RemoteViewsService
         if (Looper.myLooper() != null)
         {
             throw new IllegalStateException("requestPermissions must be called on a Task thread");
+        }
+
+        if (!PermissionActivity.canRequestPermissionsTogether(permissions))
+        {
+            throw new IllegalArgumentException("Given permissions cannot be requested with a single request");
         }
 
         int requestCode = generateRequestCode();

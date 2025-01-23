@@ -168,10 +168,12 @@ public class MainActivity extends AppCompatActivity implements StatusListener
         }
     }
 
-    public static final String[][] permissionsSteps = new String[][]{
+    public static final boolean usingSpecialForeground = true;
+
+    public static final String[][] permissionsSteps = !usingSpecialForeground ? new String[][]{
             new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
             (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q ? new String[]{Manifest.permission.ACCESS_BACKGROUND_LOCATION} : new String[]{})
-    };
+    } : new String[][]{};
 
     public static final int[] REQUEST_PERMISSION_STEPS = new int[]{102, 103};
 
@@ -239,7 +241,6 @@ public class MainActivity extends AppCompatActivity implements StatusListener
                     {
                         setShowPermissionDialog(false);
                         permissionsResult(false);
-                        //ActivityCompat.requestPermissions(MainActivity.this, permissionsSteps[neededStep], REQUEST_PERMISSION_STEPS[neededStep]);
                     }
                 });
 
