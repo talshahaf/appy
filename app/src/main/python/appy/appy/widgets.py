@@ -93,7 +93,7 @@ class Widget:
         return self._set_timer(seconds, java.clazz.appy.Constants().TIMER_REPEATING, f, captures)
 
     def _set_timer(self, seconds, t, f, captures):
-        return widget_manager.java_context().setTimer(int(seconds * 1000), t, self.widget_id, utils.dumps((f, captures)))
+        return widget_manager.java_context().setTimer(int(seconds * 1000), t, self.widget_id, widget_manager.dump_general_function(f, captures))
 
     def cancel_timer(self, timer_id):
         return widget_manager.java_context().cancelTimer(timer_id)
@@ -108,7 +108,7 @@ class Widget:
         return widget_manager.java_context().cancelWidgetTimers(self.widget_id)
 
     def post(self, f, **captures):
-        widget_manager.java_context().setPost(self.widget_id, utils.dumps((f, captures)))
+        widget_manager.java_context().setPost(self.widget_id, widget_manager.dump_general_function(f, captures))
 
     def size(self):
         size_arr = widget_manager.java_context().getWidgetDimensions(self.widget_id)
@@ -148,7 +148,6 @@ class Widget:
     @staticmethod
     def by_name(name):
         return [Widget(widget_id, name) for widget_id in widget_manager.get_widgets_by_name(name)]
-
    
 def file_uri(path):
     return widget_manager.java_context().getUriForPath(path)

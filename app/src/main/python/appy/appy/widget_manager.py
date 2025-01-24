@@ -207,10 +207,27 @@ def call_function(func, captures, **kwargs):
 
 def call_general_function(func, **kwargs):
     if not isinstance(func, (list, tuple)):
+        if not hasattr(func, '__call__'):
+            raise ValueError('Only <Callable> or (<Callable>, <Capture Dict>) are supported.')
         func = (func, {})
-    elif len(func) != 2:
+    elif len(func) != 2 or not isinstance(func[1], dict):
         raise ValueError('Only <Callable> or (<Callable>, <Capture Dict>) are supported.')
     return call_function(func[0], func[1], **kwargs)
+    
+def dump_general_function(func, captures):
+    #handles f containing captures itself as well, for backward compatibility
+    if isinstance(func, (list, tuple)) and len(func) == 2:
+        if not hasattr(func[0], '__call__') or not isinstance(func[1], dict):
+            raise ValueError('Only <Callable> or (<Callable>, <Capture Dict>) are supported.')
+        
+        captures = dict(**func[1], **captures) #captures take precedence
+        f = func[0]
+    elif hasattr(func, '__call__'):
+        f = func
+    else:
+        raise ValueError('Only <Callable> or (<Callable>, <Capture Dict>) are supported.')
+    
+    return dumps((f, captures))
 
 def deserialize_arg(arg):
     if not isinstance(arg, dict):
@@ -315,12 +332,12 @@ class Element:
         event_hook = element_event_hooks.get(self.d.type, {}).get(key)
         if event_hook:
             event_hook(kwargs)
-        if key in self.d.tag:
-            func, captures = loads(self.d.tag[key])
-            return call_function(func, captures, **kwargs)
+        if key in self.d.tag and self.d.tag[key] is not None:
+            func = loads(self.d.tag[key])
+            return call_general_function(func, **kwargs)
 
-    def set_handler(self, key, f, captures):
-        self.d.tag[key] = dumps((f, captures))
+    def set_handler(self, key, f):
+        self.d.tag[key] = dump_general_function(f, {}) if f is not None else None
 
     def __delattr__(self, key):
         if key in attrs:
@@ -376,7 +393,8 @@ class Element:
         if item in self.d.tag:
             attr = self.d.tag[item]
             if item in ('click', 'itemclick'):
-                attr = loads(attr)
+                if attr is not None:
+                    attr = loads(attr)
             return attr
 
         identifier = method_from_attr(item)
@@ -419,9 +437,7 @@ class Element:
         elif key in write_attrs:
             write_attrs[key](self, value)
         elif key in ('click', 'itemclick'):
-            if not isinstance(value, (list, tuple)):
-                value = (value, {})
-            self.set_handler(key, value[0], value[1])
+            self.set_handler(key, value)
         elif key == 'name':
             self.d.tag['name'] = value
         elif key == 'tag':
@@ -899,18 +915,18 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
     def onTimer(self, timer_id, widget_id, views_java_list, data):
         print('timer called', widget_id, timer_id)
         input, views = self.import_(views_java_list)
-        func, captures = loads(data)
+        func = loads(data)
         widget, manager_state = create_widget(widget_id)
-        call_function(func, captures, timer_id=timer_id, widget=widget, views=views)
+        call_general_function(func, timer_id=timer_id, widget=widget, views=views)
         return self.export(input, views)
 
     @java.override
     def onPost(self, widget_id, views_java_list, data):
         print('post called')
         input, views = self.import_(views_java_list)
-        func, captures = loads(data)
+        func = loads(data)
         widget, manager_state = create_widget(widget_id)
-        call_function(func, captures, widget=widget, views=views)
+        call_general_function(func, widget=widget, views=views)
         return self.export(input, views)
 
     @java.override
@@ -1096,11 +1112,16 @@ def register_widget(name, create, update=None, config=None, config_description=N
                     raise ValueError(f'{desc} key in config_description is not in config')
         else:
             raise ValueError('config_description must be dict(str: str)')
-
-    dumps(create)
-    dumps(update)
-    dumps(on_config)
-    dumps(on_share)
+    
+    #validate
+    if create is not None:
+        dump_general_function(create, {})
+    if update is not None:
+        dump_general_function(update, {})
+    if on_config is not None:
+        dump_general_function(on_config, {})
+    if on_share is not None:
+        dump_general_function(on_share, {})
 
     available_widgets[name] = dict(pythonfile=path, create=create, update=update, on_config=on_config, on_share=on_share, debug=bool(debug))
     if config is not None:
