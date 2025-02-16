@@ -444,7 +444,7 @@ class Element:
             # goes to self.d.tag['tag'] through getattr
             self.tag.clear()
             self.tag.update(value)
-        elif key == 'alignment':
+        elif key in ('alignment', 'mode'):
             if 'selectors' not in self.d:
                 self.d.selectors = {}
             self.d.selectors[key] = value

@@ -6,20 +6,24 @@
             android:checked="true"
             android:title="Control"/>
         <item
+            android:id="@+id/navigation_files"
+            android:title="Files"
+            />
+        <item
+            android:id="@+id/navigation_configs"
+            android:title="Configurations"
+            />
+        <item
+            android:id="@+id/navigation_apps"
+            android:title="Apps"
+            />
+        <item
             android:id="@+id/navigation_logcat"
             android:title="Logcat"
             />
         <item
             android:id="@+id/navigation_pip"
             android:title="pip"
-        />
-        <item
-            android:id="@+id/navigation_files"
-            android:title="Files"
-        />
-        <item
-            android:id="@+id/navigation_configs"
-            android:title="Configurations"
         />
         <item
             android:id="@+id/navigation_state"

@@ -28,8 +28,6 @@ import java.util.ArrayList;
 
 public class FilesFragment extends MyFragment implements FileGridAdapter.ItemActionListener
 {
-    public static final int REQUEST_FILES = 405;
-
     FloatingActionButton browse;
     FloatingActionButton unknownInfo;
     GridView filegrid;
@@ -41,6 +39,7 @@ public class FilesFragment extends MyFragment implements FileGridAdapter.ItemAct
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState)
     {
+        super.onCreateView(inflater, container, savedInstanceState);
 
         View layout = inflater.inflate(R.layout.fragment_files, container, false);
 
@@ -55,7 +54,7 @@ public class FilesFragment extends MyFragment implements FileGridAdapter.ItemAct
                 Intent intent = new Intent(getActivity(), FileBrowserActivity.class);
                 intent.putExtra(FileBrowserActivity.REQUEST_ALLOW_RETURN_MULTIPLE, true);
                 intent.putExtra(FileBrowserActivity.REQUEST_SPECIFIC_EXTENSION_CONFIRMATION, ".py");
-                startActivityForResult(intent, REQUEST_FILES);
+                requestActivityResult(intent);
             }
         });
 
@@ -79,32 +78,29 @@ public class FilesFragment extends MyFragment implements FileGridAdapter.ItemAct
     }
 
     @Override
-    public void onActivityResult(int requestCode, int resultCode, Intent data)
+    public void onActivityResult(Intent data)
     {
-        if (requestCode == REQUEST_FILES && resultCode == Activity.RESULT_OK)
+        Log.d("APPY", "file activity result");
+        String[] files = data.getStringArrayExtra(FileBrowserActivity.RESULT_FILES);
+        ArrayList<PythonFile> pythonFiles = new ArrayList<>();
+        for (String file : files)
         {
-            Log.d("APPY", "file activity result");
-            String[] files = data.getStringArrayExtra(FileBrowserActivity.RESULT_FILES);
-            ArrayList<PythonFile> pythonFiles = new ArrayList<>();
-            for (String file : files)
-            {
-                pythonFiles.add(new PythonFile(file));
-            }
-            getWidgetService().addPythonFiles(pythonFiles);
-            adapter.setItems(getWidgetService().getPythonFiles());
-            adapter.notifyDataSetChanged();
-
-            //give it time to load
-            handler.postDelayed(new Runnable()
-            {
-                @Override
-                public void run()
-                {
-                    adapter.setItems(getWidgetService().getPythonFiles());
-                    adapter.notifyDataSetChanged();
-                }
-            }, 500);
+            pythonFiles.add(new PythonFile(file));
         }
+        getWidgetService().addPythonFiles(pythonFiles);
+        adapter.setItems(getWidgetService().getPythonFiles());
+        adapter.notifyDataSetChanged();
+
+        //give it time to load
+        handler.postDelayed(new Runnable()
+        {
+            @Override
+            public void run()
+            {
+                adapter.setItems(getWidgetService().getPythonFiles());
+                adapter.notifyDataSetChanged();
+            }
+        }, 500);
     }
 
     @Override
