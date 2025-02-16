@@ -44,16 +44,16 @@ import java.util.Map;
 
 public class ConfigsFragment extends FragmentParent
 {
-    public static final int REQUEST_IMPORT_PATH = 304;
-
     public Bundle fragmentArg = null;
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState)
     {
+        super.onCreateView(inflater, container, savedInstanceState);
+
         View layout = inflater.inflate(R.layout.fragment_configs, container, false);
-        onShow();
+        tryStart();
 
         setHasOptionsMenu(true);
         return layout;
@@ -98,7 +98,7 @@ public class ConfigsFragment extends FragmentParent
             Intent intent = new Intent(getActivity(), FileBrowserActivity.class);
             intent.putExtra(FileBrowserActivity.REQUEST_ALLOW_RETURN_MULTIPLE, false);
             intent.putExtra(FileBrowserActivity.REQUEST_SPECIFIC_EXTENSION_CONFIRMATION, ".json");
-            startActivityForResult(intent, REQUEST_IMPORT_PATH);
+            requestActivityResult(intent);
             return true;
         }
 
@@ -106,50 +106,48 @@ public class ConfigsFragment extends FragmentParent
     }
 
     @Override
-    public void onActivityResult(int requestCode, int resultCode, Intent data)
+    public void onActivityResult(Intent data)
     {
-        if (requestCode == REQUEST_IMPORT_PATH && resultCode == Activity.RESULT_OK)
+        String[] files = data.getStringArrayExtra(FileBrowserActivity.RESULT_FILES);
+        if (files == null || files.length == 0)
         {
-            String[] files = data.getStringArrayExtra(FileBrowserActivity.RESULT_FILES);
-            if (files == null || files.length == 0)
-            {
-                return;
-            }
+            return;
+        }
 
-            if (getWidgetService() == null)
-            {
-                return;
-            }
-            Configurations configurations = getWidgetService().getConfigurations();
-            if (configurations == null)
-            {
-                return;
-            }
+        if (getWidgetService() == null)
+        {
+            return;
+        }
+        Configurations configurations = getWidgetService().getConfigurations();
+        if (configurations == null)
+        {
+            return;
+        }
 
+        try
+        {
+            String content = Utils.readAndHashFileAsString(new File(files[0]), Constants.CONFIG_IMPORT_MAX_SIZE).first;
+
+            DictObj.Dict newConfig = null;
             try
             {
-                String content = Utils.readAndHashFileAsString(new File(files[0]), Constants.CONFIG_IMPORT_MAX_SIZE).first;
+                newConfig = (DictObj.Dict)DictObj.fromJson(content);
+            }
+            catch (Exception e)
+            {
+                Toast.makeText(getActivity(), "File is not in a valid/expected JSON format", Toast.LENGTH_SHORT).show();
+                Log.e("APPY", "deserialize failed", e);
+            }
 
-                DictObj.Dict newConfig = null;
-                try
-                {
-                    newConfig = (DictObj.Dict)DictObj.fromJson(content);
-                }
-                catch (Exception e)
-                {
-                    Toast.makeText(getActivity(), "File is not in a valid/expected JSON format", Toast.LENGTH_SHORT).show();
-                    Log.e("APPY", "deserialize failed", e);
-                }
-
-                if (newConfig != null)
-                {
-                    final DictObj.Dict finalConfig = newConfig;
-                    Utils.showConfirmationDialog(getActivity(),
-                            "Import Configuration", "This will overwrite all existing configurations", android.R.drawable.ic_dialog_alert,
-                            null, null, new Runnable() {
-                                @Override
-                                public void run() {
-                                    configurations.replaceConfiguration(finalConfig);
+            if (newConfig != null)
+            {
+                final DictObj.Dict finalConfig = newConfig;
+                Utils.showConfirmationDialog(getActivity(),
+                        "Import Configuration", "This will overwrite all existing configurations", android.R.drawable.ic_dialog_alert,
+                        null, null, new Runnable() {
+                            @Override
+                            public void run() {
+                                configurations.replaceConfiguration(finalConfig);
                                     Toast.makeText(getActivity(), "Configurations imported from " + files[0], Toast.LENGTH_LONG).show();
                                     tryStart();
                                 }
@@ -160,7 +158,6 @@ public class ConfigsFragment extends FragmentParent
             {
                 Log.e("APPY", "import config failed", e);
             }
-        }
     }
 
     public void tryStart()

@@ -10,7 +10,6 @@ import java.lang.reflect.InvocationTargetException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
@@ -22,6 +21,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Random;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import java.util.zip.GZIPInputStream;
 
@@ -37,7 +37,6 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.content.pm.PackageManager;
 import android.content.pm.ServiceInfo;
 import android.net.Uri;
 import android.os.AsyncTask;
@@ -52,7 +51,6 @@ import android.os.Looper;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
-import androidx.core.content.ContextCompat;
 import androidx.preference.PreferenceManager;
 
 import android.system.ErrnoException;
@@ -90,26 +88,35 @@ public class Widget extends RemoteViewsService
     Constants.StartupState startupState = Constants.StartupState.IDLE;
 
     final Object lock = new Object();
-    HashMap<Integer, TaskQueue> widgetsTasks = new HashMap<>();
-    HashMap<Integer, ArrayList<DynamicView>> widgets = new HashMap<>();
-    HashMap<Long, Timer> activeTimers = new HashMap<>();
-    HashMap<Long, PendingIntent[]> activeTimersIntents = new HashMap<>();
-    HashMap<Integer, DictObj.Dict> widgetProps = new HashMap<>();
-    final HashMap<Long, ListFactory> factories = new HashMap<>();
+    ConcurrentHashMap<Integer, TaskQueue> widgetsTasks = new ConcurrentHashMap<>();
+    ConcurrentHashMap<Integer, ArrayList<DynamicView>> widgets = new ConcurrentHashMap<>();
+
+    final Object activeTimersLock = new Object();
+    ConcurrentHashMap<Long, Timer> activeTimers = new ConcurrentHashMap<>();
+    ConcurrentHashMap<Long, PendingIntent[]> activeTimersIntents = new ConcurrentHashMap<>();
+
+    final Object widgetPropsLock = new Object();
+    ConcurrentHashMap<Integer, DictObj.Dict> widgetProps = new ConcurrentHashMap<>();
+
+    final ConcurrentHashMap<Long, ListFactory> factories = new ConcurrentHashMap<>();
+
+    final Object widgetToAndroidLock = new Object();
+    ConcurrentHashMap<Integer, Integer> androidToWidget = new ConcurrentHashMap<>();
+    ConcurrentHashMap<Integer, Integer> widgetToAndroid = new ConcurrentHashMap<>();
+
+    static final Object INVALID_RESULT = new Object();
+    final ConcurrentHashMap<Integer, Object> activeRequests = new ConcurrentHashMap<>();
+
+    final Object pythonFilesLock = new Object();
     ArrayList<PythonFile> pythonFiles = new ArrayList<>();
     PythonFile unknownPythonFile = new PythonFile("Unknown file");
-    HashSet<Integer> needUpdateWidgets = new HashSet<>();
+
+    final HashSet<Integer> needUpdateWidgets = new HashSet<>();
+
     float widthCorrectionFactor = 1.0f;
     float heightCorrectionFactor = 1.0f;
     float globalSizeFactor = 1.0f;
-    Configurations configurations = new Configurations(this, new Configurations.ChangeListener()
-    {
-        @Override
-        public void onChange(String widget, String key)
-        {
-            configurationUpdate(widget, key);
-        }
-    });
+    Configurations configurations = new Configurations(this, this::configurationUpdate);
     MultipleFileObserverBase pythonFilesObserver = null;
 
     static class WidgetDestroyedException extends RuntimeException
@@ -453,18 +460,20 @@ public class Widget extends RemoteViewsService
     {
         long key = widgetId + ((long)view << 10) + ((long)xml << 36); //good enough
 
+        DynamicView listViewCopy = listview.copy();
+
         ListFactory factory;
         synchronized (service.factories)
         {
             factory = service.factories.get(key);
             if (factory == null)
             {
-                factory = new ListFactory(service, widgetId, listview.copy());
+                factory = new ListFactory(service, widgetId, listViewCopy);
                 service.factories.put(key, factory);
             }
             else
             {
-                factory.reload(listview.copy());
+                factory.reload(listViewCopy);
             }
         }
     }
@@ -473,11 +482,7 @@ public class Widget extends RemoteViewsService
     {
         long key = widgetId + ((long)view << 10) + ((long)xml << 36); //good enough
 
-        ListFactory factory;
-        synchronized (factories)
-        {
-            factory = factories.get(key);
-        }
+        ListFactory factory = factories.get(key);
 
         if (factory == null)
         {
@@ -612,14 +617,11 @@ public class Widget extends RemoteViewsService
             }
             try
             {
-                synchronized (lock)
+                synchronized (lock) //TODO lock
                 {
                     if (position < listview.children.size())
                     {
-
-                        //Log.d("APPY", "getViewAt: "+position+", "+DictObj.makeJson(DynamicView.toDictList(child)));
                         return inflateChild(service, widgetId, listview, position);
-
                     }
                 }
             }
@@ -703,17 +705,10 @@ public class Widget extends RemoteViewsService
 
         if (collections.isEmpty())
         {
-            return new Pair<>(R.layout.root, new HashMap<String, ArrayList<Integer>>());
+            return new Pair<>(R.layout.root, new HashMap<>());
         }
 
-        Collections.sort(collections, new Comparator<String>()
-        {
-            @Override
-            public int compare(String s1, String s2)
-            {
-                return s1.compareToIgnoreCase(s2);
-            }
-        });
+        Collections.sort(collections, String::compareToIgnoreCase);
 
         Integer res = Constants.collection_map.get(collections);
         if (res == null)
@@ -1471,9 +1466,6 @@ public class Widget extends RemoteViewsService
         updateListener = listener;
     }
 
-    HashMap<Integer, Integer> androidToWidget = new HashMap<>();
-    HashMap<Integer, Integer> widgetToAndroid = new HashMap<>();
-
     public int newWidgetId()
     {
         int counter = 1;
@@ -1503,31 +1495,35 @@ public class Widget extends RemoteViewsService
     public Set<Integer> getAllWidgets()
     {
         Set<Integer> widgets = new HashSet<>();
-        synchronized (lock)
-        {
-            widgets.addAll(widgetToAndroid.keySet());
-        }
+        widgets.addAll(widgetToAndroid.keySet());
         return widgets;
     }
 
     public Integer fromAndroidWidget(int androidWidget, boolean create)
     {
-        synchronized (lock)
+        boolean created = false;
+        Integer widget = null;
+        synchronized (widgetToAndroidLock)
         {
-            Integer widget = androidToWidget.get(androidWidget);
+            widget = androidToWidget.get(androidWidget);
             if (widget == null && create)
             {
-                int ret = addWidget(androidWidget);
-                saveWidgetMapping();
-                return ret;
+                widget = addWidget(androidWidget);
+                created = true;
             }
-            return widget;
         }
+
+        if (created)
+        {
+            saveWidgetMapping();
+        }
+
+        return widget;
     }
 
     public int addWidget(int androidWidget)
     {
-        synchronized (lock)
+        synchronized (widgetToAndroidLock)
         {
             if (androidToWidget.containsKey(androidWidget))
             {
@@ -1546,14 +1542,14 @@ public class Widget extends RemoteViewsService
 
     public void updateAndroidWidget(int oldAndroidWidget, int newAndroidWidget)
     {
-        synchronized (lock)
+        Integer widget = fromAndroidWidget(oldAndroidWidget, false);
+        if (widget == null)
         {
-            Integer widget = fromAndroidWidget(oldAndroidWidget, false);
-            if (widget == null)
-            {
-                //throw new IllegalArgumentException("widget does not exists");
-                return;
-            }
+            return;
+        }
+
+        synchronized (widgetToAndroidLock)
+        {
             androidToWidget.remove(oldAndroidWidget);
             widgetToAndroid.put(widget, newAndroidWidget);
             androidToWidget.put(newAndroidWidget, widget);
@@ -1570,7 +1566,7 @@ public class Widget extends RemoteViewsService
 
     public void deleteWidgetMappings(int widget)
     {
-        synchronized (lock)
+        synchronized (widgetToAndroidLock)
         {
             widgetToAndroid.remove(widget);
             HashSet<Integer> toremove = new HashSet<>();
@@ -1590,14 +1586,14 @@ public class Widget extends RemoteViewsService
 
     public void deleteAndroidWidget(int androidWidget)
     {
-        synchronized (lock)
+        Integer widget = fromAndroidWidget(androidWidget, false);
+        if (widget == null)
         {
-            Integer widget = fromAndroidWidget(androidWidget, false);
-            if (widget == null)
-            {
-                //throw new IllegalArgumentException("widget does not exists");
-                return;
-            }
+            return;
+        }
+
+        synchronized (widgetToAndroidLock)
+        {
             widgetToAndroid.remove(widget);
             androidToWidget.remove(androidWidget);
         }
@@ -1609,7 +1605,7 @@ public class Widget extends RemoteViewsService
             StoreData store = StoreData.Factory.create(this, "widgets");
             Set<String> keys = store.getAll();
 
-            HashMap<Integer, ArrayList<DynamicView>> newwidgets = new HashMap<>();
+            ConcurrentHashMap<Integer, ArrayList<DynamicView>> newwidgets = new ConcurrentHashMap<>();
 
             for (String widget : keys)
             {
@@ -1630,20 +1626,20 @@ public class Widget extends RemoteViewsService
             DictObj.Dict widgetToAndroidDict = store.getDict("widgetToAndroid");
             if (widgetToAndroidDict != null)
             {
-                HashMap<Integer, Integer> newWidgetToAndroid = new HashMap<>();
+                ConcurrentHashMap<Integer, Integer> newWidgetToAndroid = new ConcurrentHashMap<>();
 
                 for (DictObj.Entry entry : widgetToAndroidDict.entries())
                 {
                     newWidgetToAndroid.put(Integer.parseInt(entry.key), ((Long)entry.value).intValue());
                 }
 
-                HashMap<Integer, Integer> newAndroidToWidget = new HashMap<>();
+                ConcurrentHashMap<Integer, Integer> newAndroidToWidget = new ConcurrentHashMap<>();
                 for (Map.Entry<Integer, Integer> entry : newWidgetToAndroid.entrySet())
                 {
                     newAndroidToWidget.put(entry.getValue(), entry.getKey());
                 }
 
-                synchronized (lock)
+                synchronized (widgetToAndroidLock)
                 {
                     widgetToAndroid = newWidgetToAndroid;
                     androidToWidget = newAndroidToWidget;
@@ -1661,12 +1657,9 @@ public class Widget extends RemoteViewsService
         StoreData store = StoreData.Factory.create(this, "etc");
 
         DictObj.Dict widgetToAndroidDict = new DictObj.Dict();
-        synchronized (lock)
+        for (Map.Entry<Integer, Integer> entry : widgetToAndroid.entrySet())
         {
-            for (Map.Entry<Integer, Integer> entry : widgetToAndroid.entrySet())
-            {
-                widgetToAndroidDict.put(entry.getKey().toString(), entry.getValue());
-            }
+            widgetToAndroidDict.put(entry.getKey().toString(), entry.getValue());
         }
 
         store.put("widgetToAndroid", widgetToAndroidDict);
@@ -1687,6 +1680,10 @@ public class Widget extends RemoteViewsService
                     hasSizes)
             {
                 filtered.add(id);
+            }
+            else
+            {
+                Log.d("APPY", "filtering widget id " + id);
             }
         }
         return filtered;
@@ -1733,16 +1730,13 @@ public class Widget extends RemoteViewsService
     {
         StoreData store = StoreData.Factory.create(this, "widgets");
 
-        synchronized (lock)
+        ArrayList<DynamicView> widget = widgets.get(widgetId);
+        if (widget == null)
         {
-            ArrayList<DynamicView> widget = widgets.get(widgetId);
-            if (widget == null)
-            {
-                return;
-                //throw new RuntimeException("widget entry is null?");
-            }
-            store.put(widgetId + "", DynamicView.toDictList(widget));
+            return;
+            //throw new RuntimeException("widget entry is null?");
         }
+        store.put(widgetId + "", DynamicView.toDictList(widget));
 
         if (!noSave)
         {
@@ -1771,7 +1765,7 @@ public class Widget extends RemoteViewsService
             StoreData store = StoreData.Factory.create(this, "widget_props");
             Set<String> keys = store.getAll();
 
-            HashMap<Integer, DictObj.Dict> newprops = new HashMap<>();
+            ConcurrentHashMap<Integer, DictObj.Dict> newprops = new ConcurrentHashMap<>();
             for (String widget : keys)
             {
                 DictObj.Dict props = store.getDict(widget);
@@ -1782,7 +1776,7 @@ public class Widget extends RemoteViewsService
                 }
             }
 
-            synchronized (lock)
+            synchronized (widgetPropsLock)
             {
                 widgetProps = newprops;
             }
@@ -1797,15 +1791,12 @@ public class Widget extends RemoteViewsService
     {
         StoreData store = StoreData.Factory.create(this, "widget_props");
 
-        synchronized (lock)
+        DictObj.Dict props = widgetProps.get(widgetId);
+        if (props == null)
         {
-            DictObj.Dict props = widgetProps.get(widgetId);
-            if (props == null)
-            {
-                return;
-            }
-            store.put(widgetId + "", props);
+            return;
         }
+        store.put(widgetId + "", props);
 
         if (!noSave)
         {
@@ -1815,9 +1806,19 @@ public class Widget extends RemoteViewsService
 
     public void setWidgetSizeFactor(int widgetId, Float sizeFactor)
     {
+        setWidgetProps(widgetId, "sizeFactor", sizeFactor, (DictObj.Dict dict) -> dict.put("sizeFactor", sizeFactor));
+    }
+
+    public interface Setter
+    {
+        void set(DictObj.Dict dict);
+    }
+
+    public void setWidgetProps(int widgetId, String key, Object data, Setter setter)
+    {
         if (widgetProps.get(widgetId) == null)
         {
-            if (sizeFactor == null)
+            if (data == null)
             {
                 return;
             }
@@ -1825,16 +1826,16 @@ public class Widget extends RemoteViewsService
         }
 
         DictObj.Dict props = widgetProps.get(widgetId);
-        if (sizeFactor == null)
+        if (data == null)
         {
-            if (props.hasKey("sizeFactor"))
+            if (props.hasKey(key))
             {
-                props.remove("sizeFactor");
+                props.remove(key);
             }
         }
         else
         {
-            props.put("sizeFactor", sizeFactor);
+            setter.set(props);
         }
 
         saveWidgetProps(widgetId, false);
@@ -1869,6 +1870,12 @@ public class Widget extends RemoteViewsService
 
         StoreData store = StoreData.Factory.create(this, "widget_props");
         store.apply();
+    }
+
+    public void setWidgetAppProps(int widgetId, String name, byte[] iconPng)
+    {
+        setWidgetProps(widgetId, "app_name", name, (DictObj.Dict dict) -> dict.put("app_name", name));
+        setWidgetProps(widgetId, "app_icon", iconPng, (DictObj.Dict dict) -> dict.put("app_icon", iconPng, false));
     }
 
     public float[] getCorrectionFactors()
@@ -2055,21 +2062,17 @@ public class Widget extends RemoteViewsService
 
     public long generateTimerId()
     {
-        synchronized (lock)
+        synchronized (activeTimersLock)
         {
-            // long newId = 1;
-            // if (!activeTimers.isEmpty())
-            // {
-            // newId = Collections.max(activeTimers.keySet()) + 1;
-            // }
             long newId = new Random().nextLong();
-            activeTimers.put(newId, null); //save room
+            activeTimers.put(newId, Timer.INVALID); //save room
             return newId;
         }
     }
 
     static class Timer
     {
+        public static final Timer INVALID = new Timer(-1, -1, -1, -1, null);
         public Timer(int widgetId, long since, long millis, int type, String data)
         {
             this.widgetId = widgetId;
@@ -2112,7 +2115,7 @@ public class Widget extends RemoteViewsService
     public void cancelTimer(long timerId, boolean save)
     {
         PendingIntent[] pendingIntent;
-        synchronized (lock)
+        synchronized (activeTimersLock)
         {
             activeTimers.remove(timerId);
             pendingIntent = activeTimersIntents.remove(timerId);
@@ -2131,13 +2134,8 @@ public class Widget extends RemoteViewsService
 
     public void cancelWidgetTimers(int widgetId)
     {
-        HashMap<Long, Timer> activeTimersCopy;
-        synchronized (lock)
-        {
-            activeTimersCopy = new HashMap<>(activeTimers);
-        }
         HashSet<Long> toCancel = new HashSet<>();
-        for (Map.Entry<Long, Timer> timer : activeTimersCopy.entrySet())
+        for (Map.Entry<Long, Timer> timer : activeTimers.entrySet())
         {
             if (timer.getValue().widgetId == widgetId)
             {
@@ -2156,10 +2154,7 @@ public class Widget extends RemoteViewsService
     {
         Log.d("APPY", "cancelling all timers");
         HashSet<Long> toCancel = new HashSet<>();
-        synchronized (lock)
-        {
-            toCancel.addAll(activeTimers.keySet());
-        }
+        toCancel.addAll(activeTimers.keySet());
         for (long timer : toCancel)
         {
             cancelTimer(timer, false);
@@ -2234,22 +2229,23 @@ public class Widget extends RemoteViewsService
         Intent timerIntent;
         PendingIntent[] pendingIntent;
 
-        synchronized (lock)
+        if (timerId == -1)
         {
-            if (timerId == -1)
-            {
-                timerId = generateTimerId();
-            }
-            timerIntent = new Intent(Widget.this, getClass());
-            timerIntent.setAction("timer" + timerId); //make it unique for cancel
-            timerIntent.putExtra("widgetId", widgetId);
-            timerIntent.putExtra("timer", timerId);
-            timerIntent.putExtra("timerData", data);
+            timerId = generateTimerId();
+        }
+        timerIntent = new Intent(Widget.this, getClass());
+        timerIntent.setAction("timer" + timerId); //make it unique for cancel
+        timerIntent.putExtra("widgetId", widgetId);
+        timerIntent.putExtra("timer", timerId);
+        timerIntent.putExtra("timerData", data);
 
-            //trick to insert a reference to the hashmap to be populated later
-            pendingIntent = new PendingIntent[1];
+        //trick to insert a reference to the hashmap to be populated later
+        pendingIntent = new PendingIntent[1];
 
-            activeTimers.put(timerId, new Timer(widgetId, since, millis, type, data));
+        Timer timer = new Timer(widgetId, since, millis, type, data);
+        synchronized (activeTimersLock)
+        {
+            activeTimers.put(timerId, timer);
             activeTimersIntents.put(timerId, pendingIntent);
         }
         saveTimers();
@@ -2273,12 +2269,8 @@ public class Widget extends RemoteViewsService
                     }
                     first = false;
 
-                    Timer obj;
-                    synchronized (lock)
-                    {
-                        obj = activeTimers.get(timer);
-                    }
-                    if (obj != null)
+                    Timer obj = activeTimers.get(timer);
+                    if (obj != null && !obj.equals(Timer.INVALID))
                     {
                         //timer still active
                         long interval = (long) args[2];
@@ -2387,9 +2379,7 @@ public class Widget extends RemoteViewsService
         @RequiresApi(api = Build.VERSION_CODES.Q)
         public MultipleFileObserver(List<PythonFile> pythonFiles, int mask)
         {
-            super(pythonFiles.stream().map(pythonFile -> {
-                return new File(pythonFile.path).getParentFile();
-            }).filter(Objects::nonNull).collect(Collectors.toList()), mask);
+            super(pythonFiles.stream().map(pythonFile -> new File(pythonFile.path).getParentFile()).filter(Objects::nonNull).collect(Collectors.toList()), mask);
 
             this.pythonFiles = new ArrayList<>(pythonFiles);
         }
@@ -2407,19 +2397,14 @@ public class Widget extends RemoteViewsService
         @Override
         public void onEvent(final int event, @Nullable final String filename)
         {
-            handler.postDelayed(new Runnable()
-            {
-                @Override
-                public void run()
+            handler.postDelayed(() -> {
+                Log.d("APPY", "got base inotify: " + filename + " " + event);
+                // we have no way of knowing where it came from, firing for all pythonfiles with the same filename
+                for (PythonFile pythonFile : getPythonFiles())
                 {
-                    Log.d("APPY", "got base inotify: " + filename + " " + event);
-                    // we have no way of knowing where it came from, firing for all pythonfiles with the same filename
-                    for (PythonFile pythonFile : getPythonFiles())
+                    if (new File(pythonFile.path).getName().equals(filename))
                     {
-                        if (new File(pythonFile.path).getName().equals(filename))
-                        {
-                            onEvent(event, pythonFile);
-                        }
+                        onEvent(event, pythonFile);
                     }
                 }
             }, 100);
@@ -2482,22 +2467,17 @@ public class Widget extends RemoteViewsService
 
         public void onSingleEvent(int event, int index)
         {
-            handler.postDelayed(new Runnable()
-            {
-                @Override
-                public void run()
-                {
-                    //update observer
-                    SingleFileObserver ob = observers.get(index);
-                    ob.stopWatching();
-                    SingleFileObserver newob = new SingleFileObserver(ob.file, ob.mask, OldMultipleFileObserver.this, index);
-                    observers.set(index, newob);
-                    newob.startWatching();
+            handler.postDelayed(() -> {
+                //update observer
+                SingleFileObserver ob = observers.get(index);
+                ob.stopWatching();
+                SingleFileObserver newob = new SingleFileObserver(ob.file, ob.mask, OldMultipleFileObserver.this, index);
+                observers.set(index, newob);
+                newob.startWatching();
 
-                    Log.d("APPY", "new watch on " + index + " " + newob.file.path + " " + newob.mask);
+                Log.d("APPY", "new watch on " + index + " " + newob.file.path + " " + newob.mask);
 
-                    onEvent(event, newob.file);
-                }
+                onEvent(event, newob.file);
             }, 300);
         }
 
@@ -2512,10 +2492,15 @@ public class Widget extends RemoteViewsService
             pythonFilesObserver.stop();
         }
 
+        ArrayList<PythonFile> pythonFilesCopy;
+        synchronized (pythonFilesLock)
+        {
+            pythonFilesCopy = new ArrayList<>(pythonFiles);
+        }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
         {
-            pythonFilesObserver = new MultipleFileObserver(pythonFiles, FileObserver.CLOSE_WRITE)
+            pythonFilesObserver = new MultipleFileObserver(pythonFilesCopy, FileObserver.CLOSE_WRITE)
             {
                 @Override
                 public void onEvent(int event, PythonFile file)
@@ -2530,7 +2515,7 @@ public class Widget extends RemoteViewsService
         }
         else
         {
-            pythonFilesObserver = new OldMultipleFileObserver(pythonFiles, FileObserver.CLOSE_WRITE)
+            pythonFilesObserver = new OldMultipleFileObserver(pythonFilesCopy, FileObserver.CLOSE_WRITE)
             {
                 @Override
                 public void onEvent(int event, PythonFile file)
@@ -2555,17 +2540,19 @@ public class Widget extends RemoteViewsService
             DictObj.List pythonfilesList = store.getList("pythonfiles");
             if (pythonfilesList != null)
             {
-                synchronized (lock)
+                ArrayList<PythonFile> list = PythonFile.fromList(pythonfilesList);
+                synchronized (pythonFilesLock)
                 {
-                    pythonFiles = PythonFile.fromList(pythonfilesList);
+                    pythonFiles = list;
                 }
             }
             DictObj.Dict unknownPythonFileDict = store.getDict("unknownpythonfile");
             if (unknownPythonFileDict != null)
             {
-                synchronized (lock)
+                PythonFile file = PythonFile.fromDict(unknownPythonFileDict);
+                synchronized (pythonFilesLock)
                 {
-                    unknownPythonFile = PythonFile.fromDict(unknownPythonFileDict);
+                    unknownPythonFile = file;
                 }
             }
         }
@@ -2580,11 +2567,13 @@ public class Widget extends RemoteViewsService
     public void savePythonFiles()
     {
         StoreData store = StoreData.Factory.create(this, "pythonfiles");
-        synchronized (lock)
+        store.put("pythonfiles", PythonFile.toList(getPythonFiles()));
+        DictObj.Dict dict;
+        synchronized (pythonFilesLock)
         {
-            store.put("pythonfiles", PythonFile.toList(pythonFiles));
-            store.put("unknownpythonfile", unknownPythonFile.toDict());
+            dict = unknownPythonFile.toDict();
         }
+        store.put("unknownpythonfile", dict);
         store.apply();
     }
 
@@ -2711,16 +2700,17 @@ public class Widget extends RemoteViewsService
 
     public void addPythonFiles(ArrayList<PythonFile> files)
     {
-        boolean exists = false;
-        synchronized (lock)
+        synchronized (pythonFilesLock)
         {
+            ArrayList<PythonFile> toadd = new ArrayList<>();
             for (PythonFile file : files)
             {
                 if (findPythonFile(file.path) == null)
                 {
-                    pythonFiles.add(file);
+                    toadd.add(file);
                 }
             }
+            pythonFiles.addAll(toadd);
         }
 
         updateObserver();
@@ -2733,7 +2723,7 @@ public class Widget extends RemoteViewsService
 
     public void clearFileError(PythonFile file)
     {
-        synchronized (lock)
+        synchronized (pythonFilesLock)
         {
             int idx = pythonFiles.indexOf(file);
             if (idx != -1)
@@ -2752,7 +2742,7 @@ public class Widget extends RemoteViewsService
 
     public void removePythonFile(PythonFile file)
     {
-        synchronized (lock)
+        synchronized (pythonFilesLock)
         {
             pythonFiles.remove(file);
         }
@@ -2767,7 +2757,7 @@ public class Widget extends RemoteViewsService
 
     public ArrayList<PythonFile> getPythonFiles()
     {
-        synchronized (lock)
+        synchronized (pythonFilesLock)
         {
             return new ArrayList<>(pythonFiles);
         }
@@ -2778,12 +2768,15 @@ public class Widget extends RemoteViewsService
         StoreData store = StoreData.Factory.create(this, "timers");
 
         DictObj.List timersList = new DictObj.List();
-        synchronized (lock)
+
+        for (Map.Entry<Long, Timer> timer : activeTimers.entrySet())
         {
-            for (Map.Entry<Long, Timer> timer : activeTimers.entrySet())
+            if (timer.getValue() == null || timer.getValue().equals(Timer.INVALID))
             {
-                timersList.add(timer.getValue().toDict(timer.getKey()));
+                continue;
             }
+
+            timersList.add(timer.getValue().toDict(timer.getKey()));
         }
 
         store.put("timers", timersList);
@@ -3044,22 +3037,17 @@ public class Widget extends RemoteViewsService
             {
                 newId = Collections.max(activeRequests.keySet()) + 1;
             }
-            activeRequests.put(newId, null); //save room
+            activeRequests.put(newId, INVALID_RESULT); //save room
             return newId;
         }
     }
 
     public void toast(String text, boolean longDuration)
     {
-        handler.post(new Runnable() {
-            @Override
-            public void run() {
-                Toast.makeText(Widget.this, text, longDuration ? Toast.LENGTH_LONG : Toast.LENGTH_SHORT).show();
-            }
-        });
+        handler.post(() -> Toast.makeText(Widget.this, text, longDuration ? Toast.LENGTH_LONG : Toast.LENGTH_SHORT).show());
     }
 
-    HashMap<Integer, Object> activeRequests = new HashMap<>();
+
     final Object notifier = new Object();
 
     public Object waitForAsyncReport(int requestCode, int timeoutMilli)
@@ -3069,7 +3057,7 @@ public class Widget extends RemoteViewsService
         {
             boolean hasTimeout = timeoutMilli >= 0;
             long end = System.currentTimeMillis() + timeoutMilli;
-            while (activeRequests.get(requestCode) == null)
+            while (activeRequests.get(requestCode) == null || activeRequests.get(requestCode) == INVALID_RESULT)
             {
                 try
                 {
@@ -3130,7 +3118,7 @@ public class Widget extends RemoteViewsService
     {
         int requestCode = generateRequestCode();
         Intent intent = new Intent(this, DialogActivity.class);
-        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_MULTIPLE_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
         intent.putExtra(DialogActivity.EXTRA_REQUEST_CODE, requestCode);
         intent.putExtra(DialogActivity.EXTRA_TITLE, title);
         intent.putExtra(DialogActivity.EXTRA_TEXT, text);
@@ -3212,34 +3200,32 @@ public class Widget extends RemoteViewsService
 
     public void setWidget(final int androidWidgetId, final int widgetId, final ArrayList<DynamicView> views, final boolean errorOnFailure)
     {
-        needUpdateWidgets.remove(widgetId);
-        handler.post(new Runnable()
+        synchronized (needUpdateWidgets)
         {
-            @Override
-            public void run()
+            needUpdateWidgets.remove(widgetId);
+        }
+        handler.post(() -> {
+            try
             {
-                try
+                AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(Widget.this);
+                int[] widgetDimensions = getWidgetDimensions(appWidgetManager, androidWidgetId);
+                int widthLimit = widgetDimensions[0];
+                int heightLimit = widgetDimensions[1];
+
+                Pair<RemoteViews, HashSet<Integer>> view = resolveDimensions(Widget.this, widgetId, views, Constants.CollectionLayout.NOT_COLLECTION, null, widthLimit, heightLimit);
+                appWidgetManager.updateAppWidget(androidWidgetId, view.first);
+
+                for (Integer collection_view : view.second)
                 {
-                    AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(Widget.this);
-                    int[] widgetDimensions = getWidgetDimensions(appWidgetManager, androidWidgetId);
-                    int widthLimit = widgetDimensions[0];
-                    int heightLimit = widgetDimensions[1];
-
-                    Pair<RemoteViews, HashSet<Integer>> view = resolveDimensions(Widget.this, widgetId, views, Constants.CollectionLayout.NOT_COLLECTION, null, widthLimit, heightLimit);
-                    appWidgetManager.updateAppWidget(androidWidgetId, view.first);
-
-                    for (Integer collection_view : view.second)
-                    {
-                        appWidgetManager.notifyAppWidgetViewDataChanged(androidWidgetId, collection_view);
-                    }
+                    appWidgetManager.notifyAppWidgetViewDataChanged(androidWidgetId, collection_view);
                 }
-                catch (Exception e)
+            }
+            catch (Exception e)
+            {
+                Log.e("APPY", "Exception on setWidget", e);
+                if (errorOnFailure)
                 {
-                    Log.e("APPY", "Exception on setWidget", e);
-                    if (errorOnFailure)
-                    {
-                        setSpecificErrorWidget(androidWidgetId, widgetId, e);
-                    }
+                    setSpecificErrorWidget(androidWidgetId, widgetId, e);
                 }
             }
         });
@@ -3268,7 +3254,10 @@ public class Widget extends RemoteViewsService
 
         if (widgetId != -1)
         {
-            needUpdateWidgets.add(widgetId);
+            synchronized (needUpdateWidgets)
+            {
+                needUpdateWidgets.add(widgetId);
+            }
         }
     }
 
@@ -3353,7 +3342,10 @@ public class Widget extends RemoteViewsService
 
         setWidget(androidWidgetId, Constants.SPECIAL_WIDGET_ID, views, false);
 
-        needUpdateWidgets.add(widgetId);
+        synchronized (needUpdateWidgets)
+        {
+            needUpdateWidgets.add(widgetId);
+        }
     }
 
     public void setAllWidgets(boolean error)
@@ -3461,14 +3453,7 @@ public class Widget extends RemoteViewsService
         @Override
         protected void onPostExecute(Void result)
         {
-            handler.post(new Runnable()
-            {
-                @Override
-                public void run()
-                {
-                    Widget.startService(Widget.this, new Intent(Widget.this, Widget.class));
-                }
-            });
+            handler.post(() -> Widget.startService(Widget.this, new Intent(Widget.this, Widget.class)));
         }
 
         @Override
@@ -3513,7 +3498,10 @@ public class Widget extends RemoteViewsService
     {
         if (path == null)
         {
-            setPythonFileLastError(unknownPythonFile, lastError);
+            synchronized (pythonFilesLock)
+            {
+                setPythonFileLastError(unknownPythonFile, lastError);
+            }
         }
         else
         {
@@ -3603,10 +3591,8 @@ public class Widget extends RemoteViewsService
         {
             int widget = args[0];
             Log.d("APPY", "deleting " + widget);
-            synchronized (lock)
-            {
-                widgets.remove(widget);
-            }
+            widgets.remove(widget);
+
             cancelWidgetTimers(widget);
             if (updateListener != null)
             {
@@ -3637,14 +3623,7 @@ public class Widget extends RemoteViewsService
 
     public void callPostWidget(int widgetId, final String data)
     {
-        callWidgetChangingCallback(widgetId, new CallbackCaller()
-        {
-            @Override
-            public DictObj.List call(int widgetId, DictObj.List current, ArrayList<DynamicView> currentView)
-            {
-                return updateListener.onPost(widgetId, current, data);
-            }
-        });
+        callWidgetChangingCallback(widgetId, (widgetId1, current, currentView) -> updateListener.onPost(widgetId1, current, data));
     }
 
     private class CallConfigTask implements Runner<Object>
@@ -3658,14 +3637,7 @@ public class Widget extends RemoteViewsService
 
     public void callConfigWidget(int widgetId, final String key)
     {
-        callWidgetChangingCallback(widgetId, new CallbackCaller()
-        {
-            @Override
-            public DictObj.List call(int widgetId, DictObj.List current, ArrayList<DynamicView> currentView)
-            {
-                return updateListener.onConfig(widgetId, current, key);
-            }
-        });
+        callWidgetChangingCallback(widgetId, (widgetId1, current, currentView) -> updateListener.onConfig(widgetId1, current, key));
     }
 
     private class CallShareTask implements Runner<Object>
@@ -3679,26 +3651,15 @@ public class Widget extends RemoteViewsService
 
     public void callShareWidget(int widgetId, final String mimeType, final String text, DictObj.Dict datas)
     {
-        callWidgetChangingCallback(widgetId, new CallbackCaller()
-        {
-            @Override
-            public DictObj.List call(int widgetId, DictObj.List current, ArrayList<DynamicView> currentView)
-            {
-                return updateListener.onShare(widgetId, current, mimeType, text, datas);
-            }
-        });
+        callWidgetChangingCallback(widgetId, (widgetId1, current, currentView) -> updateListener.onShare(widgetId1, current, mimeType, text, datas));
     }
 
     public void callTimerWidget(final long timerId, int widgetId, final String data)
     {
         Log.d("APPY", "callTimerWidget: " + widgetId + " " + timerId);
 
-        Timer timer;
-        synchronized (lock)
-        {
-            timer = activeTimers.get(timerId);
-        }
-        if (timer == null)
+        Timer timer = activeTimers.get(timerId);
+        if (timer == null || timer.equals(Timer.INVALID))
         {
             return;
         }
@@ -3707,17 +3668,10 @@ public class Widget extends RemoteViewsService
             cancelTimer(timerId);
         }
 
-        callWidgetChangingCallback(widgetId, new CallbackCaller()
-        {
-            @Override
-            public DictObj.List call(int widgetId, DictObj.List current, ArrayList<DynamicView> currentView)
-            {
-                return updateListener.onTimer(timerId, widgetId, current, data);
-            }
-        });
+        callWidgetChangingCallback(widgetId, (widgetId1, current, currentView) -> updateListener.onTimer(timerId, widgetId1, current, data));
     }
 
-    interface CallbackCaller
+    public interface CallbackCaller
     {
         DictObj.List call(int widgetId, DictObj.List current, ArrayList<DynamicView> currentView);
     }
@@ -3732,11 +3686,7 @@ public class Widget extends RemoteViewsService
         //Log.d("APPY", "widgetChangingCallback Start");
 
         int androidWidgetId = getAndroidWidget(widgetId);
-        ArrayList<DynamicView> widget = null;
-        synchronized (lock)
-        {
-            widget = widgets.get(widgetId);
-        }
+        ArrayList<DynamicView> widget = widgets.get(widgetId);
 
         boolean updated = false;
         try
@@ -3745,17 +3695,19 @@ public class Widget extends RemoteViewsService
             if (newWidget != null)
             {
                 widget = DynamicView.fromDictList(newWidget);
-
-                synchronized (lock)
-                {
-                    widgets.put(widgetId, widget);
-                }
+                widgets.put(widgetId, widget);
 
                 updated = true;
             }
 
+            boolean needUpdate;
+            synchronized (needUpdateWidgets)
+            {
+                needUpdate = needUpdateWidgets.contains(widgetId);
+            }
+
             //if we were loading we refresh anyways
-            if ((updated || needUpdateWidgets.contains(widgetId)) && widget != null)
+            if ((updated || needUpdate) && widget != null)
             {
                 setWidget(androidWidgetId, widgetId, widget, true);
                 //Log.d("APPY", "widgetChangingCallback End");
@@ -3780,54 +3732,49 @@ public class Widget extends RemoteViewsService
     {
         Log.d("APPY", "got event intent: " + eventWidgetId + " " + itemId);
 
-        callWidgetChangingCallback(eventWidgetId, new CallbackCaller()
-        {
-            @Override
-            public DictObj.List call(int widgetId, DictObj.List current, ArrayList<DynamicView> currentView)
+        callWidgetChangingCallback(eventWidgetId, (widgetId, current, currentView) -> {
+            Log.d("APPY", "handling " + itemId + " in collection " + collectionId);
+
+            if (itemId == 0 && collectionId == 0)
             {
-                Log.d("APPY", "handling " + itemId + " in collection " + collectionId);
+                throw new IllegalArgumentException("handle without handle?");
+            }
 
-                if (itemId == 0 && collectionId == 0)
+            DictObj.List fromItemClick = null;
+
+            if (collectionId != 0)
+            {
+                //optimization: don't call itemclick if it isn't set, useful if everything is inside a collection (such as AdapterViewFlipper)
+                DynamicView collectionView = DynamicView.findById(currentView, collectionId);
+                if (collectionView != null && collectionView.tag instanceof DictObj.Dict && ((DictObj.Dict)collectionView.tag).hasKey("itemclick"))
                 {
-                    throw new IllegalArgumentException("handle without handle?");
-                }
+                    Log.d("APPY", "calling listener onItemClick with " + collectionId + ", " + collectionPosition + ", " + itemId + ", " + checked);
 
-                DictObj.List fromItemClick = null;
-
-                if (collectionId != 0)
-                {
-                    //optimization: don't call itemclick if it isn't set, useful if everything is inside a collection (such as AdapterViewFlipper)
-                    DynamicView collectionView = DynamicView.findById(currentView, collectionId);
-                    if (collectionView != null && collectionView.tag instanceof DictObj.Dict && ((DictObj.Dict)collectionView.tag).hasKey("itemclick"))
+                    Object[] ret = updateListener.onItemClick(widgetId, current, collectionId, collectionPosition, itemId);
+                    boolean handled = (boolean) ret[0];
+                    fromItemClick = (DictObj.List) ret[1];
+                    if (handled || itemId == 0)
                     {
-                        Log.d("APPY", "calling listener onItemClick with " + collectionId + ", " + collectionPosition + ", " + itemId + ", " + checked);
-
-                        Object[] ret = updateListener.onItemClick(widgetId, current, collectionId, collectionPosition, itemId);
-                        boolean handled = (boolean) ret[0];
-                        fromItemClick = (DictObj.List) ret[1];
-                        if (handled || itemId == 0)
-                        {
-                            Log.d("APPY", "suppressing click on " + itemId);
-                            return fromItemClick;
-                        }
+                        Log.d("APPY", "suppressing click on " + itemId);
+                        return fromItemClick;
                     }
-                    else
-                    {
-                        Log.d("APPY", "skipping listener onItemClick with " + collectionId + ", " + collectionPosition + ", " + itemId + ", " + checked);
-                    }
-                }
-
-                Log.d("APPY", "calling listener onClick");
-                DictObj.List newwidget = updateListener.onClick(widgetId, fromItemClick != null ? fromItemClick : current, itemId, checked);
-                Log.d("APPY", "called listener onClick");
-                if (newwidget != null)
-                {
-                    return newwidget;
                 }
                 else
                 {
-                    return fromItemClick; //use onItemClick
+                    Log.d("APPY", "skipping listener onItemClick with " + collectionId + ", " + collectionPosition + ", " + itemId + ", " + checked);
                 }
+            }
+
+            Log.d("APPY", "calling listener onClick");
+            DictObj.List newwidget = updateListener.onClick(widgetId, fromItemClick != null ? fromItemClick : current, itemId, checked);
+            Log.d("APPY", "called listener onClick");
+            if (newwidget != null)
+            {
+                return newwidget;
+            }
+            else
+            {
+                return fromItemClick; //use onItemClick
             }
         });
     }
@@ -3844,24 +3791,13 @@ public class Widget extends RemoteViewsService
             return;
         }
 
-        boolean hasWidget;
-        synchronized (lock)
-        {
-            hasWidget = widgets.containsKey(widgetId);
-        }
+        boolean hasWidget = widgets.containsKey(widgetId);
 
         Log.d("APPY", "calling listener onUpdate");
 
         if (!hasWidget)
         {
-            boolean updated = callWidgetChangingCallback(widgetId, new CallbackCaller()
-            {
-                @Override
-                public DictObj.List call(int widgetId, DictObj.List current, ArrayList<DynamicView> currentView)
-                {
-                    return updateListener.onCreate(widgetId);
-                }
-            });
+            boolean updated = callWidgetChangingCallback(widgetId, (widgetId1, current, currentView) -> updateListener.onCreate(widgetId1));
             if (!updated)
             {
                 setSpecificErrorWidget(androidWidgetId, widgetId, null);
@@ -3869,14 +3805,7 @@ public class Widget extends RemoteViewsService
             }
         }
 
-        callWidgetChangingCallback(widgetId, new CallbackCaller()
-        {
-            @Override
-            public DictObj.List call(int widgetId, DictObj.List current, ArrayList<DynamicView> currentView)
-            {
-                return updateListener.onUpdate(widgetId, current);
-            }
-        });
+        callWidgetChangingCallback(widgetId, (widgetId12, current, currentView) -> updateListener.onUpdate(widgetId12, current));
     }
 
     @Override
@@ -3932,21 +3861,16 @@ public class Widget extends RemoteViewsService
 
     public void callStatusChange(final boolean startup)
     {
-        handler.post(new Runnable()
-        {
-            @Override
-            public void run()
+        handler.post(() -> {
+            if (statusListener != null)
             {
-                if (statusListener != null)
+                if (startup)
                 {
-                    if (startup)
-                    {
-                        statusListener.onStartupStatusChange();
-                    }
-                    else
-                    {
-                        statusListener.onPythonFileStatusChange();
-                    }
+                    statusListener.onStartupStatusChange();
+                }
+                else
+                {
+                    statusListener.onPythonFileStatusChange();
                 }
             }
         });
@@ -4005,14 +3929,7 @@ public class Widget extends RemoteViewsService
         if (pythonSetupTask.getStatus() == AsyncTask.Status.FINISHED && pythonSetupTask.hadError())
         {
             startupState = Constants.StartupState.ERROR;
-            handler.post(new Runnable()
-            {
-                @Override
-                public void run()
-                {
-                    setAllWidgets(true);
-                }
-            });
+            handler.post(() -> setAllWidgets(true));
             callStatusChange(true);
             return false;
         }
@@ -4062,7 +3979,10 @@ public class Widget extends RemoteViewsService
             {
                 int widgetId = fromAndroidWidget(id, true);
                 activeWidgetIds.add(widgetId);
-                needUpdateWidgets.add(widgetId);
+                synchronized (needUpdateWidgets)
+                {
+                    needUpdateWidgets.add(widgetId);
+                }
 
                 addTask(widgetId, new Task<>(new CallUpdateTask(), widgetId), false);
             }
@@ -4111,7 +4031,10 @@ public class Widget extends RemoteViewsService
             {
                 Log.d("APPY", "options changed " + widgetIntent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, -1));
                 int widgetId = fromAndroidWidget(widgetIntent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, -1), true);
-                needUpdateWidgets.add(widgetId);
+                synchronized (needUpdateWidgets)
+                {
+                    needUpdateWidgets.add(widgetId);
+                }
                 addTask(widgetId, new Task<>(new CallUpdateTask(), widgetId), false);
             }
             else if (AppWidgetManager.ACTION_APPWIDGET_UPDATE.equals(widgetIntent.getAction()))

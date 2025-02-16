@@ -53,10 +53,11 @@ public class MainActivity extends AppCompatActivity implements StatusListener
         setContentView(R.layout.activity_main);
 
         fragments.put(R.id.navigation_control, new Pair<>(ControlFragment.class, null));
-        fragments.put(R.id.navigation_logcat, new Pair<>(LogcatFragment.class, null));
-        fragments.put(R.id.navigation_pip, new Pair<>(PipFragment.class, null));
         fragments.put(R.id.navigation_files, new Pair<>(FilesFragment.class, null));
         fragments.put(R.id.navigation_configs, new Pair<>(ConfigsFragment.class, null));
+        fragments.put(R.id.navigation_apps, new Pair<>(AppsFragment.class, null));
+        fragments.put(R.id.navigation_logcat, new Pair<>(LogcatFragment.class, null));
+        fragments.put(R.id.navigation_pip, new Pair<>(PipFragment.class, null));
         fragments.put(R.id.navigation_state, new Pair<>(StateFragment.class, null));
         fragments.put(R.id.navigation_crash, new Pair<>(CrashFragment.class, null));
         fragments.put(R.id.navigation_settings, new Pair<>(SettingsFragment.class, null));
@@ -353,7 +354,7 @@ public class MainActivity extends AppCompatActivity implements StatusListener
         {
             if (prev != null)
             {
-                prev.onHide();
+                prev.onHide(this);
             }
 
             // Insert the fragment by replacing any existing fragment
@@ -368,7 +369,7 @@ public class MainActivity extends AppCompatActivity implements StatusListener
                 transaction.addToBackStack(null);
             }
             transaction.commitAllowingStateLoss();
-            fragment.onShow();
+            fragment.onShow(this);
         }
 
         // Highlight the selected item has been done by NavigationView

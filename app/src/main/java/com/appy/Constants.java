@@ -298,6 +298,9 @@ public class Constants
         element_map.get("ImageView").add(new SelectorElement(R.layout.element_imageview, "", ""));
         element_map.put("ProgressBar", new ArrayList<SelectorElement>());
         element_map.get("ProgressBar").add(new SelectorElement(R.layout.element_progressbar, "", ""));
+        element_map.get("ProgressBar").add(new SelectorElement(R.layout.element_progressbar, "mode", "indeterminate"));
+        element_map.get("ProgressBar").add(new SelectorElement(R.layout.element_progressbar_mode_determinate, "mode", "horizontal"));
+        element_map.get("ProgressBar").add(new SelectorElement(R.layout.element_progressbar_mode_determinate, "mode", "determinate"));
         element_map.put("Switch", new ArrayList<SelectorElement>());
         element_map.get("Switch").add(new SelectorElement(R.layout.element_switch, "", ""));
         element_map.put("TextClock", new ArrayList<SelectorElement>());

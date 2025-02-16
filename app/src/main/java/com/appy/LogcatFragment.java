@@ -64,7 +64,7 @@ public class LogcatFragment extends MyFragment implements RunnerListener
             }
         });
 
-        onShow();
+        startLogcat();
         return layout;
     }
 
@@ -144,13 +144,13 @@ public class LogcatFragment extends MyFragment implements RunnerListener
     }
 
     @Override
-    public void onShow()
+    public void onShow(MainActivity activity)
     {
         startLogcat();
     }
 
     @Override
-    public void onHide()
+    public void onHide(MainActivity activity)
     {
         stopLogcat();
     }

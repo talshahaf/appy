@@ -23,7 +23,7 @@ public class StateFragment extends FragmentParent
                              Bundle savedInstanceState)
     {
         View layout = inflater.inflate(R.layout.fragment_configs, container, false);
-        onShow();
+        tryStart();
 
         return layout;
     }
@@ -65,7 +65,7 @@ public class StateFragment extends FragmentParent
     }
 
     @Override
-    public void onShow()
+    public void onShow(MainActivity activity)
     {
         tryStart();
     }

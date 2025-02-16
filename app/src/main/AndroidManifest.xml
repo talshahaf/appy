@@ -67,7 +67,8 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme"
         android:hasFragileUserData="true"
-        tools:targetApi="q">
+        tools:targetApi="q"
+        android:name="com.appy.Application">
         <activity android:name="com.appy.MainActivity" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
@@ -102,11 +103,12 @@
             </intent-filter>
         </activity>
 
+        <activity android:name="com.appy.PermissionActivity" android:excludeFromRecents="true" android:theme="@style/Invisible" android:exported="true"/>
+        <activity android:name="com.appy.ForegroundActivity" android:excludeFromRecents="true" android:theme="@android:style/Theme.Translucent.NoTitleBar" android:exported="true"/>
+
         <activity android:name="com.appy.FileBrowserActivity" android:exported="true"/>
         <activity android:name="com.appy.FileEditorActivity" android:exported="true"/>
-        <activity android:name="com.appy.PermissionActivity" android:excludeFromRecents="true" android:theme="@android:style/Theme.Translucent.NoTitleBar" android:exported="true"/>
         <activity android:name="com.appy.DialogActivity" android:noHistory="true" android:excludeFromRecents="true" android:theme="@style/Theme.AppCompat.Dialog" android:exported="true"/>
-        <activity android:name="com.appy.ForegroundActivity" android:excludeFromRecents="true" android:theme="@android:style/Theme.Translucent.NoTitleBar" android:exported="true"/>
         <activity android:name="com.appy.WidgetManagerActivity" android:label="Manage Widgets" android:exported="true" />
         <activity android:name="com.appy.WidgetSizeFactorActivity" android:label="Widget Size Factors" android:exported="true" />
 

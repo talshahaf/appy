@@ -34,7 +34,7 @@ public class CrashFragment extends FragmentParent
     {
         View layout = inflater.inflate(R.layout.fragment_configs, container, false);
 
-        onShow();
+        onShow((MainActivity) getActivity());
 
         setHasOptionsMenu(true);
         return layout;
@@ -76,7 +76,7 @@ public class CrashFragment extends FragmentParent
     }
 
     @Override
-    public void onShow()
+    public void onShow(MainActivity activity)
     {
         if (getActivity() == null)
         {
