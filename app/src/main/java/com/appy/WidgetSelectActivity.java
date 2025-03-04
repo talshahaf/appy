@@ -68,9 +68,12 @@ public abstract class WidgetSelectActivity extends AppCompatActivity implements 
         updateWidgetList();
     }
 
-    protected String elementValueFormat(int widgetId, String widgetName)
+    protected String elementValueFormat(int widgetId, DictObj.Dict widgetProps)
     {
-        return widgetName;
+        int w = widgetProps.getInt("width_dp", -1);
+        int h = widgetProps.getInt("height_dp", -1);
+        String size = w != -1 && h != -1 ? (" (" + w + "x" + h + ")") : "";
+        return widgetProps.getString("name") + size;
     }
 
     public void updateWidgetList()
@@ -80,16 +83,19 @@ public abstract class WidgetSelectActivity extends AppCompatActivity implements 
             return;
         }
 
-        DictObj.Dict widgets = widgetService.getAllWidgetNames();
+        DictObj.Dict widgets = widgetService.getAllWidgetAppProps(false, false);
 
         ArrayList<ListFragmentAdapter.Item> adapterList = new ArrayList<>();
-        for (DictObj.Entry widget : widgets.entries())
+        for (String key : widgets.keys())
         {
+            DictObj.Dict props = widgets.getDict(key);
+
             // ignore widget managers
-            if (widget.value != null)
+            if (props.getString("name") != null)
             {
-                int widgetId = Integer.parseInt(widget.key);
-                adapterList.add(new ListFragmentAdapter.Item(widget.key, elementValueFormat(widgetId, (String) widget.value), "widget #", widgetId));
+                int widgetId = Integer.parseInt(key);
+                String prefix = props.getBoolean("app", false) ? "app #" : "widget #";
+                adapterList.add(new ListFragmentAdapter.Item(key, elementValueFormat(widgetId, props), prefix, widgetId));
             }
         }
         listview.setAdapter(new ListFragmentAdapter(this, adapterList));

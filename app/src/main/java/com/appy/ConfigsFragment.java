@@ -44,19 +44,14 @@ import java.util.Map;
 
 public class ConfigsFragment extends FragmentParent
 {
-    public Bundle fragmentArg = null;
-
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState)
     {
         super.onCreateView(inflater, container, savedInstanceState);
 
-        View layout = inflater.inflate(R.layout.fragment_configs, container, false);
-        tryStart();
-
         setHasOptionsMenu(true);
-        return layout;
+        return inflater.inflate(R.layout.fragment_configs, container, false);
     }
 
     @Override
@@ -149,7 +144,7 @@ public class ConfigsFragment extends FragmentParent
                             public void run() {
                                 configurations.replaceConfiguration(finalConfig);
                                     Toast.makeText(getActivity(), "Configurations imported from " + files[0], Toast.LENGTH_LONG).show();
-                                    tryStart();
+                                    start();
                                 }
                             });
                 }
@@ -160,7 +155,25 @@ public class ConfigsFragment extends FragmentParent
             }
     }
 
-    public void tryStart()
+    private boolean attachedAndBound = false;
+
+    @Override
+    public void onAttachedAndBound()
+    {
+        attachedAndBound = true;
+        start();
+    }
+
+    @Override
+    public void onArgument()
+    {
+        if (attachedAndBound)
+        {
+            start();
+        }
+    }
+
+    public void start()
     {
         if (getActivity() == null)
         {
@@ -200,25 +213,11 @@ public class ConfigsFragment extends FragmentParent
         return new File(getWidgetService().getPreferredScriptDir(), "exported_configurations.json");
     }
 
-    public void onBound()
-    {
-        tryStart();
-    }
-
-    public void onShow()
-    {
-        tryStart();
-    }
-
-    public void onHide()
+    @Override
+    public void onPause()
     {
         setArgument(null);
-    }
-
-    @Override
-    public void setArgument(Bundle fragmentArg)
-    {
-        this.fragmentArg = fragmentArg;
+        super.onPause();
     }
 
     public static class WidgetSelectFragment extends ChildFragment implements AdapterView.OnItemClickListener
@@ -227,6 +226,12 @@ public class ConfigsFragment extends FragmentParent
         String widget = null;
         String config = null;
         int requestCode = 0;
+
+        @Override
+        public void onResumedAndBound()
+        {
+            refresh();
+        }
 
         public void refresh()
         {
@@ -373,7 +378,6 @@ public class ConfigsFragment extends FragmentParent
                     Button button = alert.getButton(AlertDialog.BUTTON_POSITIVE);
                     button.setOnClickListener(new View.OnClickListener()
                     {
-
                         @Override
                         public void onClick(View view)
                         {
@@ -507,7 +511,6 @@ public class ConfigsFragment extends FragmentParent
                                     getWidgetService().getConfigurations().resetKey(widget, item.key);
                                 }
                             }
-
                             refresh();
                         }
                     });

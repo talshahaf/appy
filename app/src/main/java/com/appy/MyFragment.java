@@ -1,6 +1,7 @@
 package com.appy;
 
 import android.app.Activity;
+import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.LayoutInflater;
@@ -21,10 +22,6 @@ import androidx.preference.PreferenceFragmentCompat;
 
 interface MyFragmentInterface
 {
-    void onShow(MainActivity activity);
-
-    void onHide(MainActivity activity);
-
     void onBound();
 
     Widget getWidgetService();
@@ -38,17 +35,100 @@ interface MyFragmentInterface
 
 public abstract class MyFragment extends Fragment implements MyFragmentInterface
 {
-    public void onShow(MainActivity activity)
+    @Override
+    public void onResume()
     {
-
+        resumed = true;
+        if (getWidgetService() != null)
+        {
+            bound = true;
+        }
+        if (bound)
+        {
+            onResumedAndBound();
+        }
+        super.onResume();
     }
 
-    public void onHide(MainActivity activity)
+    @Override
+    public void onPause()
     {
-
+        resumed = false;
+        super.onPause();
     }
 
     public void onBound()
+    {
+        bound = true;
+        if (attached)
+        {
+            onAttachedAndBound();
+        }
+        if (started)
+        {
+            onStartedAndBound();
+        }
+        if (resumed)
+        {
+            onResumedAndBound();
+        }
+    }
+
+    @Override
+    public void onStart()
+    {
+        started = true;
+        if (getWidgetService() != null)
+        {
+            bound = true;
+        }
+        if (bound)
+        {
+            onStartedAndBound();
+        }
+        super.onStart();
+    }
+
+    @Override
+    public void onAttach(Context context)
+    {
+        attached = true;
+        if (getWidgetService() != null)
+        {
+            bound = true;
+        }
+        if (bound)
+        {
+            onAttachedAndBound();
+        }
+        super.onAttach(context);
+    }
+
+    @Override
+    public void onDetach()
+    {
+        attached = false;
+        super.onDetach();
+    }
+
+    @Override
+    public void onStop()
+    {
+        started = false;
+        super.onStop();
+    }
+
+    public void onAttachedAndBound()
+    {
+
+    }
+
+    public void onStartedAndBound()
+    {
+
+    }
+
+    public void onResumedAndBound()
     {
 
     }
@@ -59,8 +139,14 @@ public abstract class MyFragment extends Fragment implements MyFragmentInterface
         {
             return null;
         }
-        return ((MainActivity) getActivity()).widgetService;
+        return ((MainActivity)getActivity()).widgetService;
     }
+
+    private boolean attached = false;
+    private boolean resumed = false;
+    private boolean started = false;
+    private boolean bound = false;
+    protected Bundle fragmentArg = null;
 
     private int menuId = -1;
     ActivityResultLauncher<Intent> activityResultLauncher = null;
@@ -75,7 +161,14 @@ public abstract class MyFragment extends Fragment implements MyFragmentInterface
         return menuId;
     }
 
+    @CallSuper
     public void setArgument(Bundle arg)
+    {
+        fragmentArg = arg;
+        onArgument();
+    }
+
+    public void onArgument()
     {
 
     }
@@ -115,25 +208,117 @@ public abstract class MyFragment extends Fragment implements MyFragmentInterface
 
 abstract class MySettingsFragment extends PreferenceFragmentCompat implements MyFragmentInterface
 {
-    public void onShow(MainActivity activity)
+    @Override
+    public void onResume()
     {
-
+        resumed = true;
+        if (getWidgetService() != null)
+        {
+            bound = true;
+        }
+        if (bound)
+        {
+            onResumedAndBound();
+        }
+        super.onResume();
     }
 
-    public void onHide(MainActivity activity)
+    @Override
+    public void onPause()
     {
-
+        resumed = false;
+        super.onPause();
     }
 
     public void onBound()
+    {
+        bound = true;
+        if (attached)
+        {
+            onAttachedAndBound();
+        }
+        if (started)
+        {
+            onStartedAndBound();
+        }
+        if (resumed)
+        {
+            onResumedAndBound();
+        }
+    }
+
+    @Override
+    public void onStart()
+    {
+        started = true;
+        if (getWidgetService() != null)
+        {
+            bound = true;
+        }
+        if (bound)
+        {
+            onStartedAndBound();
+        }
+        super.onStart();
+    }
+
+    @Override
+    public void onAttach(Context context)
+    {
+        attached = true;
+        if (getWidgetService() != null)
+        {
+            bound = true;
+        }
+        if (bound)
+        {
+            onAttachedAndBound();
+        }
+        super.onAttach(context);
+    }
+
+    @Override
+    public void onDetach()
+    {
+        attached = false;
+        super.onDetach();
+    }
+
+    @Override
+    public void onStop()
+    {
+        started = false;
+        super.onStop();
+    }
+
+    public void onAttachedAndBound()
+    {
+
+    }
+
+    public void onStartedAndBound()
+    {
+
+    }
+
+    public void onResumedAndBound()
     {
 
     }
 
     public Widget getWidgetService()
     {
-        return ((MainActivity) getActivity()).widgetService;
+        if (getActivity() == null)
+        {
+            return null;
+        }
+        return ((MainActivity)getActivity()).widgetService;
     }
+
+    private boolean attached = false;
+    private boolean resumed = false;
+    private boolean started = false;
+    private boolean bound = false;
 
     private int menuId = -1;
 

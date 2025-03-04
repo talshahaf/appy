@@ -2,7 +2,7 @@ package com.appy;
 
 import androidx.fragment.app.FragmentTransaction;
 
-public class FragmentParent extends MyFragment
+public abstract class FragmentParent extends MyFragment
 {
     public static final String FRAGMENT_TAG = "FRAGMENT";
 
@@ -39,10 +39,9 @@ public class FragmentParent extends MyFragment
 
     }
 
-    public static class ChildFragment extends MyFragment
+    public static abstract class ChildFragment extends MyFragment
     {
         FragmentParent parent;
-
         public void setParent(FragmentParent parent)
         {
             this.parent = parent;

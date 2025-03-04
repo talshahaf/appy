@@ -14,10 +14,7 @@ import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import androidx.fragment.app.FragmentTransaction;
-
 import java.io.File;
-import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Date;
@@ -34,9 +31,8 @@ public class CrashFragment extends FragmentParent
     {
         View layout = inflater.inflate(R.layout.fragment_configs, container, false);
 
-        onShow((MainActivity) getActivity());
-
         setHasOptionsMenu(true);
+        switchTo(new CrashListFragment(), true);
         return layout;
     }
 
@@ -75,17 +71,6 @@ public class CrashFragment extends FragmentParent
         return super.onOptionsItemSelected(item);
     }
 
-    @Override
-    public void onShow(MainActivity activity)
-    {
-        if (getActivity() == null)
-        {
-            return;
-        }
-
-        switchTo(new CrashListFragment(), true);
-    }
-
     public static class CrashListFragment extends ChildFragment implements AdapterView.OnItemClickListener
     {
         ListView list;
@@ -97,9 +82,7 @@ public class CrashFragment extends FragmentParent
             View layout = inflater.inflate(R.layout.fragment_configs_list, container, false);
             list = layout.findViewById(R.id.configs_list);
             list.setOnItemClickListener(this);
-
             refresh();
-
             return layout;
         }
 
@@ -114,6 +97,13 @@ public class CrashFragment extends FragmentParent
             fragment.setFile((File)item.arg);
 
             parent.switchTo(fragment, false);
+        }
+
+        @Override
+        public void onResume()
+        {
+            super.onResume();
+            refresh();
         }
 
         public void refresh()
@@ -159,16 +149,26 @@ public class CrashFragment extends FragmentParent
                     refresh();
                 }
             });
-
-            refresh();
             return layout;
+        }
+
+        @Override
+        public void onResume()
+        {
+            super.onResume();
+            refresh();
         }
 
         public void refresh()
         {
             try
             {
-                crashText.setText(file.exists() ? Utils.readAndHashFileAsString(file, Constants.CRASH_FILE_MAX_SIZE).first : "");
+                String data = Utils.readAndHashFileAsString(file, Constants.CRASH_FILE_MAX_SIZE).first;
+                if (data.length() > Constants.CRASH_FILE_MAX_DISPLAY_SIZE)
+                {
+                    data = "<Large file (" + data.length() + ") trimmed>\n" + data.substring(data.length() - Constants.CRASH_FILE_MAX_DISPLAY_SIZE);
+                }
+                crashText.setText(file.exists() ? data : "");
             }
             catch (IOException e)
             {

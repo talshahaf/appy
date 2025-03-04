@@ -75,6 +75,10 @@ def display_page(widget_id, counter):
     intent.setDataAndType(file_uri(html_path), 'text/html')
     intent.setFlags(java.clazz.android.content.Intent().FLAG_ACTIVITY_NEW_TASK | \
                     java.clazz.android.content.Intent().FLAG_ACTIVITY_CLEAR_TASK | \
+                    java.clazz.android.content.Intent().FLAG_ACTIVITY_SINGLE_TOP | \
+                    java.clazz.android.content.Intent().FLAG_ACTIVITY_NO_HISTORY | \
+                    java.clazz.android.content.Intent().FLAG_FROM_BACKGROUND | \
+                    java.clazz.android.content.Intent().FLAG_ACTIVITY_NEW_DOCUMENT | \
                     java.clazz.android.content.Intent().FLAG_GRANT_READ_URI_PERMISSION)
 
     try:

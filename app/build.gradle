@@ -18,8 +18,8 @@ android {
         applicationId "com.appy.widgets"
         minSdkVersion 21
         targetSdkVersion 35
-        versionCode 12
-        versionName "1.12"
+        versionCode 13
+        versionName "1.13"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         externalNativeBuild {
             cmake {
@@ -129,9 +129,9 @@ dependencies {
     implementation 'org.kamranzafar:jtar:2.3'
     implementation 'sh.calvin.reorderable:reorderable:2.4.3'
     implementation 'androidx.core:core-ktx:1.15.0'
-    implementation 'androidx.compose.ui:ui-android:1.7.7'
+    implementation 'androidx.compose.foundation:foundation-android:1.8.0-beta03'
     implementation 'androidx.compose.material3:material3-android:1.3.1'
-    implementation "androidx.constraintlayout:constraintlayout-compose:1.1.0"
+    implementation 'androidx.constraintlayout:constraintlayout-compose:1.1.0'
     implementation 'org.lsposed.hiddenapibypass:hiddenapibypass:+'
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'

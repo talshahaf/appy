@@ -2,6 +2,7 @@ package com.appy;
 
 import android.content.Context;
 import android.content.Intent;
+import android.os.Message;
 
 /**
  * Created by Tal on 30/12/2017.
@@ -17,25 +18,28 @@ interface BroadcastInterface
     void onReceive(Context context, Intent intent);
 }
 
+interface HandlerInterface
+{
+    void handleMessage(Message msg);
+}
+
 interface WidgetUpdateListener
 {
-    DictObj.List onCreate(int widgetId);
-
-    DictObj.List onUpdate(int widgetId, DictObj.List views);
+    DictObj.Dict onUpdate(int widgetId, DictObj.List views, boolean isApp);
 
     void onDelete(int widgetId);
 
-    Object[] onItemClick(int widgetId, DictObj.List views, long collectionId, int position, long id);
+    DictObj.Dict onItemClick(int widgetId, DictObj.List views, long collectionId, int position, long id);
 
-    DictObj.List onClick(int widgetId, DictObj.List views, long id, boolean checked);
+    DictObj.Dict onClick(int widgetId, DictObj.List views, long id, boolean checked);
 
-    DictObj.List onTimer(long timerId, int widgetId, DictObj.List views, String data);
+    DictObj.Dict onTimer(long timerId, int widgetId, DictObj.List views, String data);
 
-    DictObj.List onPost(int widgetId, DictObj.List views, String data);
+    DictObj.Dict onPost(int widgetId, DictObj.List views, String data);
 
-    DictObj.List onConfig(int widgetId, DictObj.List views, String key);
+    DictObj.Dict onConfig(int widgetId, DictObj.List views, String key);
 
-    DictObj.List onShare(int widgetId, DictObj.List views, String mimeType, String text, DictObj.Dict datas);
+    DictObj.Dict onShare(int widgetId, DictObj.List views, String mimeType, String text, DictObj.Dict datas);
 
     void wipeStateRequest();
 
@@ -78,4 +82,14 @@ interface StatusListener
     void onStartupStatusChange();
 
     void onPythonFileStatusChange();
+}
+
+interface AppPropsListener
+{
+    void onAppPropsChange(int widgetId, int androidWidgetId, DictObj.Dict data);
+}
+
+interface WidgetChosenListener
+{
+    void onWidgetChosen(int widgetId, int androidWidgetId, String name);
 }

@@ -57,14 +57,19 @@ def raise_(exc):
     raise exc
 
 def wrap(obj, *args, **kwargs):
-    if obj is None:
-        return Null(obj, *args, **kwargs), False
+    if obj is None or obj == bridge.JNULL:
+        return Null, False
 
     if not isinstance(obj, bridge.jobjectbase):
         return obj, True
 
     if isinstance(obj, bridge.array):
-        return Array(obj, *args, **kwargs), False
+        if obj.type_unboxed_code == bridge.primitive_codes['byte']:
+            return ByteArray(obj, *args, **kwargs), False
+        elif obj.type_unboxed_code == bridge.primitive_codes['char']:
+            return CharArray(obj, *args, **kwargs), False
+        else:
+            return Array(obj, *args, **kwargs), False
 
     if isinstance(obj, bridge.jclass):
         return Class(obj, *args, **kwargs), False
@@ -76,11 +81,14 @@ def unwrap(obj):
         return unwrap(obj.__java__())
 
     if isinstance(obj, (Object, Class, Array)):
-        return obj.bridge
+        return obj.__bridge__
     if isinstance(obj, InterfaceBase):
-        return obj.java_object.bridge
+        return obj.java_object.__bridge__
     if isinstance(obj, MethodCaller):
         raise RuntimeError('field does not exists')
+
+    if obj == Null:
+        return None
     return obj
 
 def unwrap_args(args):
@@ -133,10 +141,10 @@ class Path:
         return Path(cls_func=self.cls_func, arr_func=self.arr_func, path=self.path, array_dim=self.array_dim + 1)
 
 def _call(parent, attrname, *args):
-    if parent.use_static:
-        return wrap(bridge.call_method(parent.bridge, None, attrname, *unwrap_args(args)))[0]
+    if parent.__use_static__:
+        return wrap(bridge.call_method(parent.__bridge__, None, attrname, *unwrap_args(args)))[0]
     else:
-        return wrap(bridge.call_method(parent.bridge.clazz, parent.bridge, attrname, *unwrap_args(args)))[0]
+        return wrap(bridge.call_method(parent.__bridge__.clazz, parent.__bridge__, attrname, *unwrap_args(args)))[0]
 
 class MethodCaller:
     def __init__(self, parent, attrname):
@@ -148,10 +156,13 @@ class MethodCaller:
 
 class Object:
     def __init__(self, bridge_obj, use_static=False):
-        self.__dict__['bridge'] = bridge_obj
-        self.__dict__['use_static'] = use_static
+        self.__dict__['__bridge__'] = bridge_obj
+        self.__dict__['__use_static__'] = use_static
         self.__dict__['__parent__'] = None
         self.__dict__['__attrname__'] = None
+
+    def __eq__(self, other):
+        return self.__bridge__ == getattr(other, '__bridge__', None)
 
     def __getattr__(self, attr):
         hint_is_field = None
@@ -163,7 +174,7 @@ class Object:
         
         if hint_is_field is None:
             #if we don't know, search
-            has_field, has_method = bridge.has_field_or_method(self.bridge if self.use_static else self.bridge.clazz, attr)
+            has_field, has_method = bridge.has_field_or_method(self.__bridge__ if self.__use_static__ else self.__bridge__.clazz, attr)
             if has_field and has_method:
                 raise AttributeError(f'class has both field and method named {attr}, please use the middle dot character (U+00B7) to specify:\n'+
                                      f'.{attr}·field or .{attr}·method')
@@ -171,10 +182,10 @@ class Object:
                 hint_is_field = not has_method #if we don't have either, assume field and fail later (to be consistent with hint behaviour)
         
         if hint_is_field:
-            if self.use_static:
-                args = (self.bridge, None, attr)
+            if self.__use_static__:
+                args = (self.__bridge__, None, attr)
             else:
-                args = (self.bridge.clazz, self.bridge, attr)
+                args = (self.__bridge__.clazz, self.__bridge__, attr)
                 
             obj, primitive = wrap(bridge.get_field(*args))
             if not primitive:
@@ -191,38 +202,42 @@ class Object:
         if attr in self.__dict__:
             self.__dict__[attr] = value
             return
-        bridge.set_field(self.bridge.clazz, self.bridge, attr, unwrap(value))
+        bridge.set_field(self.__bridge__.clazz, self.__bridge__, attr, unwrap(value))
 
     def __invert__(self):
-        cls = wrap(self.bridge.clazz)[0]
-        cls.use_static = False
+        cls = wrap(self.__bridge__.clazz)[0]
+        cls.__use_static__ = False
         return cls
 
     def __repr__(self):
-        return repr(self.bridge)
+        return repr(self.__bridge__)
 
     def __dir__(self):
-        return dir(self.bridge.clazz)
+        return dir(self.__bridge__.clazz)
 
 
-class Null(Object):
+class NullType(Object):
+    def __init__(self):
+        super().__init__(bridge.JNULL)
     def __eq__(self, other):
-        return other == Null or isinstance(other, Null) or other is None
+        return other is NullType or isinstance(other, NullType) or other is None
     def __bool__(self):
         return False
     def __getattr__(self, attr):
-        raise ValueError('Object is null')
+        raise AttributeError('Object is null')
     def __setattr__(self, attr, value):
         if attr in self.__dict__:
             self.__dict__[attr] = value
             return
-        raise ValueError('Object is null')
+        raise AttributeError('Object is null')
     def __invert__(self):
         return self
     def __repr__(self):
         return 'Null'
     def __str__(self):
         return repr(self)
+
+Null = NullType()
 
 class Class(Object):
     def __init__(self, *args, array_element_class=None, **kwargs):
@@ -231,24 +246,24 @@ class Class(Object):
 
     def __call__(self, *args):
         if self.array_element_class is not None:
-            return make_array(self.array_element_class.bridge, *args)
+            return make_array(self.array_element_class.__bridge__, *args)
         else:
-            return wrap(bridge.call_method(self.bridge, None, '', *unwrap_args(args)))[0]
+            return wrap(bridge.call_method(self.__bridge__, None, '', *unwrap_args(args)))[0]
 
     def __lshift__(self, obj):
-        return bridge.cast(bridge.box_python(unwrap(obj)), self.bridge)
+        return wrap(bridge.cast(bridge.box_python(unwrap(obj)), self.__bridge__))[0]
         
     def __getitem__(self, key):
         if not isinstance(key, tuple) or len(key) != 0:
             raise ValueError('must be ()')
-        return Class(bridge.array_of_class(self.bridge), array_element_class=self)
+        return Class(bridge.array_of_class(self.__bridge__), array_element_class=self)
         
     @property
     def name(self):
-        return self.bridge.class_name
+        return self.__bridge__.class_name
 
     def __dir__(self):
-        return dir(self.bridge)
+        return dir(self.__bridge__)
 
 def make_array(element_bridge_class, l):
     if not isinstance(l, int):
@@ -256,6 +271,7 @@ def make_array(element_bridge_class, l):
         l = len(items)
     else:
         items = None
+
     arr = wrap(bridge.make_array(l, element_bridge_class))[0]
     if items is not None:
         arr[:] = items
@@ -264,7 +280,7 @@ def make_array(element_bridge_class, l):
 class Array(Object):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.__dict__['length'] = self.bridge.length
+        self.__dict__['length'] = self.__bridge__.length
         
     def __eq__(self, other):
         return self[:] == other
@@ -273,10 +289,10 @@ class Array(Object):
         return bool(self[:])
 
     def __len__(self):
-        return self.bridge.length
+        return self.__bridge__.length
 
     def __getitem__(self, key):
-        items = self.bridge[key]
+        items = self.__bridge__[key]
         if isinstance(key, slice):
             return tuple(wrap(item)[0] for item in items)
         else:
@@ -287,7 +303,15 @@ class Array(Object):
             value = unwrap_args(value)
         else:
             value = unwrap(value)
-        self.bridge[key] = value
+        self.__bridge__[key] = value
+
+class ByteArray(Array):
+    def value(self):
+        return bytes(self[:])
+
+class CharArray(Array):
+    def value(self):
+        return ''.join(chr(c) for c in self[:])
 
 class primitive_array_creator:
     def __init__(self, code, array_dim=1):
@@ -338,7 +362,7 @@ jdouble = jprimitive(bridge.jdouble)
 jstring = lambda x: wrap(bridge.jstring.from_str(x))[0]
 
 new = Path(cls_func=lambda cls, *args: cls(*args),
-           arr_func=lambda _, element_cls, *args: make_array(element_cls.bridge, *args))
+           arr_func=lambda _, element_cls, *args: make_array(element_cls.__bridge__, *args))
 
 clazz = Path(cls_func=lambda cls: cls,
              arr_func=lambda arr_cls, _: arr_cls)
@@ -364,7 +388,7 @@ def build_java_dict(obj):
     return wrap(bridge.build_java_dict(obj))[0]
 
 def build_python_dict_from_java(java_obj):
-    return bridge.build_python_dict_from_java(java_obj.bridge)
+    return bridge.build_python_dict_from_java(java_obj.__bridge__)
 
 #TODO think about scope
 #package = Path(path_func=set_package)
@@ -376,8 +400,6 @@ def tests():
         test = new.appy.Test()
         Inner = clazz.appy.Test.Inner()
         test2 = Test()
-        print(type(test2))
-        print(test, test2)
 
         assert(test.ins_value == 24)
         test.ins_value = 38
@@ -447,9 +469,50 @@ def tests():
         assert(Test.cast_test(obj) == 'string')
         assert(Test.cast_test(obj_cast) == 'charsequence')
 
+    def test4():
+        ret = bytes([i for i in range(256)])
+        b = jbyte[()] ([i for i in range(256)])
+        b2 = jbyte[()] (ret)
+
+        assert(b.value() == ret)
+        assert(b2.value() == ret)
+
+        B = new.java.lang.Byte[()] ([(jbyte(i) if i % 2 == 0 else Null) for i in range(256)])
+
+        try:
+            B.value()
+            assert(False)
+        except TypeError:
+            pass
+
+        ret = 'abcdefghijklmnopqrstuvwxyz'
+        c = jchar[()] ([ord(c) for c in ret])
+        c2 = jchar[()] (list(ret))
+        c3 = jchar[()] (ret)
+
+        uni = 'א'
+        c4 = jchar[()] (uni)
+
+        assert(c.value() == ret)
+        assert(c2.value() == ret)
+        assert(c3.value() == ret)
+        assert(c4.value() == uni)
+
+        C = new.java.lang.Character[()] ([(jchar(chr(i)) if i % 2 == 0 else Null) for i in range(256)])
+
+        try:
+            C.value()
+            assert(False)
+        except TypeError:
+            pass
+
+
+
+
     bridge.tests()
     test1()
     test2()
     test3()
+    test4()
     print('==================java tests end==================')
 

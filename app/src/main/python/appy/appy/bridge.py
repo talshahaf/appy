@@ -12,6 +12,7 @@ SPECIAL_CLASSES = {'appy': PACKAGE_NAME}
 class jref:
     _slots__ = []
     def __init__(self, handle):
+        self.handle = None
         if not isinstance(handle, int):
             raise ValueError('handle must be int')
         self.handle = handle
@@ -27,7 +28,10 @@ class jref:
     def __bool__(self):
         return bool(self.handle)
 
-    def __deepcopy__(self,el):
+    def __eq__(self, other):
+        return self.handle == getattr(other, 'handle', None)
+
+    def __deepcopy__(self, el):
         raise RuntimeError("cannot copy java reference")
 
     def __copy__(self):
@@ -52,6 +56,9 @@ def cast(obj, cast_class):
 class jobjectbase:
     def __bool__(self):
         return bool(self.ref)
+
+    def __eq__(self, other):
+        return self.ref == getattr(other, 'ref', None)
 
 class jobject(jobjectbase):
     def __init__(self, ref, info):
@@ -89,6 +96,16 @@ class jclass(jobjectbase):
     def __dir__(self):
         return list(native_appy.inspect_class_content(self.ref.handle, False))
 
+class jnull(jobject):
+    def __init__(self):
+        super().__init__(jref(0), 'null')
+
+    def __repr__(self):
+        return 'null'
+
+    @property
+    def clazz(self):
+        return self
 
 class jstring(jobjectbase):
     def __init__(self, ref):
@@ -97,6 +114,9 @@ class jstring(jobjectbase):
 
     def __repr__(self):
         return f'jstring {self.value} ({self.ref.handle})'
+
+    def __len__(self):
+        return len(self.value)
 
     @property
     def value(self):
@@ -116,7 +136,10 @@ class jstring(jobjectbase):
     def from_str(cls, v):
         if isinstance(v, bytes):
             v = v.decode()
-        return jstring(jref(native_appy.python_str_to_jstring(str(v))))
+        s = str(v)
+        js = jstring(jref(native_appy.python_str_to_jstring(s)))
+        js._value = s
+        return js
 
 def find_class(path):
     for key, value in SPECIAL_CLASSES.items():
@@ -131,7 +154,7 @@ def array_of_class(clazz):
 def find_primitive_array(code):
     return primitive_code_to_array[code]
 
-JNULL = jobject(jref(0), 'null')
+JNULL = jnull()
 OBJECT_CLASS = find_class('java.lang.Object')
 CLASS_CLASS = find_class('java.lang.Class')
 
@@ -233,7 +256,10 @@ class jdouble(jprimitive):
 class jbyte(jprimitive):
     def __init__(self, v):
         try:
-            self.value = ord(v[0])
+            if isinstance(v, int):
+                self.value = int(v)
+            else:
+                self.value = ord(v[0])
         except ValueError:
             pass
         except TypeError:
@@ -243,7 +269,10 @@ class jbyte(jprimitive):
 class jchar(jprimitive):
     def __init__(self, v):
         try:
-            self.value = ord(v[0])
+            if isinstance(v, int):
+                self.value = int(v)
+            else:
+                self.value = ord(v[0])
         except ValueError:
             pass
         except TypeError:
@@ -262,6 +291,11 @@ def auto_handle_wrapping(arg, needed_code, unboxed_needed_code):
             return jobject(jref(native_appy.python_to_packed_java_primitive(arg.value, arg.code if code_is_object(unboxed_needed_code) else unboxed_needed_code)), 'arg')
         else:
             return arg.value
+
+    if isinstance(arg, jstring) and not code_is_object(needed_code):
+        if len(arg) == 1:
+            #interpret as character
+            return ord(arg.value)
 
     if isinstance(arg, jobjectbase):
         return arg
@@ -288,13 +322,13 @@ def prepare_value(arg, needed_code, unboxed_needed_code):
 
 #convert regular python type to our python jtypes
 def convert_arg(arg):
-    if isinstance(arg, jobjectbase):
+    if arg is None or arg == JNULL:
+        return arg, OBJECT_CLASS, primitive_codes['object']
+    elif isinstance(arg, jobjectbase):
         return arg, arg.cast_class if hasattr(arg, 'cast_class') else arg.clazz, primitive_codes['object']
     elif isinstance(arg, bytes) or isinstance(arg, str):
         arg = jstring.from_str(arg)
         return arg, arg.clazz, primitive_codes['object']
-    elif arg is None:
-        return arg, OBJECT_CLASS, primitive_codes['object']
     else:
         if isinstance(arg, bool):
             arg = jboolean(arg)
@@ -480,6 +514,9 @@ def upcast(obj):
     if obj.clazz.class_name == 'java.lang.String':
         return jstring(obj.ref).value
 
+    if obj.clazz.class_name == 'java.lang.Class':
+        return jclass(obj.ref)
+
     return obj
 
 interfaces = {}
@@ -499,7 +536,6 @@ def get_java_arg():
 
 def callback(arg):
     try:
-        #print('callback called')
         args = upcast(jobject(jref(arg), 'callback arg'))
         key, cls, method, args = args
 
@@ -524,7 +560,7 @@ def callback(arg):
         value, _, _ = convert_arg(ret)
         _, ref = prepare_value(value, primitive_codes['object'], primitive_codes['object'])
         return native_appy.new_global_ref(ref.ref.handle)
-    except Exception:
+    except BaseException:
         try:
             tb = traceback.format_exc()
         except Exception as e:
@@ -562,7 +598,7 @@ def tests():
                                                 None, None,        None,        None,    None,          None,           None, None,
                                                 Test)
         print('result1', result)
-        assert(type(result) == jobject)
+        assert(type(result) == jclass)
 
 
         result = call_method(Test, None, 'all', True, jbyte('b'),  jchar('c'),  10 ** 3, 2 * (10 ** 5), 3 * (10 ** 10), 1.1,  3.141529,

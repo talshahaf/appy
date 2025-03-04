@@ -33,7 +33,6 @@ public class FilesFragment extends MyFragment implements FileGridAdapter.ItemAct
     GridView filegrid;
     FileGridAdapter adapter;
     Handler handler;
-    public Bundle fragmentArg = null;
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
@@ -69,10 +68,7 @@ public class FilesFragment extends MyFragment implements FileGridAdapter.ItemAct
         });
 
         filegrid = layout.findViewById(R.id.filegrid);
-
         adapter = new FileGridAdapter(getActivity(), this);
-        onPythonFileStatusChange();
-
         filegrid.setAdapter(adapter);
         return layout;
     }
@@ -83,9 +79,12 @@ public class FilesFragment extends MyFragment implements FileGridAdapter.ItemAct
         Log.d("APPY", "file activity result");
         String[] files = data.getStringArrayExtra(FileBrowserActivity.RESULT_FILES);
         ArrayList<PythonFile> pythonFiles = new ArrayList<>();
-        for (String file : files)
+        if (files != null)
         {
-            pythonFiles.add(new PythonFile(file));
+            for (String file : files)
+            {
+                pythonFiles.add(new PythonFile(file));
+            }
         }
         getWidgetService().addPythonFiles(pythonFiles);
         adapter.setItems(getWidgetService().getPythonFiles());
@@ -180,18 +179,22 @@ public class FilesFragment extends MyFragment implements FileGridAdapter.ItemAct
         alert.show();
     }
 
+    private boolean resumedAndBound = false;
     @Override
-    public void onBound()
+    public void onResumedAndBound()
     {
+        resumedAndBound = true;
         onPythonFileStatusChange();
         checkFileRequest();
     }
 
     @Override
-    public void setArgument(Bundle fragmentArg)
+    public void onArgument()
     {
-        this.fragmentArg = fragmentArg;
-        checkFileRequest();
+        if (resumedAndBound)
+        {
+            checkFileRequest();
+        }
     }
 
     public void checkFileRequest()

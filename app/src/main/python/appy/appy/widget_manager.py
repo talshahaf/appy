@@ -1,4 +1,4 @@
-import json, functools, copy, traceback, inspect, threading, os, collections, importlib.util, sys, hashlib, struct, re, time, faulthandler, base64
+import json, functools, copy, traceback, inspect, threading, os, collections, importlib.util, sys, hashlib, struct, re, time, faulthandler, base64, io
 from .utils import AttrDict, dumps, loads, cap, get_args, prepare_image_cache_dir, preferred_script_dir, timeit
 from . import widgets, java, state, configs, __version__
 
@@ -634,7 +634,7 @@ class ChildrenList(elist):
         return super().count(self.adapt(item))
 
 
-widget_dims    = WidgetAttribute()
+widget_dims = WidgetAttribute()
 
 available_widgets = {}
 
@@ -658,6 +658,9 @@ def set_module_error(module, error):
 def set_unknown_error(error):
     java_widget_manager.setFileLastError(None, error)
     return None
+
+def call_widget_chosen_listener(widget_id, name):
+    java_widget_manager.callWidgetChosenListener(widget_id, name)
 
 def load_module(path):
     __set_importing_module(path)
@@ -747,6 +750,69 @@ def recreate_widget(widget_id):
 def debug_button_click(widget):
     recreate_widget(widget.widget_id)
 
+def parse_single_appinfo(arg):
+    if isinstance(arg, str):
+        #title
+        return dict(title=arg)
+    if isinstance(arg, bytes) or hasattr(arg, 'save'):
+        #single icon
+        return dict(icon=arg)
+    if isinstance(arg, dict):
+        #multiple icons
+        return dict(icons=arg)
+
+    raise ValueError(f'unknown appinfo arg: {type(arg)}')
+
+def image_to_bytes(img, format='PNG'):
+    buf = io.BytesIO()
+    img.save(buf, format=format)
+    return buf.getvalue()
+
+def parse_appinfo(result):
+    #can be just title, just icon (PIL, bytes), just icons (str -> icon dict), both (any order) or dict of {'title', 'icon'/'icons'}
+    parsed = {}
+    if isinstance(result, list) or isinstance(result, tuple):
+        for e in result:
+            arg = parse_single_appinfo(e)
+            if any(k in parsed for k in arg.keys()):
+                raise ValueError('ambiguous values for appinfo')
+            parsed.update(arg)
+    elif isinstance(result, dict):
+        if any(k not in ('title', 'icon', 'icons') for k in result.keys()):
+            parsed = parse_single_appinfo(result)
+        else:
+            parsed = result
+    else:
+        parsed = parse_single_appinfo(result)
+
+    #validate
+    if 'icon' in parsed and 'icons' in parsed:
+        raise ValueError("supply either 'icon' or 'icons', not both")
+
+    if 'icon' in parsed:
+        parsed['icons'] = None if parsed['icon'] is None else {'': parsed['icon']}
+        del parsed['icon']
+
+    if 'title' in parsed:
+        if not isinstance(parsed['title'], str) and parsed['title'] is not None:
+            raise ValueError(f'invalid title of type {type(parsed['title'])}')
+    if 'icons' in parsed:
+        if not isinstance(parsed['icons'], dict) and parsed['icons'] is not None:
+            raise ValueError(f'invalid icons of type {type(parsed['icons'])}')
+
+        if parsed['icons'] is not None:
+            keys_copy = list(parsed['icons'].keys())
+            for k in keys_copy:
+                v = parsed['icons'][k]
+                if not isinstance(k, str):
+                    raise ValueError(f'invalid icon list for key of type {type(k)}')
+                if hasattr(v, 'save'):
+                    parsed['icons'][k] = image_to_bytes(v)
+                elif not isinstance(v, bytes):
+                    raise ValueError(f'invalid icon list for value of type {type(v)}')
+
+    return parsed
+
 def widget_manager_create(widget, manager_state):
     print('widget_manager_create')
     widget.cancel_all_timers()
@@ -766,31 +832,47 @@ def widget_manager_create(widget, manager_state):
     else:
         lst = widgets.ListView(top=10, left=10, children=[widgets.TextView(text=name, textSize=30, textColor=0xb3ffffff,
                                                                             click=(choose_widget, dict(name=name))) for name in names])
-    return [bg, lst]
+    return [bg, lst], dict(name=None)
 
-def widget_manager_update(widget, manager_state, views):
+def widget_manager_update(widget, manager_state, views, is_app):
     manager_state.chosen.setdefault(widget.widget_id, None)
     chosen = manager_state.chosen[widget.widget_id]
     if chosen is not None and chosen.name is not None and chosen.name in available_widgets:
         available_widget = available_widgets[chosen.name]
-        on_create, on_update, debug = available_widget['create'], available_widget['update'], available_widget['debug']
+        on_create, on_update, on_app, debug = available_widget['create'], available_widget['update'], available_widget['on_app'], available_widget['debug']
         if not chosen.inited:
-            chosen.inited = True
-            if on_create:
-                elements = call_general_function(on_create, widget=widget)
-                if debug:
-                    debug_button = widgets.Button(click=debug_button_click, backgroundTint=0xffff0000, style='success_oval_sml', padding=(0, 0, 0, 0), width=40, height=40, top=10, right=10)
-                    if isinstance(elements, list):
-                        elements.append(debug_button)
-                    elif isinstance(elements, tuple):
-                        elements = elements + (debug_button,)
-                return elements
-            return None
+            try:
+                elements = None
+                if on_create:
+                    elements = call_general_function(on_create, widget=widget, is_app=is_app)
+                    if debug:
+                        debug_button = widgets.Button(click=debug_button_click, backgroundTint=0xffff0000, style='success_oval_sml', padding=(0, 0, 0, 0), width=40, height=40, top=10, right=10)
+                        if isinstance(elements, list):
+                            elements.append(debug_button)
+                        elif isinstance(elements, tuple):
+                            elements = elements + (debug_button,)
+
+                if is_app and on_app:
+                    onapp_result = call_general_function(on_app, widget=widget)
+                    appinfo = parse_appinfo(onapp_result)
+                else:
+                    appinfo = {}
+
+                chosen.inited = True
+                return elements, dict(name=chosen.name, **appinfo)
+            except BaseException as e:
+                try:
+                    #manually call widget chosen listener because of error
+                    call_widget_chosen_listener(widget.widget_id, chosen.name)
+                except:
+                    #best effort
+                    pass
+                raise e
         else:
             if on_update:
                 call_general_function(on_update, widget=widget, views=views)
-            return views
-    return widget_manager_create(widget, manager_state) #maybe present error widget
+            return views, dict(name=chosen.name)
+    return widget_manager_create(widget, manager_state)
 
 def widget_manager_callback(widget, manager_state, views, callback_key, **kwargs):
     chosen = manager_state.chosen[widget.widget_id]
@@ -843,16 +925,17 @@ def refresh_widgets(path, removed=False):
     state.save_modified()
 
 class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
-    def export(self, input, output):
+    def export(self, input, output, attrs):
         if not output:
-            return None
-        if not isinstance(output, (list, tuple)):
-            output = [output]
+            out = None
+        else:
+            if not isinstance(output, (list, tuple)):
+                output = [output]
 
-        out = [e.dict(do_copy=True) for e in output]
-        if input is not None and input == out:
-            return None
-        return java.build_java_dict(out)
+            out = [e.dict(do_copy=True) for e in output]
+            if input is not None and input == out:
+                out = None
+        return java.build_java_dict(dict(views=out, **attrs))
 
     def import_(self, java_list):
         #make two copies
@@ -861,17 +944,15 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
         return d1, elist(Element(e) for e in d2)
 
     @java.override
-    def onCreate(self, widget_id):
-        print(f'python got onCreate')
+    def onUpdate(self, widget_id, views_java_list, is_app):
+        print(f'python got onUpdate', is_app)
         widget, manager_state = create_widget(widget_id)
-        return self.export(None, widget_manager_create(widget, manager_state))
-
-    @java.override
-    def onUpdate(self, widget_id, views_java_list):
-        print(f'python got onUpdate')
-        widget, manager_state = create_widget(widget_id)
-        input, views = self.import_(views_java_list)
-        return self.export(input, widget_manager_update(widget, manager_state, views))
+        if views_java_list == None: # might by java.Null
+            input, views = None, None
+        else:
+            input, views = self.import_(views_java_list)
+        output, attrs = widget_manager_update(widget, manager_state, views, is_app)
+        return self.export(input, output, attrs)
 
     @java.override
     def onDelete(self, widget_id):
@@ -890,11 +971,11 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
             #element not found, must be stale pendingintent
             #just invalidate
             print('Clicked collection item does not exist, invalidating')
-            return java.new.java.lang.Object[()]([True, self.export(None, views)])
+            return java.new.java.lang.Object[()]([True, self.export(None, views, {})])
         widget, manager_state = create_widget(widget_id)
         handled = collection.__event__('itemclick', widget=widget, views=views, collection=collection, position=position, view=view)
         handled = handled is True
-        return java.new.java.lang.Object[()]([handled, self.export(input, views)])
+        return self.export(input, views, dict(handled=handled))
 
     @java.override
     def onClick(self, widget_id, views_java_list, view_id, checked):
@@ -906,10 +987,10 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
             #element not found, must be stale pendingintent
             #just invalidate
             print('Clicked element does not exist, invalidating')
-            return self.export(None, views)
+            return self.export(None, views, {})
         widget, manager_state = create_widget(widget_id)
         v.__event__('click', widget=widget, views=views, view=v, checked=checked)
-        return self.export(input, views)
+        return self.export(input, views, {})
 
     @java.override
     def onTimer(self, timer_id, widget_id, views_java_list, data):
@@ -918,7 +999,7 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
         func = loads(data)
         widget, manager_state = create_widget(widget_id)
         call_general_function(func, timer_id=timer_id, widget=widget, views=views)
-        return self.export(input, views)
+        return self.export(input, views, {})
 
     @java.override
     def onPost(self, widget_id, views_java_list, data):
@@ -927,14 +1008,14 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
         func = loads(data)
         widget, manager_state = create_widget(widget_id)
         call_general_function(func, widget=widget, views=views)
-        return self.export(input, views)
+        return self.export(input, views, {})
 
     @java.override
     def onConfig(self, widget_id, views_java_list, key):
         print('onConfig called', key)
         input, views = self.import_(views_java_list)
         widget, manager_state = create_widget(widget_id)
-        return self.export(input, widget_manager_callback(widget, manager_state, views, 'on_config', key=key))
+        return self.export(input, widget_manager_callback(widget, manager_state, views, 'on_config', key=key), {})
 
     @java.override
     def onShare(self, widget_id, views_java_list, mime, text, datas):
@@ -944,7 +1025,7 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
 
         input, views = self.import_(views_java_list)
         widget, manager_state = create_widget(widget_id)
-        return self.export(input, widget_manager_callback(widget, manager_state, views, 'on_share', mimetype=mime, text=text, data=datas))
+        return self.export(input, widget_manager_callback(widget, manager_state, views, 'on_share', mimetype=mime, text=text, data=datas), {})
 
     @java.override
     def wipeStateRequest(self):
@@ -1088,7 +1169,10 @@ def reload_python_file(path):
 def add_python_file(path):
     return java_context().addPythonFileByPathWithDialog(path)
     
-def register_widget(name, create, update=None, config=None, config_description=None, on_config=None, on_share=None, debug=False):
+def register_widget(name, create, update=None, config=None, config_description=None, on_config=None, on_share=None, on_app=None, debug=False):
+    if not name or not isinstance(name, str):
+        raise ValueError('name must be str')
+
     path = getattr(__importing_module, 'path', None)
     if path is None:
         raise ValueError('register_widget can only be called on import')
@@ -1122,7 +1206,9 @@ def register_widget(name, create, update=None, config=None, config_description=N
         dump_general_function(on_config, {})
     if on_share is not None:
         dump_general_function(on_share, {})
+    if on_app is not None:
+        dump_general_function(on_app, {})
 
-    available_widgets[name] = dict(pythonfile=path, create=create, update=update, on_config=on_config, on_share=on_share, debug=bool(debug))
+    available_widgets[name] = dict(pythonfile=path, create=create, update=update, on_config=on_config, on_share=on_share, on_app=on_app, debug=bool(debug))
     if config is not None:
         configs.set_defaults(name, config, config_description)

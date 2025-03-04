@@ -22,13 +22,16 @@ public class StateFragment extends FragmentParent
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState)
     {
-        View layout = inflater.inflate(R.layout.fragment_configs, container, false);
-        tryStart();
-
-        return layout;
+        return inflater.inflate(R.layout.fragment_configs, container, false);
     }
 
-    public void tryStart()
+    @Override
+    public void onAttachedAndBound()
+    {
+        start();
+    }
+
+    public void start()
     {
         if (getActivity() == null)
         {
@@ -56,18 +59,6 @@ public class StateFragment extends FragmentParent
     public void updateDict()
     {
         stateSnapshot = getWidgetService().getStateLayoutSnapshot();
-    }
-
-    @Override
-    public void onBound()
-    {
-        tryStart();
-    }
-
-    @Override
-    public void onShow(MainActivity activity)
-    {
-        tryStart();
     }
 
     public static class WidgetSelectFragment extends ChildFragment implements AdapterView.OnItemClickListener
@@ -142,6 +133,12 @@ public class StateFragment extends FragmentParent
             registerForContextMenu(list);
             refresh();
             return layout;
+        }
+
+        @Override
+        public void onResumedAndBound()
+        {
+            refresh();
         }
 
         @Override
