@@ -132,8 +132,6 @@ public class ControlFragment extends MyFragment
             }
         });
 
-        onStartupStatusChange();
-
         return layout;
     }
 
@@ -150,7 +148,8 @@ public class ControlFragment extends MyFragment
         }, 1000);
     }
 
-    public void onBound()
+    @Override
+    public void onResumedAndBound()
     {
         onStartupStatusChange();
     }

@@ -878,11 +878,11 @@ static PyObject * unpacked_jvalue_to_python(jvalue v, int t)
     {
         case BOOLEAN:
         {
-            return PyBool_FromLong((long) (jbyte) v.z);
+            return PyBool_FromLong((long) (uint8_t) v.z);
         }
         case BYTE:
         {
-            return PyLong_FromLong((long) v.b);
+            return PyLong_FromLong((long) (uint8_t) v.b);
         }
         case CHARACTER:
         {
@@ -1215,6 +1215,11 @@ static PyObject * get_object_class(PyObject * self, PyObject * args)
         if (!PyArg_ParseTuple(args, "k", &object))
         {
             return NULL;
+        }
+
+        if (object == 0)
+        {
+            return PyLong_FromLong(0);
         }
 
         GET_JNI_ENV();
@@ -2519,6 +2524,12 @@ static jobject build_java_dict_object(PyObject * obj, JNIEnv * env)
             {
                 env->CallVoidMethod(javalist, dict_list_add_dictobj, (jobject)NULL);
             }
+            else
+            {
+                // not supporting any other type in list for now
+                env->DeleteLocalRef(javalist);
+                return NULL;
+            }
             if (env->ExceptionCheck())
             {
                 env->DeleteLocalRef(javalist);
@@ -2559,7 +2570,6 @@ static PyObject * build_java_dict(PyObject * self, PyObject * args)
         }
 
         jobject local_jobj = build_java_dict_object(obj, env);
-        CHECK_JAVA_EXC(env);
         if (local_jobj == NULL)
         {
             PyErr_SetString(PyExc_RuntimeError, "failed to build java dict object");
@@ -2922,8 +2932,24 @@ static PyObject * build_python_dict(jobject obj, JNIEnv * env)
                 }
                 PyList_SetItem(pyobj, i, pyitem);
             }
+            else
+            {
+                // not supporting any other type in list for now
+
+                env->DeleteLocalRef(item);
+                Py_DECREF(pyobj);
+                env->DeleteLocalRef(entryarray);
+
+                PyErr_SetString(PyExc_RuntimeError, "only lists of dicts and lists can be converted");
+                return NULL;
+            }
         }
         return pyobj;
+    }
+    else
+    {
+        PyErr_SetString(PyExc_RuntimeError, "non convertible object class");
+        return NULL;
     }
 }
 

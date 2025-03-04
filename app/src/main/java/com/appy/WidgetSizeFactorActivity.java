@@ -28,7 +28,7 @@ public class WidgetSizeFactorActivity extends WidgetSelectActivity
         }
 
         Float sizeFactor = widgetService.getWidgetSizeFactor(widgetId);
-        String sizeFactorText = sizeFactor == null ? "" : Utils.formatFloat(sizeFactor);
+        String sizeFactorText = sizeFactor == null ? "1" : Utils.formatFloat(sizeFactor);
 
         EditText editText = new EditText(this);
         editText.setText(sizeFactorText);
@@ -76,14 +76,15 @@ public class WidgetSizeFactorActivity extends WidgetSelectActivity
     }
 
     @Override
-    protected String elementValueFormat(int widgetId, String widgetName)
+    protected String elementValueFormat(int widgetId, DictObj.Dict widgetProps)
     {
+        String value = super.elementValueFormat(widgetId, widgetProps);
         Float sizeFactor = widgetService.getWidgetSizeFactor(widgetId);
         if (sizeFactor != null)
         {
-            return widgetName + " " + Utils.formatFloat(sizeFactor);
+            return value + ": " + Utils.formatFloat(sizeFactor);
         }
-        return widgetName;
+        return value;
     }
 
     @Override

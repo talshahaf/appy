@@ -12,6 +12,7 @@ import android.graphics.drawable.Icon;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.util.Size;
 import android.widget.AdapterViewFlipper;
 import android.widget.AnalogClock;
 import android.widget.Button;
@@ -54,10 +55,13 @@ public class Constants
     public static final String LOCAL_BIND_EXTRA = "LOCAL_BIND_EXTRA";
     public static final String FRAGMENT_NAME_EXTRA = "FRAGMENT_NAME_EXTRA";
     public static final String FRAGMENT_ARG_EXTRA = "FRAGMENT_ARG_EXTRA";
-    public static final String FRAGMENT_ARG_WIDGET = "FRAGMENT_ARG_WIDGET";
-    public static final String FRAGMENT_ARG_CONFIG = "FRAGMENT_ARG_CONFIG";
-    public static final String FRAGMENT_ARG_FILEURI = "FRAGMENT_ARG_FILEURI";
-    public static final String FRAGMENT_ARG_REQUESTCODE = "FRAGMENT_ARG_REQUESTCODE";
+    public static final String FRAGMENT_ARG_PREFIX = "FRAGMENT_ARG_";
+    public static final String FRAGMENT_ARG_WIDGET = FRAGMENT_ARG_PREFIX + "WIDGET";
+    public static final String FRAGMENT_ARG_WIDGET_ID = FRAGMENT_ARG_PREFIX + "WIDGET_ID";
+    public static final String FRAGMENT_ARG_WIDGET_UNIQUE = FRAGMENT_ARG_PREFIX + "WIDGET_UNIQUE";
+    public static final String FRAGMENT_ARG_CONFIG = FRAGMENT_ARG_PREFIX + "CONFIG";
+    public static final String FRAGMENT_ARG_FILEURI = FRAGMENT_ARG_PREFIX + "FILEURI";
+    public static final String FRAGMENT_ARG_REQUESTCODE = FRAGMENT_ARG_PREFIX + "REQUESTCODE";
     public static final String APP_PACKAGE_NOCOM = "appy";
     public static final String APP_PACKAGE_NAME = "com." + APP_PACKAGE_NOCOM;
     public static final String DEEP_LINK_BROADCAST = APP_PACKAGE_NAME + ".DeepLink";
@@ -77,6 +81,7 @@ public class Constants
     public static final int TASK_QUEUE_SUSPICIOUS_SIZE = 20;
     public static final int CONFIG_IMPORT_MAX_SIZE = 100 * 1024 * 1024;
     public static final int CRASH_FILE_MAX_SIZE = 10 * 1024 * 1024;
+    public static final int CRASH_FILE_MAX_DISPLAY_SIZE = 32 * 1024;
     public static final int PYTHON_FILE_MAX_SIZE = 100 * 1024 * 1024;
     public static final int STORE_CURSOR_SIZE = 100 * 1024 * 1024;
     public static final String[] CRASHES_FILENAMES = {
@@ -86,6 +91,8 @@ public class Constants
             "pythontrace.txt",
     };
     public static final String CRASH_ZIP_PATH = "crash.zip";
+    public static final Size[] APP_ICON_SIZES = {new Size(128, 128), new Size(48, 48)};
+    public static final String APP_ICON_REGEX = "([A-Za-z]*)\\_([1-9][0-9]*)x([1-9][0-9]*)";
 
     public enum CrashIndex
     {

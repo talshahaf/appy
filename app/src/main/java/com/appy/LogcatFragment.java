@@ -1,5 +1,6 @@
 package com.appy;
 
+import android.annotation.SuppressLint;
 import android.os.Bundle;
 import android.os.Handler;
 import android.view.LayoutInflater;
@@ -27,6 +28,7 @@ public class LogcatFragment extends MyFragment implements RunnerListener
     ArrayList<String> selectionBuffer = new ArrayList<>();
     static final String EMPTY_TEXT = "Loading...";
 
+    @SuppressLint("ClickableViewAccessibility")
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState)
@@ -144,14 +146,16 @@ public class LogcatFragment extends MyFragment implements RunnerListener
     }
 
     @Override
-    public void onShow(MainActivity activity)
+    public void onResume()
     {
         startLogcat();
+        super.onResume();
     }
 
     @Override
-    public void onHide(MainActivity activity)
+    public void onPause()
     {
         stopLogcat();
+        super.onPause();
     }
 }

@@ -8,6 +8,7 @@
     <color name="grid_yellow">#ffd3be00</color>
     <color name="grid_red">#ffb00003</color>
     <color name="grid_grey">#ffb0b0b0</color>
+    <color name="app_shortcut_default_background">#7f007bff</color>
 
     <color name="color_primary_btn_bg_hover">#0069d9</color>
     <color name="color_primary_btn_border_hover">#0062cc</color>

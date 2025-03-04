@@ -24,15 +24,20 @@ import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.appcompat.app.AppCompatActivity;
 import android.os.Bundle;
 import androidx.appcompat.widget.Toolbar;
+
+import android.util.ArraySet;
 import android.util.Log;
 import android.util.Pair;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.FrameLayout;
 import android.widget.TextView;
-import java.util.HashMap;
 
-public class MainActivity extends AppCompatActivity implements StatusListener
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+
+public class MainActivity extends AppCompatActivity implements StatusListener, AppPropsListener, WidgetChosenListener
 {
     private TutorialOverlayView tutorialOverlayView;
     private Tutorial tutorial = null;
@@ -68,7 +73,7 @@ public class MainActivity extends AppCompatActivity implements StatusListener
         ActionBar actionBar = getSupportActionBar();
         actionBar.setDisplayHomeAsUpEnabled(true);
         actionBar.setHomeButtonEnabled(true);
-        actionBar.setHomeAsUpIndicator(R.drawable.ic_menu_24dp);
+        actionBar.setHomeAsUpIndicator(R.drawable.ic_action_menu);
         actionBar.setHomeActionContentDescription("fragment_menu_button");
         // Find our drawer view
         drawer = findViewById(R.id.drawer_layout);
@@ -134,6 +139,25 @@ public class MainActivity extends AppCompatActivity implements StatusListener
 
         String startingFragment = getIntent().getStringExtra(Constants.FRAGMENT_NAME_EXTRA);
         Bundle fragmentArg = getIntent().getBundleExtra(Constants.FRAGMENT_ARG_EXTRA);
+
+        if (getIntent().getExtras() != null && fragmentArg == null && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O)
+        {
+            //try to pull from base level
+            Bundle args = getIntent().getExtras().deepCopy();
+            HashSet<String> keys = new HashSet<>(args.keySet());
+            for (String key : keys)
+            {
+                if (!key.startsWith(Constants.FRAGMENT_ARG_PREFIX) || key.equals(Constants.FRAGMENT_ARG_EXTRA))
+                {
+                    args.remove(key);
+                }
+            }
+
+            if (!args.isEmpty())
+            {
+                fragmentArg = args;
+            }
+        }
 
         // Handle py files
         if (Intent.ACTION_VIEW.equals(getIntent().getAction()) && getIntent().getData() != null)
@@ -339,7 +363,7 @@ public class MainActivity extends AppCompatActivity implements StatusListener
                 Log.e("APPY", "Exception on selectDrawerItem", e);
             }
 
-            fragments.put(itemId, new Pair<Class<?>, Fragment>(cls.first, (Fragment) fragment));
+            fragments.put(itemId, new Pair<>(cls.first, (Fragment) fragment));
         }
 
         if (fragment == null)
@@ -352,11 +376,6 @@ public class MainActivity extends AppCompatActivity implements StatusListener
 
         if (prev != fragment)
         {
-            if (prev != null)
-            {
-                prev.onHide(this);
-            }
-
             // Insert the fragment by replacing any existing fragment
             FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
             transaction.setCustomAnimations(
@@ -369,7 +388,6 @@ public class MainActivity extends AppCompatActivity implements StatusListener
                 transaction.addToBackStack(null);
             }
             transaction.commitAllowingStateLoss();
-            fragment.onShow(this);
         }
 
         // Highlight the selected item has been done by NavigationView
@@ -388,6 +406,8 @@ public class MainActivity extends AppCompatActivity implements StatusListener
         {
             widgetService = ((Widget.LocalBinder) service).getService();
             widgetService.setStatusListener(MainActivity.this);
+            widgetService.setAppPropsListener(MainActivity.this);
+            widgetService.setWidgetChosenListener(MainActivity.this);
             for (Pair<Class<?>, Fragment> frag : fragments.values())
             {
                 if (frag.second != null)
@@ -415,6 +435,8 @@ public class MainActivity extends AppCompatActivity implements StatusListener
         if (widgetService != null)
         {
             widgetService.setStatusListener(null);
+            widgetService.setAppPropsListener(null);
+            widgetService.setWidgetChosenListener(null);
             unbindService(mConnection);
             widgetService = null;
         }
@@ -449,6 +471,27 @@ public class MainActivity extends AppCompatActivity implements StatusListener
         if (fragment != null)
         {
             ((FilesFragment) fragment).onPythonFileStatusChange();
+        }
+    }
+
+
+    @Override
+    public void onAppPropsChange(int widgetId, int androidWidgetId, DictObj.Dict data)
+    {
+        Fragment fragment = fragments.get(R.id.navigation_apps).second;
+        if (fragment != null)
+        {
+            ((AppsFragment) fragment).onAppPropsChange(widgetId, androidWidgetId, data);
+        }
+    }
+
+    @Override
+    public void onWidgetChosen(int widgetId, int androidWidgetId, String name)
+    {
+        Fragment fragment = fragments.get(R.id.navigation_apps).second;
+        if (fragment != null)
+        {
+            ((AppsFragment) fragment).onWidgetChosen(widgetId, androidWidgetId, name);
         }
     }
 

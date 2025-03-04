@@ -424,7 +424,7 @@ public class Reflection
                                 // conversion allowed
                                 continue;
                             }
-                            Log.d("APPY", "method " + m.getName() + " fails because " + methodTypes[j].getName() + " != " + parameterTypes[j].getName());
+                            Log.d("APPY", "getCompatibleMethod(): candidate method " + m.getName() + " fails because " + methodTypes[j].getName() + " != " + parameterTypes[j].getName());
                             isCompatible = false;
                             break;
                         }

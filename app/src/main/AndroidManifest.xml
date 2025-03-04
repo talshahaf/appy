@@ -103,8 +103,8 @@
             </intent-filter>
         </activity>
 
-        <activity android:name="com.appy.PermissionActivity" android:excludeFromRecents="true" android:theme="@style/Invisible" android:exported="true"/>
-        <activity android:name="com.appy.ForegroundActivity" android:excludeFromRecents="true" android:theme="@android:style/Theme.Translucent.NoTitleBar" android:exported="true"/>
+        <activity android:name="com.appy.PermissionActivity" android:excludeFromRecents="true" android:theme="@style/Invisible" android:exported="true" android:fitsSystemWindows="true" />
+        <activity android:name="com.appy.ForegroundActivity" android:excludeFromRecents="true" android:theme="@style/Invisible" android:exported="true" android:fitsSystemWindows="true" />
 
         <activity android:name="com.appy.FileBrowserActivity" android:exported="true"/>
         <activity android:name="com.appy.FileEditorActivity" android:exported="true"/>
@@ -122,6 +122,22 @@
                 <action android:name="android.intent.action.SEND_MULTIPLE"/>
                 <category android:name="android.intent.category.DEFAULT"/>
                 <data android:mimeType="*/*"/>
+            </intent-filter>
+        </activity>
+
+        <activity android:name="com.appy.LinkService"
+            android:launchMode="singleInstance"
+            android:noHistory="true"
+            android:fitsSystemWindows="true"
+            android:excludeFromRecents="true"
+            android:theme="@style/Invisible"
+            android:exported="true"
+            >
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="appy"/>
             </intent-filter>
         </activity>
 
@@ -248,21 +264,6 @@
             <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="Python widgets need to run code freely"/>
         </service>
-
-        <activity android:name="com.appy.LinkService"
-            android:launchMode="singleInstance"
-            android:noHistory="true"
-            android:excludeFromRecents="true"
-            android:theme="@style/Theme.Transparent"
-            android:exported="true"
-            >
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW"/>
-                <category android:name="android.intent.category.DEFAULT"/>
-                <category android:name="android.intent.category.BROWSABLE"/>
-                <data android:scheme="appy"/>
-            </intent-filter>
-        </activity>
 
         <provider
             android:name="com.appy.FileProvider"

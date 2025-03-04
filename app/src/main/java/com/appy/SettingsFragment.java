@@ -89,8 +89,6 @@ public class SettingsFragment extends MySettingsFragment implements SharedPrefer
         });
 
         pythonVersionPreference = getPreferenceScreen().findPreference("python_version");
-
-        updateConfig();
     }
 
     @Override

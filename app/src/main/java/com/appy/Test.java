@@ -135,6 +135,26 @@ public class Test
         return "charsequence";
     }
 
+    public static byte[] test_byte_array(int len)
+    {
+        return new byte[len];
+    }
+
+    public static char[] test_char_array(int len)
+    {
+        return new char[len];
+    }
+
+    public static Byte[] test_Byte_array(int len)
+    {
+        return new Byte[len];
+    }
+
+    public static Character[] test_character_array(int len)
+    {
+        return new Character[len];
+    }
+
     public static class Inner
     {
 

@@ -4,15 +4,24 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.res.Resources;
 import android.database.Cursor;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
+import android.graphics.Rect;
+import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.Drawable;
 import android.graphics.drawable.Icon;
 import android.net.Uri;
+import android.os.Bundle;
 import android.provider.OpenableColumns;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.util.Pair;
+import android.util.Size;
 import android.util.TypedValue;
 
 import androidx.appcompat.app.AlertDialog;
+import androidx.core.content.res.ResourcesCompat;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
@@ -32,13 +41,19 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
+
+import kotlin.Triple;
 
 public class Utils
 {
@@ -53,6 +68,250 @@ public class Utils
         }
 
         public abstract void run();
+    }
+
+    public static interface KeyMapper<T>
+    {
+        float map(T t);
+    }
+
+    public static ArrayList<String> bundleDiff(Bundle a, Bundle b)
+    {
+
+        Set<String> aKeys = a == null ? new HashSet<>() : a.keySet();
+        Set<String> bKeys = b == null ? new HashSet<>() : b.keySet();
+
+        Pair<Set<String>, Set<String>> intersection_xor = Utils.intersectionAndXor(aKeys, bKeys);
+
+        ArrayList<String> changedKeys = new ArrayList<>(intersection_xor.second);
+
+        for (String key : intersection_xor.first)
+        {
+            Object aV = a.get(key);
+            Object bV = b.get(key);
+            if ((aV == null && bV != null) || (aV != null && !aV.equals(bV)))
+            {
+                changedKeys.add(key);
+            }
+        }
+
+        return changedKeys;
+    }
+
+    public static <T> Pair<T, T> minmax(Collection<T> collection, KeyMapper<T> mapper)
+    {
+        boolean first = true;
+        T minE = null;
+        T maxE = null;
+        float minV = 0;
+        float maxV = 0;
+
+        for (T element : collection)
+        {
+            float value = mapper.map(element);
+            if (first)
+            {
+                first = false;
+                minE = element;
+                maxE = element;
+                minV = value;
+                maxV = value;
+            }
+            else if (value < minV)
+            {
+                minE = element;
+                minV = value;
+            }
+            else if (value > maxV)
+            {
+                maxE = element;
+                maxV = value;
+            }
+        }
+
+        return new Pair<>(minE, maxE);
+    }
+
+    public static byte[] chooseIcon(DictObj.Dict icons, String selector, int width, int height)
+    {
+        if (icons == null || icons.size() == 0)
+        {
+            return null;
+        }
+
+        Pattern reg = Pattern.compile(Constants.APP_ICON_REGEX);
+
+        ArrayList<Triple<String, String, Size>> parsed = new ArrayList<>();
+        for (String key : icons.keyset())
+        {
+            Matcher m = reg.matcher(key);
+            if (m.matches())
+            {
+                parsed.add(new Triple<>(key, m.group(1), new Size(Integer.parseInt(m.group(2)), Integer.parseInt(m.group(3)))));
+            }
+        }
+
+        if (parsed.isEmpty())
+        {
+            //default to first
+            return icons.getBytes(icons.keys()[0]);
+        }
+
+        ArrayList<Triple<String, String, Size>> selector_filtered = new ArrayList<>();
+
+        if (selector != null)
+        {
+            for (Triple<String, String, Size> key : parsed)
+            {
+                if (key.component2().equalsIgnoreCase(selector))
+                {
+                    selector_filtered.add(key);
+                }
+            }
+        }
+
+        if (selector_filtered.isEmpty())
+        {
+            //default to empty selector
+            for (Triple<String, String, Size> key : parsed)
+            {
+                if (key.component2().isEmpty())
+                {
+                    selector_filtered.add(key);
+                }
+            }
+
+            if (selector_filtered.isEmpty())
+            {
+                //default to ignoring selector
+                selector_filtered = parsed;
+            }
+        }
+
+        //choose best according to smallest bigger than
+        ArrayList<Triple<String, String, Size>> larger_than = new ArrayList<>();
+
+        for (Triple<String, String, Size> key : selector_filtered)
+        {
+            Size size = key.component3();
+
+            if (size.getWidth() >= width && size.getHeight() >= height)
+            {
+                larger_than.add(key);
+            }
+        }
+
+        String key;
+        if (larger_than.isEmpty())
+        {
+            // default to largest
+            key = Utils.minmax(selector_filtered, (Triple<String, String, Size> e) -> e.component3().getWidth()).second.component1();
+        }
+        else
+        {
+            //choose smallest
+            key = Utils.minmax(larger_than, (Triple<String, String, Size> e) -> e.component3().getWidth()).first.component1();
+        }
+
+        return icons.getBytes(key);
+    }
+
+    public static DictObj.Dict prepareAppIcons(DictObj.Dict data)
+    {
+        DictObj.Dict result = new DictObj.Dict();
+        for (String key : data.keys())
+        {
+            byte[] buf = data.getBytes(key);
+            resizeAppIcons(result, key, BitmapFactory.decodeByteArray(buf, 0, buf.length));
+        }
+        return result;
+    }
+
+    public static byte[] bitmapToBytes(Bitmap bitmap)
+    {
+        ByteArrayOutputStream stream = new ByteArrayOutputStream();
+        bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream);
+        return stream.toByteArray();
+    }
+
+    public static Bitmap drawableToBitmap(Drawable drawable, Integer backgroundColor, Float canvasSizeFactor)
+    {
+        if (canvasSizeFactor == null)
+        {
+            canvasSizeFactor = 1f;
+        }
+
+        int drawableWidth = drawable.getIntrinsicWidth();
+        int drawableHeight = drawable.getIntrinsicHeight();
+        if (drawableWidth <= 0)
+        {
+            drawableWidth = 1;
+        }
+        if (drawableHeight <= 0)
+        {
+            drawableHeight = 1;
+        }
+
+        Bitmap bitmap = Bitmap.createBitmap((int)Math.ceil(drawableWidth * canvasSizeFactor), (int)Math.ceil(drawableHeight * canvasSizeFactor), Bitmap.Config.ARGB_8888);
+
+        Canvas canvas = new Canvas(bitmap);
+        if (backgroundColor != null)
+        {
+            canvas.drawColor(backgroundColor);
+        }
+
+        float pos = (canvasSizeFactor - 1) / 2;
+        int left = (int)Math.floor(pos * drawableWidth);
+        int top = (int)Math.floor(pos * drawableHeight);
+
+        drawable.setBounds(left, top, left + drawableWidth, top + drawableHeight);
+        drawable.draw(canvas);
+
+        return bitmap;
+    }
+
+    public static void resizeAppIcons(DictObj.Dict result, String selector, Bitmap bitmap)
+    {
+        for (Size size : Constants.APP_ICON_SIZES)
+        {
+            Bitmap resized = resizeBitmap(bitmap, size, true);
+            result.put(selector+"_"+size.getWidth()+"x"+size.getHeight(), bitmapToBytes(resized), false);
+        }
+    }
+
+    public static Bitmap resizeBitmap(Bitmap bitmap, Size newsize, boolean keepRatio)
+    {
+        float srcRatio = (float)bitmap.getWidth() / (float)bitmap.getHeight();
+        float dstRatio = (float)newsize.getWidth() / (float)newsize.getHeight();
+
+        if (!keepRatio || Math.abs(srcRatio - dstRatio) < 1e-3f)
+        {
+            return Bitmap.createScaledBitmap(bitmap, newsize.getWidth(), newsize.getHeight(), true);
+        }
+
+        int bestWidth, bestHeight;
+        if (Float.compare(srcRatio, dstRatio) > 0)
+        {
+            //src is wider
+            bestWidth = newsize.getWidth();
+            bestHeight = Math.round((float)bestWidth / srcRatio);
+        }
+        else
+        {
+            //dst is wider
+            bestHeight = newsize.getHeight();
+            bestWidth = Math.round((float)bestHeight * srcRatio);
+        }
+
+        Bitmap bestScale = Bitmap.createScaledBitmap(bitmap, bestWidth, bestHeight, true);
+
+        Bitmap newbitmap = Bitmap.createBitmap(newsize.getWidth(), newsize.getHeight(), Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(newbitmap);
+
+        int left = (newsize.getWidth() - bestWidth) / 2;
+        int top = (newsize.getHeight() - bestHeight) / 2;
+        canvas.drawBitmap(bestScale, left, top, null);
+        return newbitmap;
     }
 
     public static Pair<byte[], String> readAndHashFile(File path, int sizeLimit) throws IOException
@@ -129,6 +388,11 @@ public class Utils
     public static int resolveColor(int colorRes)
     {
         return globalResources.getColor(colorRes);
+    }
+
+    public static Drawable resolveDrawable(int drawableRes)
+    {
+        return ResourcesCompat.getDrawable(globalResources, drawableRes, null);
     }
 
     public static String formatFloat(float f)
