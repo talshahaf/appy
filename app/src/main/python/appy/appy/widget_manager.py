@@ -852,11 +852,11 @@ def widget_manager_update(widget, manager_state, views, is_app):
                         elif isinstance(elements, tuple):
                             elements = elements + (debug_button,)
 
+                appinfo = {}
                 if is_app and on_app:
                     onapp_result = call_general_function(on_app, widget=widget)
-                    appinfo = parse_appinfo(onapp_result)
-                else:
-                    appinfo = {}
+                    if onapp_result:
+                        appinfo = parse_appinfo(onapp_result)
 
                 chosen.inited = True
                 return elements, dict(name=chosen.name, **appinfo)
