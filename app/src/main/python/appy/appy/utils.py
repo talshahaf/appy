@@ -200,7 +200,7 @@ def drawable_resource_to_bytes(resource_id, background_color=None, canvas_size_f
     utils = java.get_java_arg().getUtils()
     if isinstance(canvas_size_factor, int):
         canvas_size_factor = float(canvas_size_factor)
-    return utils.bitmapToBytes(utils.drawableToBitmap(utils.resolveDrawable(resource_id), background_color, canvas_size_factor))
+    return utils.bitmapToBytes(utils.drawableToBitmap(utils.resolveDrawable(resource_id), background_color, canvas_size_factor)).value()
 
 # for matplotlib
 os.environ['MPLCONFIGDIR'] = RESOURCE_CACHE_DIR
