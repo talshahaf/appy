@@ -74,7 +74,7 @@ public class ConfigsFragment extends FragmentParent
                     File exportFile = exportFilePath();
                     try
                     {
-                        Utils.writeFile(exportFile, DictObj.makeJson(configurations.getDict()));
+                        Utils.writeFile(exportFile, DictObj.makeJson(configurations.getDict(), true));
                         Toast.makeText(getActivity(), "Configurations exported to " + exportFile.getAbsolutePath(), Toast.LENGTH_LONG).show();
                     }
                     catch (IOException e)

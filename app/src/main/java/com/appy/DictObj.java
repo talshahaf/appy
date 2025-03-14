@@ -15,12 +15,12 @@ public class DictObj
 {
     public static native Object jsontoDictObj(byte[] json);
 
-    public static native byte[] DictObjtojson(Object dict);
+    public static native byte[] DictObjtojson(Object dict, boolean readable);
 
-    public static String makeJson(DictObj obj)
+    public static String makeJson(DictObj obj, boolean readable)
     {
         DictObj copy = obj.copy(true);
-        return new String(DictObjtojson(copy), StandardCharsets.UTF_8);
+        return new String(DictObjtojson(copy, readable), StandardCharsets.UTF_8);
     }
 
     public static DictObj fromJson(String json)

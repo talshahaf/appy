@@ -3005,7 +3005,7 @@ static PyObject * build_python_dict_from_java(PyObject * self, PyObject * args)
 
 static bool python_initialized = false;
 
-extern "C" JNIEXPORT jbyteArray JNICALL Java_com_appy_DictObj_DictObjtojson(JNIEnv * env, jclass clazz, jobject Dict)
+extern "C" JNIEXPORT jbyteArray JNICALL Java_com_appy_DictObj_DictObjtojson(JNIEnv * env, jclass clazz, jobject Dict, jboolean readable)
 {
     try
     {
@@ -3063,8 +3063,35 @@ extern "C" JNIEXPORT jbyteArray JNICALL Java_com_appy_DictObj_DictObjtojson(JNIE
             return NULL;
         }
 
-        PyObject * ser = PyObject_CallOneArg(dumps_func, pyobj);
+        PyObject * pyargs = PyTuple_Pack(1, pyobj);
         Py_DECREF(pyobj);
+        if (pyargs == NULL || PyErr_Occurred())
+        {
+            PyErr_Clear();
+            env->ThrowNew(python_exception_class, "Exception in arg tuple pack");
+            return NULL;
+        }
+
+        PyObject * pykwargs = NULL;
+        if (readable)
+        {
+            pykwargs = Py_BuildValue("{s:i}", "indent", 2);
+        }
+        else
+        {
+            pykwargs = Py_BuildValue("{s:s}", "indent", NULL);
+        }
+        if (pykwargs == NULL || PyErr_Occurred())
+        {
+            Py_DECREF(pyargs);
+            PyErr_Clear();
+            env->ThrowNew(python_exception_class, "Exception in kwargs build value");
+            return NULL;
+        }
+
+        PyObject * ser = PyObject_Call(dumps_func, pyargs, pykwargs);
+        Py_DECREF(pyargs);
+        Py_DECREF(pykwargs);
         if (PyErr_Occurred() || ser == NULL)
         {
             PyObject * type = NULL, * value = NULL, * traceback = NULL;

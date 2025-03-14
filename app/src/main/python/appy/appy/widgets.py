@@ -1,3 +1,4 @@
+import time
 from dataclasses import dataclass
 from . import java, state, widget_manager, utils, configs, colors
 
@@ -35,6 +36,19 @@ class Widget:
             self.name = None
             self.state = None
         self.widget_dims = widget_manager.widget_dims
+
+    def __copy__(self):
+        new = self.__class__.__new__(self.__class__)
+        return new.__setstate__(self.__getstate__())
+
+    def __deepcopy__(self, memo):
+        raise RuntimeError('Cannot deep copy Widget object')
+
+    def __getstate__(self):
+        return dict(widget_id=self.widget_id, name=self.name)
+
+    def __setstate__(self, state):
+        self.__init__(state['widget_id'], state['name'])
 
     def __getattr__(self, item):
         if item == 'config':
@@ -84,7 +98,7 @@ class Widget:
         state.clean_global_state()
 
     def set_absolute_timer(self, seconds, f, **captures):
-        return self._set_timer(seconds, java.clazz.appy.Constants().TIMER_ABSOLUTE, f, captures)
+        return self.set_timeout(seconds - time.time(), f, **captures)
 
     def set_timeout(self, seconds, f, **captures):
         return self._set_timer(seconds, java.clazz.appy.Constants().TIMER_RELATIVE, f, captures)

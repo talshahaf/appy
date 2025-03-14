@@ -106,39 +106,41 @@ def find_class_with_inner(path):
 
 class Path:
     def __init__(self, path_func=None, cls_func=None, arr_func=None, path='', array_dim=0):
-        self.path_func = path_func
-        self.cls_func = cls_func
-        self.arr_func = arr_func
-        self.path = path
-        self.array_dim = array_dim
+        self.__path_func = path_func
+        self.__cls_func = cls_func
+        self.__arr_func = arr_func
+        self.__path = path
+        self.__array_dim = array_dim
 
     def __getattr__(self, attr):
-        if self.array_dim != 0:
+        if attr.startswith('__'):
+            return object.__getattribute__(self, attr)
+        if self.__array_dim != 0:
             raise ValueError('invalid path')
-        return Path(cls_func=self.cls_func, arr_func=self.arr_func, path=attr if not self.path else f'{self.path}.{attr}')
+        return Path(cls_func=self.__cls_func, arr_func=self.__arr_func, path=attr if not self.__path else f'{self.__path}.{attr}')
 
     def __call__(self, *args):
-        if self.path_func is not None:
-            return self.path_func(self.path, *args)
-        cls = find_class_with_inner(self.path)
-        if self.array_dim == 0:
-            if self.cls_func is None:
+        if self.__path_func is not None:
+            return self.__path_func(self.__path, *args)
+        cls = find_class_with_inner(self.__path)
+        if self.__array_dim == 0:
+            if self.__cls_func is None:
                 raise RuntimeError('operation not supported')
-            return self.cls_func(Class(cls), *args)
+            return self.__cls_func(Class(cls), *args)
         else:
-            if self.arr_func is None:
+            if self.__arr_func is None:
                 raise RuntimeError('operation not supported')
             element_cls = cls
-            for _ in range(self.array_dim - 1):
+            for _ in range(self.__array_dim - 1):
                 element_cls = bridge.array_of_class(element_cls)
             arr_cls = bridge.array_of_class(element_cls)
             wrapped_element_cls = Class(element_cls)
-            return self.arr_func(Class(arr_cls, array_element_class=wrapped_element_cls), wrapped_element_cls, *args)
+            return self.__arr_func(Class(arr_cls, array_element_class=wrapped_element_cls), wrapped_element_cls, *args)
 
     def __getitem__(self, key):
         if not isinstance(key, tuple) or len(key) != 0:
             raise ValueError('must be ()')
-        return Path(cls_func=self.cls_func, arr_func=self.arr_func, path=self.path, array_dim=self.array_dim + 1)
+        return Path(cls_func=self.__cls_func, arr_func=self.__arr_func, path=self.__path, array_dim=self.__array_dim + 1)
 
 def _call(parent, attrname, *args):
     if parent.__use_static__:
@@ -359,13 +361,25 @@ jint = jprimitive(bridge.jint)
 jlong = jprimitive(bridge.jlong)
 jfloat = jprimitive(bridge.jfloat)
 jdouble = jprimitive(bridge.jdouble)
-jstring = lambda x: wrap(bridge.jstring.from_str(x))[0]
 
-new = Path(cls_func=lambda cls, *args: cls(*args),
-           arr_func=lambda _, element_cls, *args: make_array(element_cls.__bridge__, *args))
+def jstring_ctor(x):
+    return wrap(bridge.jstring.from_str(x))[0]
+jstring = jstring_ctor
 
-clazz = Path(cls_func=lambda cls: cls,
-             arr_func=lambda arr_cls, _: arr_cls)
+def path_new_cls_func(cls, *args):
+    return cls(*args)
+def path_new_arr_func(_, element_cls, *args):
+    return make_array(element_cls.__bridge__, *args)
+
+new = Path(cls_func=path_new_cls_func,
+           arr_func=path_new_arr_func)
+
+def path_clazz_cls_func(cls):
+    return cls
+def path_clazz_arr_func(arr_cls, _):
+    return arr_cls
+clazz = Path(cls_func=path_clazz_cls_func,
+             arr_func=path_clazz_arr_func)
     
 interface_cache = {}
 class InterfaceBase:
