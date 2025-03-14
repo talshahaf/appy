@@ -91,6 +91,19 @@ class State:
         if widget_name is None or widget_id is None:
             raise ValueError('Cannot initialize state without widget_name and widget_id')
         self.__dict__['__info__'] = AttrDict(scope_keys=AttrDict(locals=widget_id, nonlocals=widget_name, globals='globals'), scopes={})
+
+    def __copy__(self):
+        new = self.__class__.__new__(self.__class__)
+        return new.__setstate__(self.__getstate__())
+
+    def __deepcopy__(self, memo):
+        raise RuntimeError('Cannot deep copy State object')
+
+    def __getstate__(self):
+        return dict(widget_name=self.__info__['scope_keys']['nonlocals'], widget_id=self.__info__['scope_keys']['locals'])
+
+    def __setstate__(self, state):
+        self.__init__(widget_name=state['widget_name'], widget_id=state['widget_id'])
         
     def __act__(self, f, scope_name, scope_key, attr, **kwargs):
         scope_dict = global_state[scope_name].setdefault(scope_key, AttrDict())

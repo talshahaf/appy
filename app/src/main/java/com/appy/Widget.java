@@ -1437,7 +1437,19 @@ public class Widget extends RemoteViewsService
             if (!unresolved.isEmpty())
             {
                 Map.Entry<Attributes.Type, Attributes.AttributeValue> example = unresolved.entrySet().iterator().next();
-                throw new IllegalArgumentException(unresolved.size() + " unresolved after iterations, maybe circular? example: " + example.getKey() + ": " + DictObj.makeJson(example.getValue().toDict()) + " from: " + dynamicView.getId() + ", " + dynamicView.type);
+                String name = null;
+                if (dynamicView.tag instanceof DictObj.Dict)
+                {
+                    name = ((DictObj.Dict)dynamicView.tag).getString("name");
+                }
+
+                StringBuilder unresolvedStr = new StringBuilder();
+                for (Map.Entry<Attributes.Type, Attributes.AttributeValue> entry : unresolved.entrySet())
+                {
+                    unresolvedStr.append("\n").append(entry.getKey()).append(": ").append(DictObj.makeJson(entry.getValue().toDict(), true));
+                }
+
+                throw new IllegalArgumentException("Unresolved attributes (" + unresolved.size() + ") for " + dynamicView.type + "(name: '" + name + "', id: " + dynamicView.getId() + "):" + unresolvedStr);
             }
         }
 

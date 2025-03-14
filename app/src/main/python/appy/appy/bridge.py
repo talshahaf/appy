@@ -31,7 +31,7 @@ class jref:
     def __eq__(self, other):
         return self.handle == getattr(other, 'handle', None)
 
-    def __deepcopy__(self, el):
+    def __deepcopy__(self, memo):
         raise RuntimeError("cannot copy java reference")
 
     def __copy__(self):

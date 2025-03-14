@@ -165,6 +165,8 @@ class BaseR:
         self.__path = path
 
     def __getattr__(self, key):
+        if key.startswith('__'):
+            return object.__getattribute__(self, key)
         return self.__class__(self.__path + [key])
 
     def export_to_views(self):
@@ -195,7 +197,7 @@ def call_function(func, captures, **kwargs):
     if not isinstance(captures, dict):
         raise ValueError('Captures must be a keyword dict')
 
-    pass_args = copy.deepcopy(captures)
+    pass_args = dict(captures)
     pass_args.update(kwargs) #kwargs priority
 
     args, kwargs, has_vargs, has_vkwargs = get_args(func)
@@ -320,13 +322,17 @@ class Element:
         else:
             self.d.children = ChildrenList()
 
+    def __copy__(self):
+        raise RuntimeError('Cannot copy Element object')
 
+    def __deepcopy__(self, memo):
+        raise RuntimeError('Cannot copy Element object')
 
     def __getstate__(self):
-        return self.dict(do_copy=True)
+        raise RuntimeError('Cannot pickle Element object')
 
     def __setstate__(self, state):
-        self.init(state)
+        raise RuntimeError('Cannot pickle Element object')
 
     def __event__(self, key, **kwargs):
         event_hook = element_event_hooks.get(self.d.type, {}).get(key)
@@ -837,7 +843,9 @@ def widget_manager_create(widget, manager_state):
 def widget_manager_update(widget, manager_state, views, is_app):
     manager_state.chosen.setdefault(widget.widget_id, None)
     chosen = manager_state.chosen[widget.widget_id]
-    if chosen is not None and chosen.name is not None and chosen.name in available_widgets:
+    if chosen is not None and chosen.name is not None:
+        if chosen.name not in available_widgets:
+            raise RuntimeError(f"chosen widget '{chosen.name}' is not loaded")
         available_widget = available_widgets[chosen.name]
         on_create, on_update, on_app, debug = available_widget['create'], available_widget['update'], available_widget['on_app'], available_widget['debug']
         if not chosen.inited:

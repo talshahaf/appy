@@ -876,19 +876,6 @@ class AppsFragment : MyFragment() {
         var fullSize by remember { mutableStateOf(IntSize(1, 1)) }
 
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Button(
-                onClick = {
-                    clearWidgets()
-                },
-                modifier = Modifier
-                    .width(120.dp)
-                    .height(60.dp)
-                    .padding(8.dp)
-            )
-            {
-                Text("Clear")
-            }
-
             SharedTransitionLayout (
                 modifier = Modifier
                     .fillMaxSize()
