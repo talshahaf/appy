@@ -72,6 +72,8 @@ import org.kamranzafar.jtar.TarEntry;
 import org.kamranzafar.jtar.TarHeader;
 import org.kamranzafar.jtar.TarInputStream;
 
+import kotlin.Triple;
+
 public class Widget extends RemoteViewsService
 {
     private final IBinder mBinder = new LocalBinder();
@@ -629,7 +631,8 @@ public class Widget extends RemoteViewsService
                 }
             }
 
-            RemoteViews remoteView = service.resolveDimensions(service, widgetId, child, Constants.collection_layout_type.get(type), new Object[]{id, position}, actualWidth, actualHeight).first;
+            Triple<RemoteViews, HashSet<Integer>, ArrayList<DynamicView>> view = service.resolveDimensions(service, widgetId, child, Constants.collection_layout_type.get(type), new Object[]{id, position}, actualWidth, actualHeight);
+            RemoteViews remoteView = view.component1();
             Intent fillIntent = new Intent(service, WidgetReceiver2x2.class);
             if (child.size() == 1)
             {
@@ -1311,7 +1314,7 @@ public class Widget extends RemoteViewsService
         return max;
     }
 
-    public Pair<RemoteViews, HashSet<Integer>> resolveDimensions(Widget service, int widgetId, ArrayList<DynamicView> dynamicList, Constants.CollectionLayout collectionLayout, Object[] collectionExtras, int widthLimit, int heightLimit) throws InvocationTargetException, IllegalAccessException
+    public Triple<RemoteViews, HashSet<Integer>, ArrayList<DynamicView>> resolveDimensions(Widget service, int widgetId, ArrayList<DynamicView> dynamicList, Constants.CollectionLayout collectionLayout, Object[] collectionExtras, int widthLimit, int heightLimit) throws InvocationTargetException, IllegalAccessException
     {
         //we must copy as we're changing the views
         dynamicList = DynamicView.copyArray(dynamicList);
@@ -1361,7 +1364,7 @@ public class Widget extends RemoteViewsService
             }
         }
 
-        inflated.measure(View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED), View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
+        inflated.measure(View.MeasureSpec.makeMeasureSpec(widthLimit, View.MeasureSpec.AT_MOST), View.MeasureSpec.makeMeasureSpec(heightLimit, View.MeasureSpec.AT_MOST));
 
         //set all back to MATCH_PARENT and resolve all trivials
         for (int k = 0; k < supergroup.getChildCount(); k++)
@@ -1412,20 +1415,18 @@ public class Widget extends RemoteViewsService
 
         //resolve anything not depending on widget width/height
         while (applyIteration(dynamicList, rootAttributes) != 0) ;
+
         //resolve width and height
-        double specialWidth = 0;
-        double specialHeight = 0;
         rootAttributes.attributes.get(Attributes.Type.WIDTH).resolvedValue = (double) widthLimit;
         rootAttributes.attributes.get(Attributes.Type.HEIGHT).resolvedValue = (double) heightLimit;
+        //in collection items, there's no width and height limits, they are calculated from the items within
         if (collectionLayout == Constants.CollectionLayout.HORIZONTAL || collectionLayout == Constants.CollectionLayout.BOTH)
         {
-            specialWidth = getMaxDimension(dynamicList, new Attributes.Type[]{Attributes.Type.LEFT, Attributes.Type.WIDTH, Attributes.Type.RIGHT});
-            rootAttributes.attributes.get(Attributes.Type.WIDTH).resolvedValue = specialWidth;
+            rootAttributes.attributes.get(Attributes.Type.WIDTH).resolvedValue = getMaxDimension(dynamicList, new Attributes.Type[]{Attributes.Type.LEFT, Attributes.Type.WIDTH, Attributes.Type.RIGHT});
         }
         if (collectionLayout == Constants.CollectionLayout.VERTICAL || collectionLayout == Constants.CollectionLayout.BOTH)
         {
-            specialHeight = getMaxDimension(dynamicList, new Attributes.Type[]{Attributes.Type.TOP, Attributes.Type.HEIGHT, Attributes.Type.BOTTOM});
-            rootAttributes.attributes.get(Attributes.Type.HEIGHT).resolvedValue = specialHeight;
+            rootAttributes.attributes.get(Attributes.Type.HEIGHT).resolvedValue = getMaxDimension(dynamicList, new Attributes.Type[]{Attributes.Type.TOP, Attributes.Type.HEIGHT, Attributes.Type.BOTTOM});
         }
 
         //resolve everything else
@@ -1453,6 +1454,8 @@ public class Widget extends RemoteViewsService
             }
         }
 
+        double totalWidth = 0;
+        double totalHeight = 0;
         //apply
         for (DynamicView dynamicView : dynamicList)
         {
@@ -1463,12 +1466,18 @@ public class Widget extends RemoteViewsService
             Pair<Integer, Integer> dims = new Pair<>(dynamicView.attributes.attributes.get(Attributes.Type.WIDTH).resolvedValue.intValue(),
                     dynamicView.attributes.attributes.get(Attributes.Type.HEIGHT).resolvedValue.intValue());
 
-            // saving each collection view size in it so that collection children will know their parent's size
-            if (collectionLayout == Constants.CollectionLayout.NOT_COLLECTION)
+            if (totalWidth < hor.first + dims.first)
             {
-                dynamicView.actualWidth = dims.first;
-                dynamicView.actualHeight = dims.second;
+                totalWidth = hor.first + dims.first;
             }
+            if (totalHeight < ver.first + dims.second)
+            {
+                totalHeight = ver.first + dims.second;
+            }
+
+            // saving each view size in it so that collection children will know their parent's size
+            dynamicView.actualWidth = dims.first;
+            dynamicView.actualHeight = dims.second;
 
 //            Log.d("APPY", "resolved attributes: ");
 //            for(Map.Entry<Attributes.Type, Attributes.AttributeValue> entry : dynamicView.attributes.attributes.entrySet())
@@ -1506,20 +1515,33 @@ public class Widget extends RemoteViewsService
         //only collection elements has size_filler view
         if (collectionLayout != Constants.CollectionLayout.NOT_COLLECTION)
         {
-//            Log.d("APPY", "special limits: "+specialWidth+" "+specialHeight);
-
             if (collectionLayout == Constants.CollectionLayout.HORIZONTAL || collectionLayout == Constants.CollectionLayout.BOTH)
             {
-                //fill the size width filler (specialWidth must not be 0)
-                views.first.setViewPadding(R.id.size_w_filler, (int) (specialWidth / 2), 0, (int) (specialWidth / 2), 0);
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
+                {
+                    views.first.setViewLayoutWidth(R.id.size_w_filler, (float) totalWidth, TypedValue.COMPLEX_UNIT_PX);
+                }
+                else
+                {
+                    //fill the size width filler (totalWidth must not be 0)
+                    views.first.setViewPadding(R.id.size_w_filler, (int) (totalWidth / 2), 0, (int) (totalWidth / 2), 0);
+                }
             }
             if (collectionLayout == Constants.CollectionLayout.VERTICAL || collectionLayout == Constants.CollectionLayout.BOTH)
             {
-                //fill the size height filler (specialHeight must not be 0)
-                views.first.setViewPadding(R.id.size_h_filler, 0, (int) (specialHeight / 2), 0, (int) (specialHeight / 2));
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
+                {
+                    views.first.setViewLayoutHeight(R.id.size_h_filler, (float)totalHeight, TypedValue.COMPLEX_UNIT_PX);
+                }
+                else
+                {
+                    //fill the size height filler (totalHeight must not be 0)
+                    views.first.setViewPadding(R.id.size_h_filler, 0, (int) (totalHeight / 2), 0, (int) (totalHeight / 2));
+                }
             }
         }
-        return views;
+
+        return new Triple<> (views.first, views.second, dynamicList);
     }
 
     @Override
@@ -3469,10 +3491,10 @@ public class Widget extends RemoteViewsService
             int widthLimit = widgetDimensions[0];
             int heightLimit = widgetDimensions[1];
 
-            Pair<RemoteViews, HashSet<Integer>> view = resolveDimensions(Widget.this, widgetId, views, Constants.CollectionLayout.NOT_COLLECTION, null, widthLimit, heightLimit);
-            appWidgetManager.updateAppWidget(androidWidgetId, view.first);
+            Triple<RemoteViews, HashSet<Integer>, ArrayList<DynamicView>> view = resolveDimensions(Widget.this, widgetId, views, Constants.CollectionLayout.NOT_COLLECTION, null, widthLimit, heightLimit);
+            appWidgetManager.updateAppWidget(androidWidgetId, view.component1());
 
-            for (Integer collection_view : view.second)
+            for (Integer collection_view : view.component2())
             {
                 appWidgetManager.notifyAppWidgetViewDataChanged(androidWidgetId, collection_view);
             }

@@ -18,6 +18,7 @@
                      android:layout_height="match_parent"
                      android:id="@+id/ce0"
                      android:clipToPadding="false"
+                     android:minHeight="?android:attr/listPreferredItemHeight"
                      >
             </ListView>
         </RelativeLayout>

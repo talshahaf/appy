@@ -160,18 +160,18 @@ class State:
         
     def __dir__(self):
         return list(
-                        set(self.locals_dir()) |
-                        set(self.nonlocals_dir()) |
-                        set(self.globals_dir())
+                        set(self.locals_keys()) |
+                        set(self.nonlocals_keys()) |
+                        set(self.globals_keys())
                     )
 
-    def globals_dir(self):
+    def globals_keys(self):
         return list(global_state['globals'].get(self.__info__['scope_keys']['globals'], {}).keys())
 
-    def nonlocals_dir(self):
+    def nonlocals_keys(self):
         return list(global_state['nonlocals'].get(self.__info__['scope_keys']['nonlocals'], {}).keys())
 
-    def locals_dir(self):
+    def locals_keys(self):
         return list(global_state['locals'].get(self.__info__['scope_keys']['locals'], {}).keys())
 
     def __contains__(self, attr):
@@ -226,9 +226,9 @@ def clean_state(scope, widget, key):
             raise ValueError(f'invalid operation: {scope} {widget} {key}')
 
         state = State(widget if scope == 'nonlocals' else '', widget if scope == 'locals' else -1)
-        scope_funcs = {'globals': (state.globals, state.globals_dir),
-                       'nonlocals': (state.nonlocals, state.nonlocals_dir),
-                       'locals': (state.locals, state.locals_dir)}
+        scope_funcs = {'globals': (state.globals, state.globals_keys),
+                       'nonlocals': (state.nonlocals, state.nonlocals_keys),
+                       'locals': (state.locals, state.locals_keys)}
         if scope not in scope_funcs:
             raise ValueError(f'no such scope {scope}')
 
