@@ -121,9 +121,9 @@ def create(widget):
     widget.state.timer_id = None
     widget.state.missed = []
     
-    mark_btn = Button(name='mark', textSize=20, click=mark, hcenter=widget.hcenter, vcenter=widget.vcenter)
+    mark_btn = Button(name='mark', style='dark', textSize=20, click=mark, hcenter=widget.hcenter, vcenter=widget.vcenter)
     streak = TextView(name='streak', textSize=12, textColor=color('white', a=180), hcenter=widget.hcenter, top=mark_btn.ibottom + 5)
-    config = ImageView(imageResource=androidR.drawable.ic_menu_preferences, adjustViewBounds=True, colorFilter=color('white'), click=config_dialog, width='20dp', height='20dp', right=20, bottom=20)
+    config = ImageView(imageResource=androidR.drawable.ic_menu_preferences, adjustViewBounds=True, colorFilter=color('white'), click=config_dialog, width='20dp', height='20dp', right=20, top=20)
     
     # start the timer handler to reschedule itself
     # this is done via widget.post so that it will be called with the `widget` and `views` parameters

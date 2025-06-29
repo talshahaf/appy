@@ -1,7 +1,7 @@
 import requests, io
 from xml.etree import ElementTree as ET
-from appy.widgets import register_widget, TextView, ImageView, Button, AdapterViewFlipper
-from appy.templates import background, RefreshButton, refresh_button_update_func
+from appy.widgets import register_widget, TextView, ImageView, Button, AdapterViewFlipper, background
+from appy.templates import RefreshButton, refresh_button_update_func
 from appy import widgets
 
 FEED = 'http://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml'
@@ -63,7 +63,6 @@ def update(widget, views):
     views['flipper'].displayedChild = 0
     
     for item in items[:20]:
-        bg = background()
         img = None
         if 'image' in item:
             img = ImageView(name='img', width=widget.width / 3, height=widget.width / 3, adjustViewBounds=True, left=10, top=10)
@@ -75,11 +74,11 @@ def update(widget, views):
         date  = TextView(text=item['date'], textColor=0xb3ffffff, textSize=14, right=20, bottom=0)
 
         # bg is the first child
-        children = [bg, title, desc, date]
+        children = [title, desc, date]
         
         # some articles do not have images
         if img is not None:
-            children.insert(1, img)
+            children.insert(0, img)
         
         views['flipper'].children.append(children)
         
@@ -92,14 +91,14 @@ def create(widget):
     # moving it to the top right
     del refresh.left
     del refresh.bottom
-    refresh.top = 0
     refresh.right = 0
+    refresh.top = 0
     #                 using button styles                                   using captures instead of defining two functions
-    prev_btn = Button(style='secondary_sml', text='<', left=0, bottom=0, click=(flip, dict(amount=-1)))
+    prev_btn = Button(style='secondary_sml', text='<', left=0, right=widget.hcenter, bottom=0, click=(flip, dict(amount=-1)))
     #                                                   using inverted right + pad
-    next_btn = Button(style='secondary_sml', text='>', left=prev_btn.iright + 10, bottom=0, click=(flip, dict(amount=1)))
+    next_btn = Button(style='secondary_sml', text='>', left=widget.hcenter, right=0, bottom=0, click=(flip, dict(amount=1)))
     #              naming the flipper to access it later
-    return [AdapterViewFlipper(name='flipper'), prev_btn, next_btn, refresh]
+    return [background(), AdapterViewFlipper(name='flipper', left=0, top=0, bottom=prev_btn.itop, right=refresh.ileft), prev_btn, next_btn, refresh]
         
 #                             recover refresh_button visibility on error
 register_widget('rss', create, refresh_button_update_func)
