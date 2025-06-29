@@ -3442,6 +3442,19 @@ static PyObject * logcat_write(PyObject * self, PyObject * args)
     return Py_BuildValue("i", ret);
 }
 
+static PyObject * PyThreadState_SetAsyncExc_(PyObject * self, PyObject * args)
+{
+    unsigned long id = 0;
+    PyObject * e = NULL;
+    if (!PyArg_ParseTuple(args, "kO", &id, &e))
+    {
+        return NULL;
+    }
+
+    int ret = PyThreadState_SetAsyncExc(id, e);
+    return Py_BuildValue("i", ret);
+}
+
 static PyMethodDef native_appy_methods[] = {
         {"call_jni_object_functions",       call_jni_object_functions,       METH_VARARGS, "Interacts with java objects"},
         {"get_methodid",                    get_methodid,                    METH_VARARGS, "Finds a java method id"},
@@ -3467,6 +3480,7 @@ static PyMethodDef native_appy_methods[] = {
         {"logcat_write",                    logcat_write,                    METH_VARARGS, "writes to logcat"},
         {"build_java_dict",                 build_java_dict,                 METH_VARARGS, "builds json object from dict, list or tuple"},
         {"build_python_dict_from_java",     build_python_dict_from_java,     METH_VARARGS, "builds a python dict from json object or json array"},
+        {"PyThreadState_SetAsyncExc",       PyThreadState_SetAsyncExc_,      METH_VARARGS, "wrapper method for stripped PyThreadState_SetAsyncExc"},
         {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 

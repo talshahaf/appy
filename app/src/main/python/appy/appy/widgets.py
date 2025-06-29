@@ -1,4 +1,4 @@
-import time
+import datetime
 from dataclasses import dataclass
 from . import java, state, widget_manager, utils, configs, colors
 
@@ -97,8 +97,8 @@ class Widget:
     def clean_global(self):
         state.clean_global_state()
 
-    def set_absolute_timer(self, seconds, f, **captures):
-        return self.set_timeout(seconds - time.time(), f, **captures)
+    def set_absolute_timer(self, timepoint, f, **captures):
+        return self.set_timeout(max(0, (timepoint - datetime.datetime.now(tz=timepoint.tzinfo)).total_seconds()), f, **captures)
 
     def set_timeout(self, seconds, f, **captures):
         return self._set_timer(seconds, java.clazz.appy.Constants().TIMER_RELATIVE, f, captures)
