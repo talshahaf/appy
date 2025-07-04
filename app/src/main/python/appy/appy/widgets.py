@@ -257,3 +257,4 @@ def background(name=None, color=None, drawable=None):
 from .widget_manager import register_widget, java_context, elist, call_general_function, AttributeFunction, R, androidR
 from .utils import download_resource, copy_resource, cache_dir, preferred_script_dir, drawable_resource_to_bytes
 from .state import wipe_state
+from .notifications import simple as simple_notification, cancel as cancel_notification, PermissionError as NotificationError

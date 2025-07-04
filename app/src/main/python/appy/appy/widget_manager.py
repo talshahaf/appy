@@ -1167,6 +1167,9 @@ def init():
     print('init')
     prepare_image_cache_dir()
     context.registerOnWidgetUpdate(Handler())
+
+    from . import notifications
+    notifications._init()
     
 def java_context():
     return java_widget_manager

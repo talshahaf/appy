@@ -1,17 +1,14 @@
 import os
-from appy.widgets import register_widget, TextView, Button, java_context, file_uri, cache_dir, Widget, request_permissions, androidR
+from appy.widgets import register_widget, TextView, Button, java_context, file_uri, cache_dir, Widget, request_permissions, androidR, simple_notification, cancel_notification, NotificationError
 from appy.templates import background
 from appy import java
 
 widget_name = 'pong'
 
 deeplink_intent_filter = 'com.appy.DeepLink.HTMLPong.Pong'
-notification_intent_filter = 'com.appy.NotificationPong.Pong'
 
 notification_channel_name = 'Pong notification'
 notification_channel_description = 'Notification used by the Pong widget'
-notification_channel_id = 'pong_notification_id'
-notification_id = 200
 
 ############# html generating code #############
 
@@ -88,63 +85,13 @@ def display_page(widget_id, counter):
     except:
         intent.setPackage(None)
         java_context().startActivity(intent)
-        
-############# notification generating code #############
 
-# Android requires all notifications to have a channel, this channel would appear at App info and can be customized specifically
-def create_notification_channel(channel_id, name, description):
-    importance = java.clazz.android.app.NotificationManager().IMPORTANCE_DEFAULT
-    channel = java.new.android.app.NotificationChannel(channel_id, name, importance)
-    channel.setDescription(description)
-    notificationManager = java_context().getSystemService(java.clazz.android.content.Context().NOTIFICATION_SERVICE)
-    notificationManager.createNotificationChannel(channel)
-    
-def make_notification(intent_filter, widget_id, title, content, ticker, icon, extras):
-    need_channels = java.clazz.android.os.Build.VERSION().SDK_INT >= 26
-    
-    # Only new androids require using a channel
-    if need_channels:
-        create_notification_channel(notification_channel_id, notification_channel_name, notification_channel_description)
-    
-    notificationIntent = java.new.android.content.Intent(intent_filter)
-    for key, value in extras.items():
-        # All extras are added as strings so that we know which putExtra overload was chosen
-        notificationIntent.putExtra(key, str(value))
-    
-    pending_intent = java.clazz.android.app.PendingIntent().getBroadcast(java_context(),
-                            0, notificationIntent,
-                            java.clazz.android.app.PendingIntent().FLAG_CANCEL_CURRENT | java.clazz.android.app.PendingIntent().FLAG_IMMUTABLE)
-    
-    if need_channels:
-        builder = java.new.android.app.Notification.Builder(java_context(), notification_channel_id)
-    else:
-        builder = java.new.android.app.Notification.Builder(java_context())
-
-    builder \
-      .setTicker(ticker) \
-      .setContentTitle(title) \
-      .setContentText(content) \
-      .setContentIntent(pending_intent) \
-      .setAutoCancel(True) \
-      .setDefaults(java.clazz.android.app.Notification().DEFAULT_SOUND | java.clazz.android.app.Notification().DEFAULT_VIBRATE)
-    
-    # New androids require a notification icon
-    builder.setSmallIcon(icon)
-        
-    notification = builder.build()
-
-    notificationManager = java_context().getSystemService(java.clazz.android.content.Context().NOTIFICATION_SERVICE)
-    # Display notification
-    notificationManager.notify(notification_id, notification)
-        
 ############# broadcast receivers code #############
 
 # using java.implements to create a java object implementing BroadcastInterface
 class PongReceiver(java.implements(java.clazz.appy.BroadcastInterface())):
     @java.override
     def onReceive(self, ctx, intent):
-        print('received Pong!')
-        
         # Extract extras, using string only so we can have null
         method = intent.getStringExtra('method')
         amount = intent.getStringExtra('amount')
@@ -171,55 +118,27 @@ class PongReceiver(java.implements(java.clazz.appy.BroadcastInterface())):
             # Using post to notify the widget
             widget.post(update_counter)
             
-class NotificationReceiver(java.implements(java.clazz.appy.BroadcastInterface())):
-    @java.override
-    def onReceive(self, ctx, intent):
-        print('apartments notification click')
-        
-        # Extract extras, using string only so we can have null
-        widget_id = intent.getStringExtra('widget_id_extra')
-        method = intent.getStringExtra('method_extra')
-        amount = intent.getStringExtra('amount_extra')
 
-        # Sanity check
-        if not widget_id or not amount:
-            return
-            
-        widget_id, amount = int(widget_id), int(amount)
-            
-        try:
-            # Find our specific widget that made the intent
-            widget = Widget.by_id(widget_id)
-        except KeyError:
-            return
-            
-        if widget.name != widget_name:
-            # This shouldn't happen, but we don't want to mess with another widget
-            return
-            
-        if method == 'add':
-            widget.state.counter += amount
-            # Using post to notify the widget
-            widget.post(update_counter)
+def notification_click(widget, method, amount):
+    if method == 'add':
+        widget.state.counter += amount
+        # Using post to notify the widget
+        widget.post(update_counter)
 
 # wrap Receiver instance with BroadcastInterfaceBridge to pass to registerReceiver because BroadcastReceiver is an abstract class instead of an interface
 pongReceiverBridge = java.new.appy.BroadcastInterfaceBridge(PongReceiver())
-notificationReceiverBridge = java.new.appy.BroadcastInterfaceBridge(NotificationReceiver())
 
 # will be called when this module is unloaded
 def __del__():
     # registerReceiver is not part of appy and must be cleaned up manually
     java_context().unregisterReceiver(pongReceiverBridge)
-    java_context().unregisterReceiver(notificationReceiverBridge)
      
-def register_receivers():
+def register_receiver():
     print('registering receivers')
     deeplinkIntentFilter = java.new.android.content.IntentFilter(deeplink_intent_filter)
-    notificationIntentFilter = java.new.android.content.IntentFilter(notification_intent_filter)
     
     # Using java_context() to obtain a valid Android context object
     java_context().registerReceiver(pongReceiverBridge, deeplinkIntentFilter, java_context().RECEIVER_EXPORTED)
-    java_context().registerReceiver(notificationReceiverBridge, notificationIntentFilter, java_context().RECEIVER_EXPORTED)
 
 ############# widget code #############
 
@@ -227,19 +146,20 @@ def update_counter(widget, views):
     views['counter'].text = str(widget.state.counter)
     
 def ping_click(widget):
+    widget.nonlocals('notification_id')
     # Choose whether to open an html page or to display a notification according to config
     if widget.config.method == 'html':
         display_page(widget.widget_id, str(widget.state.counter + 1))
     else:
-        notification_permission = 'POST_NOTIFICATIONS'
-        if notification_permission not in request_permissions(notification_permission)[0]:
-            print('no perms')
-            return None
-        make_notification(notification_intent_filter, widget.widget_id, 
-                          'Click to Pong', str(widget.state.counter + 1),
-                          #            because it kinda looks like a paddle
-                          'Pong', androidR.drawable.ic_menu_search,
-                          dict(widget_id_extra=str(widget.widget_id), method_extra='add', amount_extra='2'))
+        try:
+            if 'notification_id' in widget.state:
+                cancel_notification(widget.state.notification_id)
+            widget.state.notification_id = simple_notification('Click to Pong', str(widget.state.counter + 1),
+                                                                                'Pong notifications', 'Notifications used by the Pong widget',
+                                                                                icon=androidR.drawable.ic_menu_search,
+                                                                                click=(notification_click, dict(widget=widget, method='add', amount=2)))
+        except NotificationError:
+            print('No notification permission')
 
 def create(widget):
     # Align counter text center to widget center
@@ -252,4 +172,4 @@ def create(widget):
     return [background(), counter, ping]
     
 register_widget(widget_name, create, config=dict(method='notification'), config_description=dict(method="Can be either 'html' or 'notification'"))
-register_receivers()
+register_receiver()
