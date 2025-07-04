@@ -139,17 +139,17 @@ def timer_action(widget, views):
 
 def create(widget):
     #initialize everything to be in local (default) state, to allow for multiple widgets with different configurations
-    widget.state.interval = 'daily'
-    widget.state.reset_on = '00:00'
-    widget.state.done_text = 'Done'
-    widget.state.not_done_text = 'Not Done'
-    widget.state.notify = 'No'
-    widget.state.mark = None
-    widget.state.mark_reset = datetime.datetime.now()
-    widget.state.created_time = datetime.datetime.now()
-    widget.state.timer_id = None
-    widget.state.notify_timer_id = None
-    widget.state.missed = []
+    widget.state.setdefault('interval', 'daily')
+    widget.state.setdefault('reset_on', '00:00')
+    widget.state.setdefault('done_text', 'Done')
+    widget.state.setdefault('not_done_text', 'Not Done')
+    widget.state.setdefault('notify', 'No')
+    widget.state.setdefault('mark', None)
+    widget.state.setdefault('mark_reset', datetime.datetime.now())
+    widget.state.setdefault('created_time', datetime.datetime.now())
+    widget.state.setdefault('timer_id', None)
+    widget.state.setdefault('notify_timer_id', None)
+    widget.state.setdefault('missed', [])
     
     mark_btn = Button(name='mark', style='dark', textSize=20, click=mark, hcenter=widget.hcenter, vcenter=widget.vcenter)
     streak = TextView(name='streak', textSize=12, textColor=color('white', a=180), hcenter=widget.hcenter, top=mark_btn.ibottom + 5)
