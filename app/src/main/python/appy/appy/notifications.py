@@ -127,7 +127,7 @@ def simple(title, content, channel_name, channel_description, icon=None, click=N
     notificationManager.notify(notification_id, notification)
     return notification_id
 
-def cancel(id):
+def cancel(notification_id):
     notificationManager = java.get_java_arg().getSystemService(java.clazz.android.content.Context().NOTIFICATION_SERVICE)
-    notificationManager.cancel(id)
+    notificationManager.cancel(notification_id)
     _clean_intent_callables()
