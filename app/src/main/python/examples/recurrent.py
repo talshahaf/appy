@@ -1,17 +1,21 @@
-import datetime
+import datetime, random
 from dateutil.parser import parse as dateutil_parse
 from dateutil.relativedelta import relativedelta as relativedelta
-from appy.widgets import register_widget, show_dialog, DialogEditText, background, Button, TextView, ImageView, color, androidR
+from appy.widgets import register_widget, show_dialog, DialogEditText, background, Button, TextView, ImageView, color, androidR, simple_notification, cancel_notification
+
+NOTIFICATION_ID = random.randint(1, 2 ** 30)
+notification_factor_from_deadline = 1/12 # hourly: 5minutes before, daily: 2 hours before, ...
 
 def config_dialog(widget, views):
     # show configuration dialog
     # this is done here rather than using the proper configuration mechanism to allow for per widget configuration
-    btn, interval, reset_on, not_done_text, done_text = show_dialog('Config', 'Configure recurrent widget', ('Ok', 'Cancel'),
+    btn, interval, reset_on, not_done_text, done_text, notify = show_dialog('Config', 'Configure recurrent widget', ('Ok', 'Cancel'),
                                                                                    # interval is limited to specific options
                                                                         edittexts=(DialogEditText(widget.state.interval, 'interval', ['minutely', 'hourly', 'daily', 'weekly', 'monthly']),
                                                                                    DialogEditText(widget.state.reset_on, 'Reset on'),
                                                                                    DialogEditText(widget.state.not_done_text, 'Not done text'),
-                                                                                   DialogEditText(widget.state.done_text, 'Done text')))
+                                                                                   DialogEditText(widget.state.done_text, 'Done text'),
+                                                                                   DialogEditText(widget.state.notify, 'Notify when close to deadline', ['Yes', 'No'])))
     if btn != 0:
         # don't change configuration if dialog was cancelled
         return
@@ -25,8 +29,9 @@ def config_dialog(widget, views):
         
     widget.state.interval = interval
     widget.state.reset_on = reset_on
-    widget.state.done_text = done_text
     widget.state.not_done_text = not_done_text
+    widget.state.done_text = done_text
+    widget.state.notify = notify
     
     # fire the timer handler to deal with the new state
     timer_action(widget, views)
@@ -57,7 +62,20 @@ def mark(widget, views):
     if widget.state.mark is None:
         widget.state.mark = datetime.datetime.now()
         update_mark_text(widget, views)
+        
+        if widget.state.notify == 'Yes':
+            cancel_notification(NOTIFICATION_ID)
 
+# called when we are notification_factor_from_deadline intervals away from deadline
+def notify_action(widget, views):
+    if widget.state.notify == 'Yes' and widget.state.mark is None:
+        simple_notification(f'{widget.state.not_done_text}',
+                            'Is about to expire',
+                            'Recurrent deadline notifications',
+                            'Notifications used by the Recurrent widget',
+                            notification_id=NOTIFICATION_ID,
+                            icon=androidR.drawable.ic_lock_idle_alarm)
+    
 # Called when the configuration has changed or by a timer
 def timer_action(widget, views):
     dt = dateutil_parse(widget.state.reset_on)
@@ -95,6 +113,9 @@ def timer_action(widget, views):
             widget.state.missed.append(before)
             # notify state.missed change to force flushing
             widget.state.missed = widget.state.missed
+            
+            if widget.state.notify == 'Yes':
+                cancel_notification(NOTIFICATION_ID)
     else:
         if widget.state.mark <= before:
             # reset mark if we are in a new period
@@ -104,7 +125,14 @@ def timer_action(widget, views):
     # reschedule timer to the next `reset_on` time
     if widget.state.timer_id is not None:
         widget.cancel_timer(widget.state.timer_id)
+    if widget.state.notify_timer_id is not None:
+        widget.cancel_timer(widget.state.notify_timer_id)
+        
     widget.state.timer_id = widget.set_absolute_timer(after + datetime.timedelta(seconds=10), timer_action)
+    
+    time_to_notify = after - datetime.timedelta(seconds=((after - before).total_seconds() * notification_factor_from_deadline))
+    if time_to_notify > now:
+        widget.state.notify_timer_id = widget.set_absolute_timer(time_to_notify, notify_action)
     
     # update UI
     update_mark_text(widget, views)
@@ -115,10 +143,12 @@ def create(widget):
     widget.state.reset_on = '00:00'
     widget.state.done_text = 'Done'
     widget.state.not_done_text = 'Not Done'
+    widget.state.notify = 'No'
     widget.state.mark = None
     widget.state.mark_reset = datetime.datetime.now()
     widget.state.created_time = datetime.datetime.now()
     widget.state.timer_id = None
+    widget.state.notify_timer_id = None
     widget.state.missed = []
     
     mark_btn = Button(name='mark', style='dark', textSize=20, click=mark, hcenter=widget.hcenter, vcenter=widget.vcenter)
