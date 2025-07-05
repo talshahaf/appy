@@ -126,16 +126,18 @@ def updating_list_refresh_action(widget, views, timer, on_refresh, adapter, upda
     if update_hook is not None:
         call_general_function(update_hook, widget=widget, views=views)
 
-def updating_list_create(widget, initial_values, on_refresh, background_param, adapter, initial_refresh, timeout, interval, last_update, create_hook, update_hook):
+def updating_list_create(widget, initial_values, on_refresh, background_params, adapter, initial_refresh, timeout, interval, last_update, create_hook, update_hook):
     btn = RefreshButton((updating_list_refresh_action, dict(on_refresh=on_refresh, adapter=adapter, update_hook=update_hook)), initial_refresh=initial_refresh, widget=widget, timeout=timeout, interval=interval, name='refresh_button')
     lst = ListView(name='list', children=None if not initial_values else [call_list_adapter(widget, adapter, value=v, index=i) for i, v in enumerate(initial_values)])
     
     views = elist()
-    if background_param is not None and background_param is not False:
-        views.append(background(color=None if background_param is True else background_param))
+    if background_params is True:
+        views.append(background())
+    elif isinstance(background_params, dict):
+        views.append(background(**background_params))
 
     views.append(lst)
-    if last_update is None or last_update:
+    if last_update:
         views.append(TextView(name='last_update', textSize=14, textColor=0xb3ffffff, bottom=0, right=20))
     views.append(btn)
     
@@ -148,8 +150,8 @@ def on_config_change(widget, views):
     if 'refresh_button' in views:
         widget.invoke_click(views['refresh_button'])
 
-def updating_list(name, initial_values=None, on_refresh=None, background=None, adapter=None, initial_refresh=None, timeout=None, interval=None, last_update=None, config=None, config_description=None, create_hook=None, update_hook=None, debug=None):
-    register_widget(name, (updating_list_create, dict(initial_values=initial_values, on_refresh=on_refresh, background_param=background, adapter=adapter, initial_refresh=initial_refresh, timeout=timeout, interval=interval, last_update=last_update, create_hook=create_hook, update_hook=update_hook)), update=refresh_button_update_func, config=config, config_description=config_description, on_config=on_config_change, debug=debug)
+def updating_list(name, initial_values=None, on_refresh=None, background=True, adapter=None, initial_refresh=None, timeout=None, interval=None, last_update=True, config=None, config_description=None, create_hook=None, update_hook=None, debug=None):
+    register_widget(name, (updating_list_create, dict(initial_values=initial_values, on_refresh=on_refresh, background_params=background, adapter=adapter, initial_refresh=initial_refresh, timeout=timeout, interval=interval, last_update=last_update, create_hook=create_hook, update_hook=update_hook)), update=refresh_button_update_func, config=config, config_description=config_description, on_config=on_config_change, debug=debug)
 
 ##############text template############################
 def call_text_adapter(widget, adapter, value, view, **kwargs):
@@ -170,7 +172,7 @@ def updating_text_refresh_action(widget, views, timer, on_refresh, adapter, upda
     if update_hook is not None:
         call_general_function(update_hook, widget=widget, views=views)
 
-def updating_text_create(widget, initial_value, on_refresh, background_param, adapter, initial_refresh, timeout, interval, last_update, create_hook, update_hook):
+def updating_text_create(widget, initial_value, on_refresh, background_params, adapter, initial_refresh, timeout, interval, last_update, create_hook, update_hook):
     text = TextView(name='content', text='', textSize=30, textColor=0xb3ffffff)
     text.hcenter = widget.hcenter
     text.vcenter  = widget.vcenter
@@ -180,11 +182,13 @@ def updating_text_create(widget, initial_value, on_refresh, background_param, ad
     btn = RefreshButton((updating_text_refresh_action, dict(on_refresh=on_refresh, adapter=adapter, update_hook=update_hook)), initial_refresh=initial_refresh, widget=widget, timeout=timeout, interval=interval, name='refresh_button')
 
     views = elist()
-    if background_param is not None and background_param is not False:
-        views.append(background(color=None if background_param is True else background_param))
+    if background_params is True:
+        views.append(background())
+    elif isinstance(background_params, dict):
+        views.append(background(**background_params))
 
     views.append(text)
-    if last_update is None or last_update:
+    if last_update:
         views.append(TextView(name='last_update', textSize=14, textColor=0xb3ffffff, bottom=0, right=20))
     views.append(btn)
     
@@ -193,8 +197,8 @@ def updating_text_create(widget, initial_value, on_refresh, background_param, ad
         
     return views
 
-def updating_text(name, initial_value=None, on_refresh=None, background=None, adapter=None, initial_refresh=None, timeout=None, interval=None, last_update=None, config=None, config_description=None, create_hook=None, update_hook=None, debug=None):
-    register_widget(name, (updating_text_create, dict(initial_value=initial_value, on_refresh=on_refresh, background_param=background, adapter=adapter, initial_refresh=initial_refresh, timeout=timeout, interval=interval, last_update=last_update, create_hook=create_hook, update_hook=update_hook)), refresh_button_update_func, config=config, config_description=config_description, on_config=on_config_change, debug=debug)
+def updating_text(name, initial_value=None, on_refresh=None, background=True, adapter=None, initial_refresh=None, timeout=None, interval=None, last_update=True, config=None, config_description=None, create_hook=None, update_hook=None, debug=None):
+    register_widget(name, (updating_text_create, dict(initial_value=initial_value, on_refresh=on_refresh, background_params=background, adapter=adapter, initial_refresh=initial_refresh, timeout=timeout, interval=interval, last_update=last_update, create_hook=create_hook, update_hook=update_hook)), refresh_button_update_func, config=config, config_description=config_description, on_config=on_config_change, debug=debug)
 
 #################keyboard###############################
 def key_backspace_click(output):

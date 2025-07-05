@@ -1,6 +1,6 @@
 import math, os, random
 from PIL import Image, ImageDraw, ImageFont
-from appy.widgets import register_widget, file_uri, cache_dir, ImageView, Button
+from appy.widgets import register_widget, file_uri, cache_dir, ImageView, Button, AttributeFunction
 
 # make our png, with the number of sunrays as an argument
 def make_image(rays):
@@ -54,9 +54,16 @@ def change_rays(widget, views, amount):
 def create(widget):
     # Start with a reasonable amount of rays
     widget.state.rays = 6
+    
+    btn_less = Button(text='-', style='dark_sml', click=(change_rays, dict(amount=-1)), bottom=10, left=10)
+    btn_more = Button(text='+', style='dark_sml', click=(change_rays, dict(amount=1)), bottom=10, right=10)
+    
+    # have the buttons grow until they are 40 pixels from the horizontal center, but only up to a maximum width of 100 pixels.
+    btn_less.width = AttributeFunction.min(80, widget.hcenter - 40 - btn_less.left)
+    btn_more.width = AttributeFunction.min(80, widget.hcenter - 40 - btn_more.right)
+    
     return [ImageView(name='image', imageURI=make_image(widget.state.rays), adjustViewBounds=True, left=0, top=0, width=widget.width, height=widget.height),
             # Ray buttons anchored to the hcenter
-            Button(text='+', click=(change_rays, dict(amount=1)), bottom=10, right=10, left=widget.hcenter + 40),
-            Button(text='-', click=(change_rays, dict(amount=-1)), bottom=10, left=10, right=widget.hcenter + 40)]
+            btn_less, btn_more]
     
 register_widget('pilling', create)
