@@ -1,6 +1,6 @@
 # Appy  
 
-[Docs](https://github.com/talshahaf/appy/wiki)|[Latest APK](https://github.com/talshahaf/appy/releases)  
+[Docs](https://github.com/talshahaf/appy/wiki) | [Latest APK](https://github.com/talshahaf/appy/releases) | [Installation]    
 
 Appy allows you to code android widgets in Python!  
 
