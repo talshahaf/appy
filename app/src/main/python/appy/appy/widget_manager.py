@@ -137,6 +137,10 @@ def attribute_ihcenter(e):
     return e.right + (e.width / 2)
 def attribute_ivcenter(e):
     return e.bottom + (e.height / 2)
+def attribute_center(e):
+    return (attribute_hcenter(e), attribute_vcenter(e))
+def attribute_icenter(e):
+    return (attribute_ihcenter(e), attribute_ivcenter(e))
 def attribute_write_hcenter(e, value):
     if value is None:
         del e.left
@@ -147,11 +151,15 @@ def attribute_write_vcenter(e, value):
         del e.top
     else:
         e.top = -(e.height / 2) + value
-        
+def attribute_write_center(e, value):
+    h, v = value
+    attribute_write_hcenter(e, h)
+    attribute_write_vcenter(e, v)
+
 attrs = dict(left='LEFT', top='TOP', right='RIGHT', bottom='BOTTOM', width='WIDTH', height='HEIGHT')
 composite_attrs = dict(ileft=attribute_ileft, itop=attribute_itop, iright=attribute_iright, ibottom=attribute_ibottom,
-                       hcenter=attribute_hcenter, vcenter=attribute_vcenter, ihcenter=attribute_ihcenter, ivcenter=attribute_ivcenter)
-write_attrs = dict(hcenter=attribute_write_hcenter, vcenter=attribute_write_vcenter)
+                       hcenter=attribute_hcenter, vcenter=attribute_vcenter, center=attribute_center, ihcenter=attribute_ihcenter, ivcenter=attribute_ivcenter, icenter=attribute_icenter)
+write_attrs = dict(hcenter=attribute_write_hcenter, vcenter=attribute_write_vcenter, center=attribute_write_center)
 class WidgetAttribute:
     def __getattr__(self, item):
         if item in attrs:
