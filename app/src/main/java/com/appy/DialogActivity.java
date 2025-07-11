@@ -39,12 +39,22 @@ public class DialogActivity extends Activity
     public static final String EXTRA_EDITTEXT_OPTIONS = "EXTRA_EDITTEXT_OPTIONS";
 
     private Widget widgetService;
+    private int doneRequestCode = -1;
 
     private ServiceConnection mConnection = new ServiceConnection()
     {
         public void onServiceConnected(ComponentName className, IBinder service)
         {
             widgetService = ((Widget.LocalBinder) service).getService();
+
+            //confirm started
+            int request = getIntent().getIntExtra(EXTRA_REQUEST_CODE, -1);
+            if (request != -1)
+            {
+                doneRequestCode = widgetService.generateRequestCode();
+                widgetService.asyncReport(request, doneRequestCode);
+            }
+
             Serializable optionsObject = getIntent().getSerializableExtra(EXTRA_EDITTEXT_OPTIONS);
             String[][] options = (optionsObject instanceof String[][]) ? (String[][])optionsObject : null;
             makeDialog(getIntent().getIntExtra(EXTRA_ICON, -1),
@@ -71,12 +81,11 @@ public class DialogActivity extends Activity
             return;
         }
 
-        int request = getIntent().getIntExtra(EXTRA_REQUEST_CODE, -1);
-        if (request == -1)
+        if (doneRequestCode == -1)
         {
             return;
         }
-        widgetService.asyncReport(request, new Pair<>(which, editTexts));
+        widgetService.asyncReport(doneRequestCode, new Pair<>(which, editTexts));
         resultReported = true;
     }
 

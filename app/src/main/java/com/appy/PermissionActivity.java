@@ -27,14 +27,23 @@ public class PermissionActivity extends Activity
     private Widget widgetService;
 
     private String[] permissions;
+    private int doneRequestCode = -1;
 
     private ServiceConnection mConnection = new ServiceConnection()
     {
         public void onServiceConnected(ComponentName className, IBinder service)
         {
             widgetService = ((Widget.LocalBinder) service).getService();
+
+            int request = getIntent().getIntExtra(EXTRA_REQUEST_CODE, -1);
+            if (request != -1)
+            {
+                doneRequestCode = widgetService.generateRequestCode();
+                widgetService.asyncReport(request, doneRequestCode);
+            }
+
             permissions = getIntent().getStringArrayExtra(EXTRA_PERMISSIONS);
-            requestPermissions(getIntent().getIntExtra(EXTRA_REQUEST_CODE, 1), permissions);
+            requestPermissions(doneRequestCode, permissions);
         }
 
         public void onServiceDisconnected(ComponentName className)
@@ -186,7 +195,7 @@ public class PermissionActivity extends Activity
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults)
     {
-        if (widgetService != null)
+        if (widgetService != null && requestCode != -1)
         {
             widgetService.asyncReport(requestCode, new Pair<>(permissions, grantResults));
         }

@@ -203,7 +203,18 @@ public class ConfigsFragment extends FragmentParent
         if (configs.containsKey(config))
         {
             fragment.setConfig(config);
-            fragment.setRequestCode(fragmentArg.getInt(Constants.FRAGMENT_ARG_REQUESTCODE, 0));
+
+            int requestCode = fragmentArg.getInt(Constants.FRAGMENT_ARG_REQUESTCODE, -1);
+            if (requestCode != -1)
+            {
+                int doneRequestCode = getWidgetService().generateRequestCode();
+                getWidgetService().asyncReport(requestCode, doneRequestCode);
+                fragment.setRequestCode(doneRequestCode);
+            }
+            else
+            {
+                fragment.setRequestCode(-1);
+            }
         }
         switchTo(fragment, true);
     }
@@ -225,7 +236,7 @@ public class ConfigsFragment extends FragmentParent
         ListView list;
         String widget = null;
         String config = null;
-        int requestCode = 0;
+        int requestCode_ = 0;
 
         @Override
         public void onResumedAndBound()
@@ -347,9 +358,9 @@ public class ConfigsFragment extends FragmentParent
                 {
                     if (dieAfter)
                     {
-                        if (requestCode != 0)
+                        if (getRequestCode() != -1)
                         {
-                            getWidgetService().asyncReport(requestCode, (String)item.arg);
+                            getWidgetService().asyncReport(getRequestCode(), (String)item.arg);
                         }
                         parent.finishActivity();
                     }
@@ -387,9 +398,9 @@ public class ConfigsFragment extends FragmentParent
                                 getWidgetService().getConfigurations().setConfig(widget, item.key, newValue);
                                 if (dieAfter)
                                 {
-                                    if (requestCode != 0)
+                                    if (getRequestCode() != -1)
                                     {
-                                        getWidgetService().asyncReport(requestCode, newValue);
+                                        getWidgetService().asyncReport(getRequestCode(), newValue);
                                     }
                                     parent.finishActivity();
                                 }
@@ -529,7 +540,11 @@ public class ConfigsFragment extends FragmentParent
 
         public void setRequestCode(int requestCode)
         {
-            this.requestCode = requestCode;
+            this.requestCode_ = requestCode;
+        }
+        public int getRequestCode()
+        {
+            return requestCode_;
         }
     }
 }

@@ -3364,6 +3364,12 @@ public class Widget extends RemoteViewsService
         return result;
     }
 
+    public Object waitForAsyncReportTwice(int requestCode, int timeoutMilli)
+    {
+        int doneRequestCode = (Integer)waitForAsyncReport(requestCode, Constants.REQUEST_SETUP_TIMEOUT_MILLI);
+        return waitForAsyncReport(doneRequestCode, timeoutMilli);
+    }
+
     public Pair<String[], int[]> requestPermissions(String[] permissions, boolean request, int timeoutMilli)
     {
         Pair<int[], Boolean> state = PermissionActivity.getPermissionState(this, permissions);
@@ -3389,7 +3395,7 @@ public class Widget extends RemoteViewsService
         intent.putExtra(PermissionActivity.EXTRA_PERMISSIONS, permissions);
         startActivity(intent);
 
-        return (Pair<String[], int[]>) waitForAsyncReport(requestCode, timeoutMilli);
+        return (Pair<String[], int[]>) waitForAsyncReportTwice(requestCode, timeoutMilli);
     }
 
     public int showDialogNoWait(Integer icon, String title, String text, String[] buttons, String[] editText, String[] editHints, String[][] editOptions)
@@ -3421,7 +3427,7 @@ public class Widget extends RemoteViewsService
 
         int requestCode = showDialogNoWait(icon, title, text, buttons, editTexts, editHints, editOptions);
 
-        return (Pair<Integer, String[]>) waitForAsyncReport(requestCode, timeoutMilli);
+        return (Pair<Integer, String[]>) waitForAsyncReportTwice(requestCode, timeoutMilli);
     }
 
     //result must be immutable
@@ -3474,7 +3480,7 @@ public class Widget extends RemoteViewsService
 
         startMainActivity("Configurations", bundle);
 
-        return waitForAsyncReport(requestCode, timeoutMilli) != null;
+        return waitForAsyncReportTwice(requestCode, timeoutMilli) != null;
     }
 
     public void setWidget(final int androidWidgetId, final int widgetId, final ArrayList<DynamicView> views, final boolean errorOnFailure)

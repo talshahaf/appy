@@ -84,6 +84,7 @@ public class Constants
     public static final int CRASH_FILE_MAX_DISPLAY_SIZE = 32 * 1024;
     public static final int PYTHON_FILE_MAX_SIZE = 100 * 1024 * 1024;
     public static final int STORE_CURSOR_SIZE = 100 * 1024 * 1024;
+    public static final int REQUEST_SETUP_TIMEOUT_MILLI = 3000;
     public static final String[] CRASHES_FILENAMES = {
             "javacrash.txt",
             "pythoncrash.txt",
