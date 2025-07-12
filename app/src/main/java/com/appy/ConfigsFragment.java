@@ -238,10 +238,22 @@ public class ConfigsFragment extends FragmentParent
         String config = null;
         int requestCode_ = 0;
 
+        String asyncResultAndDie = null;
+
         @Override
         public void onResumedAndBound()
         {
             refresh();
+        }
+
+        @Override
+        public void onStop()
+        {
+            if (asyncResultAndDie != null)
+            {
+                handleAsyncRequestAndDie(asyncResultAndDie);
+            }
+            super.onStop();
         }
 
         public void refresh()
@@ -273,7 +285,12 @@ public class ConfigsFragment extends FragmentParent
             list.setAdapter(new ListFragmentAdapter(getActivity(), adapterList));
             if (selectedConfigItem != null)
             {
+                asyncResultAndDie = (String)selectedConfigItem.arg;
                 showEditor(selectedConfigItem, true);
+            }
+            else
+            {
+                asyncResultAndDie = null;
             }
         }
 
@@ -321,6 +338,16 @@ public class ConfigsFragment extends FragmentParent
             return true;
         }
 
+        public void handleAsyncRequestAndDie(String value)
+        {
+            if (getRequestCode() != -1)
+            {
+                getWidgetService().asyncReport(getRequestCode(), value);
+                setRequestCode(-1);
+            }
+            parent.finishActivity();
+        }
+
         public void showEditor(final ListFragmentAdapter.Item item, final boolean dieAfter)
         {
             AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
@@ -358,11 +385,7 @@ public class ConfigsFragment extends FragmentParent
                 {
                     if (dieAfter)
                     {
-                        if (getRequestCode() != -1)
-                        {
-                            getWidgetService().asyncReport(getRequestCode(), (String)item.arg);
-                        }
-                        parent.finishActivity();
+                        handleAsyncRequestAndDie((String)item.arg);
                     }
                     dialog.dismiss();
                 }
@@ -398,11 +421,7 @@ public class ConfigsFragment extends FragmentParent
                                 getWidgetService().getConfigurations().setConfig(widget, item.key, newValue);
                                 if (dieAfter)
                                 {
-                                    if (getRequestCode() != -1)
-                                    {
-                                        getWidgetService().asyncReport(getRequestCode(), newValue);
-                                    }
-                                    parent.finishActivity();
+                                    handleAsyncRequestAndDie(newValue);
                                 }
                                 else
                                 {

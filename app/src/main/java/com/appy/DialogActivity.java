@@ -76,6 +76,11 @@ public class DialogActivity extends Activity
 
     public void dialogActivityResult(int which, String[] editTexts)
     {
+        if (widgetService == null)
+        {
+            return;
+        }
+
         if (resultReported)
         {
             return;
@@ -263,8 +268,9 @@ public class DialogActivity extends Activity
     }
 
     @Override
-    protected void onPause()
+    protected void onStop()
     {
-        super.onPause();
+        finish();
+        super.onStop();
     }
 }

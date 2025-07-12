@@ -186,18 +186,32 @@ public class PermissionActivity extends Activity
     }
 
     @Override
+    protected void onStop()
+    {
+        finish();
+        super.onStop();
+    }
+
+    @Override
     protected void onDestroy()
     {
         super.onDestroy();
+        if (widgetService != null && doneRequestCode != -1)
+        {
+            Pair<int[], Boolean> state = PermissionActivity.getPermissionState(this, permissions);
+            widgetService.asyncReport(doneRequestCode, new Pair<>(permissions, state.first));
+            doneRequestCode = -1;
+        }
         doUnbindService();
     }
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults)
     {
-        if (widgetService != null && requestCode != -1)
+        if (widgetService != null && doneRequestCode != -1)
         {
-            widgetService.asyncReport(requestCode, new Pair<>(permissions, grantResults));
+            widgetService.asyncReport(doneRequestCode, new Pair<>(permissions, grantResults));
+            doneRequestCode = -1;
         }
         finish();
     }

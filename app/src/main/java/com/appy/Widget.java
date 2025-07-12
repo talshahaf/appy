@@ -3366,7 +3366,10 @@ public class Widget extends RemoteViewsService
 
     public Object waitForAsyncReportTwice(int requestCode, int timeoutMilli)
     {
-        int doneRequestCode = (Integer)waitForAsyncReport(requestCode, Constants.REQUEST_SETUP_TIMEOUT_MILLI);
+        Integer doneRequestCode = (Integer)waitForAsyncReport(requestCode, Constants.REQUEST_SETUP_TIMEOUT_MILLI);
+        if (doneRequestCode == null) {
+            throw new RuntimeException("Failed to launch activity");
+        }
         return waitForAsyncReport(doneRequestCode, timeoutMilli);
     }
 
@@ -3445,8 +3448,13 @@ public class Widget extends RemoteViewsService
 
     public void startMainActivity(String fragment, Bundle arg)
     {
+        startMainActivity(fragment, arg, Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_MULTIPLE_TASK);
+    }
+
+    public void startMainActivity(String fragment, Bundle arg, int intentFlags)
+    {
         Intent intent = new Intent(this, MainActivity.class);
-        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_MULTIPLE_TASK);
+        intent.setFlags(intentFlags);
         if (fragment != null)
         {
             intent.putExtra(Constants.FRAGMENT_NAME_EXTRA, fragment);
@@ -3478,7 +3486,8 @@ public class Widget extends RemoteViewsService
         bundle.putString(Constants.FRAGMENT_ARG_CONFIG, config);
         bundle.putInt(Constants.FRAGMENT_ARG_REQUESTCODE, requestCode);
 
-        startMainActivity("Configurations", bundle);
+        startMainActivity("Configurations", bundle,
+                Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_MULTIPLE_TASK | Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS);
 
         return waitForAsyncReportTwice(requestCode, timeoutMilli) != null;
     }
