@@ -10,6 +10,7 @@ import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
+import android.widget.Toast;
 
 /**
  * Created by Tal on 19/03/2018.
@@ -175,6 +176,7 @@ public class ControlFragment extends MyFragment
                 startupStatus.setImageResource(R.drawable.error_indicator);
                 startupProgress.setVisibility(View.INVISIBLE);
                 startupStatus.setVisibility(View.VISIBLE);
+                Toast.makeText(getWidgetService(), "Error occurred during initialization. Check the logcat tab for more details.", Toast.LENGTH_SHORT).show();
                 break;
             case COMPLETED:
                 startupStatus.setImageResource(R.drawable.success_indicator);

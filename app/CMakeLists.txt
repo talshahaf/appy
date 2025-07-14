@@ -20,6 +20,11 @@ find_library( # Defines the name of the path variable that stores the
               # CMake needs to locate.
               log )
 
+add_library( prehelpers
+             SHARED
+             src/main/cpp/src/prehelpers.cpp)
+
+
 add_library( # Specifies the name of the library.
              native
 
@@ -35,6 +40,8 @@ set_target_properties(pythonlib PROPERTIES IMPORTED_LOCATION
 
 include_directories(src/main/cpp/inc/)
 include_directories(src/main/cpp/inc/${ANDROID_ABI}/python3.12)
+
+set_target_properties(prehelpers PROPERTIES LINK_FLAGS "-Wl,-zglobal")
 
 target_link_libraries( # Specifies the target library.
                        native

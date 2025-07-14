@@ -138,7 +138,7 @@ def register_receiver():
     deeplinkIntentFilter = java.new.android.content.IntentFilter(deeplink_intent_filter)
     
     # Using java_context() to obtain a valid Android context object
-    java_context().registerReceiver(pongReceiverBridge, deeplinkIntentFilter, java_context().RECEIVER_EXPORTED)
+    java_context().registerReceiver(pongReceiverBridge, deeplinkIntentFilter, java.clazz.androidx.core.content.ContextCompat().RECEIVER_EXPORTED)
 
 ############# widget code #############
 

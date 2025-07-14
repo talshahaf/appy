@@ -415,6 +415,10 @@ public class MainActivity extends AppCompatActivity implements StatusListener, A
                     ((MyFragmentInterface) frag.second).onBound();
                 }
             }
+            if (tutorial != null)
+            {
+                tutorial.onServiceBound(widgetService);
+            }
         }
 
         public void onServiceDisconnected(ComponentName className)

@@ -194,14 +194,19 @@ class AppsFragment : MyFragment() {
 
     private val setListenerMethod = Reflection.getMethods(AppWidgetHost::class.java).find { it.name == "setListener"}
 
-    override fun onResume() {
+    override fun onStart() {
         widgetHost?.startListening()
-        super.onResume()
+        super.onStart()
     }
 
-    override fun onPause() {
-        widgetHost?.stopListening()
-        super.onPause()
+    override fun onStop() {
+        selectWidget(-1)
+        try {
+            widgetHost?.stopListening()
+        } catch (_: NullPointerException) {
+            //bug on android <= 12
+        }
+        super.onStop()
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
@@ -489,6 +494,8 @@ class AppsFragment : MyFragment() {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
+        super.onCreateView(inflater, container, savedInstanceState)
+
         val view = inflater.inflate(R.layout.fragment_apps, container, false)
         val composeView = view.findViewById<ComposeView>(R.id.compose_view)
         composeView.apply {
@@ -527,7 +534,7 @@ class AppsFragment : MyFragment() {
             val widgetId = selectedState.intValue
             if (widgetId != -1) {
                 val widgetItem = _widgetGridList.find { it.widgetId == widgetId }
-                if (widgetItem != null) {
+                if (widgetItem?.name != null) {
                     makeShortcut(widgetItem)
                 }
             }

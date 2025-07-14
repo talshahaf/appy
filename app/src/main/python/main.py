@@ -3,7 +3,7 @@ faulthandler.enable()
 
 import logcat
 
-import subprocess, signal, os, sys, traceback, time, email, tarfile, importlib.util, site
+import subprocess, signal, os, sys, traceback, time, email, tarfile, importlib.util, site, shutil
 from pathlib import Path
 from threading import Thread
 
@@ -58,7 +58,7 @@ def execute(command):
     if exitCode == 0 or killed:
         return output
     else:
-        raise subprocess.CalledProcessError(command, exitCode)
+        raise RuntimeError(f'{command} failed with code: {exitCode}')
 
 def install_optional_packages():
     try:
@@ -71,7 +71,7 @@ def install_optional_packages():
             execute([exe, '-m', 'pip', 'install', '--upgrade'] + needed_packages)
             import requests
     except Exception as e:
-        print(e) #optional packages
+        print("Failed to install optional packages, maybe offline?", e) #TODO propagate
 
 
 def install_package_with_tar(pkg_path):
@@ -87,6 +87,10 @@ def install_package_with_tar(pkg_path):
                 with open(dest, 'wb') as fh:
                     fh.write(tar.extractfile(f).read())
 
+def uninstall_package_manually(pkg):
+    site_dir = Path(site.getsitepackages()[0])
+    shutil.rmtree(site_dir / pkg, ignore_errors=True)
+
 #replace all bins and replace with symlinks to our own python3 binary because android forbids executing from app data dir
 exe_dir = os.environ['NATIVELIBS']
 exe = os.path.join(exe_dir, 'libpythonexe.so')
@@ -97,6 +101,7 @@ if os.environ['PATH']:
     os.environ['PATH'] += ':'
 os.environ['PATH'] += exe_dir + ":" + bin_dir
 os.environ['LD_LIBRARY_PATH'] = lib_dir
+os.environ['LD_PRELOAD'] = os.path.join(exe_dir, 'libprehelpers.so')
 os.chdir(bin_dir)
 
 python_links = ['python', 'python3', 'python3.12']
@@ -115,9 +120,12 @@ try:
     import pip
 except ImportError:
     print('Installing pip')
-    import ensurepip
-    ensurepip._main()
-    import pip
+    try:
+        import ensurepip
+        ensurepip._main()
+        import pip
+    except BaseException as e:
+        print('Failed to install pip: ', e)
 
 #running in background
 Thread(target=install_optional_packages).start()
@@ -143,7 +151,8 @@ try:
 except Exception as e:
     print('error importing appy: ', traceback.format_exc())
     print('installing appy')
-    execute([exe, '-m', 'pip', 'uninstall', 'appy' ,'--yes'])
+    #execute([exe, '-m', 'pip', 'uninstall', 'appy' ,'--yes'])
+    uninstall_package_manually('appy')
     install_package_with_tar(os.path.join(os.environ['TMP'], 'appy.tar.gz'))
     import appy
 

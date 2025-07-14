@@ -47,7 +47,7 @@ public class Tutorial implements OverlayHoleView.OnHoleClick, TutorialStepListen
 
     private int mStepsDone = 0;
 
-    private boolean tutorialDone = false;
+    private static boolean tutorialDone = false;
     private static ArrayList<TutorialStepListener> gTutorialStepDoneListeners = new ArrayList<>();
 
     public static final int overlayColor = Color.argb(150, 0, 0, 0);
@@ -159,7 +159,7 @@ public class Tutorial implements OverlayHoleView.OnHoleClick, TutorialStepListen
             overlay.showBox();
         }
 
-        if (mStepsDone == 1)
+        if (mStepsDone == 1 && !tutorialDone)
         {
             checkStartupStatus();
         }
@@ -182,22 +182,22 @@ public class Tutorial implements OverlayHoleView.OnHoleClick, TutorialStepListen
                         @Override
                         public void run()
                         {
-                            finishTutorial();
+                            finishTutorial(false);
                         }
                     });
         }
         else
         {
-            finishTutorial();
+            finishTutorial(false);
         }
     }
 
     public void onStepError(int step)
     {
-        if (step == 1)
+        if (step == 1 || step == 2)
         {
             //can't go back
-            finishTutorial();
+            finishTutorial(true);
             return;
         }
         // Go back one
@@ -218,11 +218,8 @@ public class Tutorial implements OverlayHoleView.OnHoleClick, TutorialStepListen
                 }
                 else if (state == Constants.StartupState.ERROR)
                 {
-                    Toast.makeText(activity, "Appy initialization failed", Toast.LENGTH_SHORT).show();
-                    //TODO
-
-                    mStepsDone = 0;
-                    doNextStep();
+                    //TODO point to logcat?
+                    finishTutorial(true);
                 }
             }
         }
@@ -235,7 +232,8 @@ public class Tutorial implements OverlayHoleView.OnHoleClick, TutorialStepListen
         this.content = content;
         this.activity = mainActivity;
 
-        readIsDone();
+        SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this.activity.getApplicationContext());
+        tutorialDone = sharedPref.getBoolean("tutorial_done", false);
 
         overlay.setOnHoleClick(this);
         overlay.setOnButtonClick(new View.OnClickListener()
@@ -255,8 +253,6 @@ public class Tutorial implements OverlayHoleView.OnHoleClick, TutorialStepListen
         this.fileBrowserList = fileBrowserList;
         this.overlay = fileBrowserOverlay;
 
-        readIsDone();
-
         fileBrowserOverlay.setOnHoleClick(this);
         overlay.setOnButtonClick(new View.OnClickListener()
         {
@@ -273,15 +269,8 @@ public class Tutorial implements OverlayHoleView.OnHoleClick, TutorialStepListen
         this.tutorialFinishedListener = tutorialFinishedListener;
     }
 
-    public void readIsDone()
-    {
-        SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this.activity.getApplicationContext());
-        tutorialDone = sharedPref.getBoolean("tutorial_done", false);
-    }
-
     public boolean isFinished()
     {
-        readIsDone();
         return tutorialDone;
     }
 
@@ -336,11 +325,15 @@ public class Tutorial implements OverlayHoleView.OnHoleClick, TutorialStepListen
         }
     }
 
-    public void finishTutorial()
+    public void finishTutorial(boolean showAgain)
     {
         Log.d("APPY", "Tutorial finish");
 
-        writeIsDone(true);
+        tutorialDone = true;
+        if (!showAgain)
+        {
+            writeIsDone(true);
+        }
         callStepDone(mStepsDone, true);
 
         if (tutorialFinishedListener != null)
@@ -352,7 +345,12 @@ public class Tutorial implements OverlayHoleView.OnHoleClick, TutorialStepListen
     public void onStartupStatusChange(Widget service)
     {
         this.service = service;
+        checkStartupStatus();
+    }
 
+    public void onServiceBound(Widget service)
+    {
+        this.service = service;
         checkStartupStatus();
     }
 
@@ -405,10 +403,25 @@ public class Tutorial implements OverlayHoleView.OnHoleClick, TutorialStepListen
         }
     }
 
+    public void onFileBrowserImportDone()
+    {
+        if (mStepsDone == 7)
+        {
+            handler.postDelayed(new Runnable()
+            {
+                @Override
+                public void run()
+                {
+                    doNextStep();
+                }
+            }, waitMilli);
+        }
+    }
+
     @Override
     public void onHoleClick()
     {
-        if (mStepsDone == 2 || mStepsDone == 3 || mStepsDone == 5 || mStepsDone == 7)
+        if (mStepsDone == 2 || mStepsDone == 3 || mStepsDone == 5)
         {
             doNextStep();
         }
@@ -465,7 +478,6 @@ public class Tutorial implements OverlayHoleView.OnHoleClick, TutorialStepListen
             case 7:
             {
                 // on pilling click
-                //finishTutorial();
                 overlay.setNoHole();
                 callStepDone(mStepsDone + 1, false);
                 break;
@@ -483,7 +495,6 @@ public class Tutorial implements OverlayHoleView.OnHoleClick, TutorialStepListen
             @Override
             public void run()
             {
-
                 View[] views;
                 if (desc)
                 {
@@ -522,7 +533,10 @@ public class Tutorial implements OverlayHoleView.OnHoleClick, TutorialStepListen
                         overlay.setAbsoluteHole((int) hole[0], (int) hole[1],
                                                hole[2] + holePadW,
                                                 hole[3] + holePadH,
+                                                      hole[2],
+                                                      hole[3],
                                                       rectHole ? OverlayHoleView.HoleShape.Rect : OverlayHoleView.HoleShape.Circle);
+
                         callStepDone(step, false);
                     }
                 }, new Runnable()
@@ -552,7 +566,7 @@ public class Tutorial implements OverlayHoleView.OnHoleClick, TutorialStepListen
             {
                 int[] newLoc = new int[2];
                 view.getLocationInWindow(newLoc);
-                if (newLoc[0] == prevLoc[0] && newLoc[1] == prevLoc[1])
+                if ((newLoc[0] != 0 || newLoc[1] != 0) && newLoc[0] == prevLoc[0] && newLoc[1] == prevLoc[1])
                 {
                     f.run();
                 }

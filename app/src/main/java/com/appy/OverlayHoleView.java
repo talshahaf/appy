@@ -37,6 +37,8 @@ public class OverlayHoleView extends View implements ValueAnimator.AnimatorUpdat
     int holeY = 0;
     float holeW = 0;
     float holeH = 0;
+    float holeClickW = 0;
+    float holeClickH = 0;
 
     int overlayColor = Color.argb(200, 0, 0, 0);
 
@@ -185,10 +187,10 @@ public class OverlayHoleView extends View implements ValueAnimator.AnimatorUpdat
         switch (holeShape)
         {
             case Circle:
-                inHole = xDiff * xDiff + yDiff * yDiff <= holeW * holeW;
+                inHole = xDiff * xDiff + yDiff * yDiff <= holeClickW * holeClickW;
                 break;
             case Rect:
-                inHole = Math.abs(xDiff) < holeW && Math.abs(yDiff) < holeH;
+                inHole = Math.abs(xDiff) < holeClickW && Math.abs(yDiff) < holeClickH;
                 break;
         }
 
@@ -217,19 +219,21 @@ public class OverlayHoleView extends View implements ValueAnimator.AnimatorUpdat
         return false;
     }
 
-    public void setAbsoluteHole(int holeX, int holeY, float holeW, float holeH, HoleShape holeShape)
+    public void setAbsoluteHole(int holeX, int holeY, float holeW, float holeH,float holeClickW, float holeClickH, HoleShape holeShape)
     {
         int[] loc = new int[2];
         getLocationInWindow(loc);
-        setHole(holeX - loc[0], holeY - loc[1], holeW, holeH, holeShape);
+        setHole(holeX - loc[0], holeY - loc[1], holeW, holeH, holeClickW, holeClickH, holeShape);
     }
 
-    public void setHole(int holeX, int holeY, float holeW, float holeH, HoleShape holeShape)
+    public void setHole(int holeX, int holeY, float holeW, float holeH, float holeClickW, float holeClickH, HoleShape holeShape)
     {
         this.holeX = holeX;
         this.holeY = holeY;
         this.holeW = holeW;
         this.holeH = holeH;
+        this.holeClickW = holeClickW;
+        this.holeClickH = holeClickH;
         this.holeShape = holeShape;
 
         invalidate();

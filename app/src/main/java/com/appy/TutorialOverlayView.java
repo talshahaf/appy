@@ -47,6 +47,8 @@ public class TutorialOverlayView extends ConstraintLayout
     private void init()
     {
         inflate(getContext(), R.layout.tutorial_overlay, this);
+        setVisibility(View.GONE);
+
         overlay = findViewById(R.id.overlay);
         text = findViewById(R.id.overlay_text);
         box = findViewById(R.id.overlay_text_bg);
@@ -68,9 +70,9 @@ public class TutorialOverlayView extends ConstraintLayout
         overlay.setOverlayColor(color);
     }
 
-    public void setAbsoluteHole(int holeX, int holeY, float holeW, float holeH, OverlayHoleView.HoleShape holeShape)
+    public void setAbsoluteHole(int holeX, int holeY, float holeW, float holeH, float holeClickW, float holeClickH, OverlayHoleView.HoleShape holeShape)
     {
-        overlay.setAbsoluteHole(holeX, holeY, holeW, holeH, holeShape);
+        overlay.setAbsoluteHole(holeX, holeY, holeW, holeH, holeClickW, holeClickH, holeShape);
     }
 
     public float[] getAbsoluteHolePosition()

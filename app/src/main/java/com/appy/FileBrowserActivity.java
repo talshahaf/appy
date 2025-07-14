@@ -241,6 +241,10 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
     //get directories and files from selected path
     public boolean getDirFromRoot(String path)
     {
+        if (path == null)
+        {
+            path = startDir;
+        }
         boolean isRoot = path.equals("/");
 
         FileBrowserAdapter.FileItem current = new FileBrowserAdapter.FileItem();
@@ -378,6 +382,7 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
                     Intent intent = new Intent();
                     intent.putExtra(RESULT_FILES, files);
                     setResult(RESULT_OK, intent);
+                    tutorial.onFileBrowserImportDone();
                     finish();
                 }
             });
@@ -387,6 +392,7 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
             Intent intent = new Intent();
             intent.putExtra(RESULT_FILES, files);
             setResult(RESULT_OK, intent);
+            tutorial.onFileBrowserImportDone();
             finish();
         }
     }
@@ -405,6 +411,10 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
 
     public String currentDir()
     {
+        if (adapter == null)
+        {
+            return null;
+        }
         return adapter.getCurrent().file.getAbsolutePath();
     }
 

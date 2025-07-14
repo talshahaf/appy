@@ -1958,6 +1958,7 @@ public class Widget extends RemoteViewsService
     {
         setProps(widgetProps, new Object[]{widgetPropsLock}, widgetId, "sizeFactor", sizeFactor, (DictObj.Dict dict) -> dict.put("sizeFactor", sizeFactor));
         saveWidgetProps(widgetId, true);
+        update(widgetId);
     }
 
     public void setWidgetAppTitle(int widgetId, String title)
@@ -2222,12 +2223,20 @@ public class Widget extends RemoteViewsService
             Log.e("APPY", "Exception on loadCorrectionFactors", e);
         }
 
-        widthCorrectionFactor = widthCorrection;
-        heightCorrectionFactor = heightCorrection;
-        globalSizeFactor = sizeFactor;
+        boolean shouldUpdate = false;
+        if (widthCorrectionFactor != widthCorrection ||
+            heightCorrectionFactor != heightCorrection ||
+            globalSizeFactor != sizeFactor)
+        {
+            widthCorrectionFactor = widthCorrection;
+            heightCorrectionFactor = heightCorrection;
+            globalSizeFactor = sizeFactor;
+            shouldUpdate = true;
 
-        Log.d("APPY", "new correction factors: " + widthCorrectionFactor + ", " + heightCorrectionFactor);
-        if (!initing)
+            Log.d("APPY", "new correction factors: " + widthCorrectionFactor + ", " + heightCorrectionFactor + ", " + globalSizeFactor);
+        }
+
+        if (!initing && shouldUpdate)
         {
             updateAll();
         }
@@ -3729,6 +3738,7 @@ public class Widget extends RemoteViewsService
                 copyAsset(getAssets().open("main.py"), new File(cacheDir, "main.py"));
                 copyAsset(getAssets().open("logcat.py"), new File(cacheDir, "logcat.py"));
                 copyAsset(getAssets().open("appy.targz"), new File(cacheDir, "appy.tar.gz"));
+                System.loadLibrary("prehelpers");
                 System.load(pythonLib);
                 System.loadLibrary("native");
                 pythonInit(pythonHome, cacheDir, pythonLib, new File(cacheDir, "main.py").getAbsolutePath(), getApplicationInfo().nativeLibraryDir, Widget.this);

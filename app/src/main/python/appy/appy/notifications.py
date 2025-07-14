@@ -37,7 +37,7 @@ def _init():
 
     bridge = java.new.appy.BroadcastInterfaceBridge(NotificationReceiver())
     context = java.get_java_arg()
-    context.registerReceiver(bridge, java.new.android.content.IntentFilter(notification_intent_filter), context.RECEIVER_EXPORTED)
+    context.registerReceiver(bridge, java.new.android.content.IntentFilter(notification_intent_filter), java.clazz.androidx.core.content.ContextCompat().RECEIVER_EXPORTED)
 
 def _deinit():
     if bridge is None:

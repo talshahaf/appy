@@ -3564,7 +3564,6 @@ int stdout_to_file(const char * path)
     return 0;
 }
 
-
 extern "C" JNIEXPORT void JNICALL
 Java_com_appy_Widget_pythonInit(JNIEnv * env, jclass clazz, jstring j_pythonhome,
                                 jstring j_cachepath, jstring j_pythonlib, jstring j_scriptpath,
