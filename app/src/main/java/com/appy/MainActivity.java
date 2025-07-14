@@ -7,6 +7,7 @@ import android.content.DialogInterface;
 import android.content.ServiceConnection;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.content.res.Configuration;
 import android.os.Build;
 import android.os.IBinder;
 import androidx.appcompat.app.AlertDialog;
@@ -48,6 +49,17 @@ public class MainActivity extends AppCompatActivity implements StatusListener, A
     private TextView bottomText;
     private HashMap<Integer, Pair<Class<?>, Fragment>> fragments = new HashMap<>();
     public static final String FRAGMENT_TAG = "FRAGMENT";
+
+    @Override
+    public void onConfigurationChanged(@NonNull Configuration newConfig)
+    {
+        super.onConfigurationChanged(newConfig);
+
+        if (tutorial != null)
+        {
+            tutorial.onConfigurationChanged();
+        }
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState)

@@ -33,7 +33,6 @@ public class ControlFragment extends MyFragment
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState)
     {
-
         View layout = inflater.inflate(R.layout.fragment_control, container, false);
 
         startupProgress = layout.findViewById(R.id.startup_progress);

@@ -136,9 +136,14 @@ def __del__():
 def register_receiver():
     print('registering receivers')
     deeplinkIntentFilter = java.new.android.content.IntentFilter(deeplink_intent_filter)
+
+    try:
+        exported_flag = java_context().RECEIVER_EXPORTED
+    except AttributeError:
+        exported_flag = 0
     
     # Using java_context() to obtain a valid Android context object
-    java_context().registerReceiver(pongReceiverBridge, deeplinkIntentFilter, java.clazz.androidx.core.content.ContextCompat().RECEIVER_EXPORTED)
+    java_context().registerReceiver(pongReceiverBridge, deeplinkIntentFilter, exported_flag)
 
 ############# widget code #############
 

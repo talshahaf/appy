@@ -4,6 +4,7 @@ import android.Manifest;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.content.res.Configuration;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -757,7 +758,10 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
     protected void onDestroy()
     {
         super.onDestroy();
-        tutorial.onActivityDestroyed();
+        if (tutorial != null)
+        {
+            tutorial.onActivityDestroyed();
+        }
     }
 
     @Override
@@ -768,6 +772,17 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
         if (tutorial != null)
         {
             tutorial.onActivityPaused();
+        }
+    }
+
+    @Override
+    public void onConfigurationChanged(@NonNull Configuration newConfig)
+    {
+        super.onConfigurationChanged(newConfig);
+
+        if (tutorial != null)
+        {
+            tutorial.onConfigurationChanged();
         }
     }
 

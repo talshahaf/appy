@@ -1,7 +1,5 @@
 package com.appy
 
-import android.annotation.SuppressLint
-import android.app.Activity
 import android.app.PendingIntent
 import android.appwidget.AppWidgetHost
 import android.appwidget.AppWidgetHostView
@@ -15,7 +13,6 @@ import android.content.pm.ShortcutManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Matrix
-import android.graphics.drawable.AdaptiveIconDrawable
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
@@ -49,9 +46,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyGridState
@@ -62,12 +57,10 @@ import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardColors
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LargeFloatingActionButton
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -459,7 +452,6 @@ class AppsFragment : MyFragment() {
         )
 
         sizes.add(SizeF(widthdips, heightdips))
-        sizes.add(SizeF(heightdips, widthdips))
 
         val options = Bundle()
         options.putBoolean(OPTION_APPWIDGET_APPY_APP, true)
@@ -635,7 +627,7 @@ class AppsFragment : MyFragment() {
                     Icon(Icons.Filled.Add, "New widget")
                 }
                 LazyVerticalGrid(
-                    columns = GridCells.Fixed(count = 3),
+                    columns = GridCells.Adaptive(150.dp),
                     modifier = Modifier.fillMaxSize(),
                     state = lazyGridState,
                     contentPadding = PaddingValues(8.dp),

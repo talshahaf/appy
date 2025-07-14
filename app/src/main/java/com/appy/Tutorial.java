@@ -54,7 +54,7 @@ public class Tutorial implements OverlayHoleView.OnHoleClick, TutorialStepListen
     public static final int waitMilli = 100;
     public static final int waitMaxRetries = 10;
 
-    public static final String welcomeMessage = "Welcome to Appy!\n\nThe app that lets you build you own home screen widgets using nothing but Python.";
+    public static final String welcomeMessage = "Welcome to Appy!\n\nThe app that lets you build your own home screen widgets using nothing but Python.";
 
     public static class StepProps
     {
@@ -340,6 +340,16 @@ public class Tutorial implements OverlayHoleView.OnHoleClick, TutorialStepListen
     {
         this.service = service;
         checkStartupStatus();
+    }
+
+    public void onConfigurationChanged()
+    {
+        if (mStepsDone != 0)
+        {
+            //redo step
+            mStepsDone = mStepsDone - 1;
+            doNextStep();
+        }
     }
 
     public boolean allowBackPress()

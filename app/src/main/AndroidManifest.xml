@@ -69,7 +69,9 @@
         android:hasFragileUserData="true"
         tools:targetApi="q"
         android:name="com.appy.Application">
-        <activity android:name="com.appy.MainActivity" android:exported="true">
+        <activity android:name="com.appy.MainActivity"
+            android:configChanges="orientation|screenSize|keyboardHidden|smallestScreenSize|screenLayout"
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
@@ -103,16 +105,42 @@
             </intent-filter>
         </activity>
 
-        <activity android:name="com.appy.PermissionActivity" android:excludeFromRecents="true" android:theme="@style/Invisible" android:exported="true" android:fitsSystemWindows="true" />
-        <activity android:name="com.appy.ForegroundActivity" android:excludeFromRecents="true" android:theme="@style/Invisible" android:exported="true" android:fitsSystemWindows="true" />
-
-        <activity android:name="com.appy.FileBrowserActivity" android:exported="true"/>
-        <activity android:name="com.appy.FileEditorActivity" android:exported="true"/>
-        <activity android:name="com.appy.DialogActivity" android:noHistory="true" android:excludeFromRecents="true" android:theme="@style/Theme.AppCompat.Dialog" android:exported="true"/>
-        <activity android:name="com.appy.WidgetManagerActivity" android:label="Manage Widgets" android:exported="true" />
-        <activity android:name="com.appy.WidgetSizeFactorActivity" android:label="Widget Size Factors" android:exported="true" />
-
-        <activity android:name="com.appy.ShareActivity" android:label="Share with" android:exported="true">
+        <activity android:name="com.appy.PermissionActivity"
+            android:excludeFromRecents="true"
+            android:theme="@style/Invisible"
+            android:exported="true"
+            android:fitsSystemWindows="true"
+            android:configChanges="orientation|screenSize|keyboardHidden|smallestScreenSize|screenLayout"/>
+        <activity android:name="com.appy.ForegroundActivity"
+            android:excludeFromRecents="true"
+            android:theme="@style/Invisible"
+            android:exported="true"
+            android:fitsSystemWindows="true"
+            android:configChanges="orientation|screenSize|keyboardHidden|smallestScreenSize|screenLayout"/>
+        <activity android:name="com.appy.FileBrowserActivity"
+            android:exported="true"
+            android:configChanges="orientation|screenSize|keyboardHidden|smallestScreenSize|screenLayout"/>
+        <activity android:name="com.appy.FileEditorActivity"
+            android:exported="true"
+            android:configChanges="orientation|screenSize|keyboardHidden|smallestScreenSize|screenLayout"/>
+        <activity android:name="com.appy.DialogActivity"
+            android:noHistory="true"
+            android:excludeFromRecents="true"
+            android:theme="@style/Theme.AppCompat.Dialog"
+            android:exported="true"
+            android:configChanges="orientation|screenSize|keyboardHidden|smallestScreenSize|screenLayout"/>
+        <activity android:name="com.appy.WidgetManagerActivity"
+            android:label="Manage Widgets"
+            android:exported="true"
+            android:configChanges="orientation|screenSize|keyboardHidden|smallestScreenSize|screenLayout"/>
+        <activity android:name="com.appy.WidgetSizeFactorActivity"
+            android:label="Widget Size Factors"
+            android:exported="true"
+            android:configChanges="orientation|screenSize|keyboardHidden|smallestScreenSize|screenLayout"/>
+        <activity android:name="com.appy.ShareActivity"
+            android:label="Share with"
+            android:exported="true"
+            android:configChanges="orientation|screenSize|keyboardHidden|smallestScreenSize|screenLayout">
             <intent-filter>
                 <action android:name="android.intent.action.SEND"/>
                 <category android:name="android.intent.category.DEFAULT"/>
@@ -132,6 +160,7 @@
             android:excludeFromRecents="true"
             android:theme="@style/Invisible"
             android:exported="true"
+            android:configChanges="orientation|screenSize|keyboardHidden|smallestScreenSize|screenLayout"
             >
             <intent-filter>
                 <action android:name="android.intent.action.VIEW"/>
