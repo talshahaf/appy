@@ -60,7 +60,7 @@ def execute(command):
     else:
         raise RuntimeError(f'{command} failed with code: {exitCode}')
 
-def install_optional_packages():
+def install_optional_packages(do_upgrade):
     try:
         needed_packages = ['pip', 'setuptools', 'wheel', 'requests', 'packaging', 'pyparsing', 'python-dateutil', 'cycler']
         try:
@@ -68,7 +68,7 @@ def install_optional_packages():
             import requests, setuptools, cycler
         except ImportError:
             print(f'installing {" ".join(needed_packages)}')
-            execute([exe, '-m', 'pip', 'install', '--upgrade'] + needed_packages)
+            execute([exe, '-m', 'pip', 'install', *(['--upgrade'] if do_upgrade else [])] + needed_packages)
             import requests
     except Exception as e:
         print("Failed to install optional packages, maybe offline?", e) #TODO propagate
@@ -128,7 +128,7 @@ except ImportError:
         print('Failed to install pip: ', e)
 
 #running in background
-optional_packages_thread = Thread(target=install_optional_packages)
+optional_packages_thread = Thread(target=lambda: install_optional_packages(False))
 optional_packages_thread.start()
 
 upgrade = False
@@ -158,4 +158,8 @@ except Exception as e:
     import appy
 
 optional_packages_thread.join()
+
+#upgrade packages in background
+Thread(target=lambda: install_optional_packages(True)).start()
+
 appy.do_init()
