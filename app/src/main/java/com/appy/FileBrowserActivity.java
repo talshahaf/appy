@@ -188,14 +188,15 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
         }
     }
 
-    public void getStartDir()
+    public boolean getStartDir()
     {
         startDir = preset_paths[cantViewSharedStorage ? MEDIA_STORAGE_INDEX : SHARED_STORAGE_INDEX];
         if (!getDirFromRoot(startDir))
         {
             startDir = preset_paths[MEDIA_STORAGE_INDEX];
-            getDirFromRoot(startDir);
+            return getDirFromRoot(startDir);
         }
+        return true;
     }
 
     @Override
@@ -243,7 +244,7 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
     {
         if (path == null)
         {
-            path = startDir;
+            return getStartDir();
         }
         boolean isRoot = path.equals("/");
 

@@ -1,7 +1,6 @@
 package com.appy;
 
 import android.app.Activity;
-import android.content.DialogInterface;
 import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.graphics.Paint;
@@ -13,14 +12,10 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ListView;
 import android.widget.TextView;
-import android.widget.Toast;
-
 import androidx.annotation.Nullable;
-import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.widget.Toolbar;
 import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.preference.PreferenceManager;
-
 import java.util.ArrayList;
 
 interface TutorialStepListener
@@ -35,7 +30,7 @@ public class Tutorial implements OverlayHoleView.OnHoleClick, TutorialStepListen
         void tutorialFinished();
     }
 
-    private Handler handler;
+    private final Handler handler;
     private TutorialOverlayView overlay;
     private DrawerLayout drawer;
     private ViewGroup content;
@@ -48,7 +43,7 @@ public class Tutorial implements OverlayHoleView.OnHoleClick, TutorialStepListen
     private int mStepsDone = 0;
 
     private static boolean tutorialDone = false;
-    private static ArrayList<TutorialStepListener> gTutorialStepDoneListeners = new ArrayList<>();
+    private static final ArrayList<TutorialStepListener> gTutorialStepDoneListeners = new ArrayList<>();
 
     public static final int overlayColor = Color.argb(150, 0, 0, 0);
 
@@ -88,7 +83,7 @@ public class Tutorial implements OverlayHoleView.OnHoleClick, TutorialStepListen
             //starting from 1
             new StepProps("", 0, false, StepProps.Anchor.ABSOLUTE, null),
             //status change
-            new StepProps(welcomeMessage + "\n\nAppy is now installing python and downloads some helpful libraries (pip, requests, setuptools and more).\nIt shouldn't take more than 10 seconds, and once it's done you can add your first widget.", 20, false, StepProps.Anchor.BELOW_HOLE, null),
+            new StepProps(welcomeMessage + "\n\nAppy is now installing python and downloads some helpful libraries (pip, requests, setuptools and more).\nIt shouldn't take more than 20 seconds, and once it's done you can add your first widget.", 20, false, StepProps.Anchor.BELOW_HOLE, null),
             //click on menu
             new StepProps(welcomeMessage + "\n\nAppy is ready. Next, we'll import your first widget.\nClick on the menu icon.", 20, false, StepProps.Anchor.BELOW_HOLE, null),
             //click on files
@@ -177,14 +172,7 @@ public class Tutorial implements OverlayHoleView.OnHoleClick, TutorialStepListen
         {
             Utils.showConfirmationDialog(activity,
                     "Skip Tutorial", "Are you sure?", 0,
-                    "Skip", "Don't skip", new Runnable()
-                    {
-                        @Override
-                        public void run()
-                        {
-                            finishTutorial(false);
-                        }
-                    });
+                    "Skip", "Don't skip", () -> finishTutorial(false));
         }
         else
         {
@@ -381,23 +369,18 @@ public class Tutorial implements OverlayHoleView.OnHoleClick, TutorialStepListen
     {
         if (mStepsDone == 5)
         {
-            handler.postDelayed(new Runnable()
-            {
-                @Override
-                public void run()
+            handler.postDelayed(() -> {
+                View[] views = findViewByText(fileBrowserList, "pilling.py", true);
+                if (views.length > 0)
                 {
-                    View[] views = findViewByText(fileBrowserList, "pilling.py", true);
-                    if (views.length > 0)
-                    {
-                        mStepsDone = 6;
-                        doNextStep();
-                    }
-                    else
-                    {
-                        //go back to 4
-                        mStepsDone = 4;
-                        doNextStep();
-                    }
+                    mStepsDone = 6;
+                    doNextStep();
+                }
+                else
+                {
+                    //go back to 4
+                    mStepsDone = 4;
+                    doNextStep();
                 }
             }, waitMilli);
         }
@@ -407,14 +390,7 @@ public class Tutorial implements OverlayHoleView.OnHoleClick, TutorialStepListen
     {
         if (mStepsDone == 7)
         {
-            handler.postDelayed(new Runnable()
-            {
-                @Override
-                public void run()
-                {
-                    doNextStep();
-                }
-            }, waitMilli);
+            handler.postDelayed(this::doNextStep, waitMilli);
         }
     }
 
@@ -490,104 +466,102 @@ public class Tutorial implements OverlayHoleView.OnHoleClick, TutorialStepListen
         overlay.setNoHole();
         overlay.hideBox();
 
-        handler.postDelayed(new Runnable()
-        {
-            @Override
-            public void run()
+        final View[][] viewsStorage = new View[1][];
+
+        waitForCondition(() -> {
+            if (desc)
             {
-                View[] views;
-                if (desc)
+                viewsStorage[0] = findViewByDesc(root, needle, true);
+            }
+            else
+            {
+                viewsStorage[0] = findViewByText(root, needle, true);
+            }
+
+            return viewsStorage[0].length > 0;
+        }, () -> {
+            View view = viewsStorage[0][0];
+
+            waitForAnimationStop(view, () -> {
+                float[] hole;
+                if (desc || !(view instanceof TextView))
                 {
-                    views = findViewByDesc(root, needle, true);
+                    hole = viewAbsoluteBounding(view, rectHole);
                 }
                 else
                 {
-                    views = findViewByText(root, needle, true);
+                    hole = textViewAbsoluteBounding((TextView) view, rectHole);
                 }
 
-                if (views.length == 0)
-                {
-                    Log.d("APPY", "Tutorial element " + needle + " not found");
-                    onStepError(step);
-                    return;
-                }
+                overlay.setOverlayColor(overlayColor);
+                overlay.setAbsoluteHole((int) hole[0], (int) hole[1],
+                        hole[2] + holePadW,
+                        hole[3] + holePadH,
+                        hole[2],
+                        hole[3],
+                        rectHole ? OverlayHoleView.HoleShape.Rect : OverlayHoleView.HoleShape.Circle);
 
-                View view = views[0];
-
-                waitForAnimationStop(view, new Runnable()
-                {
-                    @Override
-                    public void run()
-                    {
-                        float[] hole;
-                        if (desc || !(view instanceof TextView))
-                        {
-                            hole = viewAbsoluteBounding(view, rectHole);
-                        }
-                        else
-                        {
-                            hole = textViewAbsoluteBounding((TextView) view, rectHole);
-                        }
-
-                        overlay.setOverlayColor(overlayColor);
-                        overlay.setAbsoluteHole((int) hole[0], (int) hole[1],
-                                               hole[2] + holePadW,
-                                                hole[3] + holePadH,
-                                                      hole[2],
-                                                      hole[3],
-                                                      rectHole ? OverlayHoleView.HoleShape.Rect : OverlayHoleView.HoleShape.Circle);
-
-                        callStepDone(step, false);
-                    }
-                }, new Runnable()
-                {
-                    @Override
-                    public void run()
-                    {
-                        Log.d("APPY", "Tutorial wait max retries");
-                        onStepError(step);
-                    }
-                });
-            }
-        }, waitMilli);
+                callStepDone(step, false);
+            }, () -> {
+                Log.d("APPY", "Tutorial wait max retries");
+                onStepError(step);
+            });
+        }, () -> {
+            Log.d("APPY", "Tutorial element " + needle + " not found");
+            onStepError(step);
+        });
     }
 
-    public void waitForAnimationStop(View view, Runnable f, Runnable error)
+    public interface Condition
     {
-        final int[] prevLoc = new int[2];
-        view.getLocationInWindow(prevLoc);
+        boolean check();
+    }
+
+    public void waitForCondition(Condition check, Runnable success, Runnable error)
+    {
         final Runnable[] waiterStorage = new Runnable[1];
         final int[] retriesStorage = new int[1];
         retriesStorage[0] = waitMaxRetries;
-        waiterStorage[0] = new Runnable()
-        {
-            @Override
-            public void run()
+        waiterStorage[0] = () -> {
+            if (check.check())
             {
-                int[] newLoc = new int[2];
-                view.getLocationInWindow(newLoc);
-                if ((newLoc[0] != 0 || newLoc[1] != 0) && newLoc[0] == prevLoc[0] && newLoc[1] == prevLoc[1])
+                success.run();
+            }
+            else
+            {
+                if (retriesStorage[0] > 0)
                 {
-                    f.run();
+                    retriesStorage[0]--;
+                    handler.postDelayed(waiterStorage[0], waitMilli);
                 }
                 else
                 {
-                    prevLoc[0] = newLoc[0];
-                    prevLoc[1] = newLoc[1];
-                    if (retriesStorage[0] > 0)
-                    {
-                        retriesStorage[0]--;
-                        handler.postDelayed(waiterStorage[0], waitMilli);
-                    }
-                    else
-                    {
-                        error.run();
-                    }
+                    error.run();
                 }
             }
         };
 
         handler.postDelayed(waiterStorage[0], waitMilli);
+    }
+
+    public void waitForAnimationStop(final View view, Runnable f, Runnable error)
+    {
+        final int[] prevLoc = new int[2];
+        view.getLocationInWindow(prevLoc);
+
+        waitForCondition(() -> {
+            int[] newLoc = new int[2];
+            view.getLocationInWindow(newLoc);
+
+            if ((newLoc[0] != 0 || newLoc[1] != 0) && newLoc[0] == prevLoc[0] && newLoc[1] == prevLoc[1])
+            {
+                return true;
+            }
+
+            prevLoc[0] = newLoc[0];
+            prevLoc[1] = newLoc[1];
+            return false;
+        }, f, error);
     }
 
     public interface ViewFinder

@@ -128,7 +128,8 @@ except ImportError:
         print('Failed to install pip: ', e)
 
 #running in background
-Thread(target=install_optional_packages).start()
+optional_packages_thread = Thread(target=install_optional_packages)
+optional_packages_thread.start()
 
 upgrade = False
 tar = os.path.join(os.environ['TMP'], 'appy.tar.gz')
@@ -156,4 +157,5 @@ except Exception as e:
     install_package_with_tar(os.path.join(os.environ['TMP'], 'appy.tar.gz'))
     import appy
 
+optional_packages_thread.join()
 appy.do_init()
