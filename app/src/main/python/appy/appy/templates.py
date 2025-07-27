@@ -1,5 +1,5 @@
 import datetime
-from .widgets import ListView, TextView, Button, ImageButton, Switch, CheckBox, RelativeLayout, background, show_dialog, call_general_function, register_widget, elist, R, DialogEditText
+from .widgets import ListView, TextView, Button, ImageButton, Switch, CheckBox, RelativeLayout, background, show_dialog, call_general_function, register_widget, elist, R, DialogEditText, AttributeValue
 from . import java
 
 ##############refresh button##############################
@@ -128,7 +128,7 @@ def updating_list_refresh_action(widget, views, timer, on_refresh, adapter, upda
 
 def updating_list_create(widget, initial_values, on_refresh, background_params, adapter, initial_refresh, timeout, interval, last_update, create_hook, update_hook):
     btn = RefreshButton((updating_list_refresh_action, dict(on_refresh=on_refresh, adapter=adapter, update_hook=update_hook)), initial_refresh=initial_refresh, widget=widget, timeout=timeout, interval=interval, name='refresh_button')
-    lst = ListView(name='list', children=None if not initial_values else [call_list_adapter(widget, adapter, value=v, index=i) for i, v in enumerate(initial_values)])
+    lst = ListView(name='list', top=0, bottom=0, left=0, right=0, children=None if not initial_values else [call_list_adapter(widget, adapter, value=v, index=i) for i, v in enumerate(initial_values)])
     
     views = elist()
     if background_params is True:
@@ -138,7 +138,12 @@ def updating_list_create(widget, initial_values, on_refresh, background_params, 
 
     views.append(lst)
     if last_update:
-        views.append(TextView(name='last_update', textSize=14, textColor=0xb3ffffff, bottom=0, right=20))
+        last = TextView(name='last_update', textSize=14, textColor=0xb3ffffff, bottom=0, right=20)
+        preferred = AttributeValue.max(last.itop, btn.itop)
+        lst.bottom = (preferred < 100)(preferred, 0)
+        views.append(last)
+    else:
+        lst.bottom = (btn.itop < 100)(btn.itop, 0)
     views.append(btn)
     
     if create_hook is not None:

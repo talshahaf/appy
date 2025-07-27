@@ -34,7 +34,7 @@ def unit_constants():
     mm_to_px = float(java_widget_manager.convertUnit(1.0, java.clazz.android.util.TypedValue().COMPLEX_UNIT_MM,  java.clazz.android.util.TypedValue().COMPLEX_UNIT_PX))
     return {'px': 1.0, 'dp': dp_to_px, 'dip': dp_to_px, 'sp': sp_to_px, 'pt': pt_to_px, 'in': in_to_px, 'mm': mm_to_px}
 
-def convert_unit(value):
+def parse_unit(value):
     if not isinstance(value, str):
         return value
     reg = re.match(r'^([+-]?(?:[0-9]+(?:[.][0-9]*)?|[.][0-9]+))\s*\*?\s*([a-zA-Z]+)$', value)
@@ -47,44 +47,72 @@ def convert_unit(value):
     return float(value)
 
 class Reference:
-    def __init__(self, id, key, factor):
+    def __init__(self, id, key):
         self.id = id
         self.key = key
-        self.factor = factor
 
     def compile(self):
-        return dict(id=self.id, type=self.key, factor=float(self.factor))
+        return dict(id=self.id, type=self.key)
 
-class AttributeBase:
-    pass
-    
-class AttributeValue(AttributeBase):
-    def __init__(self, *args):
-        if any(isinstance(arg, AttributeBase) for arg in args):
-            raise ValueError('AttributeValue misuse')
-        self.pol = tuple(convert_unit(arg) for arg in args)
+class AttributeValue:
+    def __init__(self, f, *args):
+        self.args = []
+        for arg in args:
+            if isinstance(arg, self.__class__):
+                if arg.f == 'I':
+                    # collapse identities
+                    self.args.append(arg.args[0])
+                else:
+                    self.args.append(arg)
+            else:
+                self.args.append(parse_unit(arg))
+        self.args = tuple(self.args)
+        self.f = f if f else 'I'
+        if self.f == 'I' and len(self.args) != 1:
+            raise ValueError(f'Cannot have identity AttributeValue with {len(self.args)} args')
+
+    def compile_(self):
+        lst = []
+        for arg in self.args:
+            if isinstance(arg, self.__class__):
+                lst.extend(arg.compile_())
+            elif isinstance(arg, Reference):
+                lst.append(arg.compile())
+            elif isinstance(arg, int) or isinstance(arg, float):
+                lst.append(dict(value=float(arg)))
+            else:
+                raise ValueError(f'Attribute cannot compile {type(arg)}')
+        lst.append(dict(func=self.f, num=len(self.args))) #pos is filled later
+        return lst
+
+    def compile(self):
+        lst = self.compile_()
+        nonfuncs = []
+        funcs = []
+        for e in lst:
+            if isinstance(e, dict):
+                if 'func' in e:
+                    funcs.append(dict(type=e['func'], num=e['num'], pos=len(nonfuncs)))
+                elif 'id' in e:
+                    nonfuncs.append(dict(id=e['id'], type=e['type']))
+                elif 'value' in e:
+                    nonfuncs.append(dict(value=e['value']))
+                else:
+                    raise ValueError(f'unknown dict in AttributeValue')
+        return dict(arguments=nonfuncs, functions=funcs)
 
     def __add__(self, other):
-        if isinstance(other, AttributeBase):
-            if not isinstance(other, AttributeValue):
-                raise ValueError('cannot add min/max attributes')
-            return AttributeValue(*self.pol, *other.pol)
-        else:
-            return AttributeValue(*self.pol, other)
-            
+        return self.__class__('ADD', self, other)
     def __mul__(self, other):
-        if isinstance(other, AttributeBase):
-            raise ValueError('cannot multiply attributes')
-        return AttributeValue(*((Reference(e.id, e.key, e.factor * other) if isinstance(e, Reference) else e * convert_unit(other)) for e in self.pol))
+        return self.__class__('MUL', self, other)
+
+    def __neg__(self):
+        return self * (-1)
 
     def __sub__(self, other):
         return self + (-other)
-    
     def __truediv__(self, other):
         return self * (1 / other)
-
-    def __neg__(self):
-        return self.__mul__(-1.0)
 
     def __radd__(self, other):
         return self.__add__(other)
@@ -95,32 +123,47 @@ class AttributeValue(AttributeBase):
     def __rtruediv__(self, other):
         return self.__truediv__(other)
 
-    def compile(self):
-        amount = 0
-        refs = []
-        for e in self.pol:
-            if isinstance(e, Reference):
-                refs.append(e.compile())
-            else:
-                amount += e
-        return dict(function='IDENTITY', arguments=[dict(amount=float(amount), references=refs)])
-
-class AttributeFunction(AttributeBase):
-    def __init__(self, function, *attrs):
-        self.args = tuple(attr if isinstance(attr, AttributeBase) else AttributeValue(attr) for attr in attrs)
-        self.function = function
-    
-    def compile(self):
-        return dict(function=self.function, arguments=[arg.compile()['arguments'][0] for arg in self.args])
-        
     @classmethod
     def min(cls, *args):
         return cls('MIN', *args)
-        
     @classmethod
     def max(cls, *args):
         return cls('MAX', *args)
-        
+    @classmethod
+    def if_eq(cls, op1, op2, trueval, falseval):
+        return cls('IF_EQ', op1, op2, trueval, falseval)
+    @classmethod
+    def if_lt(cls, op1, op2, trueval, falseval):
+        return cls('IF_LT', op1, op2, trueval, falseval)
+    @classmethod
+    def if_le(cls, op1, op2, trueval, falseval):
+        return cls('IF_LE', op1, op2, trueval, falseval)
+
+    @classmethod
+    def if_ne(cls, op1, op2, trueval, falseval):
+        return cls.if_eq(op1, op2, falseval, trueval)
+    @classmethod
+    def if_gt(cls, op1, op2, trueval, falseval):
+        return cls.if_le(op1, op2, falseval, trueval)
+    @classmethod
+    def if_ge(cls, op1, op2, trueval, falseval):
+        return cls.if_lt(op1, op2, falseval, trueval)
+
+    def __eq__(self, other):
+        return lambda t,f: self.if_eq(self, other, t, f)
+    def __ne__(self, other):
+        return lambda t,f: self.if_ne(self, other, t, f)
+    def __lt__(self, other):
+        return lambda t,f: self.if_lt(self, other, t, f)
+    def __le__(self, other):
+        return lambda t,f: self.if_le(self, other, t, f)
+    def __gt__(self, other):
+        return lambda t,f: self.if_gt(self, other, t, f)
+    def __ge__(self, other):
+        return lambda t,f: self.if_ge(self, other, t, f)
+
+    #TODO binary comparison operators?
+
 def attribute_ileft(e):
     return e.right + e.width
 def attribute_itop(e):
@@ -163,7 +206,7 @@ write_attrs = dict(hcenter=attribute_write_hcenter, vcenter=attribute_write_vcen
 class WidgetAttribute:
     def __getattr__(self, item):
         if item in attrs:
-            return AttributeValue(Reference(-1, attrs[item], 1))
+            return AttributeValue(None, Reference(-1, attrs[item]))
         if item in composite_attrs:
             return composite_attrs[item](self)
         raise AttributeError(item)
@@ -381,7 +424,7 @@ class Element:
 
     def __getattr__(self, item):
         if item in attrs:
-            return AttributeValue(Reference(self.d.id, attrs[item], 1))
+            return AttributeValue(None, Reference(self.d.id, attrs[item]))
         if item in composite_attrs:
             return composite_attrs[item](self)
         if item in ('type', 'id', 'children'):
@@ -443,8 +486,8 @@ class Element:
             if value is None:
                 delattr(self, key)
             else:
-                if not isinstance(value, AttributeBase):
-                    value = AttributeValue(value)
+                if not isinstance(value, AttributeValue):
+                    value = AttributeValue(None, value)
                 if 'attributes' not in self.d:
                     self.d.attributes = {}
                 self.d.attributes[attrs[key]] = value.compile()

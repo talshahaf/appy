@@ -25,34 +25,76 @@ public class Attributes
 
     public static class AttributeValue
     {
-        //such as text.top * 2
-        public static class Reference
+        public interface Argument{}
+        //such as text.top
+        public static class Reference implements Argument
         {
             public long id;
             public Type type;
-            public double factor;
 
-            public Reference(long id, Type type, double factor)
+            public Reference(long id, Type type)
             {
                 this.id = id;
                 this.type = type;
-                this.factor = factor;
+            }
+        }
+        public static class Value implements Argument
+        {
+            public double value;
+            public Value(double value)
+            {
+                this.value = value;
             }
         }
 
-        enum Function
+        public static class Function
         {
-            IDENTITY,
-            MIN,
-            MAX,
+            public enum FunctionType
+            {
+                IDENTITY,
+                MIN,
+                MAX,
+                ADD,
+                MUL,
+                IF_EQ,
+                IF_LT,
+                IF_LE,
+            }
+
+            FunctionType type;
+            int numberOfArguments;
+            int totalPosition;
+
+            public Function(String type, int numberOfArguments, int totalPosition)
+            {
+                //optimization
+                if (type.equals("I"))
+                {
+                    type = "IDENTITY";
+                }
+                this.type = FunctionType.valueOf(type);
+                this.numberOfArguments = numberOfArguments;
+                this.totalPosition = totalPosition;
+            }
+
+            public String name()
+            {
+                String n = type.name();
+                //optimization
+                if (n.equals("IDENTITY"))
+                {
+                    return "I";
+                }
+                return n;
+            }
         }
 
         // such as min(text.top + widget.height / 5 + 10, text.bottom - 10)
-        public Function function = Function.IDENTITY;
+        //
+        public ArrayList<Function> functions = new ArrayList<>();
 
         // list elements such as (text.top * 2 + widget.height / 5 + 1)
-        public ArrayList<Pair<ArrayList<Reference>, Double>> arguments = new ArrayList<>();
-        public double finalFactor = 1.0;
+        public ArrayList<Argument> arguments = new ArrayList<>();
         public Double resolvedValue;
 
         public boolean isResolved()
@@ -74,26 +116,41 @@ public class Attributes
         {
             AttributeValue ret = new AttributeValue();
 
-            ret.function = Function.valueOf(obj.getString("function"));
-
-            ret.finalFactor = obj.getDouble("finalFactor", 1.0);
-
-            DictObj.List argumentsArray = obj.getList("arguments");
-            for (int i = 0; i < argumentsArray.size(); i++)
+            DictObj.List argumentArray = obj.getList("arguments");
+            for (int i = 0; i < argumentArray.size(); i++)
             {
-                DictObj.Dict argumentObj = argumentsArray.getDict(i);
-
-                ArrayList<Reference> references = new ArrayList<>();
-                DictObj.List referenceArray = argumentObj.getList("references");
-                for (int j = 0; j < referenceArray.size(); j++)
+                DictObj.Dict argumentObj = argumentArray.getDict(i);
+                if (argumentObj.hasKey("id"))
                 {
-                    DictObj.Dict referenceObj = referenceArray.getDict(j);
+                    //reference
+                    ret.arguments.add(new Reference(argumentObj.getLong("id", 0), Type.valueOf(argumentObj.getString("type"))));
+                }
+                else
+                {
+                    ret.arguments.add(new Value(argumentObj.getDouble("value", 0)));
+                }
+            }
 
-                    Reference ref = new Reference(referenceObj.getLong("id", 0), Type.valueOf(referenceObj.getString("type")), referenceObj.getDouble("factor", 0));
-                    references.add(ref);
+            int argsSize = ret.arguments.size();
+            ret.functions = new ArrayList<>();
+            if (obj.hasKey("functions"))
+            {
+                DictObj.List functions = obj.getList("functions");
+                for (int i = 0; i < functions.size(); i++)
+                {
+                    DictObj.Dict f = functions.getDict(i);
+                    ret.functions.add(new Function(f.getString("type"), f.getInt("num", argsSize), f.getInt("pos", argsSize)));
                 }
 
-                ret.arguments.add(new Pair<>(references, argumentObj.getDouble("amount", 0)));
+            }
+            else if (obj.hasKey("function"))
+            {
+                //LEGACY
+                ret.functions.add(new Function(obj.getString("function"), argsSize, argsSize));
+            }
+            else
+            {
+                throw new IllegalArgumentException("Either function or functions is required");
             }
 
             return ret;
@@ -102,27 +159,33 @@ public class Attributes
         public DictObj.Dict toDict()
         {
             DictObj.Dict obj = new DictObj.Dict();
-            obj.put("function", function.name());
+            DictObj.List funcsObj = new DictObj.List();
+            for (Function f : functions)
+            {
+                DictObj.Dict funcObj = new DictObj.Dict();
+                funcObj.put("type", f.name());
+                funcObj.put("num", f.numberOfArguments);
+                funcObj.put("pos", f.totalPosition);
+                funcsObj.add(funcObj);
+            }
+            obj.put("functions", funcsObj);
+
             DictObj.List argArray = new DictObj.List();
-            for (Pair<ArrayList<Reference>, Double> arg : arguments)
+            for (Argument arg : arguments)
             {
                 DictObj.Dict argObj = new DictObj.Dict();
-                argObj.put("amount", arg.second);
-
-                DictObj.List refArray = new DictObj.List();
-                for (Reference ref : arg.first)
+                if (arg instanceof Reference)
                 {
-                    DictObj.Dict refObj = new DictObj.Dict();
-                    refObj.put("id", ref.id);
-                    refObj.put("type", ref.type.name());
-                    refObj.put("factor", ref.factor);
-                    refArray.add(refObj);
+                    argObj.put("id", ((Reference)arg).id);
+                    argObj.put("type", ((Reference)arg).type.name());
                 }
-                argObj.put("references", refArray);
+                else
+                {
+                    argObj.put("value", ((Value)arg).value);
+                }
                 argArray.add(argObj);
             }
             obj.put("arguments", argArray);
-            obj.put("finalFactor", finalFactor);
             if (resolvedValue != null)
             {
                 obj.put("resolvedValue", resolvedValue);

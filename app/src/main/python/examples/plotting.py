@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import axes3d
 import numpy as np
 
-from appy.widgets import register_widget, file_uri, cache_dir, ImageView, Button, AttributeFunction
+from appy.widgets import register_widget, file_uri, cache_dir, ImageView, Button, AttributeValue
 
 # cool plots taken from matplotlib examples
 def lorentz_plot():
@@ -144,8 +144,8 @@ def create(widget):
     btn_next = Button(text='>', style='dark_sml', click=(change_plot, dict(amount=1)), bottom=10, right=10)
     
     # have the buttons grow until they are 40 pixels from the horizontal center, but only up to a maximum width of 100 pixels.
-    btn_prev.width = AttributeFunction.min(100, widget.hcenter - 40 - btn_prev.left)
-    btn_next.width = AttributeFunction.min(100, widget.hcenter - 40 - btn_next.right)
+    btn_prev.width = AttributeValue.min(100, widget.hcenter - 40 - btn_prev.left)
+    btn_next.width = AttributeValue.min(100, widget.hcenter - 40 - btn_next.right)
             
     # Initialize graph index
     widget.state.which = 0

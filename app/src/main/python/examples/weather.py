@@ -1,5 +1,5 @@
 import requests, datetime, io
-from appy.widgets import register_widget, ImageView, TextView, AttributeFunction
+from appy.widgets import register_widget, ImageView, TextView, AttributeValue
 from appy.templates import background, RefreshButton, refresh_button_update_func
 from appy import widgets, java
 
@@ -68,7 +68,7 @@ def create(widget):
     del refresh.left
     refresh.right = 0
     #                               width and height are 60% of the widget's height but no more than 200 pixels 
-    img = ImageView(name='img', width=AttributeFunction.min(200, widget.height * 0.6), height=AttributeFunction.min(200, widget.height * 0.6), adjustViewBounds=True, hcenter=widget.hcenter, top=10)
+    img = ImageView(name='img', width=AttributeValue.min(200, widget.height * 0.6), height=AttributeValue.min(200, widget.height * 0.5), adjustViewBounds=True, hcenter=widget.hcenter, top=10)
     temp_text = TextView(name='temp', top=img.ibottom, hcenter=widget.hcenter, textColor=0xb3ffffff, textSize=30)
     location_text = TextView(name='location', top=temp_text.ibottom, hcenter=widget.hcenter, textColor=0xb3ffffff, textSize=20)
     # bg is first

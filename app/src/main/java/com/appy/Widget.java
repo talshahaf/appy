@@ -311,15 +311,15 @@ public class Widget extends RemoteViewsService
         executeReadyTasks();
     }
 
-    //only supports identity
+    //helper function for creating system widgets without python, only supports identity
     public Attributes.AttributeValue attributeParse(String attributeValue)
     {
         attributeValue = attributeValue.replace(" ", "").replace("\r", "").replace("\t", "").replace("\n", "").replace("*", "");
 
         String[] args = attributeValue.split("\\+");
 
-        double amount = 0;
-        ArrayList<Attributes.AttributeValue.Reference> references = new ArrayList<>();
+        Attributes.AttributeValue value = new Attributes.AttributeValue();
+        int finalSumArgs = 0;
         for (String arg : args)
         {
             if (arg.isEmpty())
@@ -338,7 +338,8 @@ public class Widget extends RemoteViewsService
 
             if (idx.first == -1)
             {
-                amount += Double.parseDouble(arg);
+                value.arguments.add(new Attributes.AttributeValue.Value(Double.parseDouble(arg)));
+                finalSumArgs++;
                 continue;
             }
 
@@ -349,16 +350,18 @@ public class Widget extends RemoteViewsService
 
             int parEnd = arg.indexOf(")", idx.first);
             String refId = arg.substring(idx.first + 2, parEnd);
-            Attributes.AttributeValue.Reference reference = new Attributes.AttributeValue.Reference(refId.equalsIgnoreCase("p") ? -1 : Long.parseLong(refId), idx.second, 1);
-            reference.factor *= Double.parseDouble(idx.first > 0 ? arg.substring(0, idx.first) : "1");
-            reference.factor *= Double.parseDouble(parEnd + 1 < arg.length() ? arg.substring(parEnd + 1) : "1");
-            references.add(reference);
+            Attributes.AttributeValue.Reference reference = new Attributes.AttributeValue.Reference(refId.equalsIgnoreCase("p") ? -1 : Long.parseLong(refId), idx.second);
+
+            double factor = Double.parseDouble(idx.first > 0 ? arg.substring(0, idx.first) : "1") * Double.parseDouble(parEnd + 1 < arg.length() ? arg.substring(parEnd + 1) : "1");
+
+            value.arguments.add(reference);
+            value.arguments.add(new Attributes.AttributeValue.Value(factor));
+            value.functions.add(new Attributes.AttributeValue.Function("MUL", 2, value.arguments.size()));
+            finalSumArgs++;
         }
 
-        Attributes.AttributeValue ret = new Attributes.AttributeValue();
-        ret.arguments.add(new Pair<>(references, amount));
-        ret.function = Attributes.AttributeValue.Function.IDENTITY;
-        return ret;
+        value.functions.add(new Attributes.AttributeValue.Function("ADD", finalSumArgs, value.arguments.size()));
+        return value;
     }
 
     public static boolean isCollection(String type)
@@ -1112,20 +1115,120 @@ public class Widget extends RemoteViewsService
         return null;
     }
 
-    public double applyFunction(Attributes.AttributeValue.Function function, ArrayList<Double> arguments)
+    public double applyFunctions(ArrayList<Attributes.AttributeValue.Function> functions, ArrayList<Double> arguments)
     {
-        switch (function)
+        //apply functions using RPN
+        //merge to one list reversed to maintain function positions
+        ArrayList<Object> stack = new ArrayList<>(arguments);
+        for (int i = functions.size() - 1; i >= 0; i--)
+        {
+            Attributes.AttributeValue.Function f = functions.get(i);
+            stack.add(f.totalPosition, f);
+        }
+
+        //RPN
+        int pos = 0;
+        while (pos < stack.size())
+        {
+            Object e = stack.get(pos);
+            if (e instanceof Attributes.AttributeValue.Function)
+            {
+                Attributes.AttributeValue.Function f = ((Attributes.AttributeValue.Function) e);
+                if (pos < f.numberOfArguments)
+                {
+                    throw new IllegalArgumentException("not enough arguments in attribute function stack");
+                }
+                List<Object> args = stack.subList(pos - f.numberOfArguments, pos);
+                double result = applyFunction(f, args);
+                stack.set(pos, result);
+
+                //pop args
+                args.clear();
+
+                //start over
+                pos = 0;
+            }
+            else
+            {
+                pos++;
+            }
+        }
+
+        if (stack.size() != 1)
+        {
+            throw new IllegalArgumentException("Bad attribute function stack: left with " + stack.size());
+        }
+
+        return (Double)stack.get(0);
+    }
+
+    public double applyFunction(Attributes.AttributeValue.Function function, List<Object> argumentsObj)
+    {
+        ArrayList<Double> arguments = new ArrayList<>();
+        for (Object o : argumentsObj)
+        {
+            if (!(o instanceof Double))
+            {
+                throw new IllegalArgumentException("Function argument encountered");
+            }
+
+            arguments.add((Double)o);
+        }
+
+        switch (function.type)
         {
             case IDENTITY:
+            {
                 if (arguments.size() != 1)
                 {
                     throw new IllegalArgumentException("tried to apply identity with " + arguments.size() + " arguments, probably a misuse");
                 }
                 return arguments.get(0);
+            }
             case MAX:
+            {
                 return Collections.max(arguments);
+            }
             case MIN:
+            {
                 return Collections.min(arguments);
+            }
+            case ADD:
+            {
+                double v = 0;
+                for (double d : arguments)
+                {
+                    v += d;
+                }
+                return v;
+            }
+            case MUL:
+            {
+                double v = 1;
+                for (double d : arguments)
+                {
+                    v *= d;
+                }
+                return v;
+            }
+            case IF_EQ:
+            case IF_LT:
+            case IF_LE:
+            {
+                if (arguments.size() != 4)
+                {
+                    throw new IllegalArgumentException("cannot apply IF with " + arguments.size() + " arguments, only 4 is supported");
+                }
+                switch (function.type)
+                {
+                    case IF_EQ:
+                        return arguments.get(0).doubleValue() == arguments.get(1).doubleValue() ? arguments.get(2) : arguments.get(3);
+                    case IF_LT:
+                        return arguments.get(0) < arguments.get(1) ? arguments.get(2) : arguments.get(3);
+                    case IF_LE:
+                        return arguments.get(0) <= arguments.get(1) ? arguments.get(2) : arguments.get(3);
+                }
+            }
         }
         throw new IllegalArgumentException("unknown function " + function);
     }
@@ -1139,7 +1242,8 @@ public class Widget extends RemoteViewsService
         //only fudge if set
         if (size.hasConstraints())
         {
-            size.finalFactor = sizeFactor;
+            size.arguments.add(new Attributes.AttributeValue.Value(sizeFactor));
+            size.functions.add(new Attributes.AttributeValue.Function("MUL", 2, size.arguments.size()));
         }
 
         Attributes.AttributeValue third;
@@ -1235,13 +1339,21 @@ public class Widget extends RemoteViewsService
         }
 
         //here we have 2 out of 3 set, create the reference for the third: third = widget.size - others
-        third.function = Attributes.AttributeValue.Function.IDENTITY;
         third.arguments = new ArrayList<>();
-        ArrayList<Attributes.AttributeValue.Reference> refs = new ArrayList<>();
-        refs.add(new Attributes.AttributeValue.Reference(-1, sizeType, 1));
-        refs.add(new Attributes.AttributeValue.Reference(view.getId(), others[0], -1));
-        refs.add(new Attributes.AttributeValue.Reference(view.getId(), others[1], -1));
-        third.arguments.add(new Pair<>(refs, (double) 0));
+        third.functions = new ArrayList<>();
+
+        // other[0] + other[1]
+        third.arguments.add(new Attributes.AttributeValue.Reference(view.getId(), others[0]));
+        third.arguments.add(new Attributes.AttributeValue.Reference(view.getId(), others[1]));
+        third.functions.add(new Attributes.AttributeValue.Function("ADD", 2, third.arguments.size()));
+
+        // -(other[0] + other[1])
+        third.arguments.add(new Attributes.AttributeValue.Value(-1));
+        third.functions.add(new Attributes.AttributeValue.Function("MUL", 2, third.arguments.size()));
+
+        //widget.size -(other[0] + other[1])
+        third.arguments.add(new Attributes.AttributeValue.Reference(-1, sizeType));
+        third.functions.add(new Attributes.AttributeValue.Function("ADD", 2, third.arguments.size()));
     }
 
     public int applyIteration(ArrayList<DynamicView> dynamicList, Attributes rootAttributes)
@@ -1252,13 +1364,12 @@ public class Widget extends RemoteViewsService
             for (Attributes.AttributeValue attributeValue : dynamicView.attributes.unresolved().values())
             {
                 boolean canBeResolved = true;
-
-                ArrayList<Double> results = new ArrayList<>();
-                for (Pair<ArrayList<Attributes.AttributeValue.Reference>, Double> argument : attributeValue.arguments)
+                ArrayList<Double> resolvedArguments = new ArrayList<>();
+                for (Attributes.AttributeValue.Argument arg : attributeValue.arguments)
                 {
-                    double result = argument.second;
-                    for (Attributes.AttributeValue.Reference reference : argument.first)
+                    if (arg instanceof Attributes.AttributeValue.Reference)
                     {
+                        Attributes.AttributeValue.Reference reference = (Attributes.AttributeValue.Reference)arg;
                         Attributes referenceAttributes;
                         if (reference.id != -1)
                         {
@@ -1269,21 +1380,24 @@ public class Widget extends RemoteViewsService
                             referenceAttributes = rootAttributes;
                         }
 
-                        if (!referenceAttributes.attributes.get(reference.type).isResolved())
+                        Attributes.AttributeValue referencedValue = referenceAttributes.attributes.get(reference.type);
+                        if (referencedValue == null || !referencedValue.isResolved())
                         {
                             canBeResolved = false;
+                            break;
                         }
-                        else
-                        {
-                            result += referenceAttributes.attributes.get(reference.type).resolvedValue * reference.factor;
-                        }
+
+                        resolvedArguments.add(referencedValue.resolvedValue);
                     }
-                    results.add(result);
+                    else
+                    {
+                        resolvedArguments.add(((Attributes.AttributeValue.Value)arg).value);
+                    }
                 }
 
                 if (canBeResolved)
                 {
-                    attributeValue.resolvedValue = applyFunction(attributeValue.function, results) * attributeValue.finalFactor;
+                    attributeValue.resolvedValue = applyFunctions(attributeValue.functions, resolvedArguments);
                     resolved++;
                 }
             }

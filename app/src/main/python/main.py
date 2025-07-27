@@ -131,7 +131,6 @@ except ImportError:
 optional_packages_thread = Thread(target=lambda: install_optional_packages(False))
 optional_packages_thread.start()
 
-upgrade = False
 tar = os.path.join(os.environ['TMP'], 'appy.tar.gz')
 try:
     module_spec = importlib.util.find_spec('appy')
@@ -146,7 +145,6 @@ try:
     available_version = tar_version(tar)
     print(f'versions - existing: {existing_version}, available: {available_version}')
     if existing_version != available_version:
-        upgrade = True
         raise ImportError('outdated version')
     import appy
 except Exception as e:
