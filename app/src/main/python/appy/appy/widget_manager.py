@@ -64,6 +64,7 @@ class WaitingForElse:
 
 class AttributeValue:
     def __init__(self, f, *args):
+        self.debug_name = None
         self.args = []
         for arg in args:
             if isinstance(arg, self.__class__):
@@ -111,7 +112,7 @@ class AttributeValue:
                     nonfuncs.append(dict(value=e['value']))
                 else:
                     raise ValueError(f'unknown dict in AttributeValue')
-        return dict(arguments=nonfuncs, functions=funcs)
+        return dict(arguments=nonfuncs, functions=funcs, **(dict(debug_name=self.debug_name) if self.debug_name else {}))
 
     @classmethod
     def min(cls, *args):
@@ -119,6 +120,10 @@ class AttributeValue:
     @classmethod
     def max(cls, *args):
         return cls('MAX', *args)
+
+    def debug_print(self, name):
+        self.debug_name = name
+        return self
 
     def __add__(self, other):
         return self.__class__('ADD', self, other)
@@ -211,12 +216,20 @@ def attribute_write_hcenter(e, value):
     if value is None:
         del e.left
     else:
-        e.left = -(e.width / 2) + value
+        debug_name = getattr(value, 'debug_name', '')
+        attr = -(e.width / 2) + value
+        if debug_name:
+            attr.debug_print(debug_name)
+        e.left = attr
 def attribute_write_vcenter(e, value):
     if value is None:
         del e.top
     else:
-        e.top = -(e.height / 2) + value
+        debug_name = getattr(value, 'debug_name', '')
+        attr = -(e.height / 2) + value
+        if debug_name:
+            attr.debug_print(debug_name)
+        e.top = attr
 def attribute_write_center(e, value):
     h, v = value
     attribute_write_hcenter(e, h)
