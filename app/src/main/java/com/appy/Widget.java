@@ -1445,8 +1445,9 @@ public class Widget extends RemoteViewsService
         int resolved = 0;
         for (DynamicView dynamicView : dynamicList)
         {
-            for (Attributes.AttributeValue attributeValue : dynamicView.attributes.unresolved().values())
+            for (Map.Entry<Attributes.Type, Attributes.AttributeValue> attribute : dynamicView.attributes.unresolved().entrySet())
             {
+                Attributes.AttributeValue attributeValue = attribute.getValue();
                 boolean canBeResolved = true;
                 ArrayList<Double> resolvedArguments = new ArrayList<>();
                 for (Attributes.AttributeValue.Argument arg : attributeValue.arguments)
@@ -1482,6 +1483,15 @@ public class Widget extends RemoteViewsService
                 if (canBeResolved)
                 {
                     attributeValue.resolvedValue = applyFunctions(attributeValue.functions, resolvedArguments);
+                    if (attributeValue.debugName != null && !attributeValue.debugName.isEmpty())
+                    {
+                        String name = null;
+                        if (dynamicView.tag instanceof DictObj.Dict)
+                        {
+                            name = ((DictObj.Dict)dynamicView.tag).getString("name");
+                        }
+                        Log.d("APPY", "Debug attribute (name: " + name + ", id: " + dynamicView.getId() + ", attr: " + attribute.getKey().name() + "): " + attributeValue.debugName + " = " + attributeValue.resolvedValue);
+                    }
                     resolved++;
                 }
             }

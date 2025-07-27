@@ -105,6 +105,7 @@ public class Attributes
         // list elements such as (text.top * 2 + widget.height / 5 + 1)
         public ArrayList<Argument> arguments = new ArrayList<>();
         public Double resolvedValue;
+        public String debugName = null;
 
         public boolean isResolved()
         {
@@ -162,6 +163,11 @@ public class Attributes
                 throw new IllegalArgumentException("Either function or functions is required");
             }
 
+            if (obj.hasKey("debug_name"))
+            {
+                ret.debugName = obj.getString("debug_name");
+            }
+
             return ret;
         }
 
@@ -198,6 +204,10 @@ public class Attributes
             if (resolvedValue != null)
             {
                 obj.put("resolvedValue", resolvedValue);
+            }
+            if (debugName != null)
+            {
+                obj.put("debug_name", debugName);
             }
             return obj;
         }

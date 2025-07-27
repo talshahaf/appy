@@ -139,8 +139,7 @@ def updating_list_create(widget, initial_values, on_refresh, background_params, 
     views.append(lst)
     if last_update:
         last = TextView(name='last_update', textSize=14, textColor=0xb3ffffff, bottom=0, right=20)
-        preferred = AttributeValue.max(last.itop, btn.itop)
-        lst.bottom = preferred.if_(preferred < 100).else_(0)
+        lst.bottom = AttributeValue.max(last.itop.if_(last.itop < 100).else_(0), btn.itop.if_(btn.itop < 100).else_(0))
         views.append(last)
     else:
         lst.bottom = btn.itop.if_(btn.itop < 100).else_(0)
