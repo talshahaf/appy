@@ -56,9 +56,18 @@ public class Attributes
                 MAX,
                 ADD,
                 MUL,
-                IF_EQ,
-                IF_LT,
-                IF_LE,
+                FLOOR,
+                CEIL,
+                DIV,
+                MOD,
+                IF,
+                //booleans
+                EQ,
+                LT,
+                LE,
+                NOT,
+                AND, //these instead of ADD/MUL to prevent overflow
+                OR,
             }
 
             FunctionType type;

@@ -1175,6 +1175,11 @@ public class Widget extends RemoteViewsService
             arguments.add((Double)o);
         }
 
+        if (arguments.size() == 0)
+        {
+            throw new IllegalArgumentException("Function with no arguments");
+        }
+
         switch (function.type)
         {
             case IDENTITY:
@@ -1211,22 +1216,101 @@ public class Widget extends RemoteViewsService
                 }
                 return v;
             }
-            case IF_EQ:
-            case IF_LT:
-            case IF_LE:
+            case FLOOR:
+            case CEIL:
             {
-                if (arguments.size() != 4)
+                if (arguments.size() != 1)
                 {
-                    throw new IllegalArgumentException("cannot apply IF with " + arguments.size() + " arguments, only 4 is supported");
+                    throw new IllegalArgumentException("cannot apply floor/ceil operator with " + arguments.size() + " arguments, only 1 is supported");
+                }
+
+                switch(function.type)
+                {
+                    case FLOOR:
+                        return Math.floor(arguments.get(0));
+                    case CEIL:
+                        return Math.ceil(arguments.get(0));
+                }
+            }
+            case DIV:
+            case MOD:
+            {
+                if (arguments.size() != 2)
+                {
+                    throw new IllegalArgumentException("cannot apply div operator with " + arguments.size() + " arguments, only 2 is supported");
+                }
+
+                if (arguments.get(1) == 0)
+                {
+                    throw new IllegalArgumentException("div op is 0");
+                }
+
+                switch(function.type)
+                {
+                    case DIV:
+                        return arguments.get(0) / arguments.get(1);
+                    case MOD:
+                        return arguments.get(0) % arguments.get(1);
+                }
+            }
+            case IF:
+            {
+                if (arguments.size() != 3)
+                {
+                    throw new IllegalArgumentException("cannot apply if operator with " + arguments.size() + " arguments, only 3 is supported");
+                }
+                return arguments.get(0) != 0 ? arguments.get(1) : arguments.get(2);
+            }
+            case NOT:
+            {
+                if (arguments.size() != 1)
+                {
+                    throw new IllegalArgumentException("cannot apply not operator with " + arguments.size() + " arguments, only 1 is supported");
+                }
+                return arguments.get(0) == 0 ? 1 : 0;
+            }
+            case AND:
+            {
+                double v = 1;
+                for (double d : arguments)
+                {
+                    if (d == 0)
+                    {
+                        d = 0;
+                        break;
+                    }
+                }
+                return v;
+            }
+            case OR:
+            {
+                double v = 0;
+                for (double d : arguments)
+                {
+                    if (d != 0)
+                    {
+                        d = 1;
+                        break;
+                    }
+                }
+                return v;
+            }
+            case EQ:
+            case LT:
+            case LE:
+            {
+                if (arguments.size() != 2)
+                {
+                    throw new IllegalArgumentException("cannot apply boolean operator with " + arguments.size() + " arguments, only 2 is supported");
                 }
                 switch (function.type)
                 {
-                    case IF_EQ:
-                        return arguments.get(0).doubleValue() == arguments.get(1).doubleValue() ? arguments.get(2) : arguments.get(3);
-                    case IF_LT:
-                        return arguments.get(0) < arguments.get(1) ? arguments.get(2) : arguments.get(3);
-                    case IF_LE:
-                        return arguments.get(0) <= arguments.get(1) ? arguments.get(2) : arguments.get(3);
+                    case EQ:
+                        return arguments.get(0).doubleValue() == arguments.get(1).doubleValue() ? 1 : 0;
+                    case LT:
+                        return arguments.get(0) < arguments.get(1) ? 1 : 0;
+                    case LE:
+                        return arguments.get(0) <= arguments.get(1) ? 1 : 0;
                 }
             }
         }
@@ -1807,54 +1891,48 @@ public class Widget extends RemoteViewsService
 
     public void loadWidgets()
     {
-        try {
-            StoreData store = StoreData.Factory.create(this, "widgets");
-            Set<String> keys = store.getAll();
+        StoreData store = StoreData.Factory.create(this, "widgets");
+        Set<String> keys = store.getAll();
 
-            ConcurrentHashMap<Integer, ArrayList<DynamicView>> newwidgets = new ConcurrentHashMap<>();
+        ConcurrentHashMap<Integer, ArrayList<DynamicView>> newwidgets = new ConcurrentHashMap<>();
 
-            for (String widget : keys)
+        for (String widget : keys)
+        {
+            DictObj.List list = store.getList(widget);
+            if (list != null)
             {
-                DictObj.List list = store.getList(widget);
-                if (list != null)
-                {
-                    int widgetId = Integer.parseInt(widget);
-                    newwidgets.put(widgetId, DynamicView.fromDictList(list));
-                }
-            }
-
-            synchronized (widgetLock)
-            {
-                widgets = newwidgets;
-            }
-
-            store = StoreData.Factory.create(this, "etc");
-            DictObj.Dict widgetToAndroidDict = store.getDict("widgetToAndroid");
-            if (widgetToAndroidDict != null)
-            {
-                ConcurrentHashMap<Integer, Integer> newWidgetToAndroid = new ConcurrentHashMap<>();
-
-                for (DictObj.Entry entry : widgetToAndroidDict.entries())
-                {
-                    newWidgetToAndroid.put(Integer.parseInt(entry.key), ((Long)entry.value).intValue());
-                }
-
-                ConcurrentHashMap<Integer, Integer> newAndroidToWidget = new ConcurrentHashMap<>();
-                for (Map.Entry<Integer, Integer> entry : newWidgetToAndroid.entrySet())
-                {
-                    newAndroidToWidget.put(entry.getValue(), entry.getKey());
-                }
-
-                synchronized (widgetToAndroidLock)
-                {
-                    widgetToAndroid = newWidgetToAndroid;
-                    androidToWidget = newAndroidToWidget;
-                }
+                int widgetId = Integer.parseInt(widget);
+                newwidgets.put(widgetId, DynamicView.fromDictList(list));
             }
         }
-        catch (Exception e)
+
+        synchronized (widgetLock)
         {
-            Log.e("APPY", "Exception on loadWidgets", e);
+            widgets = newwidgets;
+        }
+
+        store = StoreData.Factory.create(this, "etc");
+        DictObj.Dict widgetToAndroidDict = store.getDict("widgetToAndroid");
+        if (widgetToAndroidDict != null)
+        {
+            ConcurrentHashMap<Integer, Integer> newWidgetToAndroid = new ConcurrentHashMap<>();
+
+            for (DictObj.Entry entry : widgetToAndroidDict.entries())
+            {
+                newWidgetToAndroid.put(Integer.parseInt(entry.key), ((Long)entry.value).intValue());
+            }
+
+            ConcurrentHashMap<Integer, Integer> newAndroidToWidget = new ConcurrentHashMap<>();
+            for (Map.Entry<Integer, Integer> entry : newWidgetToAndroid.entrySet())
+            {
+                newAndroidToWidget.put(entry.getValue(), entry.getKey());
+            }
+
+            synchronized (widgetToAndroidLock)
+            {
+                widgetToAndroid = newWidgetToAndroid;
+                androidToWidget = newAndroidToWidget;
+            }
         }
     }
 
@@ -1974,39 +2052,25 @@ public class Widget extends RemoteViewsService
 
     public ConcurrentHashMap<Integer, DictObj.Dict> loadProps(String domain)
     {
-        try
-        {
-            StoreData store = StoreData.Factory.create(this, domain);
-            Set<String> keys = store.getAll();
+        StoreData store = StoreData.Factory.create(this, domain);
+        Set<String> keys = store.getAll();
 
-            ConcurrentHashMap<Integer, DictObj.Dict> newprops = new ConcurrentHashMap<>();
-            for (String widget : keys)
+        ConcurrentHashMap<Integer, DictObj.Dict> newprops = new ConcurrentHashMap<>();
+        for (String widget : keys)
+        {
+            DictObj.Dict props = store.getDict(widget);
+            if (props != null)
             {
-                DictObj.Dict props = store.getDict(widget);
-                if (props != null)
-                {
-                    int widgetId = Integer.parseInt(widget);
-                    newprops.put(widgetId, props);
-                }
+                int widgetId = Integer.parseInt(widget);
+                newprops.put(widgetId, props);
             }
-            return newprops;
         }
-        catch (Exception e)
-        {
-            Log.e("APPY", "Exception on loadProps", e);
-        }
-
-        return null;
+        return newprops;
     }
 
     public void loadWidgetProps()
     {
         ConcurrentHashMap<Integer, DictObj.Dict> newprops = loadProps("widget_props");
-        if (newprops == null)
-        {
-            return;
-        }
-
         synchronized (widgetPropsLock)
         {
             widgetProps = newprops;
@@ -2016,11 +2080,6 @@ public class Widget extends RemoteViewsService
     public void loadWidgetAppIcons()
     {
         ConcurrentHashMap<Integer, DictObj.Dict> newprops = loadProps("widget_app_icons");
-        if (newprops == null)
-        {
-            return;
-        }
-
         synchronized (widgetAppIconsLock)
         {
             widgetAppIcons = newprops;
@@ -2287,54 +2346,46 @@ public class Widget extends RemoteViewsService
         float heightCorrection = 1.0f;
         float sizeFactor = 1.0f;
 
+        SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
         try
         {
-            SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
-            try
-            {
-                widthCorrection = Float.parseFloat(sharedPref.getString("width_correction", "1"));
-            }
-            catch (NumberFormatException e)
-            {
-                Log.w("APPY", "wrong number format for width");
-            }
-
-            try
-            {
-                heightCorrection = Float.parseFloat(sharedPref.getString("height_correction", "1"));
-            }
-            catch (NumberFormatException e)
-            {
-                Log.w("APPY", "wrong number format for width");
-            }
-
-            try
-            {
-                sizeFactor = Float.parseFloat(sharedPref.getString("global_size_factor", "1"));
-            }
-            catch (NumberFormatException e)
-            {
-                Log.w("APPY", "wrong number for global size factor");
-            }
-
-            if (widthCorrection <= 0 || widthCorrection > 3)
-            {
-                widthCorrection = 1;
-            }
-            if (heightCorrection <= 0 || heightCorrection > 3)
-            {
-                heightCorrection = 1;
-            }
-
-            if (sizeFactor <= 0 || sizeFactor > 3)
-            {
-                sizeFactor = 1;
-            }
-
+            widthCorrection = Float.parseFloat(sharedPref.getString("width_correction", "1"));
         }
-        catch (Exception e)
+        catch (NumberFormatException e)
         {
-            Log.e("APPY", "Exception on loadCorrectionFactors", e);
+            Log.w("APPY", "wrong number format for width");
+        }
+
+        try
+        {
+            heightCorrection = Float.parseFloat(sharedPref.getString("height_correction", "1"));
+        }
+        catch (NumberFormatException e)
+        {
+            Log.w("APPY", "wrong number format for width");
+        }
+
+        try
+        {
+            sizeFactor = Float.parseFloat(sharedPref.getString("global_size_factor", "1"));
+        }
+        catch (NumberFormatException e)
+        {
+            Log.w("APPY", "wrong number for global size factor");
+        }
+
+        if (widthCorrection <= 0 || widthCorrection > 3)
+        {
+            widthCorrection = 1;
+        }
+        if (heightCorrection <= 0 || heightCorrection > 3)
+        {
+            heightCorrection = 1;
+        }
+
+        if (sizeFactor <= 0 || sizeFactor > 3)
+        {
+            sizeFactor = 1;
         }
 
         boolean shouldUpdate = false;
@@ -2710,29 +2761,22 @@ public class Widget extends RemoteViewsService
 
     public void loadTimers()
     {
-        try
+        StoreData store = StoreData.Factory.create(this, "timers");
+        DictObj.List timersList = store.getList("timers");
+        if (timersList != null)
         {
-            StoreData store = StoreData.Factory.create(this, "timers");
-            DictObj.List timersList = store.getList("timers");
-            if (timersList != null)
+            for (int i = 0; i < timersList.size(); i++)
             {
-                for (int i = 0; i < timersList.size(); i++)
-                {
-                    DictObj.Dict timer = timersList.getDict(i);
+                DictObj.Dict timer = timersList.getDict(i);
 
-                    setTimer(timer.getLong("since", 0),
-                            timer.getLong("millis", 0),
-                            timer.getInt("type", 0),
-                            timer.getInt("widgetId", -1),
-                            timer.getString("data"),
-                            timer.getLong("timerId", -1));
-                }
-                Log.d("APPY", "loaded " + timersList.size() + " timers");
+                setTimer(timer.getLong("since", 0),
+                        timer.getLong("millis", 0),
+                        timer.getInt("type", 0),
+                        timer.getInt("widgetId", -1),
+                        timer.getString("data"),
+                        timer.getLong("timerId", -1));
             }
-        }
-        catch (Exception e)
-        {
-            Log.e("APPY", "Exception on loadTimers", e);
+            Log.d("APPY", "loaded " + timersList.size() + " timers");
         }
     }
 
@@ -2925,31 +2969,24 @@ public class Widget extends RemoteViewsService
 
     public void loadPythonFiles()
     {
-        try
+        StoreData store = StoreData.Factory.create(this, "pythonfiles");
+        DictObj.List pythonfilesList = store.getList("pythonfiles");
+        if (pythonfilesList != null)
         {
-            StoreData store = StoreData.Factory.create(this, "pythonfiles");
-            DictObj.List pythonfilesList = store.getList("pythonfiles");
-            if (pythonfilesList != null)
+            ArrayList<PythonFile> list = PythonFile.fromList(pythonfilesList);
+            synchronized (pythonFilesLock)
             {
-                ArrayList<PythonFile> list = PythonFile.fromList(pythonfilesList);
-                synchronized (pythonFilesLock)
-                {
-                    pythonFiles = list;
-                }
-            }
-            DictObj.Dict unknownPythonFileDict = store.getDict("unknownpythonfile");
-            if (unknownPythonFileDict != null)
-            {
-                PythonFile file = PythonFile.fromDict(unknownPythonFileDict);
-                synchronized (pythonFilesLock)
-                {
-                    unknownPythonFile = file;
-                }
+                pythonFiles = list;
             }
         }
-        catch (Exception e)
+        DictObj.Dict unknownPythonFileDict = store.getDict("unknownpythonfile");
+        if (unknownPythonFileDict != null)
         {
-            Log.e("APPY", "Exception on loadPythonFiles", e);
+            PythonFile file = PythonFile.fromDict(unknownPythonFileDict);
+            synchronized (pythonFilesLock)
+            {
+                unknownPythonFile = file;
+            }
         }
 
         updateObserver();
@@ -4396,24 +4433,35 @@ public class Widget extends RemoteViewsService
             startupState = Constants.StartupState.IDLE;
             handler = new Handler();
 
-            //Force android to create dirs for us
-            getExternalFilesDir(null);
-            getExternalMediaDirs();
+            try
+            {
+                //Force android to create dirs for us
+                getExternalFilesDir(null);
+                getExternalMediaDirs();
 
-            loadPythonFiles();
-            loadCorrectionFactors(true);
-            loadWidgets();
-            loadTimers();
-            loadWidgetProps();
-            loadWidgetAppIcons();
-            configurations.load();
+                loadPythonFiles();
+                loadCorrectionFactors(true);
+                loadWidgets();
+                loadTimers();
+                loadWidgetProps();
+                loadWidgetAppIcons();
+                configurations.load();
 
-            setAllWidgets(false);
-            callStatusChange(true);
+                setAllWidgets(false);
+                callStatusChange(true);
 
-            pythonSetupTask.execute();
+                pythonSetupTask.execute();
 
-            return false;
+                return false;
+            }
+            catch (Exception e)
+            {
+                Log.e("APPY", "Exception in setup:", e);
+                startupState = Constants.StartupState.ERROR;
+                handler.post(() -> setAllWidgets(true));
+                callStatusChange(true);
+                return false;
+            }
         }
 
         if (pythonSetupTask.getStatus() == AsyncTask.Status.RUNNING)

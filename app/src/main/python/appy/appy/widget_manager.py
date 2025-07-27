@@ -54,6 +54,14 @@ class Reference:
     def compile(self):
         return dict(id=self.id, type=self.key)
 
+class WaitingForElse:
+    def __init__(self, cond, t):
+        self.cond = cond
+        self.t = t
+
+    def else_(self, f):
+        return self.cond.raw_if_(self.t, f)
+
 class AttributeValue:
     def __init__(self, f, *args):
         self.args = []
@@ -70,6 +78,10 @@ class AttributeValue:
         self.f = f if f else 'I'
         if self.f == 'I' and len(self.args) != 1:
             raise ValueError(f'Cannot have identity AttributeValue with {len(self.args)} args')
+
+    @classmethod
+    def wrap(cls, n):
+        return cls(None, n)
 
     def compile_(self):
         lst = []
@@ -101,68 +113,79 @@ class AttributeValue:
                     raise ValueError(f'unknown dict in AttributeValue')
         return dict(arguments=nonfuncs, functions=funcs)
 
-    def __add__(self, other):
-        return self.__class__('ADD', self, other)
-    def __mul__(self, other):
-        return self.__class__('MUL', self, other)
-
-    def __neg__(self):
-        return self * (-1)
-
-    def __sub__(self, other):
-        return self + (-other)
-    def __truediv__(self, other):
-        return self * (1 / other)
-
-    def __radd__(self, other):
-        return self.__add__(other)
-    def __rsub__(self, other):
-        return self.__sub__(other)
-    def __rmul__(self, other):
-        return self.__mul__(other)
-    def __rtruediv__(self, other):
-        return self.__truediv__(other)
-
     @classmethod
     def min(cls, *args):
         return cls('MIN', *args)
     @classmethod
     def max(cls, *args):
         return cls('MAX', *args)
-    @classmethod
-    def if_eq(cls, op1, op2, trueval, falseval):
-        return cls('IF_EQ', op1, op2, trueval, falseval)
-    @classmethod
-    def if_lt(cls, op1, op2, trueval, falseval):
-        return cls('IF_LT', op1, op2, trueval, falseval)
-    @classmethod
-    def if_le(cls, op1, op2, trueval, falseval):
-        return cls('IF_LE', op1, op2, trueval, falseval)
 
-    @classmethod
-    def if_ne(cls, op1, op2, trueval, falseval):
-        return cls.if_eq(op1, op2, falseval, trueval)
-    @classmethod
-    def if_gt(cls, op1, op2, trueval, falseval):
-        return cls.if_le(op1, op2, falseval, trueval)
-    @classmethod
-    def if_ge(cls, op1, op2, trueval, falseval):
-        return cls.if_lt(op1, op2, falseval, trueval)
+    def __add__(self, other):
+        return self.__class__('ADD', self, other)
+    def __mul__(self, other):
+        return self.__class__('MUL', self, other)
+    def __truediv__(self, other):
+        return self.__class__('DIV', self, other)
+    def __mod__(self, other):
+        return self.__class__('MOD', self, other)
+    def floor(self):
+        return self.__class__('FLOOR', self)
+    def ceil(self):
+        return self.__class__('CEIL', self)
+    def raw_if_(self, t, f):
+        return self.__class__('IF', self, t, f)
 
+    def if_(self, cond):
+        return WaitingForElse(cond, self)
+
+    def __invert__(self):
+        return self.__class__('NOT', self)
+    def __and__(self, other):
+        return self.__class__('AND', self, other)
+    def __or__(self, other):
+        return self.__class__('OR', self, other)
     def __eq__(self, other):
-        return lambda t,f: self.if_eq(self, other, t, f)
-    def __ne__(self, other):
-        return lambda t,f: self.if_ne(self, other, t, f)
+        return self.__class__('EQ', self, other)
     def __lt__(self, other):
-        return lambda t,f: self.if_lt(self, other, t, f)
+        return self.__class__('LT', self, other)
     def __le__(self, other):
-        return lambda t,f: self.if_le(self, other, t, f)
-    def __gt__(self, other):
-        return lambda t,f: self.if_gt(self, other, t, f)
-    def __ge__(self, other):
-        return lambda t,f: self.if_ge(self, other, t, f)
+        return self.__class__('LE', self, other)
 
-    #TODO binary comparison operators?
+    def __neg__(self):
+        return self * (-1)
+    def __sub__(self, other):
+        return self + (-other)
+    def __floordiv__(self, other):
+        return (self / other).floor()
+
+    def __ne__(self, other):
+        return ~(self == other)
+    def __gt__(self, other):
+        return ~(self <= other)
+    def __ge__(self, other):
+        return ~(self < other)
+    def __xor__(self, other):
+        return (self | other) & (~(self & other))
+
+    def __radd__(self, other):
+        return self + other
+    def __rsub__(self, other):
+        return (-self) + other
+    def __rmul__(self, other):
+        return self * other
+    def __rtruediv__(self, other):
+        return self.__class__(None, other) / self
+    def __rfloordiv__(self, other):
+        return self.__rtruediv__(other).floor()
+    def __rmod__(self, other):
+        return self.__class__(None, other) % self
+    def __rand__(self, other):
+        return self & other
+    def __ror__(self, other):
+        return self | other
+    def __rxor__(self, other):
+        return self ^ other
+
 
 def attribute_ileft(e):
     return e.right + e.width
