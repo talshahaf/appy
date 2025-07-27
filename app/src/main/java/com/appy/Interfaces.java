@@ -92,4 +92,5 @@ interface AppPropsListener
 interface WidgetChosenListener
 {
     void onWidgetChosen(int widgetId, int androidWidgetId, String name);
+    void onWidgetCleared(int widgetId, int androidWidgetId);
 }

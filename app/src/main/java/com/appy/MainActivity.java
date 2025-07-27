@@ -512,6 +512,16 @@ public class MainActivity extends AppCompatActivity implements StatusListener, A
     }
 
     @Override
+    public void onWidgetCleared(int widgetId, int androidWidgetId)
+    {
+        Fragment fragment = fragments.get(R.id.navigation_apps).second;
+        if (fragment != null)
+        {
+            ((AppsFragment) fragment).onWidgetCleared(widgetId, androidWidgetId);
+        }
+    }
+
+    @Override
     public void onPause()
     {
         super.onPause();

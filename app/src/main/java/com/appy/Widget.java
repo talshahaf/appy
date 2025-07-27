@@ -3223,6 +3223,8 @@ public class Widget extends RemoteViewsService
         {
             updateListener.onDelete(widgetId);
         }
+        setWidgetSizeFactor(widgetId, null);
+        callWidgetClearedListener(widgetId);
         update(widgetId);
     }
 
@@ -4403,6 +4405,20 @@ public class Widget extends RemoteViewsService
                 if (androidWidgetId != null)
                 {
                     widgetChosenListener.onWidgetChosen(widgetId, androidWidgetId, name);
+                }
+            }
+        });
+    }
+
+    public void callWidgetClearedListener(int widgetId)
+    {
+        handler.post(() -> {
+            if (widgetChosenListener != null)
+            {
+                Integer androidWidgetId = widgetToAndroid.get(widgetId);
+                if (androidWidgetId != null)
+                {
+                    widgetChosenListener.onWidgetCleared(widgetId, androidWidgetId);
                 }
             }
         });

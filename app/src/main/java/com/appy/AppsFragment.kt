@@ -264,6 +264,17 @@ class AppsFragment : MyFragment() {
         }
     }
 
+    fun onWidgetCleared(widgetId: Int, androidWidgetId: Int) {
+        val index = _widgetGridList.indexOfFirst { it.widgetId == androidWidgetId }
+        if (index != -1) {
+            _widgetGridList[index].name = null
+            _widgetGridList[index] = _widgetGridList[index]
+            prevUpdateTitle.value = false
+            updateTitle.value = true
+            removeWidget(androidWidgetId)
+        }
+    }
+
     override fun onActivityResult(data: Intent) {
         val widgetId = data.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, -1)
         if (widgetId == -1) {
@@ -419,15 +430,13 @@ class AppsFragment : MyFragment() {
             val widgetProps = props.getDict(widgetId.toString())
             val name = widgetProps.getString("name")
 
-            if (name == null) {
-                removeWidget(widgetId)
+            if (name != null) {
+                val item = startNewWidget(widgetId, widgetUnique)
+                item.title = widgetProps.getString("title")
+                item.icons = widgetProps.getDict("icons")
+                item.name = name
+                widgets.add(item)
             }
-
-            val item = startNewWidget(widgetId, widgetUnique)
-            item.title = widgetProps.getString("title")
-            item.icons = widgetProps.getDict("icons")
-            item.name = name
-            widgets.add(item)
         }
 
         _widgetGridList.apply {
@@ -572,7 +581,7 @@ class AppsFragment : MyFragment() {
     }
 
     fun setTitle(title : String) {
-        (activity as MainActivity?)?.supportActionBar?.title = title
+        (activity as MainActivity?)?.title = title
     }
 
     fun widgetTitle(item : WidgetItem?) : String {
