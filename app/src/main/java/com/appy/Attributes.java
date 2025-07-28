@@ -21,6 +21,7 @@ public class Attributes
         BOTTOM,
         WIDTH,
         HEIGHT,
+        MISC, //used as variable
     }
 
     public static class AttributeValue

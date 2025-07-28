@@ -938,6 +938,20 @@ public class Widget extends RemoteViewsService
 
         for (DynamicView layout : dynamicList)
         {
+            if (layout.type.equals("Empty"))
+            {
+                //clean non misc
+                for (Map.Entry<Attributes.Type, Attributes.AttributeValue> entry : layout.attributes.attributes.entrySet())
+                {
+                    if (entry.getKey() != Attributes.Type.MISC)
+                    {
+                        entry.getValue().arguments.clear();
+                        entry.getValue().functions.clear();
+                    }
+                }
+                continue;
+            }
+
             RemoteViews remoteView;
             ArrayList<Integer> indices = root.second.get(layout.type);
             if (indices != null)
@@ -1482,7 +1496,15 @@ public class Widget extends RemoteViewsService
 
                 if (canBeResolved)
                 {
-                    attributeValue.resolvedValue = applyFunctions(attributeValue.functions, resolvedArguments);
+                    if (attributeValue.hasConstraints())
+                    {
+                        attributeValue.resolvedValue = applyFunctions(attributeValue.functions, resolvedArguments);
+                    }
+                    else
+                    {
+                        attributeValue.resolvedValue = 0.0;
+                    }
+
                     if (attributeValue.debugName != null && !attributeValue.debugName.isEmpty())
                     {
                         String name = null;
@@ -1916,29 +1938,30 @@ public class Widget extends RemoteViewsService
             }
         }
 
-        synchronized (widgetLock)
-        {
-            widgets = newwidgets;
-        }
-
         store = StoreData.Factory.create(this, "etc");
         DictObj.Dict widgetToAndroidDict = store.getDict("widgetToAndroid");
+        ConcurrentHashMap<Integer, Integer> newWidgetToAndroid = new ConcurrentHashMap<>();
+        ConcurrentHashMap<Integer, Integer> newAndroidToWidget = new ConcurrentHashMap<>();
+
         if (widgetToAndroidDict != null)
         {
-            ConcurrentHashMap<Integer, Integer> newWidgetToAndroid = new ConcurrentHashMap<>();
-
             for (DictObj.Entry entry : widgetToAndroidDict.entries())
             {
                 newWidgetToAndroid.put(Integer.parseInt(entry.key), ((Long)entry.value).intValue());
             }
-
-            ConcurrentHashMap<Integer, Integer> newAndroidToWidget = new ConcurrentHashMap<>();
             for (Map.Entry<Integer, Integer> entry : newWidgetToAndroid.entrySet())
             {
                 newAndroidToWidget.put(entry.getValue(), entry.getKey());
             }
+        }
 
-            synchronized (widgetToAndroidLock)
+        synchronized (widgetLock)
+        {
+            widgets = newwidgets;
+        }
+        synchronized (widgetToAndroidLock)
+        {
+            if (widgetToAndroidDict != null)
             {
                 widgetToAndroid = newWidgetToAndroid;
                 androidToWidget = newAndroidToWidget;
@@ -2775,6 +2798,21 @@ public class Widget extends RemoteViewsService
         DictObj.List timersList = store.getList("timers");
         if (timersList != null)
         {
+            //validate before
+            for (int i = 0; i < timersList.size(); i++)
+            {
+                DictObj.Dict timer = timersList.getDict(i);
+
+                Object[] val = new Object[] {
+                        timer.getLong("since", 0),
+                        timer.getLong("millis", 0),
+                        timer.getInt("type", 0),
+                        timer.getInt("widgetId", -1),
+                        timer.getString("data"),
+                        timer.getLong("timerId", -1)
+                };
+            }
+
             for (int i = 0; i < timersList.size(); i++)
             {
                 DictObj.Dict timer = timersList.getDict(i);
@@ -2981,21 +3019,27 @@ public class Widget extends RemoteViewsService
     {
         StoreData store = StoreData.Factory.create(this, "pythonfiles");
         DictObj.List pythonfilesList = store.getList("pythonfiles");
+        ArrayList<PythonFile> pythonfilesArray = null;
         if (pythonfilesList != null)
         {
-            ArrayList<PythonFile> list = PythonFile.fromList(pythonfilesList);
-            synchronized (pythonFilesLock)
-            {
-                pythonFiles = list;
-            }
+            pythonfilesArray = PythonFile.fromList(pythonfilesList);
         }
         DictObj.Dict unknownPythonFileDict = store.getDict("unknownpythonfile");
+        PythonFile unknownFile = null;
         if (unknownPythonFileDict != null)
         {
-            PythonFile file = PythonFile.fromDict(unknownPythonFileDict);
-            synchronized (pythonFilesLock)
+            unknownFile = PythonFile.fromDict(unknownPythonFileDict);
+        }
+
+        synchronized (pythonFilesLock)
+        {
+            if (pythonfilesArray != null)
             {
-                unknownPythonFile = file;
+                pythonFiles = pythonfilesArray;
+            }
+            if (unknownFile != null)
+            {
+                unknownPythonFile = unknownFile;
             }
         }
 

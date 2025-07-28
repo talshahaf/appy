@@ -146,6 +146,7 @@ public class Constants
         typeToClass.put("GridView", GridView.class);
         typeToClass.put("StackView", StackView.class);
         typeToClass.put("AdapterViewFlipper", AdapterViewFlipper.class);
+        typeToClass.put("Empty", null);
 
 
         parameterToSetter.put(Boolean.TYPE, "setBoolean");
@@ -387,8 +388,13 @@ public class Constants
     public static HashMap<String, String> getRemotableMethods(String type)
     {
         Class<?> clazz = typeToClass.get(type);
-
         HashMap<String, String> methods = new HashMap<>();
+
+        if (clazz == null)
+        {
+            return methods;
+        }
+
         for (Method method : Reflection.getMethods(clazz))
         {
             Annotation[] annotations = method.getAnnotations();

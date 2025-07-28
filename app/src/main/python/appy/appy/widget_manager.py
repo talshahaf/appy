@@ -93,6 +93,9 @@ class AttributeValue:
                 lst.append(arg.compile())
             elif isinstance(arg, int) or isinstance(arg, float):
                 lst.append(dict(value=float(arg)))
+            elif isinstance(arg, Element) and arg.d.type == 'Empty':
+                # auto take misc attribute in Empty
+                lst.extend(arg.misc.compile_())
             else:
                 raise ValueError(f'Attribute cannot compile {type(arg)}')
         lst.append(dict(func=self.f, num=len(self.args))) #pos is filled later
@@ -179,11 +182,11 @@ class AttributeValue:
     def __rmul__(self, other):
         return self * other
     def __rtruediv__(self, other):
-        return self.__class__(None, other) / self
+        return self.__class__('DIV', other, self)
     def __rfloordiv__(self, other):
         return self.__rtruediv__(other).floor()
     def __rmod__(self, other):
-        return self.__class__(None, other) % self
+        return self.__class__('MOD', other, self)
     def __rand__(self, other):
         return self & other
     def __ror__(self, other):
@@ -235,7 +238,7 @@ def attribute_write_center(e, value):
     attribute_write_hcenter(e, h)
     attribute_write_vcenter(e, v)
 
-attrs = dict(left='LEFT', top='TOP', right='RIGHT', bottom='BOTTOM', width='WIDTH', height='HEIGHT')
+attrs = dict(left='LEFT', top='TOP', right='RIGHT', bottom='BOTTOM', width='WIDTH', height='HEIGHT', misc='MISC')
 composite_attrs = dict(ileft=attribute_ileft, itop=attribute_itop, iright=attribute_iright, ibottom=attribute_ibottom,
                        hcenter=attribute_hcenter, vcenter=attribute_vcenter, center=attribute_center, ihcenter=attribute_ihcenter, ivcenter=attribute_ivcenter, icenter=attribute_icenter)
 write_attrs = dict(hcenter=attribute_write_hcenter, vcenter=attribute_write_vcenter, center=attribute_write_center)
@@ -637,6 +640,119 @@ class Element:
 
     def __repr__(self):
         return repr(self.dict(do_copy=True))
+
+
+def forward(attr):
+    def h(f):
+        @functools.wraps(f)
+        def g(self, *args, **kwargs):
+            ff = getattr(getattr(self, attr), f.__name__)
+            return ff(*args, **kwargs)
+        return g
+    return h
+
+class EmptyElement(Element):
+    @classmethod
+    def create(cls, attr):
+        return super().create('Empty', misc=attr)
+
+    #forward everything to misc
+    @forward('misc')
+    def min(self, *args):
+        pass
+    @forward('misc')
+    def max(self, *args):
+        pass
+    @forward('misc')
+    def debug_print(self, name):
+        pass
+    @forward('misc')
+    def __add__(self, other):
+        pass
+    @forward('misc')
+    def __mul__(self, other):
+        pass
+    @forward('misc')
+    def __truediv__(self, other):
+        pass
+    @forward('misc')
+    def __mod__(self, other):
+        pass
+    @forward('misc')
+    def floor(self):
+        pass
+    @forward('misc')
+    def ceil(self):
+        pass
+    @forward('misc')
+    def if_(self, cond):
+        pass
+    @forward('misc')
+    def __invert__(self):
+        pass
+    @forward('misc')
+    def __and__(self, other):
+        pass
+    @forward('misc')
+    def __or__(self, other):
+        pass
+    @forward('misc')
+    def __eq__(self, other):
+        pass
+    @forward('misc')
+    def __lt__(self, other):
+        pass
+    @forward('misc')
+    def __le__(self, other):
+        pass
+    @forward('misc')
+    def __neg__(self):
+        pass
+    @forward('misc')
+    def __sub__(self, other):
+        pass
+    @forward('misc')
+    def __floordiv__(self, other):
+        pass
+    @forward('misc')
+    def __ne__(self, other):
+        pass
+    @forward('misc')
+    def __gt__(self, other):
+        pass
+    @forward('misc')
+    def __ge__(self, other):
+        pass
+    @forward('misc')
+    def __xor__(self, other):
+        pass
+    @forward('misc')
+    def __radd__(self, other):
+        pass
+    @forward('misc')
+    def __rsub__(self, other):
+        pass
+    @forward('misc')
+    def __rmul__(self, other):
+        pass
+    @forward('misc')
+    def __rtruediv__(self, other):
+        pass
+    @forward('misc')
+    def __rfloordiv__(self, other):
+        pass
+    @forward('misc')
+    def __rmod__(self, other):
+        pass
+    @forward('misc')
+    def __rand__(self, other):
+        pass
+    @forward('misc')
+    def __ror__(self, other):
+        pass
+    @forward('misc')
+    def __rxor__(self, other):
+        pass
 
 class elist(list):
     @classmethod

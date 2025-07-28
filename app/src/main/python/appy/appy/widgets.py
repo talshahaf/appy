@@ -25,6 +25,8 @@ ListView           = lambda **kwargs: widget_manager.Element.create('ListView', 
 GridView           = lambda **kwargs: widget_manager.Element.create('GridView',           **kwargs)
 StackView          = lambda **kwargs: widget_manager.Element.create('StackView',          **kwargs)
 AdapterViewFlipper = lambda **kwargs: widget_manager.Element.create('AdapterViewFlipper', **kwargs)
+
+Var = lambda attr: widget_manager.EmptyElement.create(attr)
     
 class Widget:
     def __init__(self, widget_id, widget_name):
