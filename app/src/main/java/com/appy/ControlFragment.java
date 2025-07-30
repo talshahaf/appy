@@ -98,7 +98,7 @@ public class ControlFragment extends MyFragment
             public void onClick(final View v)
             {
                 Utils.showConfirmationDialog(getActivity(),
-                        "Reinstall appy", "This would restart the app", android.R.drawable.ic_dialog_alert,
+                        "Reinstall package", "This would also restart the app", android.R.drawable.ic_dialog_alert,
                         null, null, new Runnable()
                         {
                             @Override

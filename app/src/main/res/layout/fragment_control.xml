@@ -53,7 +53,7 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginTop="20dp"
-        android:text="Reinstall Python library"
+        android:text="Reinstall Package"
         app:layout_constraintEnd_toEndOf="@+id/dump_stacktrace"
         app:layout_constraintStart_toStartOf="@+id/dump_stacktrace"
         app:layout_constraintTop_toBottomOf="@+id/restart"
