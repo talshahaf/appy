@@ -94,14 +94,6 @@ public class WidgetSizeFactorActivity extends WidgetSelectActivity
     }
 
     @Override
-    protected void onCreate(Bundle savedInstanceState)
-    {
-        super.onCreate(savedInstanceState);
-
-        setSupportActionBar(toolbar);
-    }
-
-    @Override
     public boolean hasContextMenu()
     {
         return false;

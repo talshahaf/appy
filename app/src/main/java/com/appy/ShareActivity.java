@@ -104,7 +104,6 @@ public class ShareActivity extends WidgetSelectActivity
         super.onCreate(savedInstanceState);
 
         handler = new Handler();
-        setSupportActionBar(toolbar);
 
         shareIntent = getIntent();
 

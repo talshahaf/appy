@@ -76,6 +76,7 @@ public class MainActivity extends AppCompatActivity implements StatusListener, A
         fragments.put(R.id.navigation_logcat, new Pair<>(LogcatFragment.class, null));
         fragments.put(R.id.navigation_pip, new Pair<>(PipFragment.class, null));
         fragments.put(R.id.navigation_state, new Pair<>(StateFragment.class, null));
+        fragments.put(R.id.navigation_timer, new Pair<>(TimerFragment.class, null));
         fragments.put(R.id.navigation_crash, new Pair<>(CrashFragment.class, null));
         fragments.put(R.id.navigation_settings, new Pair<>(SettingsFragment.class, null));
 

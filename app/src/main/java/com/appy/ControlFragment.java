@@ -21,11 +21,10 @@ public class ControlFragment extends MyFragment
     ProgressBar startupProgress;
     ImageView startupStatus;
     Button manageWidgets;
-    Button clearTimers;
-    Button clearState;
     Button resetExamples;
     Button dumpStacktrace;
     Button restart;
+    Button reinstall;
 
     Handler handler;
 
@@ -38,11 +37,10 @@ public class ControlFragment extends MyFragment
         startupProgress = layout.findViewById(R.id.startup_progress);
         startupStatus = layout.findViewById(R.id.startup_status);
         manageWidgets = layout.findViewById(R.id.manage_widgets);
-        clearTimers = layout.findViewById(R.id.clear_timers);
-        clearState = layout.findViewById(R.id.clear_state);
         resetExamples = layout.findViewById(R.id.reset_examples);
         dumpStacktrace = layout.findViewById(R.id.dump_stacktrace);
         restart = layout.findViewById(R.id.restart);
+        reinstall = layout.findViewById(R.id.reinstall);
 
         handler = new Handler();
 
@@ -52,44 +50,6 @@ public class ControlFragment extends MyFragment
             public void onClick(final View v)
             {
                 startActivity(new Intent(getActivity(), WidgetManagerActivity.class));
-            }
-        });
-
-        clearTimers.setOnClickListener(new View.OnClickListener()
-        {
-            @Override
-            public void onClick(final View v)
-            {
-                Utils.showConfirmationDialog(getActivity(),
-                        "Clear timers", "Clear all timers?", android.R.drawable.ic_dialog_alert,
-                        null, null, new Runnable()
-                        {
-                            @Override
-                            public void run()
-                            {
-                                getWidgetService().cancelAllTimers();
-                                debounce(v);
-                            }
-                        });
-            }
-        });
-
-        clearState.setOnClickListener(new View.OnClickListener()
-        {
-            @Override
-            public void onClick(final View v)
-            {
-                Utils.showConfirmationDialog(getActivity(),
-                        "Clear state", "Clear state?", android.R.drawable.ic_dialog_alert,
-                        null, null, new Runnable()
-                        {
-                            @Override
-                            public void run()
-                            {
-                                getWidgetService().resetState();
-                                debounce(v);
-                            }
-                        });
             }
         });
 
@@ -127,8 +87,28 @@ public class ControlFragment extends MyFragment
             @Override
             public void onClick(final View v)
             {
-                getWidgetService().restart();
+                getWidgetService().restart(false);
                 debounce(v);
+            }
+        });
+
+        reinstall.setOnClickListener(new View.OnClickListener()
+        {
+            @Override
+            public void onClick(final View v)
+            {
+                Utils.showConfirmationDialog(getActivity(),
+                        "Reinstall appy", "This would restart the app", android.R.drawable.ic_dialog_alert,
+                        null, null, new Runnable()
+                        {
+                            @Override
+                            public void run()
+                            {
+                                getWidgetService().restart(true);
+                                debounce(v);
+                            }
+                        }
+                );
             }
         });
 

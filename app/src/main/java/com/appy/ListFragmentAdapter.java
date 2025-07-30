@@ -11,35 +11,39 @@ import java.util.ArrayList;
 
 public class ListFragmentAdapter extends BaseAdapter
 {
+    public interface KeyFormat
+    {
+        String format(Item item);
+    }
     public static class Item
     {
         String key;
         String value;
-        String keyPrefix;
+        KeyFormat keyFormat;
         Object arg;
 
         @Override
         public String toString()
         {
-            return key;
+            return keyFormat.format(this);
         }
 
-        public Item(String key, String value, String keyPrefix, Object arg)
+        public Item(String key, String value, KeyFormat keyFormat, Object arg)
         {
             this.key = key;
             this.value = value;
-            this.keyPrefix = keyPrefix;
+            this.keyFormat = keyFormat;
             this.arg = arg;
         }
 
         public Item(String key, String value)
         {
-            this(key, value, "", null);
+            this(key, value, item -> item.key, null);
         }
 
         public Item(String key, String value, Object arg)
         {
-            this(key, value, "", arg);
+            this(key, value, item -> item.key, arg);
         }
     }
     public static int MAX_VALUE_LENGTH = 100;
@@ -93,7 +97,6 @@ public class ListFragmentAdapter extends BaseAdapter
     @Override
     public View getView(int position, View convertView, ViewGroup parent)
     {
-
         View twoLineListItem;
 
         if (convertView == null)
@@ -110,7 +113,7 @@ public class ListFragmentAdapter extends BaseAdapter
         TextView text1 = twoLineListItem.findViewById(R.id.text1);
         TextView text2 = twoLineListItem.findViewById(R.id.text2);
 
-        text1.setText(trimValue(items.get(position).keyPrefix + items.get(position).key));
+        text1.setText(trimValue(items.get(position).keyFormat.format(items.get(position))));
 
         String value = items.get(position).value;
         if (value == null)

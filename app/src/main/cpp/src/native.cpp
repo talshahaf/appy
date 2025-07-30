@@ -21,7 +21,15 @@
 #include "native.h"
 
 #define LOG(fmt, ...) __android_log_print(ANDROID_LOG_DEBUG, "APPY", fmt, ##__VA_ARGS__)
-#define PYTHON_CALL
+
+#define WITHOUTGIL(code) \
+do { \
+    PyThreadState *_savegil; \
+    scope_guards gilguard; \
+    _savegil = PyEval_SaveThread(); \
+    gilguard += [&_savegil] { PyEval_RestoreThread(_savegil); }; \
+    code \
+} while (0)
 
 int populate_common_java_objects_stage = 0;
 
@@ -109,7 +117,7 @@ struct Parameter
 class jni_exception : public std::exception
 {
 public:
-    jni_exception(const char * str) : str(str)
+    explicit jni_exception(const char * str) : str(str)
     {
 
     }
@@ -215,7 +223,7 @@ public:
         }
     }
 
-    virtual ~java_exception()
+    ~java_exception() override
     {
         if (exception != NULL)
         {
@@ -223,7 +231,7 @@ public:
         }
     }
 
-    const char * what() noexcept
+    [[nodiscard]] const char * what() const noexcept override
     {
         return message.c_str();
     }
@@ -923,7 +931,7 @@ static PyObject * unpacked_jvalue_to_python(jvalue v, int t)
     return NULL;
 }
 
-static PyObject * call_jni_object_functions(PyObject * self, PyObject * args)
+static PyObject * call_jni_object_functions(PyObject * self_, PyObject * args)
 {
     try
     {
@@ -981,24 +989,10 @@ static PyObject * call_jni_object_functions(PyObject * self, PyObject * args)
         jvalue ret;
         GET_JNI_ENV_WITHOUT_SCOPES();
 
-        std::exception_ptr exc = nullptr;
-
-        Py_BEGIN_ALLOW_THREADS
-            try
-            {
+        WITHOUTGIL(
                 ret = call_jni_object_functions_impl(env, (jobject) self, (void *) method, jvalues,
                                                      return_type, op);
-            }
-            catch (...)
-            {
-                exc = std::current_exception();
-            }
-        Py_END_ALLOW_THREADS
-
-        if (exc != nullptr)
-        {
-            std::rethrow_exception(exc);
-        }
+        );
 
         if (op == SET_FIELD || op == SET_STATIC_FIELD)
         {
@@ -1077,10 +1071,14 @@ static PyObject * get_methodid(PyObject * self, PyObject * args)
             }
         };
 
+        jmethodID res = NULL;
         int out_static = 0;
         int out_has_same_name_field = 0;
-        jmethodID res = get_methodid_impl(env, (jclass) clazz, method, type_num, type_arr,
-                                          out_types, &out_static, &out_has_same_name_field);
+        WITHOUTGIL(
+            res = get_methodid_impl(env, (jclass) clazz, method, type_num, type_arr,
+                                              out_types, &out_static, &out_has_same_name_field);
+        );
+
         if (res == NULL)
         {
             //no such method, still return same_name_field
@@ -1130,9 +1128,12 @@ static PyObject * get_fieldid(PyObject * self, PyObject * args)
         Parameter out_type;
         int out_static = 0;
         int out_has_same_name_method = 0;
+        jfieldID res = NULL;
         GET_JNI_ENV();
-        jfieldID res = get_fieldid_impl(env, (jclass) clazz, field, &out_type, &out_static,
+        WITHOUTGIL(
+            res = get_fieldid_impl(env, (jclass) clazz, field, &out_type, &out_static,
                                         &out_has_same_name_method);
+        );
         if (res == NULL)
         {
             //no such field
@@ -1164,8 +1165,12 @@ static PyObject * find_class(PyObject * self, PyObject * args)
         }
 
         GET_JNI_ENV();
-        jclass local_clazz = env->FindClass(clazz);
-        CHECK_JAVA_EXC(env);
+
+        jclass local_clazz = NULL;
+        WITHOUTGIL(
+            local_clazz = env->FindClass(clazz);
+            CHECK_JAVA_EXC(env);
+        );
         return PyLong_FromUnsignedLong(
                 (unsigned long) make_global_java_ref(env, (jobject) local_clazz));
     }
@@ -1191,9 +1196,12 @@ static PyObject * unpack_primitive_class(PyObject * self, PyObject * args)
         }
 
         GET_JNI_ENV();
-        populate_common_java_objects(env);
-        jint e = env->CallStaticIntMethod(reflection_class, unboxClassToEnum, (jobject) object);
-        CHECK_JAVA_EXC(env);
+        jint e = 0;
+        WITHOUTGIL(
+            populate_common_java_objects(env);
+            e = env->CallStaticIntMethod(reflection_class, unboxClassToEnum, (jobject) object);
+            CHECK_JAVA_EXC(env);
+        );
         return PyLong_FromLong(e);
     }
     catch (java_exception & e)
@@ -1222,9 +1230,12 @@ static PyObject * get_object_class(PyObject * self, PyObject * args)
             return PyLong_FromLong(0);
         }
 
-        GET_JNI_ENV();
-        jclass local_clazz = env->GetObjectClass((jobject) object);
-        CHECK_JAVA_EXC(env);
+        jclass local_clazz = NULL;
+        GET_JNI_ENV()
+        WITHOUTGIL(
+            local_clazz = env->GetObjectClass((jobject) object);
+            CHECK_JAVA_EXC(env);
+        );
         return PyLong_FromUnsignedLong(
                 (unsigned long) make_global_java_ref(env, (jobject) local_clazz));
     }
@@ -1648,9 +1659,12 @@ static PyObject * call_jni_array_functions(PyObject * self, PyObject * args)
 
         GET_JNI_ENV_WITHOUT_SCOPES();
         int out_array_len = 0;
-        jobject ret = call_jni_array_functions_impl(env, (jobject) obj, type, jvalues, start,
+        jobject ret = 0;
+        WITHOUTGIL(
+            ret = call_jni_array_functions_impl(env, (jobject) obj, type, jvalues, start,
                                                     value_num, op, &out_array_len,
                                                     (jclass) objclass);
+        );
 
         for (Py_ssize_t i = 0; i < value_num; ++i)
         {
@@ -1695,8 +1709,10 @@ static PyObject * delete_global_ref(PyObject * self, PyObject * args)
         jobject ref = (jobject) ref_lng;
         if (ref != NULL)
         {
-            GET_JNI_ENV();
-            env->DeleteGlobalRef(ref);
+            WITHOUTGIL(
+                GET_JNI_ENV();
+                env->DeleteGlobalRef(ref);
+            );
         }
         Py_RETURN_NONE;
     }
@@ -1721,12 +1737,14 @@ static PyObject * new_global_ref(PyObject * self, PyObject * args)
         jobject global_ref = NULL;
         if (ref != NULL)
         {
-            GET_JNI_ENV();
-            global_ref = env->NewGlobalRef(ref);
-            if (global_ref == NULL)
-            {
-                throw jni_exception("failed to create global ref");
-            }
+            WITHOUTGIL(
+                GET_JNI_ENV();
+                global_ref = env->NewGlobalRef(ref);
+                if (global_ref == NULL)
+                {
+                    throw jni_exception("failed to create global ref");
+                }
+            );
         }
         return Py_BuildValue("k", (unsigned long) global_ref);
     }
@@ -1799,9 +1817,12 @@ static PyObject * inspect_class(PyObject * self, PyObject * args)
         jclass component = NULL;
         int component_enum_type = 0;
         int unboxed_component_enum_type = 0;
-        std::string class_name = inspect_class_impl(env, ref, &enum_type, &is_array, &component,
+        std::string class_name;
+        WITHOUTGIL(
+            class_name = inspect_class_impl(env, ref, &enum_type, &is_array, &component,
                                                     &component_enum_type,
                                                     &unboxed_component_enum_type);
+        );
         return Py_BuildValue("siikii", class_name.c_str(), enum_type, is_array,
                              (unsigned long) component, component_enum_type,
                              unboxed_component_enum_type);
@@ -1853,7 +1874,10 @@ static PyObject * inspect_class_content(PyObject * self, PyObject * args)
 
         jclass ref = (jclass) ref_lng;
         GET_JNI_ENV();
-        std::vector<std::string> content = inspect_class_content_impl(env, ref, withargs);
+        std::vector<std::string> content;
+        WITHOUTGIL(
+            content = inspect_class_content_impl(env, ref, withargs);
+        );
 
         PyObject * out_tuple = PyTuple_New(content.size());
         if (out_tuple == NULL)
@@ -1863,7 +1887,7 @@ static PyObject * inspect_class_content(PyObject * self, PyObject * args)
         for (Py_ssize_t i = 0; i < content.size(); ++i)
         {
             PyObject * s = NULL;
-            if (content[i].data() == NULL)
+            if (content[i].data() == NULL || content[i].size() == 0)
             {
                 s = Py_BuildValue("s#", 0x1, 0);
             }
@@ -1930,7 +1954,11 @@ static PyObject * python_str_to_jstring(PyObject * self, PyObject * args)
             return NULL;
         }
 
-        return Py_BuildValue("k", (unsigned long) char_array_to_jstring(str, len));
+        unsigned long jstr = 0;
+        WITHOUTGIL(
+            jstr = (unsigned long) char_array_to_jstring(str, len);
+        );
+        return Py_BuildValue("k", jstr);
     }
     catch (java_exception & e)
     {
@@ -1974,9 +2002,12 @@ static PyObject * jstring_to_python_str(PyObject * self, PyObject * args)
             return NULL;
         }
 
-        std::vector<char> str = jstring_to_char_array((jstring) jstr);
+        std::vector<char> str;
+        WITHOUTGIL(
+            str = jstring_to_char_array((jstring) jstr);
+        );
 
-        if (str.data() == NULL)
+        if (str.data() == NULL || str.size() == 0)
         {
             return Py_BuildValue("s#", 0x1, 0);
         }
@@ -2021,7 +2052,12 @@ static PyObject * jclass_to_array_of_jclass(PyObject * self, PyObject * args)
             return NULL;
         }
 
-        return Py_BuildValue("k", jclass_to_array_of_jclass_impl((jclass) ref_lng));
+        jclass cls = NULL;
+        WITHOUTGIL(
+            cls = jclass_to_array_of_jclass_impl((jclass) ref_lng);
+        );
+
+        return Py_BuildValue("k", cls);
     }
     catch (java_exception & e)
     {
@@ -2059,8 +2095,13 @@ static PyObject * create_java_interface(PyObject * self, PyObject * args)
             return NULL;
         }
 
-        return Py_BuildValue("k", (unsigned long) create_java_interface_impl((jlong) id,
-                                                                             (jobjectArray) classes));
+        unsigned long ref = 0;
+        WITHOUTGIL(
+            ref = (unsigned long) create_java_interface_impl((jlong) id,
+                                                            (jobjectArray) classes);
+        );
+
+        return Py_BuildValue("k", ref);
     }
     catch (java_exception & e)
     {
@@ -2104,11 +2145,14 @@ static PyObject * get_java_init_arg(PyObject * self, PyObject * args)
             return NULL;
         }
         GET_JNI_ENV();
-        jobject ref = env->NewGlobalRef(g_java_arg);
-        if (ref == NULL)
-        {
-            throw jni_exception("failed to create global ref");
-        }
+        jobject ref = NULL;
+        WITHOUTGIL(
+            ref = env->NewGlobalRef(g_java_arg);
+            if (ref == NULL)
+            {
+                throw jni_exception("failed to create global ref");
+            }
+        );
         return PyLong_FromUnsignedLong((unsigned long) ref);
     }
     catch (java_exception & e)
@@ -2134,7 +2178,10 @@ static PyObject * check_is_jclass_castable(PyObject * self, PyObject * args)
         }
 
         GET_JNI_ENV();
-        jboolean ret = env->IsAssignableFrom((jclass) src, (jclass) dest);
+        jboolean ret = NULL;
+        WITHOUTGIL(
+            ret = env->IsAssignableFrom((jclass) src, (jclass) dest);
+        );
         if (ret == JNI_TRUE)
         {
             Py_RETURN_TRUE;
@@ -3438,7 +3485,10 @@ static PyObject * logcat_write(PyObject * self, PyObject * args)
     {
         return NULL;
     }
-    int ret = __android_log_write(level, tag, msg);
+    int ret = 0;
+    WITHOUTGIL(
+        ret = __android_log_write(level, tag, msg);
+    );
     return Py_BuildValue("i", ret);
 }
 
@@ -3567,7 +3617,7 @@ int stdout_to_file(const char * path)
 extern "C" JNIEXPORT void JNICALL
 Java_com_appy_Widget_pythonInit(JNIEnv * env, jclass clazz, jstring j_pythonhome,
                                 jstring j_cachepath, jstring j_pythonlib, jstring j_scriptpath,
-                                jstring j_nativepath, jobject j_arg)
+                                jstring j_nativepath, jobject j_arg, jint flags)
 {
     try
     {
@@ -3608,8 +3658,6 @@ Java_com_appy_Widget_pythonInit(JNIEnv * env, jclass clazz, jstring j_pythonhome
         auto scriptpath = jstring_to_stdstring(env, j_scriptpath);
         auto nativepath = jstring_to_stdstring(env, j_nativepath);
 
-        //stdout_to_file("/sdcard/Android/media/com.appy.widgets/stdout.txt");
-
         auto exepath = pythonhome + "/bin/python3";
 
         LOG("setting env");
@@ -3624,25 +3672,6 @@ Java_com_appy_Widget_pythonInit(JNIEnv * env, jclass clazz, jstring j_pythonhome
         preload_shared_libraries(pythonhome + "/lib");
         //--------------------
 
-        LOG("registering python module");
-        ret = PyImport_AppendInittab("native_appy", PyInit_native_appy);
-        if (ret == -1)
-        {
-            env->ThrowNew(python_exception_class, "PyImport_AppendInittab failed");
-            return;
-        }
-
-        wchar_t * pythonexe_w = Py_DecodeLocale(exepath.c_str(), NULL);
-        if (pythonexe_w == NULL)
-        {
-            env->ThrowNew(python_exception_class, "Py_DecodeLocale failed");
-            return;
-        }
-
-        LOG("running python");
-        Py_SetProgramName(pythonexe_w);
-        Py_InitializeEx(0);
-
         if (j_arg != NULL)
         {
             if (g_java_arg == NULL)
@@ -3656,37 +3685,74 @@ Java_com_appy_Widget_pythonInit(JNIEnv * env, jclass clazz, jstring j_pythonhome
             }
         }
 
-        FILE * fh = fopen(scriptpath.c_str(), "r");
-        if (fh == NULL)
-        {
-            env->ThrowNew(python_exception_class, "fopen failed");
-            return;
-        }
-
-        wchar_t * program = Py_DecodeLocale(scriptpath.c_str(), NULL);
-        if (program == NULL)
-        {
-            env->ThrowNew(python_exception_class, "Py_DecodeLocale failed");
-            return;
-        }
-
-        PySys_SetArgv(1, &program);
-
-        LOG("executing init script");
-
-        ret = PyRun_SimpleFileExFlags(fh, scriptpath.c_str(), 1, NULL);
-
-        LOG("done executing init script");
-        PyEval_InitThreads();
-
-        //TODO not sure if this is ok
-        PyThreadState * mainPyThread = PyEval_SaveThread();
-
+        LOG("registering python module");
+        ret = PyImport_AppendInittab("native_appy", PyInit_native_appy);
         if (ret == -1)
         {
-            env->ThrowNew(python_exception_class, "PyRun_SimpleFileExFlags failed");
+            env->ThrowNew(python_exception_class, "PyImport_AppendInittab failed");
             return;
         }
+
+        LOG("running python");
+
+        stdout_to_file("/sdcard/Android/media/com.appy.widgets/stdout.txt");
+
+        PyStatus pystatus;
+
+        PyPreConfig preconfig;
+        PyPreConfig_InitPythonConfig(&preconfig);
+
+        preconfig.utf8_mode = 1;
+
+        char flagsstr[16] = {};
+        snprintf(flagsstr, sizeof(flagsstr) - 1, "%d", flags);
+        //TODO figure out why first is ignored
+        const char * const python_argv[] = {"", scriptpath.c_str(), flagsstr};
+        int argc = 3;
+
+        pystatus = Py_PreInitializeFromBytesArgs(&preconfig, argc, (char **)python_argv); //TODO is this really not const?
+        if (PyStatus_Exception(pystatus)) {
+            env->ThrowNew(python_exception_class, pystatus.err_msg);
+            return;
+        }
+
+        PyConfig config;
+        PyConfig_InitPythonConfig(&config);
+        config.isolated = 0;
+
+        pystatus = PyConfig_SetBytesString(&config, &config.run_filename, scriptpath.c_str());
+        if (PyStatus_Exception(pystatus)) {
+            env->ThrowNew(python_exception_class, pystatus.err_msg);
+            return;
+        }
+
+        pystatus = PyConfig_SetBytesArgv(&config, argc, (char *const *)python_argv); //TODO is this really not const?
+        if (PyStatus_Exception(pystatus)) {
+            env->ThrowNew(python_exception_class, pystatus.err_msg);
+            return;
+        }
+
+        pystatus = Py_InitializeFromConfig(&config);
+        if (PyStatus_Exception(pystatus)) {
+            env->ThrowNew(python_exception_class, pystatus.err_msg);
+            return;
+        }
+
+        PyConfig_Clear(&config);
+
+        FILE * fh = fopen(scriptpath.c_str(), "rb");
+        if (fh == NULL)
+        {
+            env->ThrowNew(python_exception_class, "open main.py failed");
+            return;
+        }
+
+        LOG("executing init script");
+        ret = PyRun_SimpleFileEx(fh, scriptpath.c_str(), 1);
+        LOG("done executing init script %d", ret);
+
+        //release GIL before returning to java
+        PyThreadState * mainPyThread = PyEval_SaveThread();
 
         LOG("python init done");
         python_initialized = true;

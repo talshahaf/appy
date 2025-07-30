@@ -35,6 +35,7 @@ import android.widget.ViewFlipper;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -43,6 +44,8 @@ import java.util.List;
 
 public class Constants
 {
+    public static SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd HH:mm:ssZ");
+    public static final String PYTHON_INIT_FLAGS_EXTRA = "PYTHON_INIT_FLAGS";
     public static final String ITEM_ID_EXTRA = "ITEM_ID";
     public static final String ITEM_TAG_EXTRA = "ITEM_TAG";
     public static final String WIDGET_INTENT = "WIDGET_INTENT";
@@ -65,6 +68,7 @@ public class Constants
     public static final String APP_PACKAGE_NOCOM = "appy";
     public static final String APP_PACKAGE_NAME = "com." + APP_PACKAGE_NOCOM;
     public static final String DEEP_LINK_BROADCAST = APP_PACKAGE_NAME + ".DeepLink";
+    public static final int PYTHON_INIT_FLAGS_REINSTALL = 1;
     public static final int SPECIAL_WIDGET_ID = 100;
     public static final int SPECIAL_WIDGET_RESTART = 1;
     public static final int SPECIAL_WIDGET_CLEAR = 2;

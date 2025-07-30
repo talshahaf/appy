@@ -47,8 +47,6 @@ public class WidgetManagerActivity extends WidgetSelectActivity
     {
         super.onCreate(savedInstanceState);
 
-        setSupportActionBar(toolbar);
-
         listview.setOnTouchListener(new View.OnTouchListener()
         {
             @Override

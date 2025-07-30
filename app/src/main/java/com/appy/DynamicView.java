@@ -31,7 +31,7 @@ public class DynamicView
         long id = 0;
         while (id == 0)
         {
-            id = random.nextLong();
+            id = Math.abs(random.nextLong());
             if (id < 0)
             {
                 id = -id;

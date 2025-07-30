@@ -51,6 +51,8 @@ public abstract class WidgetSelectActivity extends AppCompatActivity implements 
         listview = findViewById(R.id.list);
         listview.setOnItemClickListener(this);
 
+        setSupportActionBar(toolbar);
+
         doBindService();
     }
 
@@ -94,8 +96,8 @@ public abstract class WidgetSelectActivity extends AppCompatActivity implements 
             if (props.getString("name") != null)
             {
                 int widgetId = Integer.parseInt(key);
-                String prefix = props.getBoolean("app", false) ? "app #" : "widget #";
-                adapterList.add(new ListFragmentAdapter.Item(key, elementValueFormat(widgetId, props), prefix, widgetId));
+                final String prefix = props.getBoolean("app", false) ? "app #" : "widget #";
+                adapterList.add(new ListFragmentAdapter.Item(key, elementValueFormat(widgetId, props), item -> (prefix + item.key), widgetId));
             }
         }
         listview.setAdapter(new ListFragmentAdapter(this, adapterList));

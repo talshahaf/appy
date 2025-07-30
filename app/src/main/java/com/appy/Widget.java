@@ -2539,7 +2539,7 @@ public class Widget extends RemoteViewsService
     {
         synchronized (activeTimersLock)
         {
-            long newId = new Random().nextLong();
+            long newId = Math.abs(new Random().nextLong());
             activeTimers.put(newId, Timer.INVALID); //save room
             return newId;
         }
@@ -3308,6 +3308,47 @@ public class Widget extends RemoteViewsService
         return updateListener.getStateLayoutSnapshot();
     }
 
+    public DictObj.Dict getTimersSnapshot()
+    {
+        DictObj.Dict names = getAllWidgetNames();
+        DictObj.Dict result = new DictObj.Dict();
+        for (Map.Entry<Long, Timer> timer : activeTimers.entrySet())
+        {
+            DictObj.Dict timerDict = new DictObj.Dict();
+            String key = ((Integer)timer.getValue().widgetId).toString();
+
+            timerDict.put("id", timer.getKey());
+            timerDict.put("type", timer.getValue().type);
+            if (timer.getValue().type == Constants.TIMER_ABSOLUTE)
+            {
+                timerDict.put("time", timer.getValue().millis);
+            }
+            else if (timer.getValue().type == Constants.TIMER_REPEATING)
+            {
+                timerDict.put("interval", timer.getValue().millis);
+                timerDict.put("to_next", timeToNext(timer.getValue().since, timer.getValue().millis));
+            }
+            else
+            {
+                Log.d("APPY", "unknown timer type: " + timer.getValue().type);
+                continue;
+            }
+
+            if (!result.hasKey(key))
+            {
+                DictObj.Dict widget = new DictObj.Dict();
+                if (names.hasKey(key))
+                {
+                    widget.put("name", names.getString(key));
+                }
+                widget.put("timers", new DictObj.List());
+                result.put(key, widget);
+            }
+            result.getDict(key).getList("timers").add(timerDict);
+        }
+        return result;
+    }
+
     public void cleanState(String scope, String widget, String key)
     {
         if (updateListener != null)
@@ -3339,7 +3380,7 @@ public class Widget extends RemoteViewsService
         }
     }
 
-    public void restart()
+    public void restart(boolean forcePythonReinstall)
     {
         new Thread(new Runnable()
         {
@@ -3353,29 +3394,28 @@ public class Widget extends RemoteViewsService
                 new Task<>(new SaveStateTask()).run();
 
                 StoreData.Factory.commitAll();
-                handler.post(new Runnable()
-                {
-                    @Override
-                    public void run()
-                    {
-                        Log.d("APPY", "restarting process");
-                        setAllWidgets(false);
 
-                        Intent intent = new Intent(Widget.this, getClass());
-                        PendingIntent pendingIntent;
-                        if (needForeground())
-                        {
-                            pendingIntent = PendingIntent.getForegroundService(getApplicationContext(), 1, intent, PendingIntent.FLAG_CANCEL_CURRENT | PendingIntent.FLAG_MUTABLE);
-                        }
-                        else
-                        {
-                            pendingIntent = PendingIntent.getService(getApplicationContext(), 1, intent, PendingIntent.FLAG_CANCEL_CURRENT | PendingIntent.FLAG_MUTABLE);
-                        }
-                        AlarmManager mgr = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
-                        mgr.set(AlarmManager.RTC, System.currentTimeMillis() + 100, pendingIntent);
-                        System.exit(0);
-                    }
-                });
+                Log.d("APPY", "restarting process");
+                setAllWidgets(false);
+
+                Intent intent = new Intent(Widget.this, getClass());
+                if (forcePythonReinstall)
+                {
+                    intent.putExtra(Constants.PYTHON_INIT_FLAGS_EXTRA, Constants.PYTHON_INIT_FLAGS_REINSTALL);
+                }
+                PendingIntent pendingIntent;
+                if (needForeground())
+                {
+                    pendingIntent = PendingIntent.getForegroundService(getApplicationContext(), 1, intent, PendingIntent.FLAG_CANCEL_CURRENT | PendingIntent.FLAG_MUTABLE);
+                }
+                else
+                {
+                    pendingIntent = PendingIntent.getService(getApplicationContext(), 1, intent, PendingIntent.FLAG_CANCEL_CURRENT | PendingIntent.FLAG_MUTABLE);
+                }
+                AlarmManager mgr = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
+                mgr.set(AlarmManager.RTC, System.currentTimeMillis() + 100, pendingIntent);
+
+                handler.post(() -> System.exit(0));
             }
         }).start();
     }
@@ -3904,7 +3944,7 @@ public class Widget extends RemoteViewsService
         }
     }
 
-    private class PythonSetupTask extends AsyncTask<Void, Void, Void>
+    private class PythonSetupTask extends AsyncTask<Object, Void, Void>
     {
         private boolean error = false;
 
@@ -3914,8 +3954,10 @@ public class Widget extends RemoteViewsService
         }
 
         @Override
-        protected Void doInBackground(Void... param)
+        protected Void doInBackground(Object... param)
         {
+            int pythonFlags = param[0] != null ? (Integer)param[0] : 0;
+
             startupState = Constants.StartupState.RUNNING;
             callStatusChange(true);
 
@@ -3948,7 +3990,7 @@ public class Widget extends RemoteViewsService
                 System.loadLibrary("prehelpers");
                 System.load(pythonLib);
                 System.loadLibrary("native");
-                pythonInit(pythonHome, cacheDir, pythonLib, new File(cacheDir, "main.py").getAbsolutePath(), getApplicationInfo().nativeLibraryDir, Widget.this);
+                pythonInit(pythonHome, cacheDir, pythonLib, new File(cacheDir, "main.py").getAbsolutePath(), getApplicationInfo().nativeLibraryDir, Widget.this, pythonFlags);
 
                 initAllPythonFiles();
             }
@@ -4495,7 +4537,7 @@ public class Widget extends RemoteViewsService
         }
     }
 
-    private boolean pythonSetup()
+    private boolean pythonSetup(int pythonFlags)
     {
         Log.d("APPY", "dir: " + getApplicationInfo().nativeLibraryDir);
         if (!startedAfterSetup && pythonSetupTask.getStatus() == AsyncTask.Status.PENDING)
@@ -4520,7 +4562,7 @@ public class Widget extends RemoteViewsService
                 setAllWidgets(false);
                 callStatusChange(true);
 
-                pythonSetupTask.execute();
+                pythonSetupTask.execute(pythonFlags);
 
                 return false;
             }
@@ -4564,7 +4606,8 @@ public class Widget extends RemoteViewsService
 
         Utils.updateGlobalResources(this);
 
-        if (!pythonSetup())
+        int pythonflags = intent != null ? intent.getIntExtra(Constants.PYTHON_INIT_FLAGS_EXTRA, 0) : 0;
+        if (!pythonSetup(pythonflags))
         {
             return;
         }
@@ -4748,7 +4791,7 @@ public class Widget extends RemoteViewsService
                                 switch (command)
                                 {
                                     case Constants.SPECIAL_WIDGET_RESTART:
-                                        restart();
+                                        restart(false);
                                         break;
                                     case Constants.SPECIAL_WIDGET_OPENAPP:
                                         startMainActivity("Files", null);
@@ -4950,7 +4993,7 @@ public class Widget extends RemoteViewsService
         }
     }
 
-    protected static native void pythonInit(String pythonHome, String tmpPath, String pythonLibPath, String script, String nativepath, Object arg);
+    protected static native void pythonInit(String pythonHome, String tmpPath, String pythonLibPath, String script, String nativepath, Object arg, int flags);
 
     protected static native Object pythonCall(Object... args) throws Throwable;
 }

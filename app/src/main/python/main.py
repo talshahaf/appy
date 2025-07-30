@@ -1,9 +1,19 @@
 import faulthandler
 faulthandler.enable()
 
+print('python main start2')
+
+import sys, os
+selfdir = os.path.dirname(__file__)
+sys.path.append(selfdir)
+
 import logcat
 
-import subprocess, signal, os, sys, traceback, time, email, tarfile, importlib.util, site, shutil
+sys.path.remove(selfdir)
+
+print('python main start')
+
+import subprocess, signal, traceback, time, email, tarfile, importlib.util, site, shutil
 from pathlib import Path
 from threading import Thread
 
@@ -91,73 +101,88 @@ def uninstall_package_manually(pkg):
     site_dir = Path(site.getsitepackages()[0])
     shutil.rmtree(site_dir / pkg, ignore_errors=True)
 
-#replace all bins and replace with symlinks to our own python3 binary because android forbids executing from app data dir
-exe_dir = os.environ['NATIVELIBS']
-exe = os.path.join(exe_dir, 'libpythonexe.so')
-lib_dir = os.path.join(os.environ['PYTHONHOME'], 'lib')
-bin_dir = os.path.join(os.environ['PYTHONHOME'], 'bin')
-
-if os.environ['PATH']:
-    os.environ['PATH'] += ':'
-os.environ['PATH'] += exe_dir + ":" + bin_dir
-os.environ['LD_LIBRARY_PATH'] = lib_dir
-os.environ['LD_PRELOAD'] = os.path.join(exe_dir, 'libprehelpers.so')
-os.chdir(bin_dir)
-
-python_links = ['python', 'python3', 'python3.12']
-for link in python_links:
+def do_init():
+    flags = sys.argv[-1]
     try:
-        full = os.path.join(bin_dir, link)
+        flags = int(flags)
+    except ValueError:
+        flags = 0
+
+    always_reinstall = bool(flags & 1)
+
+    #replace all bins and replace with symlinks to our own python3 binary because android forbids executing from app data dir
+    exe_dir = os.environ['NATIVELIBS']
+    exe = os.path.join(exe_dir, 'libpythonexe.so')
+    lib_dir = os.path.join(os.environ['PYTHONHOME'], 'lib')
+    bin_dir = os.path.join(os.environ['PYTHONHOME'], 'bin')
+
+    if os.environ['PATH']:
+        os.environ['PATH'] += ':'
+    os.environ['PATH'] += exe_dir + ":" + bin_dir
+    os.environ['LD_LIBRARY_PATH'] = lib_dir
+    os.environ['LD_PRELOAD'] = os.path.join(exe_dir, 'libprehelpers.so')
+    os.chdir(bin_dir)
+
+    python_links = ['python', 'python3', 'python3.12']
+    for link in python_links:
         try:
-            os.unlink(full)
+            full = os.path.join(bin_dir, link)
+            try:
+                os.unlink(full)
+            except OSError as e:
+                pass
+            os.symlink(exe, full)
         except OSError as e:
             pass
-        os.symlink(exe, full)
-    except OSError as e:
-        pass
 
-try:
-    import pip
-except ImportError:
-    print('Installing pip')
     try:
-        import ensurepip
-        ensurepip._main()
         import pip
-    except BaseException as e:
-        print('Failed to install pip: ', e)
+    except ImportError:
+        print('Installing pip')
+        try:
+            import ensurepip
+            ensurepip._main()
+            import pip
+        except BaseException as e:
+            print('Failed to install pip: ', e)
 
-#running in background
-optional_packages_thread = Thread(target=lambda: install_optional_packages(False))
-optional_packages_thread.start()
+    #running in background
+    optional_packages_thread = Thread(target=lambda: install_optional_packages(False))
+    optional_packages_thread.start()
 
-tar = os.path.join(os.environ['TMP'], 'appy.tar.gz')
-try:
-    module_spec = importlib.util.find_spec('appy')
-    if not module_spec:
-        raise ImportError('appy is not installed')
+    tar = os.path.join(os.environ['TMP'], 'appy.tar.gz')
+    try:
+        module_spec = importlib.util.find_spec('appy')
+        if not module_spec:
+            raise ImportError('appy is not installed')
 
-    version_file = os.path.join(os.path.dirname(module_spec.origin), '__version__.py')
-    out_locals = {}
-    exec(open(version_file, 'r').read(), {}, out_locals)
-    existing_version = out_locals['__version__']
+        version_file = os.path.join(os.path.dirname(module_spec.origin), '__version__.py')
+        out_locals = {}
+        exec(open(version_file, 'r').read(), {}, out_locals)
+        existing_version = out_locals['__version__']
 
-    available_version = tar_version(tar)
-    print(f'versions - existing: {existing_version}, available: {available_version}')
-    if existing_version != available_version:
-        raise ImportError('outdated version')
-    import appy
-except Exception as e:
-    print('error importing appy: ', traceback.format_exc())
-    print('installing appy')
-    #execute([exe, '-m', 'pip', 'uninstall', 'appy' ,'--yes'])
-    uninstall_package_manually('appy')
-    install_package_with_tar(os.path.join(os.environ['TMP'], 'appy.tar.gz'))
-    import appy
+        available_version = tar_version(tar)
+        print(f'versions - existing: {existing_version}, available: {available_version}')
+        if existing_version != available_version:
+            raise ImportError('outdated version')
+        if always_reinstall:
+            raise ImportError('reinstall required')
+        import appy
+    except Exception as e:
+        print('error importing appy: ', traceback.format_exc())
+        print('installing appy')
+        #execute([exe, '-m', 'pip', 'uninstall', 'appy' ,'--yes'])
+        uninstall_package_manually('appy')
+        install_package_with_tar(os.path.join(os.environ['TMP'], 'appy.tar.gz'))
+        import appy
 
-optional_packages_thread.join()
+    optional_packages_thread.join()
 
-#upgrade packages in background
-Thread(target=lambda: install_optional_packages(True)).start()
+    #upgrade packages in background
+    Thread(target=lambda: install_optional_packages(True)).start()
 
-appy.do_init()
+    print('appy init start')
+    appy.do_init()
+    print('python main end')
+
+do_init()

@@ -30,6 +30,10 @@
             android:title="State"
         />
         <item
+            android:id="@+id/navigation_timer"
+            android:title="Timers"
+            />
+        <item
             android:id="@+id/navigation_crash"
             android:title="Crashes"
         />

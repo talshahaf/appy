@@ -11,12 +11,7 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import java.io.File;
-import java.text.SimpleDateFormat;
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Set;
 
 /**
  * Created by Tal on 23/03/2018.
@@ -199,6 +194,6 @@ public class FileBrowserAdapter extends BaseAdapter
 
     String getLastDate(FileItem file)
     {
-        return new SimpleDateFormat("dd/MM/yyyy HH:mm:ss").format(file.file.lastModified());
+        return Constants.DATE_FORMAT.format(file.file.lastModified());
     }
 }

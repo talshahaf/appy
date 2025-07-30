@@ -19,26 +19,6 @@
         app:layout_constraintVertical_bias="0.205"
         style="@style/secondary_btn"/>
     <Button
-        android:id="@+id/clear_timers"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="20dp"
-        android:text="Clear Timers"
-        app:layout_constraintEnd_toEndOf="@+id/dump_stacktrace"
-        app:layout_constraintStart_toStartOf="@+id/dump_stacktrace"
-        app:layout_constraintTop_toBottomOf="@+id/manage_widgets"
-        style="@style/secondary_btn"/>
-    <Button
-        android:id="@+id/clear_state"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="20dp"
-        android:text="Clear State"
-        app:layout_constraintEnd_toEndOf="@+id/dump_stacktrace"
-        app:layout_constraintStart_toStartOf="@+id/dump_stacktrace"
-        app:layout_constraintTop_toBottomOf="@+id/clear_timers"
-        style="@style/secondary_btn"/>
-    <Button
         android:id="@+id/reset_examples"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
@@ -46,7 +26,7 @@
         android:text="Reset Examples"
         app:layout_constraintEnd_toEndOf="@+id/dump_stacktrace"
         app:layout_constraintStart_toStartOf="@+id/dump_stacktrace"
-        app:layout_constraintTop_toBottomOf="@+id/clear_state"
+        app:layout_constraintTop_toBottomOf="@+id/manage_widgets"
         style="@style/secondary_btn"/>
     <Button
         android:id="@+id/dump_stacktrace"
@@ -67,6 +47,16 @@
         app:layout_constraintEnd_toEndOf="@+id/dump_stacktrace"
         app:layout_constraintStart_toStartOf="@+id/dump_stacktrace"
         app:layout_constraintTop_toBottomOf="@+id/dump_stacktrace"
+        style="@style/secondary_btn"/>
+    <Button
+        android:id="@+id/reinstall"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp"
+        android:text="Reinstall Python library"
+        app:layout_constraintEnd_toEndOf="@+id/dump_stacktrace"
+        app:layout_constraintStart_toStartOf="@+id/dump_stacktrace"
+        app:layout_constraintTop_toBottomOf="@+id/restart"
         style="@style/secondary_btn"/>
     <ProgressBar
         android:id="@+id/startup_progress"

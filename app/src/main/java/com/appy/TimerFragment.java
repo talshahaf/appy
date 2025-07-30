@@ -1,8 +1,6 @@
 package com.appy;
 
 import android.os.Bundle;
-import androidx.appcompat.app.AlertDialog;
-
 import android.view.ContextMenu;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -13,14 +11,15 @@ import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ListView;
 import android.widget.TextView;
-import android.widget.Toast;
+
+import androidx.appcompat.app.AlertDialog;
 
 import java.util.ArrayList;
-import java.util.List;
+import java.util.Date;
 
-public class StateFragment extends FragmentParent
+public class TimerFragment extends FragmentParent
 {
-    DictObj.Dict stateSnapshot = null;
+    DictObj.Dict timerSnapshot = null;
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
@@ -41,13 +40,13 @@ public class StateFragment extends FragmentParent
         if (item.getItemId() == R.id.action_clearall)
         {
             Utils.showConfirmationDialog(getActivity(),
-                "Clear all state", "Clear state for all widgets?", android.R.drawable.ic_dialog_alert,
+                "Clear all timers", "Clear timers for all widgets?", android.R.drawable.ic_dialog_alert,
                 null, null, new Runnable()
                 {
                     @Override
                     public void run()
                     {
-                        getWidgetService().resetState();
+                        getWidgetService().cancelAllTimers();
                     }
                 });
             return true;
@@ -77,79 +76,86 @@ public class StateFragment extends FragmentParent
 
         WidgetSelectFragment fragment = new WidgetSelectFragment();
         fragment.setParent(this);
-        fragment.setKeyPath();
+        fragment.setWidget(null);
         switchTo(fragment, true);
     }
 
     @Override
     public DictObj.Dict getDict()
     {
-        return stateSnapshot;
+        return timerSnapshot;
     }
 
     public void updateDict()
     {
-        stateSnapshot = getWidgetService().getStateLayoutSnapshot();
+        timerSnapshot = getWidgetService().getTimersSnapshot();
     }
 
     public static class WidgetSelectFragment extends ChildFragment implements AdapterView.OnItemClickListener
     {
         ListView list;
-        ArrayList<String> keyPath;
+        String widget = null;
 
-        public DictObj.Dict traverse()
+        public static String floatFormat(float f)
         {
-            DictObj.Dict current = parent.getDict();
-            for (String key : keyPath)
+            String s = String.format("%.1f", f);
+            if (s.endsWith(".0"))
             {
-                if (current == null)
-                {
-                    return null;
-                }
-                current = current.getDict(key);
+                return s.substring(0, s.lastIndexOf("."));
             }
-            return current;
+            return s;
+        }
+
+        public static String idFormat(String id)
+        {
+            if (id.length() >= 8)
+            {
+                return id.substring(0, id.charAt(0) == '-' ? 4 : 3) + "..." + id.substring(id.length() - 3);
+            }
+            return id;
         }
 
         public void refresh()
         {
             parent.updateDict();
-
             ArrayList<ListFragmentAdapter.Item> adapterList = new ArrayList<>();
-            if (keyPath.isEmpty())
+
+            if (widget == null)
             {
-                for (String scope : scopes)
+                for (DictObj.Entry entry : parent.getDict().entries())
                 {
-                    adapterList.add(new ListFragmentAdapter.Item(scope, "", false));
+                    DictObj.Dict val = (DictObj.Dict)entry.value;
+                    String name = val.hasKey("name") ? val.getString("name") : "";
+                    int timers = val.getList("timers").size();
+                    adapterList.add(new ListFragmentAdapter.Item(entry.key, name + " (" + timers + " timers)", item -> ("widget #" + item.key), false));
                 }
             }
             else
             {
-                int depth = getScopeDepth(keyPath.get(0));
-                boolean areLeaves = depth == keyPath.size();
-                final boolean inLocalScopeView = depth - 1 == keyPath.size() && depth == 3;
-
-                DictObj.Dict current = traverse();
-                if (current != null)
+                DictObj.List timers = parent.getDict().getDict(widget).getList("timers");
+                for (int i = 0; i < timers.size(); i++)
                 {
-                    for (String key : current.keys())
+                    DictObj.Dict timer = timers.getDict(i);
+                    boolean isInterval = timer.hasKey("interval");
+                    final String prefix = isInterval ? "Interval timer #" : "Absolute timer #";
+                    String subtext;
+                    if (isInterval)
                     {
-                        adapterList.add(new ListFragmentAdapter.Item(key, areLeaves ? current.get(key).toString() : "", item -> (inLocalScopeView ? "widget #" + item.key : item.key), areLeaves));
+                        subtext = floatFormat(((float)timer.getLong("interval", 0)) / 1000) + " seconds\nNext: " + floatFormat(((float)timer.getLong("to_next", 0)) / 1000) + " seconds";
                     }
+                    else
+                    {
+                        subtext = "At " + Constants.DATE_FORMAT.format(new Date(timer.getLong("time", 0)));
+                    }
+                    adapterList.add(new ListFragmentAdapter.Item(((Long)timer.getLong("id", 0)).toString(), subtext, item -> (prefix + idFormat(item.key)), true));
                 }
             }
             list.setAdapter(new ListFragmentAdapter(getActivity(), adapterList));
         }
 
-        public void setKeyPath()
+        public void setWidget(String widget)
         {
-            keyPath = new ArrayList<>();
-        }
-
-        public void setKeyPath(List<String> prevKeyPath, String keyPathNext)
-        {
-            keyPath = new ArrayList<>(prevKeyPath);
-            keyPath.add(keyPathNext);
+            this.widget = widget;
         }
 
         @Override
@@ -179,13 +185,8 @@ public class StateFragment extends FragmentParent
             {
                 //select that widget
                 WidgetSelectFragment fragment = new WidgetSelectFragment();
-                fragment.setKeyPath(keyPath, item.key);
+                fragment.setWidget(item.key);
                 parent.switchTo(fragment, false);
-            }
-            else
-            {
-                //maybe pop viewer
-                showViewer(item.key, item.value);
             }
         }
 
@@ -214,25 +215,11 @@ public class StateFragment extends FragmentParent
         {
             if (v == list)
             {
-                boolean hasContextList = true;
-                if (!keyPath.isEmpty())
-                {
-                    int depth = getScopeDepth(keyPath.get(0));
-                    if (depth != keyPath.size() && depth - 1 != keyPath.size())
-                    {
-                        //only two deepest levels has menu
-                        hasContextList = false;
-                    }
-                }
+                getActivity().getMenuInflater().inflate(R.menu.delete_action, menu);
 
-                if (hasContextList)
-                {
-                    getActivity().getMenuInflater().inflate(R.menu.delete_action, menu);
-
-                    AdapterView.AdapterContextMenuInfo info = (AdapterView.AdapterContextMenuInfo) menuInfo;
-                    ListFragmentAdapter.Item item = (ListFragmentAdapter.Item) list.getItemAtPosition(info.position);
-                    menu.setHeaderTitle(item.keyFormat.format(item));
-                }
+                AdapterView.AdapterContextMenuInfo info = (AdapterView.AdapterContextMenuInfo) menuInfo;
+                ListFragmentAdapter.Item item = (ListFragmentAdapter.Item) list.getItemAtPosition(info.position);
+                menu.setHeaderTitle(item.keyFormat.format(item));
             }
             else
             {
@@ -251,65 +238,28 @@ public class StateFragment extends FragmentParent
             AdapterView.AdapterContextMenuInfo info = (AdapterView.AdapterContextMenuInfo) menuItem.getMenuInfo();
             final ListFragmentAdapter.Item item = (ListFragmentAdapter.Item) list.getItemAtPosition(info.position);
 
-            ArrayList<String> fullPath = new ArrayList<>(keyPath);
-            fullPath.add(item.key);
-
             boolean leaf = (Boolean)item.arg;
-
+            String display = item.keyFormat.format(item);
             Utils.showConfirmationDialog(getActivity(),
-                    leaf ? "Delete state" : "Delete all",
-                    (leaf ? "Delete " : "Delete all ") + String.join(".", fullPath) + " ?",
+                    leaf ? "Delete timer" : "Delete widget timer",
+                    leaf ? "Delete " + display + "?" : "Delete all " + display + " timers?",
                     android.R.drawable.ic_dialog_alert,
-                    null, null, new Runnable()
+            null, null, new Runnable()
+            {
+                @Override
+                public void run()
+                {
+                    if (leaf)
                     {
-                        @Override
-                        public void run()
-                        {
-                            if (keyPath.isEmpty())
-                            {
-                                if (getScopeDepth(item.key) != 1)
-                                {
-                                    Toast.makeText(getActivity(), "Too many inner levels to delete", Toast.LENGTH_SHORT).show();
-                                }
-                                else
-                                {
-                                    getWidgetService().cleanState(item.key, null, null);
-                                }
-                            }
-                            else if (!leaf)
-                            {
-                                getWidgetService().cleanState(keyPath.get(0), item.key, null);
-                            }
-                            else
-                            {
-                                getWidgetService().cleanState(keyPath.get(0), keyPath.get(keyPath.size() - 1), item.key);
-                            }
-                            refresh();
-                        }
-                    });
+                        getWidgetService().cancelTimer(Long.parseLong(item.key));
+                    }
+                    else
+                    {
+                        getWidgetService().cancelWidgetTimers(Integer.parseInt(item.key));
+                    }
+                }
+            });
             return true;
-        }
-
-        public static final String[] scopes = new String[] {"globals", "nonlocals", "locals"};
-
-        public static int getScopeDepth(String scope)
-        {
-            if (scope.equals("globals"))
-            {
-                return 1;
-            }
-
-            if (scope.equals("nonlocals"))
-            {
-                return 2;
-            }
-
-            if (scope.equals("locals"))
-            {
-                return 3;
-            }
-
-            throw new IllegalArgumentException("unknown scope");
         }
     }
 }
