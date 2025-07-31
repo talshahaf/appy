@@ -262,6 +262,11 @@ public class ConfigsFragment extends FragmentParent
             ListFragmentAdapter.Item selectedConfigItem = null;
             if (widget == null)
             {
+                if (getActivity() != null)
+                {
+                    getActivity().setTitle("Configurations");
+                }
+
                 HashMap<String, Integer> widgets = getWidgetService().getConfigurations().listWidgets();
                 for (Map.Entry<String, Integer> item : widgets.entrySet())
                 {
@@ -270,6 +275,11 @@ public class ConfigsFragment extends FragmentParent
             }
             else
             {
+                if (getActivity() != null)
+                {
+                    getActivity().setTitle("Configurations of " + widget);
+                }
+
                 HashMap<String, Pair<String, String>> values = getWidgetService().getConfigurations().getValues(widget);
                 for (Map.Entry<String, Pair<String, String>> item : values.entrySet())
                 {

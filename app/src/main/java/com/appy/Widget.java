@@ -3304,13 +3304,12 @@ public class Widget extends RemoteViewsService
         {
             return null;
         }
-
         return updateListener.getStateLayoutSnapshot();
     }
 
     public DictObj.Dict getTimersSnapshot()
     {
-        DictObj.Dict names = getAllWidgetNames();
+        DictObj.Dict props = getAllWidgetAppProps(false, false);
         DictObj.Dict result = new DictObj.Dict();
         for (Map.Entry<Long, Timer> timer : activeTimers.entrySet())
         {
@@ -3337,9 +3336,21 @@ public class Widget extends RemoteViewsService
             if (!result.hasKey(key))
             {
                 DictObj.Dict widget = new DictObj.Dict();
-                if (names.hasKey(key))
+                if (props.hasKey(key))
                 {
-                    widget.put("name", names.getString(key));
+                    DictObj.Dict widgetProps = props.getDict(key);
+
+                    boolean app = widgetProps.getBoolean("app", false);
+                    String name = widgetProps.getString("name");
+                    String appTitle = widgetProps.getString("title");
+
+                    widget.put("name", name);
+                    widget.put("app", app);
+
+                    if (app && appTitle != null && !appTitle.isEmpty())
+                    {
+                        widget.put("title", appTitle);
+                    }
                 }
                 widget.put("timers", new DictObj.List());
                 result.put(key, widget);
@@ -3380,6 +3391,27 @@ public class Widget extends RemoteViewsService
         }
     }
 
+    public void setNextStartupFlags(int flags)
+    {
+        StoreData store = StoreData.Factory.create(Widget.this, "startup_parameters");
+        DictObj.Dict d = new DictObj.Dict();
+        d.put("flags", flags);
+        store.put("startup_flags", d);
+        store.commit();
+    }
+
+    public int getAndClearNextStartupFlags()
+    {
+        StoreData store = StoreData.Factory.create(Widget.this, "startup_parameters");
+        DictObj.Dict d = store.getDict("startup_flags");
+        setNextStartupFlags(0);
+        if (d == null)
+        {
+            return 0;
+        }
+        return d.getInt("flags", 0);
+    }
+
     public void restart(boolean forcePythonReinstall)
     {
         new Thread(new Runnable()
@@ -3393,27 +3425,15 @@ public class Widget extends RemoteViewsService
                 savePythonFiles();
                 new Task<>(new SaveStateTask()).run();
 
+                if (forcePythonReinstall)
+                {
+                    setNextStartupFlags(Constants.PYTHON_INIT_FLAGS_REINSTALL);
+                }
+
                 StoreData.Factory.commitAll();
 
                 Log.d("APPY", "restarting process");
                 setAllWidgets(false);
-
-                Intent intent = new Intent(Widget.this, getClass());
-                if (forcePythonReinstall)
-                {
-                    intent.putExtra(Constants.PYTHON_INIT_FLAGS_EXTRA, Constants.PYTHON_INIT_FLAGS_REINSTALL);
-                }
-                PendingIntent pendingIntent;
-                if (needForeground())
-                {
-                    pendingIntent = PendingIntent.getForegroundService(getApplicationContext(), 1, intent, PendingIntent.FLAG_CANCEL_CURRENT | PendingIntent.FLAG_MUTABLE);
-                }
-                else
-                {
-                    pendingIntent = PendingIntent.getService(getApplicationContext(), 1, intent, PendingIntent.FLAG_CANCEL_CURRENT | PendingIntent.FLAG_MUTABLE);
-                }
-                AlarmManager mgr = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
-                mgr.set(AlarmManager.RTC, System.currentTimeMillis() + 100, pendingIntent);
 
                 handler.post(() -> System.exit(0));
             }
@@ -4606,8 +4626,8 @@ public class Widget extends RemoteViewsService
 
         Utils.updateGlobalResources(this);
 
-        int pythonflags = intent != null ? intent.getIntExtra(Constants.PYTHON_INIT_FLAGS_EXTRA, 0) : 0;
-        if (!pythonSetup(pythonflags))
+        int flags = getAndClearNextStartupFlags();
+        if (!pythonSetup(flags))
         {
             return;
         }

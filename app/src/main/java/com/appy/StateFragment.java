@@ -3,6 +3,7 @@ package com.appy;
 import android.os.Bundle;
 import androidx.appcompat.app.AlertDialog;
 
+import android.util.Pair;
 import android.view.ContextMenu;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -21,6 +22,7 @@ import java.util.List;
 public class StateFragment extends FragmentParent
 {
     DictObj.Dict stateSnapshot = null;
+    DictObj.Dict widgetProps = null;
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
@@ -73,7 +75,7 @@ public class StateFragment extends FragmentParent
             return;
         }
 
-        updateDict();
+        updateDataSource();
 
         WidgetSelectFragment fragment = new WidgetSelectFragment();
         fragment.setParent(this);
@@ -82,14 +84,15 @@ public class StateFragment extends FragmentParent
     }
 
     @Override
-    public DictObj.Dict getDict()
+    public Object getDataSource()
     {
-        return stateSnapshot;
+        return new Pair<>(stateSnapshot, widgetProps);
     }
 
-    public void updateDict()
+    public void updateDataSource()
     {
         stateSnapshot = getWidgetService().getStateLayoutSnapshot();
+        widgetProps = getWidgetService().getAllWidgetAppProps(false, false);
     }
 
     public static class WidgetSelectFragment extends ChildFragment implements AdapterView.OnItemClickListener
@@ -97,9 +100,10 @@ public class StateFragment extends FragmentParent
         ListView list;
         ArrayList<String> keyPath;
 
-        public DictObj.Dict traverse()
+        public Pair<DictObj.Dict, DictObj.Dict> traverse()
         {
-            DictObj.Dict current = parent.getDict();
+            Pair<DictObj.Dict, DictObj.Dict> current_props = (Pair<DictObj.Dict, DictObj.Dict>) parent.getDataSource();
+            DictObj.Dict current = current_props.first;
             for (String key : keyPath)
             {
                 if (current == null)
@@ -108,33 +112,71 @@ public class StateFragment extends FragmentParent
                 }
                 current = current.getDict(key);
             }
-            return current;
+            return new Pair<>(current, current_props.second);
+        }
+
+        public static String numEntries(DictObj.Dict d, String key)
+        {
+            String entries = "?";
+            Object val = d.get(key);
+            if (val instanceof DictObj.Dict)
+            {
+                entries = ((DictObj.Dict) val).size() + "";
+            }
+            return entries + " entries";
         }
 
         public void refresh()
         {
-            parent.updateDict();
+            parent.updateDataSource();
 
             ArrayList<ListFragmentAdapter.Item> adapterList = new ArrayList<>();
             if (keyPath.isEmpty())
             {
+                if (getActivity() != null)
+                {
+                    getActivity().setTitle("State");
+                }
+
                 for (String scope : scopes)
                 {
-                    adapterList.add(new ListFragmentAdapter.Item(scope, "", false));
+                    adapterList.add(new ListFragmentAdapter.Item(scope, numEntries(((Pair<DictObj.Dict, DictObj.Dict>)parent.getDataSource()).first, scope), false));
                 }
             }
             else
             {
+                if (getActivity() != null)
+                {
+                    getActivity().setTitle("State: " + String.join(".", keyPath));
+                }
+
                 int depth = getScopeDepth(keyPath.get(0));
                 boolean areLeaves = depth == keyPath.size();
-                final boolean inLocalScopeView = depth - 1 == keyPath.size() && depth == 3;
+                boolean containStates = depth - 1 == keyPath.size();
+                boolean inLocalScopeView = containStates && depth == 3;
 
-                DictObj.Dict current = traverse();
-                if (current != null)
+                Pair<DictObj.Dict, DictObj.Dict> current_props = traverse();
+                if (current_props.first != null)
                 {
-                    for (String key : current.keys())
+                    for (String key : current_props.first.keys())
                     {
-                        adapterList.add(new ListFragmentAdapter.Item(key, areLeaves ? current.get(key).toString() : "", item -> (inLocalScopeView ? "widget #" + item.key : item.key), areLeaves));
+                        String entries = numEntries(current_props.first, key);
+
+                        if (areLeaves)
+                        {
+                            adapterList.add(new ListFragmentAdapter.Item(key, current_props.first.get(key).toString(), item -> item.key, true));
+                        }
+                        else if (inLocalScopeView)
+                        {
+                            DictObj.Dict props = current_props.second.getDict(key);
+                            final boolean isApp = props != null && props.getBoolean("app", false);
+
+                            adapterList.add(new ListFragmentAdapter.Item(key, entries, item -> (isApp ? "app #" : "widget #") + item.key, false));
+                        }
+                        else
+                        {
+                            adapterList.add(new ListFragmentAdapter.Item(key, entries, item -> item.key, false));
+                        }
                     }
                 }
             }

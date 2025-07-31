@@ -72,7 +72,7 @@ public class TimerFragment extends FragmentParent
             return;
         }
 
-        updateDict();
+        updateDataSource();
 
         WidgetSelectFragment fragment = new WidgetSelectFragment();
         fragment.setParent(this);
@@ -81,12 +81,12 @@ public class TimerFragment extends FragmentParent
     }
 
     @Override
-    public DictObj.Dict getDict()
+    public Object getDataSource()
     {
         return timerSnapshot;
     }
 
-    public void updateDict()
+    public void updateDataSource()
     {
         timerSnapshot = getWidgetService().getTimersSnapshot();
     }
@@ -117,22 +117,37 @@ public class TimerFragment extends FragmentParent
 
         public void refresh()
         {
-            parent.updateDict();
+            parent.updateDataSource();
             ArrayList<ListFragmentAdapter.Item> adapterList = new ArrayList<>();
 
             if (widget == null)
             {
-                for (DictObj.Entry entry : parent.getDict().entries())
+                if (getActivity() != null)
                 {
-                    DictObj.Dict val = (DictObj.Dict)entry.value;
-                    String name = val.hasKey("name") ? val.getString("name") : "";
+                    getActivity().setTitle("Timers");
+                }
+
+                DictObj.Dict allTimers = ((DictObj.Dict)parent.getDataSource());
+                for (String key : allTimers.keys())
+                {
+                    DictObj.Dict val = allTimers.getDict(key);
+                    String name = val.hasKey("title") ? val.getString("title") : val.getString("name");
                     int timers = val.getList("timers").size();
-                    adapterList.add(new ListFragmentAdapter.Item(entry.key, name + " (" + timers + " timers)", item -> ("widget #" + item.key), false));
+                    boolean isApp = val.getBoolean("app", false);
+                    adapterList.add(new ListFragmentAdapter.Item(key, name + " (" + timers + " timers)", item -> ((isApp ? "app #" : "widget #") + item.key), false));
                 }
             }
             else
             {
-                DictObj.List timers = parent.getDict().getDict(widget).getList("timers");
+                DictObj.Dict widgetTimers = ((DictObj.Dict)parent.getDataSource()).getDict(widget);
+
+                if (getActivity() != null)
+                {
+                    boolean isApp = widgetTimers.getBoolean("app", false);
+                    getActivity().setTitle("Timers of " + (isApp ? "app #" : "widget #") + widget);
+                }
+
+                DictObj.List timers = widgetTimers.getList("timers");
                 for (int i = 0; i < timers.size(); i++)
                 {
                     DictObj.Dict timer = timers.getDict(i);

@@ -13,8 +13,8 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="100dp"
         android:text="Manage Widgets"
-        app:layout_constraintEnd_toEndOf="@+id/dump_stacktrace"
-        app:layout_constraintStart_toStartOf="@+id/dump_stacktrace"
+        app:layout_constraintEnd_toEndOf="@+id/reinstall"
+        app:layout_constraintStart_toStartOf="@+id/reinstall"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintVertical_bias="0.205"
         style="@style/secondary_btn"/>
@@ -24,8 +24,8 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="20dp"
         android:text="Reset Examples"
-        app:layout_constraintEnd_toEndOf="@+id/dump_stacktrace"
-        app:layout_constraintStart_toStartOf="@+id/dump_stacktrace"
+        app:layout_constraintEnd_toEndOf="@+id/reinstall"
+        app:layout_constraintStart_toStartOf="@+id/reinstall"
         app:layout_constraintTop_toBottomOf="@+id/manage_widgets"
         style="@style/secondary_btn"/>
     <Button
@@ -34,8 +34,8 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="20dp"
         android:text="Dump Stacktrace"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="@+id/reinstall"
+        app:layout_constraintStart_toStartOf="@+id/reinstall"
         app:layout_constraintTop_toBottomOf="@+id/reset_examples"
         style="@style/secondary_btn"/>
     <Button
@@ -44,18 +44,18 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="20dp"
         android:text="Restart"
-        app:layout_constraintEnd_toEndOf="@+id/dump_stacktrace"
-        app:layout_constraintStart_toStartOf="@+id/dump_stacktrace"
+        app:layout_constraintEnd_toEndOf="@+id/reinstall"
+        app:layout_constraintStart_toStartOf="@+id/reinstall"
         app:layout_constraintTop_toBottomOf="@+id/dump_stacktrace"
         style="@style/secondary_btn"/>
     <Button
         android:id="@+id/reinstall"
-        android:layout_width="0dp"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="20dp"
         android:text="Reinstall Package"
-        app:layout_constraintEnd_toEndOf="@+id/dump_stacktrace"
-        app:layout_constraintStart_toStartOf="@+id/dump_stacktrace"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/restart"
         style="@style/secondary_btn"/>
     <ProgressBar

@@ -3695,7 +3695,7 @@ Java_com_appy_Widget_pythonInit(JNIEnv * env, jclass clazz, jstring j_pythonhome
 
         LOG("running python");
 
-        stdout_to_file("/sdcard/Android/media/com.appy.widgets/stdout.txt");
+        //stdout_to_file("/sdcard/Android/media/com.appy.widgets/stdout.txt");
 
         PyStatus pystatus;
 
