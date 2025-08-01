@@ -1,4 +1,8 @@
-import json, functools, copy, traceback, inspect, threading, os, collections, importlib.util, sys, hashlib, struct, re, time, faulthandler, base64, io
+import json, functools, copy, traceback, inspect
+import threading, os, collections, importlib.util
+import sys, hashlib, struct, re, time
+import faulthandler, base64, io, asyncio
+
 from .utils import AttrDict, dumps, loads, cap, get_args, prepare_image_cache_dir, preferred_script_dir, timeit
 from . import widgets, java, state, configs, __version__
 
@@ -279,7 +283,16 @@ androidR = BaseR(['android', 'R'])
 R = BaseR(['appy', 'R'])
 
 last_func_for_widget_id = {}
-def call_function(func, captures, **kwargs):
+def call_general_function_(func, kwargs, async_run_coroutines):
+    if not isinstance(func, (list, tuple)):
+        if not hasattr(func, '__call__'):
+            raise ValueError('Only <Callable> or (<Callable>, <Capture Dict>) are supported.')
+        func = (func, {})
+    elif len(func) != 2 or not isinstance(func[1], dict):
+        raise ValueError('Only <Callable> or (<Callable>, <Capture Dict>) are supported.')
+
+    func, captures = func[0], func[1]
+
     #for tracing errors to their module
     if 'widget' in kwargs and hasattr(kwargs['widget'], 'widget_id'):
         last_func_for_widget_id[kwargs['widget'].widget_id] = func
@@ -292,19 +305,25 @@ def call_function(func, captures, **kwargs):
 
     args, kwargs, has_vargs, has_vkwargs = get_args(func)
     try:
-        return func(**{k:v for k,v in pass_args.items() if k in args or k in kwargs or has_vkwargs})
+        ret = func(**{k:v for k,v in pass_args.items() if k in args or k in kwargs or has_vkwargs})
+        if async_run_coroutines and hasattr(ret, '__await__'):
+            #check event loop
+            try:
+                asyncio.get_running_loop()
+                return ret
+            except RuntimeError:
+                pass
+            return asyncio.run(ret)
+        return ret
     except:
         set_module_error(inspect.getmodule(func), traceback.format_exc())
         raise
 
 def call_general_function(func, **kwargs):
-    if not isinstance(func, (list, tuple)):
-        if not hasattr(func, '__call__'):
-            raise ValueError('Only <Callable> or (<Callable>, <Capture Dict>) are supported.')
-        func = (func, {})
-    elif len(func) != 2 or not isinstance(func[1], dict):
-        raise ValueError('Only <Callable> or (<Callable>, <Capture Dict>) are supported.')
-    return call_function(func[0], func[1], **kwargs)
+    return call_general_function_(func, kwargs, True)
+
+def call_general_function_no_async_run(func, **kwargs):
+    return call_general_function_(func, kwargs, False)
     
 def dump_general_function(func, captures):
     #handles f containing captures itself as well, for backward compatibility
