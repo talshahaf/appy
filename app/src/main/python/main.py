@@ -72,7 +72,7 @@ def execute(command):
 
 def install_optional_packages(do_upgrade):
     try:
-        needed_packages = ['pip', 'setuptools', 'wheel', 'requests', 'packaging', 'pyparsing', 'python-dateutil', 'cycler']
+        needed_packages = ['pip', 'setuptools', 'wheel', 'requests', 'requests-futures', 'packaging', 'pyparsing', 'python-dateutil', 'cycler']
         try:
             #TODO maybe import all?
             import requests, setuptools, cycler

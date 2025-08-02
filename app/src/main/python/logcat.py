@@ -11,24 +11,18 @@ class LogcatWriter:
 
     MAX_LINE = 100
     
-    def __init__(self, lvl, std):
+    def __init__(self, lvl, tag):
         self.lvl = lvl
+        if isinstance(tag, str):
+            tag = tag.encode('utf8')
+        self.tag = tag
         self.buf = b''
         self.crash_handler = None
-        self.std = std
 
     def chunksplit(self, s, size):
         return [s[i : i + size] for i in range(0, len(s), size)]
         
     def write(self, s):
-#         don't tee to actual std, it might block
-#         if self.std is not None:
-#             # tee to actual std
-#             if isinstance(s, bytes):
-#                 self.std.write(s.decode())
-#             else:
-#                 self.std.write(s)
-
         if isinstance(s, str):
             s = s.encode()
         self.buf = self.buf + s
@@ -40,13 +34,13 @@ class LogcatWriter:
         for line in lines[:-1]:
             for chunk in self.chunksplit(line, self.MAX_LINE):
                 if chunk:
-                    native_appy.logcat_write(self.lvl, b'APPY', chunk)
+                    native_appy.logcat_write(self.lvl, self.tag, chunk)
         #last line
         if lines[-1]:
             last_chunks = self.chunksplit(lines[-1], self.MAX_LINE)
             for chunk in last_chunks[:-1]:
                 if chunk:
-                    native_appy.logcat_write(self.lvl, b'APPY', chunk)
+                    native_appy.logcat_write(self.lvl, self.tag, chunk)
 
             self.buf = last_chunks[-1]
         else:
@@ -64,5 +58,5 @@ class LogcatWriter:
     def flush(self):
         self.write('\n')
             
-sys.stdout = LogcatWriter(LogcatWriter.INFO,  sys.stdout)
-sys.stderr = LogcatWriter(LogcatWriter.ERROR, sys.stderr)
+sys.stdout = LogcatWriter(LogcatWriter.INFO,  'APPY')
+sys.stderr = LogcatWriter(LogcatWriter.ERROR, 'APPY')

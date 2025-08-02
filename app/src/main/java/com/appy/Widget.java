@@ -10,10 +10,12 @@ import java.lang.reflect.InvocationTargetException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -127,12 +129,12 @@ public class Widget extends RemoteViewsService
     final Configurations configurations = new Configurations(this, this::configurationUpdate);
     MultipleFileObserverBase pythonFilesObserver = null;
 
-    static class WidgetDestroyedException extends RuntimeException
+    public static class WidgetDestroyedException extends RuntimeException
     {
 
     }
 
-    static class FunctionCache<Arg, Ret>
+    public static class FunctionCache<Arg, Ret>
     {
         Object[] storage;
         Integer[] storage_hash;
@@ -176,43 +178,44 @@ public class Widget extends RemoteViewsService
         }
     }
 
-    interface Runner<T>
+    public interface Runner<T>
     {
         void run(T... args);
     }
 
-    class AsyncWrapper<T> extends AsyncTask<Object, Void, Void>
+    public static class AsyncWrapper<T> extends AsyncTask<Object, Void, Void>
     {
         @Override
         protected Void doInBackground(Object... objects)
         {
             try
             {
-                ((Runner<T>) objects[1]).run((T[]) objects[2]);
+                ((Runner<T>) objects[3]).run((T[]) objects[4]);
             }
             catch (WidgetDestroyedException e)
             {
-                Log.w("APPY", "widget " + (int) objects[0] + " deleted");
+                Log.w("APPY", "widget " + (int) objects[2] + " deleted");
             }
             finally
             {
-                doneExecuting((int) objects[0]);
+                ((Widget)objects[0]).doneExecuting((Task<?>)objects[1], (int) objects[2]);
             }
             return null;
         }
     }
 
-    class Task<T> implements Runnable
+    public class Task<T> implements Runnable
     {
         public Task(Runner<T> torun, T... args)
         {
             this.torun = torun;
             params = args;
+            finished = false;
         }
 
         public void execute()
         {
-            new AsyncWrapper<T>().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, widgetId, torun, params);
+            new AsyncWrapper<T>().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, Widget.this, this, widgetId, torun, params);
         }
 
         public void run()
@@ -223,11 +226,14 @@ public class Widget extends RemoteViewsService
         int widgetId;
         T[] params;
         Runner<T> torun;
+        boolean finished;
+        final Object notifier = new Object();
+        final long id = Math.abs((new Random()).nextInt());
     }
 
-    class TaskQueue
+    public class TaskQueue
     {
-        LinkedList<Task> queue = new LinkedList<>();
+        LinkedList<Task<?>> queue = new LinkedList<>();
         boolean executing = false;
     }
 
@@ -248,7 +254,7 @@ public class Widget extends RemoteViewsService
             boolean alreadyHas = false;
             if (onlyOnce)
             {
-                for (Task qTask : queue.queue)
+                for (Task<?> qTask : queue.queue)
                 {
                     if (qTask.torun.getClass() == task.torun.getClass())
                     {
@@ -279,26 +285,27 @@ public class Widget extends RemoteViewsService
 
     public void executeReadyTasks()
     {
-        ArrayList<Task> toExecute = new ArrayList<>();
+        ArrayList<Task<?>> toExecute = new ArrayList<>();
         synchronized (widgetsTasks)
         {
             for (Map.Entry<Integer, TaskQueue> queue : widgetsTasks.entrySet())
             {
                 if (!queue.getValue().executing && !queue.getValue().queue.isEmpty())
                 {
-                    toExecute.add(queue.getValue().queue.pop());
+                    Task<?> task = queue.getValue().queue.pop();
+                    toExecute.add(task);
                     queue.getValue().executing = true;
                 }
             }
         }
 
-        for (Task task : toExecute)
+        for (Task<?> task : toExecute)
         {
             task.execute();
         }
     }
 
-    public void doneExecuting(int widgetId)
+    public void doneExecuting(Task<?> task, int widgetId)
     {
         synchronized (widgetsTasks)
         {
@@ -308,7 +315,26 @@ public class Widget extends RemoteViewsService
                 queue.executing = false;
             }
         }
+        synchronized (task.notifier)
+        {
+            task.finished = true;
+            task.notifier.notify();
+        }
         executeReadyTasks();
+    }
+
+    public void waitOnTasks(Collection<Task<?>> tasks) throws InterruptedException
+    {
+        for (Task<?> task : tasks)
+        {
+            synchronized (task.notifier)
+            {
+                while (!task.finished)
+                {
+                    task.notifier.wait();
+                }
+            }
+        }
     }
 
     //helper function for creating system widgets without python, only supports identity
@@ -3172,11 +3198,25 @@ public class Widget extends RemoteViewsService
     public void initAllPythonFiles()
     {
         ArrayList<PythonFile> files = getPythonFiles();
+        ArrayList<Task<?>> tasks = new ArrayList<>();
+        int i = 0;
         for (PythonFile f : files)
         {
             // python cannot do multithreaded imports
-            Task task = new Task<>(new CallImportTask(), f, true);
-            task.run();
+            Task<?> task = new Task<>(new CallImportTask(), f, true);
+            //task.run();
+            tasks.add(task);
+            addTask(i, task, false); //Constants.IMPORT_TASK_QUEUE
+            i++;
+        }
+
+        try
+        {
+            waitOnTasks(tasks);
+        }
+        catch (InterruptedException e)
+        {
+            Log.e("APPY", "import tasks interrupted", e);
         }
 
         if (updateListener != null)

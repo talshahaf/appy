@@ -3485,10 +3485,8 @@ static PyObject * logcat_write(PyObject * self, PyObject * args)
     {
         return NULL;
     }
-    int ret = 0;
-    WITHOUTGIL(
-        ret = __android_log_write(level, tag, msg);
-    );
+
+    int ret = __android_log_write(level, tag, msg);
     return Py_BuildValue("i", ret);
 }
 
