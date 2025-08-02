@@ -3160,7 +3160,8 @@ public class Widget extends RemoteViewsService
     public void refreshPythonFile(PythonFile file)
     {
         Task<?> task = new Task<>(new CallImportTask(), file, false);
-        addTask(Constants.IMPORT_TASK_QUEUE, task, false);
+        //random queue in [-9,-2]
+        addTask(-2 - (new Random().nextInt(8)), task, false);
     }
 
     public static Class<?> getUtils()
@@ -3197,32 +3198,7 @@ public class Widget extends RemoteViewsService
 
     public void initAllPythonFiles()
     {
-        ArrayList<PythonFile> files = getPythonFiles();
-        ArrayList<Task<?>> tasks = new ArrayList<>();
-        int i = 0;
-        for (PythonFile f : files)
-        {
-            // python cannot do multithreaded imports
-            Task<?> task = new Task<>(new CallImportTask(), f, true);
-            //task.run();
-            tasks.add(task);
-            addTask(i, task, false); //Constants.IMPORT_TASK_QUEUE
-            i++;
-        }
-
-        try
-        {
-            waitOnTasks(tasks);
-        }
-        catch (InterruptedException e)
-        {
-            Log.e("APPY", "import tasks interrupted", e);
-        }
-
-        if (updateListener != null)
-        {
-            updateListener.refreshManagers();
-        }
+        addTask(-1, new Task<>(new CallInitImportTask()), false);
     }
 
     public void addPythonFiles(ArrayList<PythonFile> files)
@@ -4140,6 +4116,38 @@ public class Widget extends RemoteViewsService
 
         pythonFile.lastErrorDate = new Date();
         savePythonFiles();
+    }
+
+    private class CallInitImportTask implements Runner<Void>
+    {
+        @Override
+        public void run(Void... args)
+        {
+            ArrayList<PythonFile> files = getPythonFiles();
+            ArrayList<Task<?>> tasks = new ArrayList<>();
+            int i = -2; //negative queues to not interfere with widget queues
+            for (PythonFile f : files)
+            {
+                Task<?> task = new Task<>(new CallImportTask(), f, true);
+                tasks.add(task);
+                addTask(i, task, false);
+                i--;
+            }
+
+            try
+            {
+                waitOnTasks(tasks);
+            }
+            catch (InterruptedException e)
+            {
+                Log.e("APPY", "import tasks interrupted", e);
+            }
+
+            if (updateListener != null)
+            {
+                updateListener.initImportFilesDone();
+            }
+        }
     }
 
     private class CallImportTask implements Runner<Object>

@@ -49,7 +49,7 @@ interface WidgetUpdateListener
 
     void recreateWidget(int widgetId);
 
-    void refreshManagers();
+    void initImportFilesDone();
 
     String onError(int widgetId, String error);
 

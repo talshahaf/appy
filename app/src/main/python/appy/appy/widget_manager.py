@@ -324,20 +324,20 @@ def call_general_function(func, **kwargs):
 
 def call_general_function_no_async_run(func, **kwargs):
     return call_general_function_(func, kwargs, False)
-    
+
 def dump_general_function(func, captures):
     #handles f containing captures itself as well, for backward compatibility
     if isinstance(func, (list, tuple)) and len(func) == 2:
         if not hasattr(func[0], '__call__') or not isinstance(func[1], dict):
             raise ValueError('Only <Callable> or (<Callable>, <Capture Dict>) are supported.')
-        
+
         captures = dict(**func[1], **captures) #captures take precedence
         f = func[0]
     elif hasattr(func, '__call__'):
         f = func
     else:
         raise ValueError('Only <Callable> or (<Callable>, <Capture Dict>) are supported.')
-    
+
     return dumps((f, captures))
 
 def deserialize_arg(arg):
@@ -864,6 +864,7 @@ class ChildrenList(elist):
 
 widget_dims = WidgetAttribute()
 
+available_widgets_lock = threading.Lock()
 available_widgets = {}
 
 __importing_module = threading.local()
@@ -914,7 +915,8 @@ def clear_module(path):
         except:
             #destructor should be nothrow
             print(traceback.format_exc())
-    available_widgets = {k:v for k,v in available_widgets.items() if v['pythonfile'] != path}
+    with available_widgets_lock:
+        available_widgets = {k:v for k,v in available_widgets.items() if v['pythonfile'] != path}
     sys.modules.pop(module_name(path), None)
 
 def obtain_manager_state():
@@ -937,13 +939,13 @@ def create_widget(widget_id):
         name = manager_state.chosen[widget_id].name
     widget = widgets.Widget(widget_id, name)
     return widget, manager_state
-    
+
 def get_widget_name(widget_id):
     manager_state = obtain_manager_state()
     if widget_id in manager_state.chosen and manager_state.chosen[widget_id] is not None:
         return manager_state.chosen[widget_id].name
     raise KeyError(f'no such widget {widget_id}')
-    
+
 def get_widgets_by_name(name):
     manager_state = obtain_manager_state()
     return [widget_id for widget_id, chosen in manager_state.chosen.items() if chosen is not None and chosen.name == name]
@@ -951,7 +953,7 @@ def get_widgets_by_name(name):
 def get_all_widget_names():
     manager_state = obtain_manager_state()
     return {widget_id: (chosen.get('name') if chosen else None) for widget_id, chosen in manager_state.chosen.items()}
-    
+
 def choose_widget(widget, name):
     print(f'choosing widget: {widget.widget_id} -> {name}')
     manager_state = obtain_manager_state()
@@ -1052,10 +1054,10 @@ def widget_manager_create(widget, manager_state):
     bg.backgroundResource = R.drawable.rect
     bg.backgroundTint = widgets.color(r=0, g=0, b=0, a=100)
 
-    #calling java releases the gil and available_widgets might be changed while iterating it
-    names = [name for name in available_widgets]
+    with available_widgets_lock:
+        names = [name for name in available_widgets]
 
-    if not available_widgets:
+    if not names:
         lst = widgets.TextView(top=10, left=10, text='No widgets', textColor=0xb3ffffff, textSize=15)
     else:
         lst = widgets.ListView(top=10, left=10, children=[widgets.TextView(text=name, textSize=30, textColor=0xb3ffffff,
@@ -1066,10 +1068,11 @@ def widget_manager_update(widget, manager_state, views, is_app):
     manager_state.chosen.setdefault(widget.widget_id, None)
     chosen = manager_state.chosen[widget.widget_id]
     if chosen is not None and chosen.name is not None:
-        if chosen.name not in available_widgets:
-            raise RuntimeError(f"chosen widget '{chosen.name}' is not loaded")
-        available_widget = available_widgets[chosen.name]
-        on_create, on_update, on_app, debug = available_widget['create'], available_widget['update'], available_widget['on_app'], available_widget['debug']
+        with available_widgets_lock:
+            if chosen.name not in available_widgets:
+                raise RuntimeError(f"chosen widget '{chosen.name}' is not loaded")
+            available_widget = available_widgets[chosen.name]
+            on_create, on_update, on_app, debug = available_widget['create'], available_widget['update'], available_widget['on_app'], available_widget['debug']
         if not chosen.inited:
             try:
                 elements = None
@@ -1107,8 +1110,9 @@ def widget_manager_update(widget, manager_state, views, is_app):
 def widget_manager_callback(widget, manager_state, views, callback_key, **kwargs):
     chosen = manager_state.chosen[widget.widget_id]
     if chosen is not None and chosen.name is not None and chosen.inited:
-        available_widget = available_widgets[chosen.name]
-        cb = available_widget[callback_key]
+        with available_widgets_lock:
+            available_widget = available_widgets[chosen.name]
+            cb = available_widget[callback_key]
         if cb:
             call_general_function(cb, widget=widget, views=views, **kwargs)
     return views
@@ -1120,16 +1124,17 @@ def set_error_to_widget_id(widget_id, error):
         #try to get the create or update functions
         widget, manager_state = create_widget(widget_id)
         chosen = manager_state.chosen.get(widget.widget_id)
-        if chosen is not None and chosen.name is not None and chosen.name in available_widgets:
-            available_widget = available_widgets[chosen.name]
-            func = None
-            if available_widget['create'] is not None:
-                func = available_widget['create']
-            elif available_widget['update'] is not None:
-                func = available_widget['update']
-            if func is not None:
-                if isinstance(func, (list, tuple)):
-                    func = func[0]
+        with available_widgets_lock:
+            if chosen is not None and chosen.name is not None and chosen.name in available_widgets:
+                available_widget = available_widgets[chosen.name]
+                func = None
+                if available_widget['create'] is not None:
+                    func = available_widget['create']
+                elif available_widget['update'] is not None:
+                    func = available_widget['update']
+                if func is not None:
+                    if isinstance(func, (list, tuple)):
+                        func = func[0]
 
     if func is not None:
         return set_module_error(inspect.getmodule(func), error)
@@ -1144,7 +1149,8 @@ def refresh_managers():
             widgets.Widget(widget_id, None).invalidate()
 
 def refresh_widgets(path, removed=False):
-    widget_names = [k for k,v in available_widgets.items() if v['pythonfile'] == path]
+    with available_widgets_lock:
+        widget_names = [k for k,v in available_widgets.items() if v['pythonfile'] == path]
     manager_state = obtain_manager_state()
     chosen_copy = manager_state.chosen.copy()
     for widget_id, chosen in chosen_copy.items():
@@ -1153,6 +1159,41 @@ def refresh_widgets(path, removed=False):
                 unchoose_widget(widget_id)
             widgets.Widget(widget_id, None).invalidate()
     state.save_modified()
+
+
+register_widget_waiters_enabled = True
+register_widget_waiters = {}
+
+def register_for_register_widget(name, f):
+    with available_widgets_lock:
+        if name in available_widgets or not register_widget_waiters_enabled:
+            return False
+        if name not in register_widget_waiters:
+            register_widget_waiters[name] = []
+        register_widget_waiters[name].append(f)
+        return True
+
+def notify_registered_widget(name):
+    callbacks = []
+    with available_widgets_lock:
+        if name in register_widget_waiters:
+            callbacks = register_widget_waiters[name]
+            del register_widget_waiters[name]
+    for callback in callbacks:
+        callback() # simple lambda
+
+def disable_register_widget_waiters():
+    global register_widget_waiters, register_widget_waiters_enabled
+    current = {}
+    with available_widgets_lock:
+        register_widget_waiters_enabled = False
+        current = register_widget_waiters
+        register_widget_waiters = {}
+
+    #flush all waiters
+    for callbacks in current.values():
+        for callback in callbacks:
+            callback()
 
 class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
     def export(self, input, output, attrs):
@@ -1177,6 +1218,14 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
     def onUpdate(self, widget_id, views_java_list, is_app):
         print(f'python got onUpdate', is_app)
         widget, manager_state = create_widget(widget_id)
+
+        if widget.name is not None:
+            # post again if not ready
+            if register_for_register_widget(widget.name, widget.invalidate):
+                # waiting
+                print('not handling update yet')
+                return self.export(None, None, {})
+
         if views_java_list == None: # might by java.Null
             input, views = None, None
         else:
@@ -1225,18 +1274,34 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
     @java.override
     def onTimer(self, timer_id, widget_id, views_java_list, data):
         print('timer called', widget_id, timer_id)
-        input, views = self.import_(views_java_list)
         func = loads(data)
         widget, manager_state = create_widget(widget_id)
+
+        if widget.name is not None:
+            # post again if not ready
+            if register_for_register_widget(widget.name, lambda: widget.post(func)):
+                # waiting
+                print('not handling timer yet')
+                return self.export(None, None, {})
+
+        input, views = self.import_(views_java_list)
         call_general_function(func, timer_id=timer_id, widget=widget, views=views)
         return self.export(input, views, {})
 
     @java.override
     def onPost(self, widget_id, views_java_list, data):
         print('post called')
-        input, views = self.import_(views_java_list)
-        func = loads(data)
         widget, manager_state = create_widget(widget_id)
+        func = loads(data)
+
+        if widget.name is not None:
+            # post again if not ready
+            if register_for_register_widget(widget.name, lambda: widget.post(func)):
+                # waiting
+                print('not handling post yet')
+                return self.export(None, None, {})
+
+        input, views = self.import_(views_java_list)
         call_general_function(func, widget=widget, views=views)
         return self.export(input, views, {})
 
@@ -1291,7 +1356,8 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
         recreate_widget(widget_id)
 
     @java.override
-    def refreshManagers(self):
+    def initImportFilesDone(self):
+        disable_register_widget_waiters()
         refresh_managers()
 
     @java.override
@@ -1307,41 +1373,41 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
             if widget_id == -1:
                 #dont include widget manager's state
                 continue
-                
+
             try:
                 name = get_widget_name(widget_id)
             except KeyError:
                 continue
-            
+
             new_locals.setdefault(name, {})
             new_locals[name][str(widget_id)] = local_state
-            
+
         layout['locals'] = new_locals
-        
+
         #flatten globals
-        
+
         if layout['globals']:
             layout['globals'] = layout['globals']['globals']
-        
+
         #layout:
         #  globals:
         #     {key -> repr(value)}
         #  nonlocals:
-        #     {widget_name -> {key -> repr(value)}}  
+        #     {widget_name -> {key -> repr(value)}}
         #  locals:
         #     {widget_name -> {widget_id -> {key -> repr(value)}}}
         return java.build_java_dict(layout)
-    
+
     @java.override
     def cleanState(self, scope, widget, key):
         if widget == java.Null:
             widget = None
         if key == java.Null:
             key = None
-            
+
         if scope == 'locals' and widget is not None:
             widget = int(widget)
-            
+
         try:
             state.clean_state(scope, widget, key)
         except KeyError:
@@ -1379,7 +1445,7 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
     def getVersion(self):
         return __version__.__version__
 
-            
+
 java_widget_manager = None
 
 def init():
@@ -1392,7 +1458,7 @@ def init():
 
     from . import notifications
     notifications._init()
-    
+
 def java_context():
     return java_widget_manager
 
@@ -1401,7 +1467,7 @@ def reload_python_file(path):
 
 def add_python_file(path):
     return java_context().addPythonFileByPathWithDialog(path)
-    
+
 def register_widget(name, create, update=None, config=None, config_description=None, on_config=None, on_share=None, on_app=None, debug=False):
     if not name or not isinstance(name, str):
         raise ValueError('name must be str')
@@ -1409,9 +1475,6 @@ def register_widget(name, create, update=None, config=None, config_description=N
     path = getattr(__importing_module, 'path', None)
     if path is None:
         raise ValueError('register_widget can only be called on import')
-
-    if name in available_widgets and available_widgets[name]['pythonfile'] != path:
-        raise ValueError(f'name {name} exists')
 
     if config is not None:
         if isinstance(config, dict):
@@ -1429,7 +1492,7 @@ def register_widget(name, create, update=None, config=None, config_description=N
                     raise ValueError(f'{desc} key in config_description is not in config')
         else:
             raise ValueError('config_description must be dict(str: str)')
-    
+
     #validate
     if create is not None:
         dump_general_function(create, {})
@@ -1442,6 +1505,12 @@ def register_widget(name, create, update=None, config=None, config_description=N
     if on_app is not None:
         dump_general_function(on_app, {})
 
-    available_widgets[name] = dict(pythonfile=path, create=create, update=update, on_config=on_config, on_share=on_share, on_app=on_app, debug=bool(debug))
+    with available_widgets_lock:
+        if name in available_widgets and available_widgets[name]['pythonfile'] != path:
+            raise ValueError(f'name {name} exists')
+        available_widgets[name] = dict(pythonfile=path, create=create, update=update, on_config=on_config, on_share=on_share, on_app=on_app, debug=bool(debug))
+
     if config is not None:
         configs.set_defaults(name, config, config_description)
+
+    notify_registered_widget(name)
