@@ -16,6 +16,7 @@
         android:padding="8dp"
         android:requiresFadingEdge="vertical"
         android:verticalSpacing="5dp"
+        android:scrollbars="vertical"
         tools:listitem="@layout/filegrid_item" />
 
     <com.google.android.material.floatingactionbutton.FloatingActionButton

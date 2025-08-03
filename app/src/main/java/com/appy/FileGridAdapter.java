@@ -1,6 +1,7 @@
 package com.appy;
 
 import android.content.Context;
+import android.content.Intent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -88,6 +89,7 @@ public class FileGridAdapter extends BaseAdapter
             viewHolder.info = view.findViewById(R.id.filegrid_info);
             viewHolder.delete = view.findViewById(R.id.filegrid_delete);
             viewHolder.refresh = view.findViewById(R.id.filegrid_refresh);
+            viewHolder.edit = view.findViewById(R.id.filegrid_edit);
             view.setTag(viewHolder);
         }
         else
@@ -123,43 +125,33 @@ public class FileGridAdapter extends BaseAdapter
         viewHolder.layout.setBackgroundTintList(context.getResources().getColorStateList(color));
 
         viewHolder.name.setText(new File(file.path).getName());
-        viewHolder.info.setOnClickListener(new View.OnClickListener()
-        {
-            @Override
-            public void onClick(View v)
+        viewHolder.info.setOnClickListener(v -> {
+            if (listener != null)
             {
-                if (listener != null)
-                {
-                    listener.onInfo(file);
-                }
+                listener.onInfo(file);
             }
         });
-        viewHolder.delete.setOnClickListener(new View.OnClickListener()
-        {
-            @Override
-            public void onClick(View v)
+        viewHolder.delete.setOnClickListener(v -> {
+            if (listener != null)
             {
-                if (listener != null)
-                {
-                    listener.onDelete(file);
-                }
+                listener.onDelete(file);
             }
         });
-        viewHolder.refresh.setOnClickListener(new View.OnClickListener()
-        {
-            @Override
-            public void onClick(View v)
+        viewHolder.refresh.setOnClickListener(v -> {
+            if (listener != null)
             {
-                if (listener != null)
-                {
-                    listener.onRefresh(file);
-                }
+                listener.onRefresh(file);
             }
+        });
+        viewHolder.edit.setOnClickListener(v -> {
+            Intent intent = new Intent(context, FileEditorActivity.class);
+            intent.putExtra(FileEditorActivity.FILE_EDITOR_PATH_EXTRA, file.path);
+            context.startActivity(intent);
         });
         return view;
     }
 
-    class ViewHolder
+    static class ViewHolder
     {
         View layout;
         ImageView icon;
@@ -167,5 +159,6 @@ public class FileGridAdapter extends BaseAdapter
         ImageView info;
         ImageView delete;
         ImageView refresh;
+        ImageView edit;
     }
 }
