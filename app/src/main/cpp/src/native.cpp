@@ -102,10 +102,6 @@ enum Ops
     GET_STATIC_FIELD = 4,
     SET_FIELD = 5,
     SET_STATIC_FIELD = 6,
-    NEW_ARRAY = 7,
-    SET_ITEMS = 8,
-    GET_ITEMS = 9,
-    GET_ARRAY_LENGTH = 10,
 };
 
 struct Parameter
@@ -1432,258 +1428,492 @@ static PyObject * packed_java_primitive_to_python(PyObject * self, PyObject * ar
     return NULL;
 }
 
-struct OptionalJValue
-{
-    jvalue value;
-    bool exists;
-};
-
-#define JNI_ARRAY_FUNCTIONS_CASE(TYPE, Type, jtype, union_name) \
-case TYPE: \
-{ \
-    jint array_len = 0; \
-    if(op == NEW_ARRAY) \
-    { \
-        array_len = values_start + values_len; \
-        array = env->New##Type##Array(array_len); \
-        if(array == NULL) \
-        { \
-            throw jni_exception("failed to create new array"); \
-        } \
-    } \
-    else \
-    { \
-        array_len = env->GetArrayLength((jtype##Array)array); \
-    } \
-\
-    *out_array_len = array_len; \
-\
-    if(op == GET_ARRAY_LENGTH) \
-    { \
-        return NULL; \
-    } \
-\
-    if(values != NULL) \
-    { \
-        jtype * nativearr = env->Get##Type##ArrayElements((jtype##Array)array, NULL); \
-        if(nativearr == NULL) \
-        { \
-            throw jni_exception("failed to get array elements"); \
-        } \
-\
-        if(op == NEW_ARRAY || op == SET_ITEMS) \
-        { \
-            for(int i = values_start; i < values_start + values_len && i < array_len; i++) \
-            { \
-                if(values[i - values_start].exists) \
-                { \
-                    nativearr[i] = values[i - values_start].value.union_name; \
-                } \
-            } \
-        } \
-\
-        if(op == GET_ITEMS) \
-        { \
-            for(int i = values_start; i < values_start + values_len && i < array_len; i++) \
-            { \
-                values[i - values_start].exists = true; \
-                values[i - values_start].value.union_name = nativearr[i]; \
-            } \
-        } \
-        env->Release##Type##ArrayElements((jtype##Array)array, nativearr, 0); \
-    } \
-    if(op == NEW_ARRAY) \
-    { \
-        return make_global_java_ref(env, array); \
-    } \
-    return NULL; \
-}
-
-static jobject
-call_jni_array_functions_impl(JNIEnv * env, jobject array, int type, OptionalJValue * values,
-                              int values_start, int values_len, int op, int * out_array_len,
-                              jclass objectclass)
-{
-
-    switch (type)
-    {
-        JNI_ARRAY_FUNCTIONS_CASE(BOOLEAN, Boolean, jboolean, z)
-        JNI_ARRAY_FUNCTIONS_CASE(BYTE, Byte, jbyte, b)
-        JNI_ARRAY_FUNCTIONS_CASE(CHARACTER, Char, jchar, c)
-        JNI_ARRAY_FUNCTIONS_CASE(SHORT, Short, jshort, s)
-        JNI_ARRAY_FUNCTIONS_CASE(INTEGER, Int, jint, i)
-        JNI_ARRAY_FUNCTIONS_CASE(LONG, Long, jlong, j)
-        JNI_ARRAY_FUNCTIONS_CASE(FLOAT, Float, jfloat, f)
-        JNI_ARRAY_FUNCTIONS_CASE(DOUBLE, Double, jdouble, d)
-        case OBJECT:
-        {
-            jint array_len = 0;
-            if (op == NEW_ARRAY)
-            {
-                array_len = values_start + values_len;
-                array = env->NewObjectArray(array_len, objectclass, NULL);
-                CHECK_JAVA_EXC(env);
-                if (array == NULL)
-                {
-                    throw jni_exception("failed to create new array");
-                }
-            }
-            else
-            {
-                array_len = env->GetArrayLength((jobjectArray) array);
-            }
-
-            *out_array_len = array_len;
-
-            if (op == GET_ARRAY_LENGTH)
-            {
-                return NULL;
-            }
-
-            if (values != NULL)
-            {
-                if (op == NEW_ARRAY || op == SET_ITEMS)
-                {
-                    for (int i = values_start;
-                         i < values_start + values_len && i < array_len; i++)
-                    {
-                        if (values[i - values_start].exists)
-                        {
-                            env->SetObjectArrayElement((jobjectArray) array, i,
-                                                       values[i - values_start].value.l);
-                            CHECK_JAVA_EXC(env);
-                        }
-                    }
-                }
-
-                if (op == GET_ITEMS)
-                {
-                    for (int i = values_start;
-                         i < values_start + values_len && i < array_len; i++)
-                    {
-                        jobject l = env->GetObjectArrayElement((jobjectArray) array, i);
-                        CHECK_JAVA_EXC(env);
-                        if (l == NULL)
-                        {
-                            values[i - values_start].value.l = NULL;
-                            values[i - values_start].exists = false;
-                        }
-                        else
-                        {
-                            values[i - values_start].value.l = make_global_java_ref(env, l);
-                            values[i - values_start].exists = true;
-                        }
-                    }
-                }
-            }
-            if (op == NEW_ARRAY)
-            {
-                return make_global_java_ref(env, array);
-            }
-            return NULL;
-        }
-    }
-    throw jni_exception("unknown type");
-}
-
-static PyObject * call_jni_array_functions(PyObject * self, PyObject * args)
+static PyObject * jni_array_length(PyObject * self, PyObject * args)
 {
     try
     {
-        static_assert(sizeof(jvalue) == sizeof(unsigned long long));
-
-        OptionalJValue * jvalues = NULL;
-        scope_guards onexit;
-
         unsigned long obj = 0;
-        PyObject * values = NULL;
-        int start = 0;
-        int type = 0;
-        int op = 0;
-        unsigned long objclass = 0;
-
-        if (!PyArg_ParseTuple(args, "kOiiik", &obj, &values, &start, &type, &op, &objclass))
+        if (!PyArg_ParseTuple(args, "k", &obj))
         {
             return NULL;
         }
 
-        Py_ssize_t value_num = 0;
-        if (values != Py_None)
+        GET_JNI_ENV();
+        int array_len = env->GetArrayLength((jarray)obj);
+        return PyLong_FromLong(array_len);
+    }
+    catch (java_exception & e)
+    {
+        PyErr_SetString(PyExc_RuntimeError, e.what());
+    }
+    catch (jni_exception & e)
+    {
+        PyErr_SetString(PyExc_RuntimeError, e.what());
+    }
+    return NULL;
+}
+
+static PyObject * jni_new_object_array(PyObject * self, PyObject * args)
+{
+    try
+    {
+        unsigned long objectclass = 0;
+        int len = 0;
+        if (!PyArg_ParseTuple(args, "ki", &objectclass, &len))
         {
-            if (!PyTuple_Check(values))
-            {
-                PyErr_SetString(PyExc_ValueError, "values must be a tuple");
-                return NULL;
-            }
-
-            value_num = PyTuple_Size(values);
-            if (value_num > 0)
-            {
-                jvalues = new OptionalJValue[value_num];
-                onexit += [&jvalues] {
-                    if (jvalues != NULL)
-                    {
-                        delete[] jvalues;
-                        jvalues = NULL;
-                    }
-                };
-
-                for (Py_ssize_t i = 0; i < value_num; i++)
-                {
-                    PyObject * item = PyTuple_GetItem(values, i);
-                    if (item == Py_None)
-                    {
-                        jvalues[i].exists = false;
-                    }
-                    else
-                    {
-                        if (!PyLong_Check(item))
-                        {
-                            PyErr_SetString(PyExc_ValueError, "value must be long");
-                            return NULL;
-                        }
-
-                        unsigned long long lng = PyLong_AsUnsignedLongLong(item);
-                        memcpy(&jvalues[i].value, &lng, sizeof(lng));
-                        jvalues[i].exists = true;
-                    }
-                }
-            }
+            return NULL;
         }
 
-        PyObject * out_tuple = PyTuple_New(value_num);
+        GET_JNI_ENV();
+        jobjectArray array = env->NewObjectArray(len, (jclass)objectclass, NULL);
+        CHECK_JAVA_EXC(env);
+        if (array == NULL)
+        {
+            PyErr_SetString(PyExc_RuntimeError, "failed to create new array");
+            return NULL;
+        }
+
+        return PyLong_FromUnsignedLong((unsigned long)make_global_java_ref(env, array));
+    }
+    catch (java_exception & e)
+    {
+        PyErr_SetString(PyExc_RuntimeError, e.what());
+    }
+    catch (jni_exception & e)
+    {
+        PyErr_SetString(PyExc_RuntimeError, e.what());
+    }
+    return NULL;
+}
+
+static PyObject * jni_new_native_array(PyObject * self, PyObject * args)
+{
+    try
+    {
+        int type = 0;
+        int len = 0;
+        if (!PyArg_ParseTuple(args, "ii", &type, &len))
+        {
+            return NULL;
+        }
+
+        GET_JNI_ENV();
+        jarray array = NULL;
+        switch (type)
+        {
+            case BOOLEAN:
+                array = env->NewBooleanArray(len);
+                break;
+            case BYTE:
+                array = env->NewByteArray(len);
+                break;
+            case CHARACTER:
+                array = env->NewCharArray(len);
+                break;
+            case SHORT:
+                array = env->NewShortArray(len);
+                break;
+            case INTEGER:
+                array = env->NewIntArray(len);
+                break;
+            case LONG:
+                array = env->NewLongArray(len);
+                break;
+            case FLOAT:
+                array = env->NewFloatArray(len);
+                break;
+            case DOUBLE:
+                array = env->NewDoubleArray(len);
+                break;
+            default:
+                break;
+        }
+
+        CHECK_JAVA_EXC(env);
+        if (array == NULL)
+        {
+            PyErr_SetString(PyExc_RuntimeError, "failed to create new array");
+            return NULL;
+        }
+
+        return PyLong_FromUnsignedLong((unsigned long)make_global_java_ref(env, array));
+    }
+    catch (java_exception & e)
+    {
+        PyErr_SetString(PyExc_RuntimeError, e.what());
+    }
+    catch (jni_exception & e)
+    {
+        PyErr_SetString(PyExc_RuntimeError, e.what());
+    }
+    return NULL;
+}
+
+static PyObject * jni_get_object_array_elements(PyObject * self, PyObject * args)
+{
+    try
+    {
+        unsigned long array = 0;
+        int start = 0;
+        int len = 0;
+        if (!PyArg_ParseTuple(args, "kii", &array, &start, &len))
+        {
+            return NULL;
+        }
+
+        PyObject * out_tuple = PyTuple_New(len);
         if (out_tuple == NULL)
         {
             return NULL;
         }
 
-        GET_JNI_ENV_WITHOUT_SCOPES();
-        int out_array_len = 0;
-        jobject ret = 0;
-        WITHOUTGIL(
-            ret = call_jni_array_functions_impl(env, (jobject) obj, type, jvalues, start,
-                                                    value_num, op, &out_array_len,
-                                                    (jclass) objclass);
-        );
+        GET_JNI_ENV();
 
-        for (Py_ssize_t i = 0; i < value_num; ++i)
+        for (int i = 0; i < len; i++)
         {
-            if (jvalues[i].exists)
+            jobject element = env->GetObjectArrayElement((jobjectArray) array, start + i);
+            if (element == NULL)
             {
-                PyTuple_SET_ITEM(out_tuple, i, unpacked_jvalue_to_python(jvalues[i].value, type));
+                PyTuple_SET_ITEM(out_tuple, i, Py_None);
             }
             else
             {
-                Py_INCREF(Py_None);
-                PyTuple_SET_ITEM(out_tuple, i, Py_None);
+                PyTuple_SET_ITEM(out_tuple, i, PyLong_FromUnsignedLong((unsigned long) make_global_java_ref(env, element)));
             }
         }
 
-        if (ret == NULL)
+        return out_tuple;
+    }
+    catch (java_exception & e)
+    {
+        PyErr_SetString(PyExc_RuntimeError, e.what());
+    }
+    catch (jni_exception & e)
+    {
+        PyErr_SetString(PyExc_RuntimeError, e.what());
+    }
+    return NULL;
+}
+
+static PyObject * jni_set_object_array_elements(PyObject * self, PyObject * args)
+{
+    try
+    {
+        unsigned long array = 0;
+        int start = 0;
+        PyObject * values;
+        if (!PyArg_ParseTuple(args, "kiO", &array, &start, &values))
         {
-            ret = (jobject) obj;
+            return NULL;
         }
-        return Py_BuildValue("ikN", out_array_len, (unsigned long) ret, out_tuple);
+
+        if (values == Py_None)
+        {
+            PyErr_SetString(PyExc_ValueError, "values cannot be None");
+            return NULL;
+        }
+
+        if (!PyTuple_Check(values))
+        {
+            PyErr_SetString(PyExc_ValueError, "values must be a tuple");
+            return NULL;
+        }
+
+        int len = PyTuple_GET_SIZE(values);
+
+        GET_JNI_ENV();
+
+        if (env->GetArrayLength((jobjectArray)array) < start + len) {
+            PyErr_SetString(PyExc_ValueError, "set array call out of bounds");
+            return NULL;
+        }
+
+        for (int i = 0; i < len; i++)
+        {
+            PyObject * item = PyTuple_GetItem(values, i);
+            if (item != Py_None)
+            {
+                if (!PyLong_Check(item))
+                {
+                    PyErr_SetString(PyExc_ValueError, "values elements must be long");
+                    return NULL;
+                }
+                env->SetObjectArrayElement((jobjectArray) array, start + i, (jobject)PyLong_AsUnsignedLongLong(item));
+            }
+        }
+
+        return Py_None;
+    }
+    catch (java_exception & e)
+    {
+        PyErr_SetString(PyExc_RuntimeError, e.what());
+    }
+    catch (jni_exception & e)
+    {
+        PyErr_SetString(PyExc_RuntimeError, e.what());
+    }
+    return NULL;
+}
+
+static PyObject * jni_get_native_array_elements(PyObject * self, PyObject * args)
+{
+    try
+    {
+        unsigned long array = 0;
+        int type = 0;
+        int start = 0;
+        int len = 0;
+        if (!PyArg_ParseTuple(args, "kiii", &array, &type, &start, &len))
+        {
+            return NULL;
+        }
+
+        GET_JNI_ENV();
+
+        void * mem = NULL;
+        unsigned int element_size = 0;
+        switch(type)
+        {
+            case BOOLEAN:
+                mem = env->GetBooleanArrayElements((jbooleanArray)array, NULL);
+                element_size = 1;
+                break;
+            case BYTE:
+                mem = env->GetByteArrayElements((jbyteArray)array, NULL);
+                element_size = 1;
+                break;
+            case CHARACTER:
+                mem = env->GetCharArrayElements((jcharArray)array, NULL);
+                element_size = 2;
+                break;
+            case SHORT:
+                mem = env->GetShortArrayElements((jshortArray)array, NULL);
+                element_size = 2;
+                break;
+            case INTEGER:
+                mem = env->GetIntArrayElements((jintArray)array, NULL);
+                element_size = 4;
+                break;
+            case LONG:
+                mem = env->GetLongArrayElements((jlongArray)array, NULL);
+                element_size = 8;
+                break;
+            case FLOAT:
+                mem = env->GetFloatArrayElements((jfloatArray)array, NULL);
+                element_size = 4;
+                break;
+            case DOUBLE:
+                mem = env->GetDoubleArrayElements((jdoubleArray)array, NULL);
+                element_size = 8;
+                break;
+            default:
+                PyErr_SetString(PyExc_ValueError, "unknown native type");
+                return NULL;
+        }
+
+        if (mem == NULL)
+        {
+            PyErr_SetString(PyExc_ValueError, "Get array elements is NULL");
+            return NULL;
+        }
+
+        CHECK_JAVA_EXC(env);
+
+        PyObject * out = PyBytes_FromStringAndSize(&(((const char *)mem)[start * element_size]), len * element_size);
+
+        switch(type)
+        {
+            case BOOLEAN:
+                env->ReleaseBooleanArrayElements((jbooleanArray)array, (jboolean *)mem, JNI_ABORT);
+                break;
+            case BYTE:
+                env->ReleaseByteArrayElements((jbyteArray)array, (jbyte *)mem, JNI_ABORT);
+                break;
+            case CHARACTER:
+                env->ReleaseCharArrayElements((jcharArray)array, (jchar *)mem, JNI_ABORT);
+                break;
+            case SHORT:
+                env->ReleaseShortArrayElements((jshortArray)array, (jshort *)mem, JNI_ABORT);
+                break;
+            case INTEGER:
+                env->ReleaseIntArrayElements((jintArray)array, (jint *)mem, JNI_ABORT);
+                break;
+            case LONG:
+                env->ReleaseLongArrayElements((jlongArray)array, (jlong *)mem, JNI_ABORT);
+                break;
+            case FLOAT:
+                env->ReleaseFloatArrayElements((jfloatArray)array, (jfloat *)mem, JNI_ABORT);
+                break;
+            case DOUBLE:
+                env->ReleaseDoubleArrayElements((jdoubleArray)array, (jdouble *)mem, JNI_ABORT);
+                break;
+        }
+
+        if (out == NULL)
+        {
+            return NULL;
+        }
+        return out;
+    }
+    catch (java_exception & e)
+    {
+        PyErr_SetString(PyExc_RuntimeError, e.what());
+    }
+    catch (jni_exception & e)
+    {
+        PyErr_SetString(PyExc_RuntimeError, e.what());
+    }
+    return NULL;
+}
+
+static PyObject * jni_set_native_array_elements(PyObject * self, PyObject * args)
+{
+    try
+    {
+        unsigned long array = 0;
+        int type = 0;
+        int start = 0;
+        PyObject * bytes = NULL;
+        if (!PyArg_ParseTuple(args, "kiiO", &array, &type, &start, &bytes))
+        {
+            return NULL;
+        }
+
+        if (!PyBytes_Check(bytes))
+        {
+            PyErr_SetString(PyExc_ValueError, "arg is not bytes");
+            return NULL;
+        }
+
+        unsigned int element_size = 0;
+        switch(type)
+        {
+            case BOOLEAN:
+                element_size = 1;
+                break;
+            case BYTE:
+                element_size = 1;
+                break;
+            case CHARACTER:
+                element_size = 2;
+                break;
+            case SHORT:
+                element_size = 2;
+                break;
+            case INTEGER:
+                element_size = 4;
+                break;
+            case LONG:
+                element_size = 8;
+                break;
+            case FLOAT:
+                element_size = 4;
+                break;
+            case DOUBLE:
+                element_size = 8;
+                break;
+            default:
+                PyErr_SetString(PyExc_ValueError, "unknown native type");
+                return NULL;
+        }
+
+        int input_size = PyBytes_GET_SIZE(bytes);
+        const char * input = PyBytes_AS_STRING(bytes);
+        if (input == NULL)
+        {
+            return NULL;
+        }
+
+        if ((input_size % element_size) != 0)
+        {
+            PyErr_SetString(PyExc_ValueError, "bad byte array size");
+            return NULL;
+        }
+
+        GET_JNI_ENV();
+
+        int arraylen = env->GetArrayLength((jarray)array);
+        if (arraylen < start + (input_size / element_size)) {
+            PyErr_SetString(PyExc_ValueError, "set array call out of bounds");
+            return NULL;
+        }
+
+        void * mem = NULL;
+        switch(type)
+        {
+            case BOOLEAN:
+                mem = env->GetBooleanArrayElements((jbooleanArray)array, NULL);
+                element_size = 1;
+                break;
+            case BYTE:
+                mem = env->GetByteArrayElements((jbyteArray)array, NULL);
+                element_size = 1;
+                break;
+            case CHARACTER:
+                mem = env->GetCharArrayElements((jcharArray)array, NULL);
+                element_size = 2;
+                break;
+            case SHORT:
+                mem = env->GetShortArrayElements((jshortArray)array, NULL);
+                element_size = 2;
+                break;
+            case INTEGER:
+                mem = env->GetIntArrayElements((jintArray)array, NULL);
+                element_size = 4;
+                break;
+            case LONG:
+                mem = env->GetLongArrayElements((jlongArray)array, NULL);
+                element_size = 8;
+                break;
+            case FLOAT:
+                mem = env->GetFloatArrayElements((jfloatArray)array, NULL);
+                element_size = 4;
+                break;
+            case DOUBLE:
+                mem = env->GetDoubleArrayElements((jdoubleArray)array, NULL);
+                element_size = 8;
+                break;
+        }
+
+        if (mem == NULL)
+        {
+            PyErr_SetString(PyExc_ValueError, "jni get array elements is NULL");
+            return NULL;
+        }
+
+        CHECK_JAVA_EXC(env);
+
+        memcpy((char *)mem + (start * element_size), input, input_size);
+
+        switch(type)
+        {
+            case BOOLEAN:
+                env->ReleaseBooleanArrayElements((jbooleanArray)array, (jboolean *)mem, 0);
+                break;
+            case BYTE:
+                env->ReleaseByteArrayElements((jbyteArray)array, (jbyte *)mem, 0);
+                break;
+            case CHARACTER:
+                env->ReleaseCharArrayElements((jcharArray)array, (jchar *)mem, 0);
+                break;
+            case SHORT:
+                env->ReleaseShortArrayElements((jshortArray)array, (jshort *)mem, 0);
+                break;
+            case INTEGER:
+                env->ReleaseIntArrayElements((jintArray)array, (jint *)mem, 0);
+                break;
+            case LONG:
+                env->ReleaseLongArrayElements((jlongArray)array, (jlong *)mem, 0);
+                break;
+            case FLOAT:
+                env->ReleaseFloatArrayElements((jfloatArray)array, (jfloat *)mem, 0);
+                break;
+            case DOUBLE:
+                env->ReleaseDoubleArrayElements((jdoubleArray)array, (jdouble *)mem, 0);
+                break;
+        }
+
+        return Py_None;
     }
     catch (java_exception & e)
     {
@@ -1922,8 +2152,7 @@ static jstring char_array_to_jstring(const char * str, int len)
     populate_common_java_objects(env);
 
     jbyteArray barr = env->NewByteArray(len);
-    if (barr == NULL) \
-
+    if (barr == NULL)
     {
         throw jni_exception("failed to create byte array");
     }
@@ -3504,15 +3733,21 @@ static PyObject * PyThreadState_SetAsyncExc_(PyObject * self, PyObject * args)
 }
 
 static PyMethodDef native_appy_methods[] = {
-        {"call_jni_object_functions",       call_jni_object_functions,       METH_VARARGS, "Interacts with java objects"},
-        {"get_methodid",                    get_methodid,                    METH_VARARGS, "Finds a java method id"},
-        {"get_fieldid",                     get_fieldid,                     METH_VARARGS, "Finds a java field id"},
-        {"find_class",                      find_class,                      METH_VARARGS, "Finds a java class"},
-        {"get_object_class",                get_object_class,                METH_VARARGS, "Retrieves the object's class"},
-        {"python_to_packed_java_primitive", python_to_packed_java_primitive, METH_VARARGS, "Turns a python object into a corresponding java object"},
-        {"packed_java_primitive_to_python", packed_java_primitive_to_python, METH_VARARGS, "Turns a java object into the corresponding python object"},
-        {"python_to_unpacked_jvalue",       python_to_unpacked_jvalue,       METH_VARARGS, "Turns a python object into a corresponding jvalue"},
-        {"call_jni_array_functions",        call_jni_array_functions,        METH_VARARGS, "Interacts with java arrays"},
+        {"call_jni_object_functions",       call_jni_object_functions,        METH_VARARGS, "Interacts with java objects"},
+        {"get_methodid",                    get_methodid,                     METH_VARARGS, "Finds a java method id"},
+        {"get_fieldid",                     get_fieldid,                      METH_VARARGS, "Finds a java field id"},
+        {"find_class",                      find_class,                       METH_VARARGS, "Finds a java class"},
+        {"get_object_class",                get_object_class,                 METH_VARARGS, "Retrieves the object's class"},
+        {"python_to_packed_java_primitive", python_to_packed_java_primitive,  METH_VARARGS, "Turns a python object into a corresponding java object"},
+        {"packed_java_primitive_to_python", packed_java_primitive_to_python,  METH_VARARGS, "Turns a java object into the corresponding python object"},
+        {"python_to_unpacked_jvalue",       python_to_unpacked_jvalue,        METH_VARARGS, "Turns a python object into a corresponding jvalue"},
+        {"jni_array_length",                jni_array_length,                 METH_VARARGS, "Get java array length"},
+        {"jni_new_object_array",            jni_new_object_array,             METH_VARARGS, "Creates a new java object array"},
+        {"jni_new_native_array",            jni_new_native_array,            METH_VARARGS, "Creates a new java native type array"},
+        {"jni_get_object_array_elements",   jni_get_object_array_elements,   METH_VARARGS, "Get java array object elements"},
+        {"jni_set_object_array_elements",   jni_set_object_array_elements,   METH_VARARGS, "Set java array object elements"},
+        {"jni_get_native_array_elements",   jni_get_native_array_elements,   METH_VARARGS, "Get java array native type elements as bytes"},
+        {"jni_set_native_array_elements",   jni_set_native_array_elements,   METH_VARARGS, "Set java array native type elements from bytes"},
         {"unpack_primitive_class",          unpack_primitive_class,          METH_VARARGS, "unpacks a java primitive class to a java type (Integer -> int)"},
         {"delete_global_ref",               delete_global_ref,               METH_VARARGS, "Delete a java reference"},
         {"new_global_ref",                  new_global_ref,                  METH_VARARGS, "created a new global reference (should be used only on callbacks)"},

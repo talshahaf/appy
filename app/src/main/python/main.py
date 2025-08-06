@@ -182,6 +182,7 @@ def do_init():
     Thread(target=lambda: install_optional_packages(True)).start()
 
     print('appy init start')
+    #appy.java.tests()
     appy.do_init()
     print('python main end')
 

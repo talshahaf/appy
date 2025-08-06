@@ -285,26 +285,29 @@ class Array(Object):
         self.__dict__['length'] = self.__bridge__.length
         
     def __eq__(self, other):
-        return self[:] == other
+        return [a == b for a,b in zip(self[:], other)]
         
     def __bool__(self):
-        return bool(self[:])
+        return len(self) != 0
 
     def __len__(self):
         return self.__bridge__.length
 
     def __getitem__(self, key):
         items = self.__bridge__[key]
+        if self.__bridge__.primitive:
+            return items
         if isinstance(key, slice):
             return tuple(wrap(item)[0] for item in items)
         else:
             return wrap(items)[0]
 
     def __setitem__(self, key, value):
-        if isinstance(key, slice):
-            value = unwrap_args(value)
-        else:
-            value = unwrap(value)
+        if not self.__bridge__.primitive:
+            if isinstance(key, slice):
+                value = unwrap_args(value)
+            else:
+                value = unwrap(value)
         self.__bridge__[key] = value
 
 class ByteArray(Array):

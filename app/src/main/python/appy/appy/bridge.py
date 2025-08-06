@@ -2,6 +2,8 @@ import time
 import traceback
 import native_appy
 
+import numpy as np # for array conversions
+
 known_classes = {}
 known_methods = {}
 known_fields = {}
@@ -165,10 +167,6 @@ OP_GET_FIELD = 3
 OP_GET_STATIC_FIELD = 4
 OP_SET_FIELD = 5
 OP_SET_STATIC_FIELD = 6
-OP_NEW_ARRAY = 7
-OP_SET_ITEMS = 8
-OP_GET_ITEMS = 9
-OP_GET_ARRAY_LENGTH = 10
 
 primitive_codes = {
     'object': -1,
@@ -206,6 +204,17 @@ primitive_code_to_array = {
     primitive_codes['double']:  find_class('[D'),
 }
 
+primitive_code_to_np_dtype = {
+    primitive_codes['boolean']: np.uint8,
+    primitive_codes['byte']:    np.int8,
+    primitive_codes['char']:    np.uint16,
+    primitive_codes['short']:   np.int16,
+    primitive_codes['int']:     np.int32,
+    primitive_codes['long']:    np.int64,
+    primitive_codes['float']:   np.float32,
+    primitive_codes['double']:  np.float64,
+}
+
 class meta_primitive(type):
     def __new__(cls, *args, **kwargs):
         inst = type.__new__(cls, *args, **kwargs)
@@ -228,6 +237,12 @@ class jprimitive(metaclass=meta_primitive):
         return self.value.__gt__(other)
     def __ge__(self, other):
         return self.value.__ge__(other)
+    def __int__(self):
+        return int(self.value)
+    def __float__(self):
+        return float(self.value)
+    def __bool__(self):
+        return bool(self.value)
 
 class jboolean(jprimitive):
     def __init__(self, v):
@@ -421,7 +436,7 @@ class array(jobjectbase):
     @property
     def length(self):
         if self._length is None:
-            self._length, _, _ = native_appy.call_jni_array_functions(self.ref.handle, tuple(), 0, self.type_code, OP_GET_ARRAY_LENGTH, JNULL.ref.handle)
+            self._length = native_appy.jni_array_length(self.ref.handle)
         return self._length
 
     @property
@@ -431,12 +446,17 @@ class array(jobjectbase):
         else:
             return find_primitive_array(self.type_code)
 
+    @property
+    def primitive(self):
+        return not code_is_object(self.type_code)
+
     #the tuple in native_appy.array must contain elements waiting to be filled with make_value, and None if it shouldn't be read from java at all
     #therefore, None should never be actually passed from outside and will be changed to JNULL
     def __setitem__(self, key, items):
         if isinstance(key, slice):
             start, stop, step = key.indices(self.length)
-            items = list(items)
+            if not hasattr(items, '__len__'):
+                items = list(items)
             if step != 1:
                 raise ValueError('only step = 1 are supported')
             if len(items) != stop - start:
@@ -447,10 +467,18 @@ class array(jobjectbase):
         else:
             raise IndexError(f'invalid index: {key}')
 
-        args = tuple(convert_arg(item) for item in items)
-        values = tuple(prepare_value(arg, self.type_code, t) for arg, _, t in args)
-
-        native_appy.call_jni_array_functions(self.ref.handle, tuple(v for v, _ in values), start, self.type_code, OP_SET_ITEMS, JNULL.ref.handle)
+        if code_is_object(self.type_code):
+            args = tuple(convert_arg(item) for item in items)
+            values = tuple(prepare_value(arg, self.type_code, t) for arg, _, t in args)
+            native_appy.jni_set_object_array_elements(self.ref.handle, start, tuple(v for v, _ in values))
+        else:
+            if self.type_code in (primitive_codes['byte'], primitive_codes['char']) and isinstance(items, bytes):
+                b = items
+            elif self.type_code == primitive_codes['char']:
+                b = np.array([ord(i) if isinstance(i, (str, bytes)) else i for i in items], dtype=np.uint16).tobytes()
+            else:
+                b = np.array(items, dtype=primitive_code_to_np_dtype[self.type_code]).tobytes()
+            native_appy.jni_set_native_array_elements(self.ref.handle, self.type_code, start, b)
 
     #the tuple returned by native_appy.array will contain primitives, jobject or None to denote NULL
     def __getitem__(self, key):
@@ -467,11 +495,15 @@ class array(jobjectbase):
         else:
             raise IndexError('invalid index: {key}')
 
-        array_len, obj, elements = native_appy.call_jni_array_functions(self.ref.handle, (0,) * (stop - start), start, self.type_code, OP_GET_ITEMS, JNULL.ref.handle)
-
         if code_is_object(self.type_code):
+            elements = native_appy.jni_get_object_array_elements(self.ref.handle, start, stop - start)
             elements = tuple(upcast(jobject(jref(e), 'array element')) if e is not None else None for e in elements)
-
+        else:
+            b = native_appy.jni_get_native_array_elements(self.ref.handle, self.type_code, start, stop - start)
+            if self.type_code == primitive_codes['byte']:
+                elements = b
+            else:
+                elements = np.frombuffer(b, dtype=primitive_code_to_np_dtype[self.type_code])
         if isinstance(key, int):
             return elements[0]
         return elements
@@ -491,8 +523,11 @@ def make_array(l, type_code_or_clazz):
     else:
         raise ValueError('must be primitive code or class')
 
-    array_len, obj, elements = native_appy.call_jni_array_functions(JNULL.ref.handle, (None,) * l, 0, type_code, OP_NEW_ARRAY, clazz_obj.ref.handle)
-    return array(jref(obj), type_code, type_unboxed_code, clazz_obj, array_len)
+    if code_is_object(type_code):
+        obj = native_appy.jni_new_object_array(clazz_obj.ref.handle, l)
+    else:
+        obj = native_appy.jni_new_native_array(type_code, l)
+    return array(jref(obj), type_code, type_unboxed_code, clazz_obj, l)
 
 def upcast(obj):
     if obj is None:
@@ -669,20 +704,20 @@ def tests():
         arr[pos : arr.length] = list(range(40, 40 + arr.length - pos))
         items = arr[0:arr.length]
         print('arr1', items)
-        assert(items == (0, 40, 41, 42, 43))
+        assert(tuple(items) == (0, 40, 41, 42, 43))
 
         arr = make_array(5, find_class('java.lang.Long'))
         assert(type(arr) == array)
 
         items = arr[0:arr.length]
         print('arr2', items)
-        assert(items == (None,) * 5)
+        assert(tuple(items) == (None,) * 5)
 
         arr[pos : arr.length] = list(jlong(i) for i in range(40, 40 + arr.length - pos))
 
         items = arr[0:arr.length]
         print('arr2 2', items)
-        assert(items == (None, 40, 41, 42, 43))
+        assert(tuple(items) == (None, 40, 41, 42, 43))
 
     def test6():
         pos = 1
