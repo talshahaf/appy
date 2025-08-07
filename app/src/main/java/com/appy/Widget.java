@@ -1498,7 +1498,12 @@ public class Widget extends RemoteViewsService
                         Attributes referenceAttributes;
                         if (reference.id != -1)
                         {
-                            referenceAttributes = find(dynamicList, reference.id).attributes;
+                            DynamicView view = find(dynamicList, reference.id);
+                            if (view == null)
+                            {
+                                throw new RuntimeException("View with id " + reference.id + " not found. Did you forget to include it?");
+                            }
+                            referenceAttributes = view.attributes;
                         }
                         else
                         {
@@ -1646,6 +1651,10 @@ public class Widget extends RemoteViewsService
                 }
 
                 DynamicView dynamicView = find(dynamicList, dynamicViewId);
+                if (dynamicView == null)
+                {
+                    throw new RuntimeException("View with id " + dynamicViewId + " not found. Did you forget to include it?");
+                }
 
                 double viewWidth = view.getMeasuredWidth();
                 double viewHeight = view.getMeasuredHeight();
@@ -3872,10 +3881,11 @@ public class Widget extends RemoteViewsService
         ArrayList<DynamicView> views = new ArrayList<>();
 
         DynamicView errorText = new DynamicView("TextView");
-        addMethodCall(errorText, "setText", "Error occurred");
+        addMethodCall(errorText, "setText", "Error occurred.");
         addMethodCall(errorText, "setTextColor", Constants.TEXT_COLOR);
+        addMethodCall(errorText, "setTextSize", "8sp");
         errorText.attributes.attributes.put(Attributes.Type.TOP, attributeParse("5"));
-        errorText.attributes.attributes.put(Attributes.Type.LEFT, attributeParse("5"));
+        errorText.attributes.attributes.put(Attributes.Type.LEFT, attributeParse("w(p)*0.5+w(" + errorText.getId() + ")*-0.5"));
 
         DynamicView openApp = new DynamicView("ImageView");
         addMethodCall(openApp, "setImageResource", R.mipmap.ic_launcher_foreground);
@@ -3892,27 +3902,27 @@ public class Widget extends RemoteViewsService
         {
             Attributes.AttributeValue afterText = attributeParse("h(" + errorText.getId() + ")+10");
 
-            DynamicView clear = new DynamicView("Button");
-            addMethodCall(clear, "setText", "Clear");
-            addMethodCall(clear, "setBackgroundResource", R.drawable.drawable_dark_btn);
-            addMethodCall(clear, "setTextColor", 0xffffffff);
-            addMethodCall(clear, "setTextSize", "10sp");
-            clear.methodCalls.add(new RemoteMethodCall("setViewPadding", false, "setViewPadding", "16sp", "12sp", "16sp", "12sp"));
-            clear.attributes.attributes.put(Attributes.Type.TOP, afterText);
-            clear.attributes.attributes.put(Attributes.Type.LEFT, attributeParse("l(p)"));
-            clear.tag = Constants.SPECIAL_WIDGET_CLEAR + "," + widgetId;
+            DynamicView recreate = new DynamicView("Button");
+            addMethodCall(recreate, "setText", "Recreate");
+            addMethodCall(recreate, "setBackgroundResource", R.drawable.drawable_dark_btn);
+            addMethodCall(recreate, "setTextColor", 0xffffffff);
+            addMethodCall(recreate, "setTextSize", "8sp");
+            recreate.methodCalls.add(new RemoteMethodCall("setViewPadding", false, "setViewPadding", "16sp", "12sp", "16sp", "12sp"));
+            recreate.attributes.attributes.put(Attributes.Type.TOP, afterText);
+            recreate.attributes.attributes.put(Attributes.Type.RIGHT, attributeParse("0"));
+            recreate.tag = Constants.SPECIAL_WIDGET_RECREATE + "," + widgetId;
 
             DynamicView reload = new DynamicView("Button");
             addMethodCall(reload, "setText", "Reload");
             addMethodCall(reload, "setBackgroundResource", R.drawable.drawable_info_btn);
             addMethodCall(reload, "setTextColor", 0xffffffff);
-            addMethodCall(reload, "setTextSize", "10sp");
+            addMethodCall(reload, "setTextSize", "8sp");
             reload.methodCalls.add(new RemoteMethodCall("setViewPadding", false, "setViewPadding", "16sp", "12sp", "16sp", "12sp"));
             reload.attributes.attributes.put(Attributes.Type.TOP, afterText);
-            reload.attributes.attributes.put(Attributes.Type.RIGHT, attributeParse("0"));
+            reload.attributes.attributes.put(Attributes.Type.LEFT, attributeParse("0"));
             reload.tag = Constants.SPECIAL_WIDGET_RELOAD + "," + widgetId;
 
-            views.add(clear);
+            views.add(recreate);
             views.add(reload);
         }
 
@@ -4872,6 +4882,21 @@ public class Widget extends RemoteViewsService
                                                 int widgetId = Integer.parseInt(arg);
                                                 Log.d("APPY", "clearing " + widgetId);
                                                 clearWidget(widgetId);
+                                            }
+                                            catch (NumberFormatException ignored)
+                                            {
+
+                                            }
+                                        }
+                                        break;
+                                    case Constants.SPECIAL_WIDGET_RECREATE:
+                                        if (arg != null)
+                                        {
+                                            try
+                                            {
+                                                int widgetId = Integer.parseInt(arg);
+                                                Log.d("APPY", "recreating " + widgetId);
+                                                recreateWidget(widgetId);
                                             }
                                             catch (NumberFormatException ignored)
                                             {

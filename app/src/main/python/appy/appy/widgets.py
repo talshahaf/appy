@@ -156,7 +156,7 @@ class Widget:
 
     def invoke_item_click(self, element, position):
         self.post(self.itemclick_invoker, element_id=element.id, position=position)
-    
+
     @staticmethod
     def by_id(widget_id):
         return Widget(widget_id, widget_manager.get_widget_name(widget_id))

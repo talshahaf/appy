@@ -75,6 +75,7 @@ public class Constants
     public static final int SPECIAL_WIDGET_RELOAD = 3;
     public static final int SPECIAL_WIDGET_SHOWERROR = 4;
     public static final int SPECIAL_WIDGET_OPENAPP = 5;
+    public static final int SPECIAL_WIDGET_RECREATE = 6;
     public static final int TIMER_RELATIVE = 1;
     public static final int TIMER_ABSOLUTE = 2;
     public static final int TIMER_REPEATING = 3;

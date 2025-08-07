@@ -1,4 +1,4 @@
-import json, functools, copy, traceback, inspect
+import json, functools, copy, traceback, inspect, random
 import threading, os, collections, importlib.util
 import sys, hashlib, struct, re, time
 import faulthandler, base64, io, asyncio
@@ -7,10 +7,7 @@ from .utils import AttrDict, dumps, loads, cap, get_args, prepare_image_cache_di
 from . import widgets, java, state, configs, __version__
 
 def gen_id():
-    id = 0
-    while id in (0, -1):
-        id = struct.unpack('<q', os.urandom(8))[0]
-    return id
+    return random.randrange(1, 2 ** 63 - 1)
 
 @functools.lru_cache(maxsize=128, typed=True)
 def validate_type(type):
@@ -1195,6 +1192,14 @@ def disable_register_widget_waiters():
         for callback in callbacks:
             callback()
 
+#flatten inner lists
+def flatten_elements(elements):
+    for e in elements:
+        if hasattr(e, 'dict'):
+            yield e
+        else:
+            yield from flatten_elements(e)
+
 class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
     def export(self, input, output, attrs):
         if not output:
@@ -1203,7 +1208,14 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
             if not isinstance(output, (list, tuple)):
                 output = [output]
 
-            out = [e.dict(do_copy=True) for e in output]
+            out = []
+            seen_ids = set()
+            for e in flatten_elements(output):
+                #filter duplicates
+                if e.d.id not in seen_ids:
+                    out.append(e.dict(do_copy=True))
+                seen_ids.add(e.d.id)
+
             if input is not None and input == out:
                 out = None
         return java.build_java_dict(dict(views=out, **attrs))
@@ -1455,6 +1467,8 @@ def init():
     print('init')
     prepare_image_cache_dir()
     context.registerOnWidgetUpdate(Handler())
+
+    configs.sync(java.build_python_dict_from_java(context.getConfigurations().getDict()))
 
     from . import notifications
     notifications._init()

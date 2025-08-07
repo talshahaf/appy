@@ -133,36 +133,43 @@ def adapter(widget, view, value, index):
                         textColor=color('white') if abs(v) < epsilon else (color(r=255) if v < 0 else color(g=255)), 
                         alignment='center') for k,v in values.items()]
     
-    # position the first text below the current value
-    texts[0].top = view[0].ibottom + 10
+    use_template = False
     
-    # set up a system of constraints to have the texts arranged in a grid according to the widget's dimensions
-    
-    # line height from the first text with some padding
-    line_height = texts[0].height + 10
-    # calculate the number of texts that fit in a line with some padding between them
-    # using Var to save the result and speed up rendering
-    max_in_line = Var(AttributeValue.max(1, widget.width // (texts[0].width + 50)))
-    # determine total lines
-    num_lines = Var((len(texts) / max_in_line).ceil())
-    # determine how many texts fit in the last line
-    texts_in_last_line = Var((len(texts) % max_in_line).if_((len(texts) % max_in_line) != 0).else_(max_in_line))
-    
-    # Var are added like views
-    view.extend([max_in_line, num_lines, texts_in_last_line])
-
-    # for each text, determine its line and its position in that line
-    for i, text in enumerate(texts):
-        # all lines except the last should `contain max_in_line` texts
-        # the last line contains `texts_in_last_line` texts
-        num_thisline = Var(max_in_line.if_((i // max_in_line) != (num_lines - 1)).else_(texts_in_last_line))
-        view.append(num_thisline)
+    if use_template:
+        texts = templates.grid_of(texts, padding_top=5, padding_bottom=5, padding_left=25, padding_right=25, top=view[0].ibottom)
+    else:
+        # this section mimics what grid_of does above, kept here as an example of using Vars
         
-        # position texts horizontally
-        text.hcenter = (((i % num_thisline) + 1) * widget.width / (num_thisline + 1))
-        if i != 0:
-            # position all texts but the first vertically
-            text.top = (texts[0].top + (line_height * (i // max_in_line)))
+        # position the first text below the current value
+        texts[0].top = view[0].ibottom + 10
+        
+        # set up a system of constraints to have the texts arranged in a grid according to the widget's dimensions
+        
+        # line height from the first text with some padding
+        line_height = texts[0].height + 10
+        # calculate the number of texts that fit in a line with some padding between them
+        # using Var to save the result and speed up rendering
+        max_in_line = Var(AttributeValue.max(1, widget.width // (texts[0].width + 50)))
+        # determine total lines
+        num_lines = Var((len(texts) / max_in_line).ceil())
+        # determine how many texts fit in the last line
+        texts_in_last_line = Var((len(texts) % max_in_line).if_((len(texts) % max_in_line) != 0).else_(max_in_line))
+        
+        # Var are added like views
+        view.extend([max_in_line, num_lines, texts_in_last_line])
+
+        # for each text, determine its line and its position in that line
+        for i, text in enumerate(texts):
+            # all lines except the last should `contain max_in_line` texts
+            # the last line contains `texts_in_last_line` texts
+            num_thisline = Var(max_in_line.if_((i // max_in_line) != (num_lines - 1)).else_(texts_in_last_line))
+            view.append(num_thisline)
+            
+            # position texts horizontally
+            text.hcenter = (((i % num_thisline) + 1) * widget.width / (num_thisline + 1))
+            if i != 0:
+                # position all texts but the first vertically
+                text.top = (texts[0].top + (line_height * (i // max_in_line)))
     
     view.extend(texts)
         
