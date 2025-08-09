@@ -379,20 +379,19 @@ public class Utils
         return sb.toString();
     }
 
-    public static Resources globalResources = null;
-    public static void updateGlobalResources(Context context)
+    public static int resolveColor(int colorRes, Resources resources)
     {
-        globalResources = context.getResources();
+        return resources.getColor(colorRes);
     }
 
-    public static int resolveColor(int colorRes)
+    public static Drawable resolveDrawable(int drawableRes, Resources resources)
     {
-        return globalResources.getColor(colorRes);
+        return ResourcesCompat.getDrawable(resources, drawableRes, null);
     }
 
-    public static Drawable resolveDrawable(int drawableRes)
+    public static Drawable resolveDrawable(Context context, int drawableRes)
     {
-        return ResourcesCompat.getDrawable(globalResources, drawableRes, null);
+        return resolveDrawable(drawableRes, context.getResources());
     }
 
     public static String formatFloat(float f)
@@ -402,12 +401,35 @@ public class Utils
         return format.format(f);
     }
 
-    public static double parseUnit(String s)
+    public static double widgetScaleValue(int[] widgetSize)
+    {
+        return ((double)Math.min(widgetSize[0], widgetSize[1])) / 500;
+    }
+
+    public static double convertUnit(DisplayMetrics metrics, double value, int from, int to)
+    {
+        //applyDimension takes the "from" unit
+        return value * TypedValue.applyDimension(from, 1.0f, metrics) / TypedValue.applyDimension(to, 1.0f, metrics);
+    }
+
+    public static double convertUnit(Context context, double value, int from, int to)
+    {
+        return convertUnit(context.getResources().getDisplayMetrics(), value, from, to);
+    }
+
+    public static double parseUnit(Context context, String s, int[] widgetSize)
+    {
+        return parseUnit(s, context.getResources().getDisplayMetrics(), widgetSize);
+    }
+
+    public static double parseUnit(String s, DisplayMetrics metrics, int[] widgetSize)
     {
         s = s.toLowerCase();
 
         int unit;
         int unitlen = 2;
+        boolean widgetScaled = false;
+
         if (s.endsWith("px"))
         {
             unit = TypedValue.COMPLEX_UNIT_PX;
@@ -437,6 +459,12 @@ public class Utils
         {
             unit = TypedValue.COMPLEX_UNIT_PT;
         }
+        else if (s.endsWith("w"))
+        {
+            unit = TypedValue.COMPLEX_UNIT_PX;
+            unitlen = 1;
+            widgetScaled = true;
+        }
         else
         {
             //one last try
@@ -452,12 +480,34 @@ public class Utils
             }
         }
 
-        if (globalResources == null)
+        if (unitlen == s.length())
         {
-            throw new RuntimeException("globalResources is uninitialized");
+            throw new RuntimeException("missing numerical value in " + s);
         }
 
-        return TypedValue.applyDimension(unit, Float.parseFloat(s.substring(0, s.length() - unitlen)), globalResources.getDisplayMetrics());
+        // handle w prefix to units
+        if (unitlen != 0 && s.charAt(s.length() - unitlen - 1) == 'w')
+        {
+            widgetScaled = true;
+            unitlen++;
+        }
+
+        if (metrics == null)
+        {
+            throw new RuntimeException("metrics cannot be NULL");
+        }
+
+        if (widgetScaled && widgetSize == null)
+        {
+            throw new RuntimeException("widget scaled units requested, but no widgetSize supplied");
+        }
+
+        double value = convertUnit(metrics, Double.parseDouble(s.substring(0, s.length() - unitlen)), unit, TypedValue.COMPLEX_UNIT_PX);
+        if (widgetScaled)
+        {
+            value *= widgetScaleValue(widgetSize);
+        }
+        return value;
     }
 
     public static String getFilenameFromUri(Context context, Uri uri, String defaultName)

@@ -26,7 +26,7 @@ public class RemoteMethodCall
     private final boolean parentCall;
     private final Method method;
     private final Object[] originalArguments;
-    private Object[] arguments;
+    private Object[] arguments = null;
     public static HashMap<String, Method> remoteViewMethods = new HashMap<>();
     public static ArrayList<Pair<String, String>> resolveResourcePrefix = new ArrayList<>();
 
@@ -73,7 +73,7 @@ public class RemoteMethodCall
         return null;
     }
 
-    public Object tryResolveXmlResource(Object obj, Class<?> required)
+    public Object tryResolveXmlResource(Object obj, Class<?> required, Resources resources)
     {
         if (obj == null)
         {
@@ -93,7 +93,7 @@ public class RemoteMethodCall
                     {
                         if (path.startsWith("color."))
                         {
-                            return Utils.resolveColor((Integer)resolved);
+                            return Utils.resolveColor((Integer)resolved, resources);
                         }
                         return resolved;
                     }
@@ -105,7 +105,7 @@ public class RemoteMethodCall
         return obj;
     }
 
-    public Object tryResolveUnits(Object obj, Class<?> required)
+    public Object tryResolveUnits(Object obj, Class<?> required, Resources resources, int[] widgetSize)
     {
         if (obj == null)
         {
@@ -118,7 +118,7 @@ public class RemoteMethodCall
                                     required == Float.class || required == Float.TYPE ||
                                     required == Double.class || required == Double.TYPE))
         {
-            return Utils.parseUnit((String)obj);
+            return Utils.parseUnit((String)obj, resources.getDisplayMetrics(), widgetSize);
         }
         return obj;
     }
@@ -215,17 +215,16 @@ public class RemoteMethodCall
         }
 
         this.originalArguments = args;
-        recalculateArguments();
     }
 
-    public void recalculateArguments()
+    public void recalculateArguments(Resources resources, int[] widgetSize)
     {
         Class<?>[] types = this.method.getParameterTypes();
         this.arguments = new Object[originalArguments.length];
         for (int i = 0; i < originalArguments.length; i++)
         {
-            arguments[i] = tryResolveXmlResource(originalArguments[i], types[i + 1]);
-            arguments[i] = tryResolveUnits(arguments[i], types[i + 1]);
+            arguments[i] = tryResolveXmlResource(originalArguments[i], types[i + 1], resources);
+            arguments[i] = tryResolveUnits(arguments[i], types[i + 1], resources, widgetSize);
             arguments[i] = cast(arguments[i], types[i + 1]);
         }
     }
@@ -257,6 +256,11 @@ public class RemoteMethodCall
 
     public void call(RemoteViews view, int id) throws InvocationTargetException, IllegalAccessException
     {
+        if (arguments == null)
+        {
+            throw new RuntimeException("arguments were not calculated");
+        }
+
         try
         {
             //Log.d("APPY", "calling " + id + " " + method.getName());
@@ -487,7 +491,7 @@ public class RemoteMethodCall
         obj.put("identifier", identifier);
         obj.put("parentCall", parentCall);
         obj.put("method", method.getName());
-        if (arguments.length > 0)
+        if (originalArguments.length > 0)
         {
             DictObj.List args = new DictObj.List();
             for (Object arg : originalArguments)

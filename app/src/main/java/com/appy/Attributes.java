@@ -69,6 +69,12 @@ public class Attributes
                 NOT,
                 AND, //these instead of ADD/MUL to prevent overflow
                 OR,
+                FROM_PX,
+                FROM_DP,
+                FROM_SP,
+                FROM_PT,
+                FROM_IN,
+                FROM_MM,
             }
 
             FunctionType type;

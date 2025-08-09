@@ -35,18 +35,6 @@ def unit_constants():
     mm_to_px = float(java_widget_manager.convertUnit(1.0, java.clazz.android.util.TypedValue().COMPLEX_UNIT_MM,  java.clazz.android.util.TypedValue().COMPLEX_UNIT_PX))
     return {'px': 1.0, 'dp': dp_to_px, 'dip': dp_to_px, 'sp': sp_to_px, 'pt': pt_to_px, 'in': in_to_px, 'mm': mm_to_px}
 
-def parse_unit(value):
-    if not isinstance(value, str):
-        return value
-    reg = re.match(r'^([+-]?(?:[0-9]+(?:[.][0-9]*)?|[.][0-9]+))\s*\*?\s*([a-zA-Z]+)$', value)
-    if reg:
-        value, unit = reg.groups()
-        unit = unit.lower()
-        units = unit_constants()
-        if unit in units:
-            return float(value) * units[unit]
-    return float(value)
-
 class Reference:
     def __init__(self, id, key):
         self.id = id
@@ -75,7 +63,7 @@ class AttributeValue:
                 else:
                     self.args.append(arg)
             else:
-                self.args.append(parse_unit(arg))
+                self.args.append(self.parse_unit(arg))
         self.args = tuple(self.args)
         self.f = f if f else 'I'
         if self.f == 'I' and len(self.args) != 1:
@@ -84,6 +72,17 @@ class AttributeValue:
     @classmethod
     def wrap(cls, n):
         return cls(None, n)
+
+    @classmethod
+    def parse_unit(cls, value):
+        if not isinstance(value, str):
+            return value
+        reg = re.match(r'^([+-]?(?:[0-9]+(?:[.][0-9]*)?|[.][0-9]+))\s*\*?\s*([a-zA-Z]+)$', value)
+        if not reg:
+            return float(value)
+
+        value, unit = reg.groups()
+        return cls.unit_to_px(float(value), unit)
 
     def compile_(self):
         lst = []
@@ -124,6 +123,20 @@ class AttributeValue:
     @classmethod
     def max(cls, *args):
         return cls('MAX', *args)
+    @classmethod
+    def unit_to_px(cls, value, unit):
+        attribute_unit_codes = {'': 'FROM_PX', 'px': 'FROM_PX', 'dp': 'FROM_DP', 'dip': 'FROM_DP', 'sp': 'FROM_SP', 'pt': 'FROM_PT', 'in': 'FROM_IN', 'mm': 'FROM_MM'}
+
+        unit = unit.lower()
+        widget_scaled = False
+        if unit.startswith('w'):
+            widget_scaled = True
+            unit = unit[1:]
+
+        if unit not in attribute_unit_codes:
+            raise ValueError(f'Unsupported unit: {unit}')
+
+        return cls(attribute_unit_codes[unit], value, float(widget_scaled))
 
     def debug_print(self, name):
         self.debug_name = name

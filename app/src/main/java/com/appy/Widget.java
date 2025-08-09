@@ -39,6 +39,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.ServiceInfo;
+import android.content.res.Resources;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Binder;
@@ -454,8 +455,9 @@ public class Widget extends RemoteViewsService
     }
 
     // this function wraps the remote method calls to account for the size factor in specific calls
-    public static void callRemoteMethodWithSizeFactor(RemoteMethodCall methodCall, double sizeFactor, RemoteViews remoteView, int container_id, int view_id) throws InvocationTargetException, IllegalAccessException
+    public static void callRemoteMethodWithSizeFactor(RemoteMethodCall methodCall, double sizeFactor, Resources resources, int[] widgetSize, RemoteViews remoteView, int container_id, int view_id) throws InvocationTargetException, IllegalAccessException
     {
+        methodCall.recalculateArguments(resources, widgetSize);
         if (!methodCall.isParentCall())
         {
             if (methodCall.getIdentifierIgnorePrefix().equals("setLineHeight") || methodCall.getIdentifierIgnorePrefix().equals("setTextSize"))
@@ -660,7 +662,9 @@ public class Widget extends RemoteViewsService
                 }
             }
 
-            Triple<RemoteViews, HashSet<Integer>, ArrayList<DynamicView>> view = service.resolveDimensions(service, widgetId, child, Constants.collection_layout_type.get(type), new Object[]{id, position}, actualWidth, actualHeight);
+            //TODO not get this for every child
+            int[] widgetDimensions = service.getWidgetDimensions(widgetId);
+            Triple<RemoteViews, HashSet<Integer>, ArrayList<DynamicView>> view = service.resolveDimensions(service, widgetId, child, Constants.collection_layout_type.get(type), new Object[]{id, position}, actualWidth, actualHeight, widgetDimensions);
             RemoteViews remoteView = view.component1();
             Intent fillIntent = new Intent(service, WidgetReceiver2x2.class);
             if (child.size() == 1)
@@ -744,16 +748,9 @@ public class Widget extends RemoteViewsService
         }
     }
 
-    public static float convertUnit(Context context, float value, int from, int to)
+    public double convertUnit(double value, int from, int to)
     {
-        DisplayMetrics metrics = context.getResources().getDisplayMetrics();
-        //applyDimension takes the "from" unit
-        return value * TypedValue.applyDimension(from, 1.0f, metrics) / TypedValue.applyDimension(to, 1.0f, metrics);
-    }
-
-    public float convertUnit(float value, int from, int to)
-    {
-        return convertUnit(this, value, from, to);
+        return Utils.convertUnit(this, value, from, to);
     }
 
     public int[] getWidgetDimensions(int widgetId)
@@ -768,8 +765,8 @@ public class Widget extends RemoteViewsService
         float widthDp = bundle.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH);
         float heightDp = bundle.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT);
 
-        float widthPx = convertUnit(widthDp, TypedValue.COMPLEX_UNIT_DIP, TypedValue.COMPLEX_UNIT_PX);
-        float heightPx = convertUnit(heightDp, TypedValue.COMPLEX_UNIT_DIP, TypedValue.COMPLEX_UNIT_PX);
+        double widthPx = convertUnit(widthDp, TypedValue.COMPLEX_UNIT_DIP, TypedValue.COMPLEX_UNIT_PX);
+        double heightPx = convertUnit(heightDp, TypedValue.COMPLEX_UNIT_DIP, TypedValue.COMPLEX_UNIT_PX);
 
         //only works on portrait
         return new int[]{
@@ -886,8 +883,9 @@ public class Widget extends RemoteViewsService
         return mostGeneralResource;
     }
 
-    public static Pair<RemoteViews, HashSet<Integer>> generate(Widget service, int widgetId, ArrayList<DynamicView> dynamicList, boolean forMeasurement, Constants.CollectionLayout collectionLayout, Object[] collectionExtraData, double sizeFactor) throws InvocationTargetException, IllegalAccessException
+    public static Pair<RemoteViews, HashSet<Integer>> generate(Widget service, int widgetId, ArrayList<DynamicView> dynamicList, boolean forMeasurement, Constants.CollectionLayout collectionLayout, Object[] collectionExtraData, double sizeFactor, int[] widgetSize) throws InvocationTargetException, IllegalAccessException
     {
+        Resources resources = service.getResources();
         boolean inCollection = collectionLayout != Constants.CollectionLayout.NOT_COLLECTION;
         HashSet<Integer> collection_views = new HashSet<>();
         ArrayList<String> collections = new ArrayList<>();
@@ -1017,7 +1015,7 @@ public class Widget extends RemoteViewsService
 //              Log.d("APPY", "calling method "+methodCall.toString());
                 if (!forMeasurement || allowMethodCallInMeasurement(methodCall))
                 {
-                    callRemoteMethodWithSizeFactor(methodCall, sizeFactor, remoteView, layout.container_id, layout.view_id);
+                    callRemoteMethodWithSizeFactor(methodCall, sizeFactor, resources, widgetSize, remoteView, layout.container_id, layout.view_id);
                 }
             }
 
@@ -1155,7 +1153,7 @@ public class Widget extends RemoteViewsService
         return null;
     }
 
-    public double applyFunctions(ArrayList<Attributes.AttributeValue.Function> functions, ArrayList<Double> arguments)
+    public double applyFunctions(ArrayList<Attributes.AttributeValue.Function> functions, ArrayList<Double> arguments, int[] widgetSize)
     {
         //apply functions using RPN
         //merge to one list reversed to maintain function positions
@@ -1179,7 +1177,7 @@ public class Widget extends RemoteViewsService
                     throw new IllegalArgumentException("not enough arguments in attribute function stack");
                 }
                 List<Object> args = stack.subList(pos - f.numberOfArguments, pos);
-                double result = applyFunction(f, args);
+                double result = applyFunction(f, args, widgetSize);
                 stack.set(pos, result);
 
                 //pop args
@@ -1202,7 +1200,7 @@ public class Widget extends RemoteViewsService
         return (Double)stack.get(0);
     }
 
-    public double applyFunction(Attributes.AttributeValue.Function function, List<Object> argumentsObj)
+    public double applyFunction(Attributes.AttributeValue.Function function, List<Object> argumentsObj, int[] widgetSize)
     {
         ArrayList<Double> arguments = new ArrayList<>();
         for (Object o : argumentsObj)
@@ -1353,6 +1351,47 @@ public class Widget extends RemoteViewsService
                         return arguments.get(0) <= arguments.get(1) ? 1 : 0;
                 }
             }
+            case FROM_PX:
+            case FROM_DP:
+            case FROM_SP:
+            case FROM_PT:
+            case FROM_IN:
+            case FROM_MM:
+            {
+                if (arguments.size() != 2)
+                {
+                    throw new IllegalArgumentException("cannot apply unit conversion operator with " + arguments.size() + " arguments, only 2 is supported");
+                }
+
+                double value = arguments.get(0);
+                switch(function.type)
+                {
+                    case FROM_PX:
+                        break;
+                    case FROM_DP:
+                        value = convertUnit(value, TypedValue.COMPLEX_UNIT_DIP, TypedValue.COMPLEX_UNIT_PX);
+                        break;
+                    case FROM_SP:
+                        value = convertUnit(value, TypedValue.COMPLEX_UNIT_SP, TypedValue.COMPLEX_UNIT_PX);
+                        break;
+                    case FROM_PT:
+                        value = convertUnit(value, TypedValue.COMPLEX_UNIT_PT, TypedValue.COMPLEX_UNIT_PX);
+                        break;
+                    case FROM_IN:
+                        value = convertUnit(value, TypedValue.COMPLEX_UNIT_IN, TypedValue.COMPLEX_UNIT_PX);
+                        break;
+                    case FROM_MM:
+                        value = convertUnit(value, TypedValue.COMPLEX_UNIT_MM, TypedValue.COMPLEX_UNIT_PX);
+                        break;
+                }
+
+                if (arguments.get(1) != 0)
+                {
+                    value *= Utils.widgetScaleValue(widgetSize);
+                }
+
+                return value;
+            }
         }
         throw new IllegalArgumentException("unknown function " + function);
     }
@@ -1480,7 +1519,7 @@ public class Widget extends RemoteViewsService
         third.functions.add(new Attributes.AttributeValue.Function("ADD", 2, third.arguments.size()));
     }
 
-    public int applyIteration(ArrayList<DynamicView> dynamicList, Attributes rootAttributes)
+    public int applyIteration(ArrayList<DynamicView> dynamicList, Attributes rootAttributes, int[] widgetSize)
     {
         int resolved = 0;
         for (DynamicView dynamicView : dynamicList)
@@ -1529,7 +1568,7 @@ public class Widget extends RemoteViewsService
                 {
                     if (attributeValue.hasConstraints())
                     {
-                        attributeValue.resolvedValue = applyFunctions(attributeValue.functions, resolvedArguments);
+                        attributeValue.resolvedValue = applyFunctions(attributeValue.functions, resolvedArguments, widgetSize);
                     }
                     else
                     {
@@ -1575,15 +1614,15 @@ public class Widget extends RemoteViewsService
         return max;
     }
 
-    public Triple<RemoteViews, HashSet<Integer>, ArrayList<DynamicView>> resolveDimensions(Widget service, int widgetId, ArrayList<DynamicView> dynamicList, Constants.CollectionLayout collectionLayout, Object[] collectionExtras, int widthLimit, int heightLimit) throws InvocationTargetException, IllegalAccessException
+    public Triple<RemoteViews, HashSet<Integer>, ArrayList<DynamicView>> resolveDimensions(Widget service, int widgetId, ArrayList<DynamicView> dynamicList, Constants.CollectionLayout collectionLayout, Object[] collectionExtras, int widthLimit, int heightLimit, int[] widgetSize) throws InvocationTargetException, IllegalAccessException
     {
-        //we must copy as we're changing the views
+        // we must copy as we're changing the views
         dynamicList = DynamicView.copyArray(dynamicList);
 
         Float widgetSizeFactor = getWidgetSizeFactor(widgetId);
         float sizeFactor = widgetSizeFactor == null ? globalSizeFactor : widgetSizeFactor;
 
-        RemoteViews remote = generate(service, widgetId, dynamicList, true, collectionLayout, collectionExtras, sizeFactor).first;
+        RemoteViews remote = generate(service, widgetId, dynamicList, true, collectionLayout, collectionExtras, sizeFactor, widgetSize).first;
         RelativeLayout layout = new RelativeLayout(this);
         View inflated = remote.apply(service, layout);
         layout.addView(inflated);
@@ -1679,7 +1718,7 @@ public class Widget extends RemoteViewsService
         // Log.d("APPY", "Attributes "+DynamicView.toJSONString(dynamicList));
 
         //resolve anything not depending on widget width/height
-        while (applyIteration(dynamicList, rootAttributes) != 0) ;
+        while (applyIteration(dynamicList, rootAttributes, widgetSize) != 0) ;
 
         //resolve width and height
         rootAttributes.attributes.get(Attributes.Type.WIDTH).resolvedValue = (double) widthLimit;
@@ -1695,7 +1734,7 @@ public class Widget extends RemoteViewsService
         }
 
         //resolve everything else
-        while (applyIteration(dynamicList, rootAttributes) != 0) ;
+        while (applyIteration(dynamicList, rootAttributes, widgetSize) != 0) ;
 
         for (DynamicView dynamicView : dynamicList)
         {
@@ -1776,7 +1815,7 @@ public class Widget extends RemoteViewsService
             }
         }
 
-        Pair<RemoteViews, HashSet<Integer>> views = generate(service, widgetId, dynamicList, false, collectionLayout, collectionExtras, sizeFactor);
+        Pair<RemoteViews, HashSet<Integer>> views = generate(service, widgetId, dynamicList, false, collectionLayout, collectionExtras, sizeFactor, widgetSize);
         //only collection elements has size_filler view
         if (collectionLayout != Constants.CollectionLayout.NOT_COLLECTION)
         {
@@ -3807,7 +3846,7 @@ public class Widget extends RemoteViewsService
             int widthLimit = widgetDimensions[0];
             int heightLimit = widgetDimensions[1];
 
-            Triple<RemoteViews, HashSet<Integer>, ArrayList<DynamicView>> view = resolveDimensions(Widget.this, widgetId, views, Constants.CollectionLayout.NOT_COLLECTION, null, widthLimit, heightLimit);
+            Triple<RemoteViews, HashSet<Integer>, ArrayList<DynamicView>> view = resolveDimensions(Widget.this, widgetId, views, Constants.CollectionLayout.NOT_COLLECTION, null, widthLimit, heightLimit, widgetDimensions);
             appWidgetManager.updateAppWidget(androidWidgetId, view.component1());
 
             for (Integer collection_view : view.component2())
@@ -4681,8 +4720,6 @@ public class Widget extends RemoteViewsService
         Utils.setCrashHandlerIfNeeded(Utils.getCrashPath(this, Constants.CrashIndex.JAVA_CRASH_INDEX));
 
         loadForeground();
-
-        Utils.updateGlobalResources(this);
 
         int flags = getAndClearNextStartupFlags();
         if (!pythonSetup(flags))

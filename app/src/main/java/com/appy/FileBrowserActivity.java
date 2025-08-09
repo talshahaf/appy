@@ -622,7 +622,7 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
                 input.setInputType(InputType.TYPE_TEXT_VARIATION_URI);
                 input.setText(currentDir());
 
-                float margin = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 30, getResources().getDisplayMetrics());
+                double margin = Utils.convertUnit(this, 40, TypedValue.COMPLEX_UNIT_DIP, TypedValue.COMPLEX_UNIT_PX);
                 FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
                 params.leftMargin = (int) margin;
                 params.rightMargin = (int) margin;

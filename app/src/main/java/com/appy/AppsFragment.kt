@@ -449,16 +449,9 @@ class AppsFragment : MyFragment() {
     {
         val sizes = ArrayList<SizeF>()
         val r = resources
-        val widthdips: Float = widthPixels / TypedValue.applyDimension(
-            TypedValue.COMPLEX_UNIT_DIP,
-            1f,
-            r.displayMetrics
-        )
-        val heightdips: Float = heightPixels / TypedValue.applyDimension(
-            TypedValue.COMPLEX_UNIT_DIP,
-            1f,
-            r.displayMetrics
-        )
+        val conv = Utils.convertUnit(r.displayMetrics, 1.0, TypedValue.COMPLEX_UNIT_PX, TypedValue.COMPLEX_UNIT_DIP)
+        val widthdips: Float = (widthPixels * conv).toFloat()
+        val heightdips: Float = (heightPixels * conv).toFloat()
 
         sizes.add(SizeF(widthdips, heightdips))
 
