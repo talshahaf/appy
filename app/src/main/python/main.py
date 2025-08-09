@@ -70,7 +70,7 @@ def execute(command):
     else:
         raise RuntimeError(f'{command} failed with code: {exitCode}')
 
-def install_optional_packages(do_upgrade):
+def install_optional_packages(exe, do_upgrade):
     try:
         needed_packages = ['pip', 'setuptools', 'wheel', 'requests', 'requests-futures', 'packaging', 'pyparsing', 'python-dateutil', 'cycler']
         try:
@@ -147,7 +147,7 @@ def do_init():
             print('Failed to install pip: ', e)
 
     #running in background
-    optional_packages_thread = Thread(target=lambda: install_optional_packages(False))
+    optional_packages_thread = Thread(target=lambda: install_optional_packages(exe, False))
     optional_packages_thread.start()
 
     tar = os.path.join(os.environ['TMP'], 'appy.tar.gz')
@@ -179,7 +179,7 @@ def do_init():
     optional_packages_thread.join()
 
     #upgrade packages in background
-    Thread(target=lambda: install_optional_packages(True)).start()
+    Thread(target=lambda: install_optional_packages(exe, True)).start()
 
     print('appy init start')
     #appy.java.tests()
