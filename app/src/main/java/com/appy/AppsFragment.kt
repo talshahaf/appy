@@ -574,7 +574,9 @@ class AppsFragment : MyFragment() {
     }
 
     fun setTitle(title : String) {
-        (activity as MainActivity?)?.title = title
+        if (this.isVisible) {
+            (activity as MainActivity?)?.title = title
+        }
     }
 
     fun widgetTitle(item : WidgetItem?) : String {

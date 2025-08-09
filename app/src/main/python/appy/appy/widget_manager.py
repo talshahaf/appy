@@ -176,7 +176,7 @@ class AttributeValue:
     def __neg__(self):
         return self * (-1)
     def __sub__(self, other):
-        return self + (-other)
+        return self + -self.wrap(other)
     def __floordiv__(self, other):
         return (self / other).floor()
 
