@@ -3873,15 +3873,24 @@ public class Widget extends RemoteViewsService
     {
         ArrayList<DynamicView> views = new ArrayList<>();
 
-        DynamicView textView = new DynamicView("TextView");
-        addMethodCall(textView, "setText", "Loading...");
-        addMethodCall(textView, "setTextColor", Constants.TEXT_COLOR);
-        addMethodCall(textView, "setTextSize", "12sp");
+        DynamicView loadingText = new DynamicView("TextView");
+        addMethodCall(loadingText, "setText", "Loading...");
+        addMethodCall(loadingText, "setTextColor", Constants.TEXT_COLOR);
+        addMethodCall(loadingText, "setTextSize", "12sp");
 
-        textView.attributes.attributes.put(Attributes.Type.TOP, attributeParse("15"));
-        textView.attributes.attributes.put(Attributes.Type.LEFT, attributeParse("15"));
+        loadingText.attributes.attributes.put(Attributes.Type.TOP, attributeParse("h(p)*0.5+h(" + loadingText.getId() + ")*-0.5"));
+        loadingText.attributes.attributes.put(Attributes.Type.LEFT, attributeParse("w(p)*0.5+w(" + loadingText.getId() + ")*-0.5"));
 
-        views.add(textView);
+        DynamicView openApp = new DynamicView("ImageView");
+        addMethodCall(openApp, "setImageResource", R.mipmap.ic_launcher_foreground);
+        openApp.attributes.attributes.put(Attributes.Type.BOTTOM, attributeParse("5"));
+        openApp.attributes.attributes.put(Attributes.Type.RIGHT, attributeParse("5"));
+        openApp.attributes.attributes.put(Attributes.Type.WIDTH, attributeParse("80"));
+        openApp.attributes.attributes.put(Attributes.Type.HEIGHT, attributeParse("80"));
+        openApp.tag = Constants.SPECIAL_WIDGET_OPENAPP + "";
+
+        views.add(loadingText);
+        views.add(openApp);
 
         setWidget(androidWidgetId, Constants.SPECIAL_WIDGET_ID, views, true);
 
