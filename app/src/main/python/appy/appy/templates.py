@@ -204,7 +204,7 @@ def updating_text_create(widget, initial_value, on_refresh, background_params, a
 def updating_text(name, initial_value=None, on_refresh=None, background=True, adapter=None, initial_refresh=None, timeout=None, interval=None, last_update=True, config=None, config_description=None, create_hook=None, update_hook=None, debug=None):
     register_widget(name, (updating_text_create, dict(initial_value=initial_value, on_refresh=on_refresh, background_params=background, adapter=adapter, initial_refresh=initial_refresh, timeout=timeout, interval=interval, last_update=last_update, create_hook=create_hook, update_hook=update_hook)), refresh_button_update_func, config=config, config_description=config_description, on_config=on_config_change, debug=debug)
 
-def grid_of(elements, orientation='horizontal', alignment='center', padding_top=0, padding_left=0, padding_right=0, padding_bottom=0, **grid_attributes):
+def grid_of(elements, orientation='horizontal', alignment='center', padding_top=0, padding_left=0, padding_right=0, padding_bottom=0, min_element_width=None, max_element_width=None, min_element_height=None, max_element_height=None, **grid_attributes):
     allowed = set(['top', 'bottom', 'left', 'right', 'width', 'height', 'hcenter', 'vcenter', 'center'])
     if (allowed | grid_attributes.keys()) != allowed:
         raise ValueError('only layout attributes are supported as `grid_attributes`')
@@ -224,12 +224,16 @@ def grid_of(elements, orientation='horizontal', alignment='center', padding_top=
         primary_center_attr = 'vcenter'
         primary_start_padding = padding_top
         primary_end_padding = padding_bottom
+        primary_max_element_size = max_element_height
+        primary_min_element_size = min_element_height
 
         secondary_start_attr = 'left'
         secondary_end_attr = 'right'
         secondary_size_attr = 'width'
         secondary_start_padding = padding_left
         secondary_end_padding = padding_right
+        secondary_max_element_size = max_element_width
+        secondary_min_element_size = min_element_width
     else:
         if alignment == 'left':
             alignment = 'start'
@@ -245,12 +249,16 @@ def grid_of(elements, orientation='horizontal', alignment='center', padding_top=
         primary_center_attr = 'hcenter'
         primary_start_padding = padding_left
         primary_end_padding = padding_right
+        primary_max_element_size = max_element_width
+        primary_min_element_size = min_element_width
 
         secondary_start_attr = 'top'
         secondary_end_attr = 'bottom'
         secondary_size_attr = 'height'
         secondary_start_padding = padding_top
         secondary_end_padding = padding_bottom
+        secondary_max_element_size = max_element_height
+        secondary_min_element_size = min_element_height
 
     INVISIBLE = 4
     # by default, take all available space
@@ -262,11 +270,22 @@ def grid_of(elements, orientation='horizontal', alignment='center', padding_top=
     default_grid_attributes.update(grid_attributes)
     region = RelativeLayout(**default_grid_attributes, visibility=INVISIBLE)
 
-    max_primary_element_size = Var(AttributeValue.max(*[getattr(e, primary_size_attr) for e in elements]))
-    max_secondary_element_size = Var(AttributeValue.max(*[getattr(e, secondary_size_attr) for e in elements]))
+    primary_element_size = AttributeValue.max(*[getattr(e, primary_size_attr) for e in elements])
+    if primary_max_element_size is not None:
+        primary_element_size = AttributeValue.min(primary_element_size, primary_max_element_size)
+    if primary_min_element_size is not None:
+        primary_element_size = AttributeValue.max(primary_element_size, primary_min_element_size)
+    primary_element_size = Var(primary_element_size)
 
-    line_size = Var(max_secondary_element_size + secondary_start_padding + secondary_end_padding)
-    max_in_line = Var(AttributeValue.max(1, getattr(region, primary_size_attr) // (max_primary_element_size + primary_start_padding + primary_end_padding)))
+      = AttributeValue.max(*[getattr(e, secondary_size_attr) for e in elements])
+    if secondary_max_element_size is not None:
+        secondary_element_size = AttributeValue.min(secondary_element_size, secondary_max_element_size)
+    if secondary_min_element_size is not None:
+        secondary_element_size = AttributeValue.max(secondary_element_size, secondary_min_element_size)
+    secondary_element_size = Var(secondary_element_size)
+
+    line_size = Var(secondary_element_size + secondary_start_padding + secondary_end_padding)
+    max_in_line = Var(AttributeValue.max(1, getattr(region, primary_size_attr) // (primary_element_size + primary_start_padding + primary_end_padding)))
     num_lines = Var((len(elements) / max_in_line).ceil())
     line_remainder = Var(len(elements) % max_in_line)
     elements_in_last_line = Var(line_remainder.if_(line_remainder != 0).else_(max_in_line))
@@ -279,15 +298,15 @@ def grid_of(elements, orientation='horizontal', alignment='center', padding_top=
         these_lines.append(pos_thisline)
 
         if alignment == 'start':
-            setattr(element, primary_start_attr, (max_primary_element_size + primary_start_padding + primary_end_padding) * pos_thisline + getattr(region, primary_start_attr) + primary_start_padding)
+            setattr(element, primary_start_attr, (primary_element_size + primary_start_padding + primary_end_padding) * pos_thisline + getattr(region, primary_start_attr) + primary_start_padding)
         elif alignment == 'end':
-            setattr(element, primary_end_attr, (max_primary_element_size + primary_start_padding + primary_end_padding) * (num_thisline - 1 - pos_thisline) + getattr(region, primary_end_attr) + primary_end_padding)
+            setattr(element, primary_end_attr, (primary_element_size + primary_start_padding + primary_end_padding) * (num_thisline - 1 - pos_thisline) + getattr(region, primary_end_attr) + primary_end_padding)
         else: # alignment == 'center'
             setattr(element, primary_center_attr, getattr(region, primary_start_attr) + (((i % num_thisline) + 1) * getattr(region, primary_size_attr) / (num_thisline + 1)))
 
         setattr(element, secondary_start_attr, (getattr(region, secondary_start_attr) + secondary_start_padding + (line_size * (i // max_in_line))))
 
-    return [region, max_primary_element_size, max_secondary_element_size, line_size, max_in_line, num_lines, line_remainder, elements_in_last_line, *these_lines, *elements]
+    return [region, primary_element_size, secondary_element_size, line_size, max_in_line, num_lines, line_remainder, elements_in_last_line, *these_lines, *elements]
 
 #################keyboard###############################
 def key_backspace_click(output):

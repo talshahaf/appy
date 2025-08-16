@@ -57,7 +57,7 @@ def find_closest_smaller(lst, needle):
 def gains(v, ref):
     return 100 * ((v / ref) - 1)
     
-async def symbol_data(symbol):
+async def symbol_data(symbol, adjusted):
     # build datetimes to request
     today = datetime.datetime.now(datetime.UTC).replace(hour=0, minute=0, second=0, microsecond=0)
     weekago = today - relativedelta(days=7)
@@ -78,17 +78,22 @@ async def symbol_data(symbol):
     month_ind = find_closest_smaller(data['timestamp'], gmt_epoch(monthago) + jitter)
     three_month_ind = find_closest_smaller(data['timestamp'], gmt_epoch(threemonthsago) + jitter)
     year_ind = find_closest_smaller(year_data['timestamp'], gmt_epoch(yearago) + jitter)
-    
-    adjclose = data['indicators']['adjclose'][0]['adjclose']
-    year_adjclose = year_data['indicators']['adjclose'][0]['adjclose']
-    ytd = ytd_data['indicators']['adjclose'][0]['adjclose'][0]
+
+    if adjusted:
+        close = data['indicators']['adjclose'][0]['adjclose']
+        year_close = year_data['indicators']['adjclose'][0]['adjclose']
+        ytd = ytd_data['indicators']['adjclose'][0]['adjclose'][0]
+    else:
+        close =  data['indicators']['quote'][0]['close']
+        year_close = year_data['indicators']['quote'][0]['close']
+        ytd = ytd_data['indicators']['quote'][0]['close'][0]
     
     current = data['meta']['regularMarketPrice']
     day_open = data['indicators']['quote'][0]['open'][today_ind] if today_ind is not None else current
-    week = adjclose[week_ind] if week_ind is not None else day_open
-    month = adjclose[month_ind] if month_ind is not None else week
-    three_month = adjclose[three_month_ind] if three_month_ind is not None else month
-    year = year_adjclose[year_ind] if year_ind is not None else three_month
+    week = close[week_ind] if week_ind is not None else day_open
+    month = close[month_ind] if month_ind is not None else week
+    three_month = close[three_month_ind] if three_month_ind is not None else month
+    year = year_close[year_ind] if year_ind is not None else three_month
     
     # return parsed data as a dict
     return {
@@ -106,7 +111,7 @@ async def symbol_data(symbol):
 
 async def refresh(widget):
     try:
-        return await asyncio.gather(*(symbol_data(symbol) for symbol in widget.config.symbols))
+        return await asyncio.gather(*(symbol_data(symbol, widget.config.adjusted) for symbol in widget.config.symbols))
     except OSError as e:
         print('error fetching information', e)
 
@@ -181,7 +186,8 @@ def on_create(widget, views):
     views['last_update'].left = 20
 
 templates.updating_list('stocklist',
-                config=dict(symbols=['SPY', 'QQQ', 'EUR=X']),
+                config=dict(symbols=['SPY', 'QQQ', 'EUR=X'], adjusted=True),
+                config_description=dict(adjusted='whether to adjust currency value'),
                 # refresh is a coroutine
                 on_refresh=refresh,
                 adapter=adapter,

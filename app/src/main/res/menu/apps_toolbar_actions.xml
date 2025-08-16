@@ -12,6 +12,11 @@
         android:icon="@drawable/ic_action_delete"
         app:showAsAction="never" />
     <item
+        android:id="@+id/action_config"
+        android:title="Configure"
+        android:icon="@android:drawable/ic_menu_preferences"
+        app:showAsAction="never" />
+    <item
         android:id="@+id/action_minimize"
         android:title="Minimize"
         android:icon="@drawable/ic_action_grid_view"

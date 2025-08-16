@@ -138,7 +138,7 @@ class AttributeValue:
 
         return cls(attribute_unit_codes[unit], value, float(widget_scaled))
 
-    def debug_print(self, name):
+    def debug(self, name='Var'):
         self.debug_name = name
         return self
 
@@ -236,7 +236,7 @@ def attribute_write_hcenter(e, value):
         debug_name = getattr(value, 'debug_name', '')
         attr = -(e.width / 2) + value
         if debug_name:
-            attr.debug_print(debug_name)
+            attr.debug(debug_name)
         e.left = attr
 def attribute_write_vcenter(e, value):
     if value is None:
@@ -245,7 +245,7 @@ def attribute_write_vcenter(e, value):
         debug_name = getattr(value, 'debug_name', '')
         attr = -(e.height / 2) + value
         if debug_name:
-            attr.debug_print(debug_name)
+            attr.debug(debug_name)
         e.top = attr
 def attribute_write_center(e, value):
     h, v = value
@@ -693,7 +693,7 @@ class EmptyElement(Element):
     def max(self, *args):
         pass
     @forward('misc')
-    def debug_print(self, name):
+    def debug(self, name):
         pass
     @forward('misc')
     def __add__(self, other):

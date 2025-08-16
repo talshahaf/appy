@@ -1575,7 +1575,7 @@ public class Widget extends RemoteViewsService
                         attributeValue.resolvedValue = 0.0;
                     }
 
-                    if (attributeValue.debugName != null && !attributeValue.debugName.isEmpty())
+                    if (attributeValue.debugName != null)
                     {
                         String name = null;
                         if (dynamicView.tag instanceof DictObj.Dict)
@@ -4714,13 +4714,15 @@ public class Widget extends RemoteViewsService
             lastError = "No errors.";
         }
 
+        String displayName = "widget #" + widgetId + " (" + widgetName + ")";
+
         String[] texts = new String[]{ "Open Config", "Recreate", "Set Scale Factor", "Show Last Error", "Clear"};
         String[] actions = new String[] {Constants.SPECIAL_WIDGET_CONFIG + "," + widgetName,
                                          Constants.SPECIAL_WIDGET_RECREATE + "," + widgetId,
                                          Constants.SPECIAL_WIDGET_SCALE_FACTOR + "," + widgetId,
                                          Constants.SPECIAL_WIDGET_SHOWERROR + "," + lastError,
                                          Constants.SPECIAL_WIDGET_CLEAR + "," + widgetId};
-        String[] confirm = new String[] {null, null, null, null, "Clear widget #" + widgetId + " (" + widgetName + ")?"};
+        String[] confirm = new String[] {null, null, null, null, "Clear " + displayName + "?"};
 
         Intent[] intents = new Intent[actions.length];
         for (int i = 0; i < actions.length; i++)
@@ -4734,7 +4736,7 @@ public class Widget extends RemoteViewsService
 
         Intent intent = new Intent(this, ButtonDialogActivity.class);
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_MULTIPLE_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-        intent.putExtra(ButtonDialogActivity.EXTRA_TITLE, "Configure widget #" + widgetId);
+        intent.putExtra(ButtonDialogActivity.EXTRA_TITLE, "Configure " + displayName);
         intent.putExtra(ButtonDialogActivity.EXTRA_BUTTON_TEXTS, texts);
         intent.putExtra(ButtonDialogActivity.EXTRA_BUTTON_ACTIONS, intents);
         intent.putExtra(ButtonDialogActivity.EXTRA_BUTTON_CONFIRM, confirm);

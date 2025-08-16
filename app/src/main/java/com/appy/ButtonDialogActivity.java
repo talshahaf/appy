@@ -43,21 +43,24 @@ public class ButtonDialogActivity extends Activity
 
     public void dialogResult(Intent action, String confirm)
     {
-        if (action != null)
+        if (action == null)
         {
-            Runnable act = () -> {
-                Widget.startService(this, action);
-                finish();
-            };
-            if (confirm != null)
-            {
-                Utils.showConfirmationDialog(this, confirm, "", android.R.drawable.ic_dialog_alert,
-                    null, null, act, this::finish);
-            }
-            else
-            {
-                act.run();
-            }
+            finish();
+            return;
+        }
+
+        Runnable act = () -> {
+            Widget.startService(this, action);
+            finish();
+        };
+        if (confirm != null)
+        {
+            Utils.showConfirmationDialog(this, confirm, "", android.R.drawable.ic_dialog_alert,
+                null, null, act, this::finish);
+        }
+        else
+        {
+            act.run();
         }
     }
 

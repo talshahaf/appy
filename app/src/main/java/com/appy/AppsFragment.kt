@@ -533,7 +533,26 @@ class AppsFragment : MyFragment() {
                 }
             }
         }
+        else if (item.itemId == R.id.action_config) {
+            val widgetId = selectedState.intValue
+            if (widgetId != -1) {
+                val widgetItem = _widgetGridList.find { it.widgetId == widgetId }
+                if (widgetItem?.name != null) {
+                    configureWidget(widgetId)
+                }
+            }
+        }
         return super.onOptionsItemSelected(item)
+    }
+
+    fun configureWidget(widgetId : Int) {
+        val appWidgetInfo = AppWidgetManager.getInstance(context).getAppWidgetInfo(widgetId);
+        if (appWidgetInfo.configure != null) {
+            val intent = Intent(AppWidgetManager.ACTION_APPWIDGET_CONFIGURE);
+            intent.setComponent(appWidgetInfo.configure);
+            intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId);
+            startActivityForResult(intent, 101);
+        }
     }
 
     fun makeShortcut(widgetItem : WidgetItem) {
