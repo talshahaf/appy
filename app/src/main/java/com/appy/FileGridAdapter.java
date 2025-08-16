@@ -144,9 +144,7 @@ public class FileGridAdapter extends BaseAdapter
             }
         });
         viewHolder.edit.setOnClickListener(v -> {
-            Intent intent = new Intent(context, FileEditorActivity.class);
-            intent.putExtra(FileEditorActivity.FILE_EDITOR_PATH_EXTRA, file.path);
-            context.startActivity(intent);
+            FileEditorActivity.launch(context, file.path);
         });
         return view;
     }

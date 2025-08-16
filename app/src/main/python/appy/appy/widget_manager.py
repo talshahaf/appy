@@ -1453,6 +1453,12 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
         return java.build_java_dict({str(k): v for k,v in get_all_widget_names().items()})
 
     @java.override
+    def getPythonFileByName(self, name):
+        if name not in available_widgets:
+            return None
+        return available_widgets[name].get('pythonfile')
+
+    @java.override
     def syncConfig(self, config_java_dict):
         print('sync config called')
 

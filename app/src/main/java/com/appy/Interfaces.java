@@ -63,6 +63,8 @@ interface WidgetUpdateListener
 
     DictObj.Dict getAllWidgetNames();
 
+    String getPythonFileByName(String name);
+
     void syncConfig(DictObj.Dict config);
 
     void dumpStacktrace(String path);

@@ -180,6 +180,7 @@ public class FilesFragment extends MyFragment implements FileGridAdapter.ItemAct
     }
 
     private boolean resumedAndBound = false;
+    private boolean handledArgument = false;
     @Override
     public void onResumedAndBound()
     {
@@ -193,6 +194,7 @@ public class FilesFragment extends MyFragment implements FileGridAdapter.ItemAct
     {
         if (resumedAndBound)
         {
+            handledArgument = false;
             checkFileRequest();
         }
     }
@@ -204,8 +206,32 @@ public class FilesFragment extends MyFragment implements FileGridAdapter.ItemAct
             return;
         }
 
+        if (handledArgument)
+        {
+            return;
+        }
+
+        handledArgument = true;
+
+        int op = fragmentArg.getInt(Constants.FRAGMENT_ARG_FILEOP, -1);
         Uri file = fragmentArg.getParcelable(Constants.FRAGMENT_ARG_FILEURI);
-        PythonFileImport.importPythonFromExternalUri(getActivity(), getWidgetService(), file, null);
+        if (file == null)
+        {
+            return;
+        }
+
+        if (op == Constants.FRAGMENT_ARG_FILEOP_IMPORT)
+        {
+            PythonFileImport.importPythonFromExternalUri(getActivity(), getWidgetService(), file, null);
+        }
+        else if (op == Constants.FRAGMENT_ARG_FILEOP_EDIT)
+        {
+            FileEditorActivity.launch(getActivity(), file.getPath());
+        }
+        else
+        {
+            Log.d("APPY", "unknown file op: " + op);
+        }
     }
 
     public void onPythonFileStatusChange()

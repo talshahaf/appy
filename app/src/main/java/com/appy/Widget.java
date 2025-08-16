@@ -2784,6 +2784,16 @@ public class Widget extends RemoteViewsService
         return updateListener.getAllWidgetNames();
     }
 
+    public String getWidgetPathByName(String name)
+    {
+        if (updateListener == null)
+        {
+            return null;
+        }
+
+        return updateListener.getPythonFileByName(name);
+    }
+
     public long setTimer(long millis, int type, int widgetId, String data)
     {
         return setTimer(System.currentTimeMillis(), millis, type, widgetId, data, -1);
@@ -4708,6 +4718,8 @@ public class Widget extends RemoteViewsService
             return;
         }
 
+        String widgetPath = getWidgetPathByName(widgetName);
+
         String lastError = getWidgetLastError(widgetId);
         if (lastError == null)
         {
@@ -4716,13 +4728,14 @@ public class Widget extends RemoteViewsService
 
         String displayName = "widget #" + widgetId + " (" + widgetName + ")";
 
-        String[] texts = new String[]{ "Open Config", "Recreate", "Set Scale Factor", "Show Last Error", "Clear"};
+        String[] texts = new String[]{ "Open Config", "Recreate", "Set Scale Factor", "Edit", "Show Last Error", "Clear"};
         String[] actions = new String[] {Constants.SPECIAL_WIDGET_CONFIG + "," + widgetName,
                                          Constants.SPECIAL_WIDGET_RECREATE + "," + widgetId,
                                          Constants.SPECIAL_WIDGET_SCALE_FACTOR + "," + widgetId,
+                                         widgetPath == null ? null : Constants.SPECIAL_WIDGET_EDIT_FILE + "," + widgetPath,
                                          Constants.SPECIAL_WIDGET_SHOWERROR + "," + lastError,
                                          Constants.SPECIAL_WIDGET_CLEAR + "," + widgetId};
-        String[] confirm = new String[] {null, null, null, null, "Clear " + displayName + "?"};
+        String[] confirm = new String[] {null, null, null, null, null, "Clear " + displayName + "?"};
 
         Intent[] intents = new Intent[actions.length];
         for (int i = 0; i < actions.length; i++)
@@ -5059,6 +5072,17 @@ public class Widget extends RemoteViewsService
                                             String widgetName = arg;
                                             Log.d("APPY", "configuration of " + widgetName);
                                             startConfigFragment(widgetName);
+                                        }
+                                        break;
+                                    case Constants.SPECIAL_WIDGET_EDIT_FILE:
+                                        if (arg != null)
+                                        {
+                                            String path = arg;
+                                            Bundle fragmentArg = new Bundle();
+                                            fragmentArg.putInt(Constants.FRAGMENT_ARG_FILEOP, Constants.FRAGMENT_ARG_FILEOP_EDIT);
+                                            fragmentArg.putParcelable(Constants.FRAGMENT_ARG_FILEURI, Uri.parse(path));
+                                            Log.d("APPY", "editing of " + path);
+                                            startMainActivity("Files", fragmentArg);
                                         }
                                         break;
                                     case Constants.SPECIAL_WIDGET_SHOWERROR:

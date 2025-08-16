@@ -1,6 +1,8 @@
 package com.appy;
 
+import android.content.Context;
 import android.content.DialogInterface;
+import android.content.Intent;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
@@ -184,5 +186,12 @@ public class FileEditorActivity extends AppCompatActivity
                 })
                 .setNegativeButton("Cancel", null)
                 .show();
+    }
+
+    public static void launch(Context context, String path)
+    {
+        Intent intent = new Intent(context, FileEditorActivity.class);
+        intent.putExtra(FILE_EDITOR_PATH_EXTRA, path);
+        context.startActivity(intent);
     }
 }

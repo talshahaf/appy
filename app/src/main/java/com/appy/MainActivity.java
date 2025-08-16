@@ -178,6 +178,7 @@ public class MainActivity extends AppCompatActivity implements StatusListener, A
             startingFragment = "Files";
 
             fragmentArg = new Bundle();
+            fragmentArg.putInt(Constants.FRAGMENT_ARG_FILEOP, Constants.FRAGMENT_ARG_FILEOP_IMPORT);
             fragmentArg.putParcelable(Constants.FRAGMENT_ARG_FILEURI, getIntent().getData());
         }
 

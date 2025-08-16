@@ -686,9 +686,7 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
             {
                 final File file = selected.values().iterator().next();
 
-                Intent intent = new Intent(this, FileEditorActivity.class);
-                intent.putExtra(FileEditorActivity.FILE_EDITOR_PATH_EXTRA, file.getPath());
-                startActivity(intent);
+                FileEditorActivity.launch(this, file.getPath());
 
                 selected.clear();
                 updateMenu();

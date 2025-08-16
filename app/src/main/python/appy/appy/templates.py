@@ -277,7 +277,7 @@ def grid_of(elements, orientation='horizontal', alignment='center', padding_top=
         primary_element_size = AttributeValue.max(primary_element_size, primary_min_element_size)
     primary_element_size = Var(primary_element_size)
 
-      = AttributeValue.max(*[getattr(e, secondary_size_attr) for e in elements])
+    secondary_element_size = AttributeValue.max(*[getattr(e, secondary_size_attr) for e in elements])
     if secondary_max_element_size is not None:
         secondary_element_size = AttributeValue.min(secondary_element_size, secondary_max_element_size)
     if secondary_min_element_size is not None:

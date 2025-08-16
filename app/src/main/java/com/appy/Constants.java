@@ -64,6 +64,7 @@ public class Constants
     public static final String FRAGMENT_ARG_WIDGET_UNIQUE = FRAGMENT_ARG_PREFIX + "WIDGET_UNIQUE";
     public static final String FRAGMENT_ARG_CONFIG = FRAGMENT_ARG_PREFIX + "CONFIG";
     public static final String FRAGMENT_ARG_FILEURI = FRAGMENT_ARG_PREFIX + "FILEURI";
+    public static final String FRAGMENT_ARG_FILEOP = FRAGMENT_ARG_PREFIX + "FILEOP";
     public static final String FRAGMENT_ARG_REQUESTCODE = FRAGMENT_ARG_PREFIX + "REQUESTCODE";
     public static final String APP_PACKAGE_NOCOM = "appy";
     public static final String APP_PACKAGE_NAME = "com." + APP_PACKAGE_NOCOM;
@@ -78,9 +79,12 @@ public class Constants
     public static final int SPECIAL_WIDGET_RECREATE = 6;
     public static final int SPECIAL_WIDGET_SCALE_FACTOR = 7;
     public static final int SPECIAL_WIDGET_CONFIG = 8;
+    public static final int SPECIAL_WIDGET_EDIT_FILE = 9;
     public static final int TIMER_RELATIVE = 1;
     public static final int TIMER_ABSOLUTE = 2;
     public static final int TIMER_REPEATING = 3;
+    public static final int FRAGMENT_ARG_FILEOP_IMPORT = 0;
+    public static final int FRAGMENT_ARG_FILEOP_EDIT = 1;
     public static final int TEXT_COLOR = 0xb3ffffff;
     public static final int TIMER_MAX_HANDLER = 60 * 60 * 1000; //1 hour
     public static final int ERROR_COALESCE_MILLI = 60 * 1000; //1 minute
