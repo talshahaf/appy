@@ -24,6 +24,7 @@ public abstract class WidgetSelectActivity extends AppCompatActivity implements 
     protected Widget widgetService;
     ListView listview;
     Toolbar toolbar;
+    int preSelectedWidget;
 
     private ServiceConnection mConnection = new ServiceConnection(){
         public void onServiceConnected(ComponentName className, IBinder service)
@@ -54,6 +55,8 @@ public abstract class WidgetSelectActivity extends AppCompatActivity implements 
         setSupportActionBar(toolbar);
 
         doBindService();
+
+        preSelectedWidget = getIntent().getIntExtra(Constants.WIDGET_ID_EXTRA, -1);
     }
 
     @Override
@@ -74,8 +77,10 @@ public abstract class WidgetSelectActivity extends AppCompatActivity implements 
     {
         int w = widgetProps.getInt("width_dp", -1);
         int h = widgetProps.getInt("height_dp", -1);
-        String size = w != -1 && h != -1 ? (" (" + w + "x" + h + ")") : "";
-        return widgetProps.getString("name") + size;
+        String sizeStr = w != -1 && h != -1 ? (" (" + w + "x" + h + ")") : "";
+        float factor = widgetProps.getFloat("size_factor", 1.0f);
+        String sizeFactorStr = factor == 1.0f ? "" : (" size factor: " + factor);
+        return widgetProps.getString("display_name") + sizeStr + sizeFactorStr;
     }
 
     public void updateWidgetList()
@@ -87,20 +92,33 @@ public abstract class WidgetSelectActivity extends AppCompatActivity implements 
 
         DictObj.Dict widgets = widgetService.getAllWidgetAppProps(false, false);
 
+        String preSelectedName = null;
+
         ArrayList<ListFragmentAdapter.Item> adapterList = new ArrayList<>();
         for (String key : widgets.keys())
         {
             DictObj.Dict props = widgets.getDict(key);
-
+            String name = props.getString("name");
             // ignore widget managers
-            if (props.getString("name") != null)
+            if (name != null)
             {
                 int widgetId = Integer.parseInt(key);
+                if (widgetId == preSelectedWidget)
+                {
+                    preSelectedName = name;
+                }
                 final String prefix = props.getBoolean("app", false) ? "app #" : "widget #";
-                adapterList.add(new ListFragmentAdapter.Item(key, elementValueFormat(widgetId, props), item -> (prefix + item.key), widgetId));
+                adapterList.add(new ListFragmentAdapter.Item(key, elementValueFormat(widgetId, props), item -> (prefix + item.key), name));
             }
         }
         listview.setAdapter(new ListFragmentAdapter(this, adapterList));
+
+        if (preSelectedName != null)
+        {
+            onWidgetSelected(null, preSelectedWidget, preSelectedName);
+            // only once
+            preSelectedWidget = -1;
+        }
     }
 
     void doBindService()
@@ -140,7 +158,7 @@ public abstract class WidgetSelectActivity extends AppCompatActivity implements 
         }
 
         ListFragmentAdapter.Item item = (ListFragmentAdapter.Item) adapter.getItemAtPosition(position);
-        onWidgetSelected(view, (Integer)item.arg, item.value);
+        onWidgetSelected(view, Integer.parseInt(item.key), item.value);
     }
 
     @Override
@@ -153,7 +171,7 @@ public abstract class WidgetSelectActivity extends AppCompatActivity implements 
 
         ListFragmentAdapter.Item item = (ListFragmentAdapter.Item)list.getAdapter().getItem(info.position);
 
-        onWidgetCreateContextMenu(menu, v, menuInfo, (Integer)item.arg, item.value);
+        onWidgetCreateContextMenu(menu, v, menuInfo, Integer.parseInt(item.key), item.value);
     }
 
     @Override
@@ -166,7 +184,7 @@ public abstract class WidgetSelectActivity extends AppCompatActivity implements 
         }
         ListFragmentAdapter.Item listitem = (ListFragmentAdapter.Item) listview.getAdapter().getItem(info.position);
 
-        if (onWidgetContextSelected(item.getItemId(), (Integer)listitem.arg, listitem.value))
+        if (onWidgetContextSelected(item.getItemId(), Integer.parseInt(listitem.key), listitem.value))
         {
             return true;
         }

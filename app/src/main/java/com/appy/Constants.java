@@ -69,13 +69,15 @@ public class Constants
     public static final String APP_PACKAGE_NAME = "com." + APP_PACKAGE_NOCOM;
     public static final String DEEP_LINK_BROADCAST = APP_PACKAGE_NAME + ".DeepLink";
     public static final int PYTHON_INIT_FLAGS_REINSTALL = 1;
-    public static final int SPECIAL_WIDGET_ID = 100;
+    public static final int SPECIAL_WIDGET_ID = 10000;
     public static final int SPECIAL_WIDGET_RESTART = 1;
     public static final int SPECIAL_WIDGET_CLEAR = 2;
     public static final int SPECIAL_WIDGET_RELOAD = 3;
     public static final int SPECIAL_WIDGET_SHOWERROR = 4;
     public static final int SPECIAL_WIDGET_OPENAPP = 5;
     public static final int SPECIAL_WIDGET_RECREATE = 6;
+    public static final int SPECIAL_WIDGET_SCALE_FACTOR = 7;
+    public static final int SPECIAL_WIDGET_CONFIG = 8;
     public static final int TIMER_RELATIVE = 1;
     public static final int TIMER_ABSOLUTE = 2;
     public static final int TIMER_REPEATING = 3;

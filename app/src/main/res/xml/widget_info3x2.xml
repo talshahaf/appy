@@ -7,6 +7,8 @@
                     android:minHeight="110dp"
                     android:minWidth="130dp"
                     android:updatePeriodMillis="1800000"
-                    android:resizeMode="horizontal|vertical">
+                    android:resizeMode="horizontal|vertical"
+                    android:configure="com.appy.ForegroundActivity"
+                    android:widgetFeatures="reconfigurable|configuration_optional">
 
 </appwidget-provider>

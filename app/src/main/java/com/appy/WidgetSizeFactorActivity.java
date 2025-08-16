@@ -1,19 +1,13 @@
 package com.appy;
 
-import android.annotation.SuppressLint;
 import android.content.DialogInterface;
-import android.os.Build;
-import android.os.Bundle;
 import android.text.InputType;
-import android.view.ContextMenu;
 import android.view.Gravity;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.view.MotionEvent;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.LinearLayout;
-import android.widget.TextView;
 
 import androidx.appcompat.app.AlertDialog;
 
@@ -43,48 +37,33 @@ public class WidgetSizeFactorActivity extends WidgetSelectActivity
                 .setTitle("Widget size factor")
                 .setMessage("Set size factor for widget #" + widgetId + " (" + widgetName + ")")
                 .setView(container)
-                .setPositiveButton("Set", new DialogInterface.OnClickListener()
-                {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which)
+                .setPositiveButton("Set", (dialog, which) -> {
+                    try
                     {
-                        try
-                        {
-                            String factorText = editText.getText().toString();
-                            Float newFactor = factorText.isEmpty() ? null : Float.parseFloat(factorText);
-                            widgetService.setWidgetSizeFactor(widgetId, newFactor);
-                            updateWidgetList();
-                        }
-                        catch (NumberFormatException e)
-                        {
-
-                        }
-                    }
-                })
-                .setNeutralButton("Unset", new DialogInterface.OnClickListener()
-                {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which)
-                    {
-                        widgetService.setWidgetSizeFactor(widgetId, null);
+                        String factorText = editText.getText().toString();
+                        Float newFactor = factorText.isEmpty() ? null : Float.parseFloat(factorText);
+                        widgetService.setWidgetSizeFactor(widgetId, newFactor);
                         updateWidgetList();
                     }
+                    catch (NumberFormatException ignored)
+                    {
+
+                    }
                 })
-                .setNegativeButton("Cancel", null);
+                .setNeutralButton("Unset", (dialog, which) -> {
+                    widgetService.setWidgetSizeFactor(widgetId, null);
+                    updateWidgetList();
+                })
+                .setNegativeButton("Cancel", null)
+                .setOnDismissListener(dialog -> {
+                    if (view == null)
+                    {
+                        //selected from intent
+                        finish();
+                    }
+                });
 
         builder.show();
-    }
-
-    @Override
-    protected String elementValueFormat(int widgetId, DictObj.Dict widgetProps)
-    {
-        String value = super.elementValueFormat(widgetId, widgetProps);
-        Float sizeFactor = widgetService.getWidgetSizeFactor(widgetId);
-        if (sizeFactor != null)
-        {
-            return value + ": " + Utils.formatFloat(sizeFactor);
-        }
-        return value;
     }
 
     @Override

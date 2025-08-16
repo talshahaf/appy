@@ -131,7 +131,7 @@ public class TimerFragment extends FragmentParent
                 for (String key : allTimers.keys())
                 {
                     DictObj.Dict val = allTimers.getDict(key);
-                    String name = val.hasKey("title") ? val.getString("title") : val.getString("name");
+                    String name = val.getString("display_name");
                     int timers = val.getList("timers").size();
                     boolean isApp = val.getBoolean("app", false);
                     adapterList.add(new ListFragmentAdapter.Item(key, name + " (" + timers + " timers)", item -> ((isApp ? "app #" : "widget #") + item.key), false));

@@ -13,6 +13,7 @@ public class WidgetManagerActivity extends WidgetSelectActivity
 {
     public static final int CONTEXT_MENU_CLEAR = 50;
     public static final int CONTEXT_MENU_RECREATE = 51;
+    public static final int CONTEXT_MENU_SIZE_FACTOR = 52;
 
     private float lastTouchX = Float.NaN;
     private float lastTouchY = Float.NaN;
@@ -20,7 +21,7 @@ public class WidgetManagerActivity extends WidgetSelectActivity
     @Override
     public void onWidgetSelected(View view, int widgetId, String widgetName)
     {
-        if (widgetService == null)
+        if (widgetService == null || view == null)
         {
             return;
         }
@@ -75,6 +76,7 @@ public class WidgetManagerActivity extends WidgetSelectActivity
     {
         menu.add(0, CONTEXT_MENU_CLEAR, 0, "Clear");
         menu.add(0, CONTEXT_MENU_RECREATE, 0, "Recreate");
+        menu.add(0, CONTEXT_MENU_SIZE_FACTOR, 0, "Change Size Factor");
     }
 
     @Override
@@ -98,6 +100,10 @@ public class WidgetManagerActivity extends WidgetSelectActivity
         {
             widgetService.recreateWidget(widgetId);
             updateWidgetList();
+        }
+        else if (itemid == CONTEXT_MENU_SIZE_FACTOR)
+        {
+            Widget.startSizeFactorActivity(this, widgetId);
         }
         return false;
     }

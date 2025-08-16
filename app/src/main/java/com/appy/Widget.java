@@ -1867,7 +1867,7 @@ public class Widget extends RemoteViewsService
         int counter = 1;
         while (true)
         {
-            if (!widgetToAndroid.containsKey(counter))
+            if (!widgetToAndroid.containsKey(counter) && counter != Constants.SPECIAL_WIDGET_ID)
             {
                 break;
             }
@@ -2236,7 +2236,7 @@ public class Widget extends RemoteViewsService
 
     public void setWidgetSizeFactor(int widgetId, Float sizeFactor)
     {
-        setProps(widgetProps, new Object[]{widgetPropsLock}, widgetId, "sizeFactor", sizeFactor, (DictObj.Dict dict) -> dict.put("sizeFactor", sizeFactor));
+        setProps(widgetProps, new Object[]{widgetPropsLock}, widgetId, "size_factor", sizeFactor, (DictObj.Dict dict) -> dict.put("size_factor", sizeFactor));
         saveWidgetProps(widgetId, true);
         update(widgetId);
     }
@@ -2244,6 +2244,12 @@ public class Widget extends RemoteViewsService
     public void setWidgetAppTitle(int widgetId, String title)
     {
         setProps(widgetProps, new Object[]{widgetPropsLock}, widgetId, "app_title", title, (DictObj.Dict dict) -> dict.put("app_title", title));
+        saveWidgetProps(widgetId, true);
+    }
+
+    public void setWidgetLastError(int widgetId, String lastError)
+    {
+        setProps(widgetProps, new Object[]{widgetPropsLock}, widgetId, "last_error", lastError, (DictObj.Dict dict) -> dict.put("last_error", lastError));
         saveWidgetProps(widgetId, true);
     }
 
@@ -2286,11 +2292,29 @@ public class Widget extends RemoteViewsService
 
         synchronized (widgetPropsLock)
         {
-            if (!props.hasKey("sizeFactor"))
+            if (!props.hasKey("size_factor"))
             {
                 return null;
             }
-            return props.getFloat("sizeFactor", 1.0f);
+            return props.getFloat("size_factor", 1.0f);
+        }
+    }
+
+    public String getWidgetLastError(int widgetId)
+    {
+        DictObj.Dict props = widgetProps.get(widgetId);
+        if (props == null)
+        {
+            return null;
+        }
+
+        synchronized (widgetPropsLock)
+        {
+            if (!props.hasKey("last_error"))
+            {
+                return null;
+            }
+            return props.getString("last_error");
         }
     }
 
@@ -2303,6 +2327,7 @@ public class Widget extends RemoteViewsService
         {
             DictObj.Dict data = new DictObj.Dict();
             data.put("name", names.getString(key));
+            data.put("display_name", data.getString("name"));
             result.put(key, data);
         }
 
@@ -2310,18 +2335,22 @@ public class Widget extends RemoteViewsService
         {
             for (Map.Entry<Integer, DictObj.Dict> props : widgetProps.entrySet())
             {
-                if (!props.getValue().hasKey("app_title"))
-                {
-                    continue;
-                }
-
                 String key = props.getKey().toString();
                 if (!result.hasKey(key))
                 {
                     continue;
                 }
 
-                result.getDict(key).put("title", props.getValue().getString("app_title"));
+                result.getDict(key).put("size_factor", props.getValue().getFloat("size_factor", 1.0f));
+                if (props.getValue().hasKey("app_title"))
+                {
+                    result.getDict(key).put("title", props.getValue().getString("app_title"));
+                    result.getDict(key).put("display_name", result.getDict(key).getString("title") + " (" + result.getDict(key).getString("name") + ")");
+                }
+                else
+                {
+                    result.getDict(key).put("display_name", result.getDict(key).getString("name"));
+                }
             }
         }
 
@@ -2392,7 +2421,7 @@ public class Widget extends RemoteViewsService
             {
                 synchronized (widgetPropsLock)
                 {
-                    props.remove("sizeFactor");
+                    props.remove("size_factor");
                     saveWidgetProps(widgetId, false);
                 }
             }
@@ -3407,8 +3436,10 @@ public class Widget extends RemoteViewsService
                     boolean app = widgetProps.getBoolean("app", false);
                     String name = widgetProps.getString("name");
                     String appTitle = widgetProps.getString("title");
+                    String displayName = widgetProps.getString("display_name");
 
                     widget.put("name", name);
+                    widget.put("display_name", displayName);
                     widget.put("app", app);
 
                     if (app && appTitle != null && !appTitle.isEmpty())
@@ -3832,6 +3863,21 @@ public class Widget extends RemoteViewsService
         return waitForAsyncReportTwice(requestCode, timeoutMilli) != null;
     }
 
+    public static void startSizeFactorActivity(Context context)
+    {
+        startSizeFactorActivity(context, -1);
+    }
+    public static void startSizeFactorActivity(Context context, int widgetId)
+    {
+        Intent intent = new Intent(context, WidgetSizeFactorActivity.class);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_MULTIPLE_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        if (widgetId != -1)
+        {
+            intent.putExtra(Constants.WIDGET_ID_EXTRA, widgetId);
+        }
+        context.startActivity(intent);
+    }
+
     public void setWidget(final int androidWidgetId, final int widgetId, final ArrayList<DynamicView> views, final boolean errorOnFailure)
     {
         synchronized (needUpdateWidgets)
@@ -3913,17 +3959,23 @@ public class Widget extends RemoteViewsService
     {
         Log.d("APPY", "setting error widget for " + widgetId + " android: " + androidWidgetId);
 
-        String path = null;
-        if (widgetId > 0 && updateListener != null)
+        String errorStr = Stacktrace.stackTraceString(error);
+        if (widgetId > 0)
         {
-            try
+            String path = null;
+            if (updateListener != null)
             {
-                path = updateListener.onError(widgetId, Stacktrace.stackTraceString(error));
+                try
+                {
+                    path = updateListener.onError(widgetId, errorStr);
+                }
+                catch (Exception e)
+                {
+                    Log.e("APPY", "Exception on onError", e);
+                }
             }
-            catch (Exception e)
-            {
-                Log.e("APPY", "Exception on onError", e);
-            }
+            errorStr = (path != null ? new File(path).getName() : "Unknown file") + " from " + Constants.DATE_FORMAT.format(new Date()) + "\n\n" + errorStr;
+            setWidgetLastError(widgetId, errorStr);
         }
 
         ArrayList<DynamicView> views = new ArrayList<>();
@@ -3980,7 +4032,7 @@ public class Widget extends RemoteViewsService
         showError.attributes.attributes.put(Attributes.Type.RIGHT, attributeParse("5"));
         showError.attributes.attributes.put(Attributes.Type.WIDTH, attributeParse("140"));
         showError.attributes.attributes.put(Attributes.Type.HEIGHT, attributeParse("140"));
-        showError.tag = Constants.SPECIAL_WIDGET_SHOWERROR + "," + (path == null ? "0," : (path.length() + "," + path)) + "," + Stacktrace.stackTraceString(error);
+        showError.tag = Constants.SPECIAL_WIDGET_SHOWERROR + "," + errorStr;
         views.add(showError);
 
         setWidget(androidWidgetId, Constants.SPECIAL_WIDGET_ID, views, false);
@@ -4646,6 +4698,49 @@ public class Widget extends RemoteViewsService
         });
     }
 
+    public void onWidgetConfigure(int widgetId)
+    {
+        DictObj.Dict names = getAllWidgetNames();
+        String widgetName = names.getString(widgetId+"");
+        if (widgetName == null)
+        {
+            //ignore widget managers
+            return;
+        }
+
+        String lastError = getWidgetLastError(widgetId);
+        if (lastError == null)
+        {
+            lastError = "No errors.";
+        }
+
+        String[] texts = new String[]{ "Open Config", "Recreate", "Set Scale Factor", "Show Last Error", "Clear"};
+        String[] actions = new String[] {Constants.SPECIAL_WIDGET_CONFIG + "," + widgetName,
+                                         Constants.SPECIAL_WIDGET_RECREATE + "," + widgetId,
+                                         Constants.SPECIAL_WIDGET_SCALE_FACTOR + "," + widgetId,
+                                         Constants.SPECIAL_WIDGET_SHOWERROR + "," + lastError,
+                                         Constants.SPECIAL_WIDGET_CLEAR + "," + widgetId};
+        String[] confirm = new String[] {null, null, null, null, "Clear widget #" + widgetId + " (" + widgetName + ")?"};
+
+        Intent[] intents = new Intent[actions.length];
+        for (int i = 0; i < actions.length; i++)
+        {
+            intents[i] = new Intent(this, Widget.class);
+            Intent realIntent = new Intent(AppWidgetManager.ACTION_APPWIDGET_UPDATE);
+            realIntent.putExtra(Constants.WIDGET_ID_EXTRA, Constants.SPECIAL_WIDGET_ID);
+            realIntent.putExtra(Constants.ITEM_TAG_EXTRA, actions[i]);
+            intents[i].putExtra(Constants.WIDGET_INTENT, realIntent);
+        }
+
+        Intent intent = new Intent(this, ButtonDialogActivity.class);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_MULTIPLE_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        intent.putExtra(ButtonDialogActivity.EXTRA_TITLE, "Configure widget #" + widgetId);
+        intent.putExtra(ButtonDialogActivity.EXTRA_BUTTON_TEXTS, texts);
+        intent.putExtra(ButtonDialogActivity.EXTRA_BUTTON_ACTIONS, intents);
+        intent.putExtra(ButtonDialogActivity.EXTRA_BUTTON_CONFIRM, confirm);
+        startActivity(intent);
+    }
+
     public void resetState()
     {
         if (updateListener != null)
@@ -4914,55 +5009,54 @@ public class Widget extends RemoteViewsService
                             {
                                 switch (command)
                                 {
+                                    case Constants.SPECIAL_WIDGET_CLEAR:
+                                    case Constants.SPECIAL_WIDGET_RECREATE:
+                                    case Constants.SPECIAL_WIDGET_RELOAD:
+                                    case Constants.SPECIAL_WIDGET_SCALE_FACTOR:
+                                        if (arg != null)
+                                        {
+                                            try
+                                            {
+                                                int widgetId = Integer.parseInt(arg);
+
+                                                switch (command)
+                                                {
+                                                    case Constants.SPECIAL_WIDGET_CLEAR:
+                                                        Log.d("APPY", "clearing " + widgetId);
+                                                        clearWidget(widgetId);
+                                                        break;
+                                                    case Constants.SPECIAL_WIDGET_RECREATE:
+                                                        Log.d("APPY", "recreating " + widgetId);
+                                                        recreateWidget(widgetId);
+                                                        break;
+                                                    case Constants.SPECIAL_WIDGET_RELOAD:
+                                                        Log.d("APPY", "reloading " + widgetId);
+                                                        update(widgetId);
+                                                        break;
+                                                    case Constants.SPECIAL_WIDGET_SCALE_FACTOR:
+                                                        Log.d("APPY", "scale factor of " + widgetId);
+                                                        startSizeFactorActivity(this, widgetId);
+                                                        break;
+                                                }
+                                            }
+                                            catch (NumberFormatException ignored)
+                                            {
+
+                                            }
+                                        }
+                                        break;
                                     case Constants.SPECIAL_WIDGET_RESTART:
                                         restart(false);
                                         break;
                                     case Constants.SPECIAL_WIDGET_OPENAPP:
                                         startMainActivity("Files", null);
                                         break;
-                                    case Constants.SPECIAL_WIDGET_CLEAR:
+                                    case Constants.SPECIAL_WIDGET_CONFIG:
                                         if (arg != null)
                                         {
-                                            try
-                                            {
-                                                int widgetId = Integer.parseInt(arg);
-                                                Log.d("APPY", "clearing " + widgetId);
-                                                clearWidget(widgetId);
-                                            }
-                                            catch (NumberFormatException ignored)
-                                            {
-
-                                            }
-                                        }
-                                        break;
-                                    case Constants.SPECIAL_WIDGET_RECREATE:
-                                        if (arg != null)
-                                        {
-                                            try
-                                            {
-                                                int widgetId = Integer.parseInt(arg);
-                                                Log.d("APPY", "recreating " + widgetId);
-                                                recreateWidget(widgetId);
-                                            }
-                                            catch (NumberFormatException ignored)
-                                            {
-
-                                            }
-                                        }
-                                        break;
-                                    case Constants.SPECIAL_WIDGET_RELOAD:
-                                        if (arg != null)
-                                        {
-                                            try
-                                            {
-                                                int widgetId = Integer.parseInt(arg);
-                                                Log.d("APPY", "reloading " + widgetId);
-                                                update(widgetId);
-                                            }
-                                            catch (NumberFormatException ignored)
-                                            {
-
-                                            }
+                                            String widgetName = arg;
+                                            Log.d("APPY", "configuration of " + widgetName);
+                                            startConfigFragment(widgetName);
                                         }
                                         break;
                                     case Constants.SPECIAL_WIDGET_SHOWERROR:
@@ -4971,32 +5065,18 @@ public class Widget extends RemoteViewsService
                                             Log.d("APPY", "cannot showerror, arg is empty");
                                             break;
                                         }
-                                        String[] args = arg.split(",", 2);
-                                        int arg1len = 0;
-                                        try
+                                        String error = arg;
+                                        String title = "";
+                                        String[] parts = error.split("\n\n", 2);
+                                        if (parts.length == 2)
                                         {
-                                            arg1len = Integer.parseInt(args[0]);
-                                        }
-                                        catch (NumberFormatException ignored)
-                                        {
-                                            Log.d("APPY", "cannot showerror, " + args[0] + " is not a number");
-                                            break;
+                                            title = parts[0];
+                                            error = parts[1];
                                         }
 
-                                        if (arg1len > args[1].length() || args[1].charAt(arg1len) != ',')
-                                        {
-                                            Log.d("APPY", "cannot showerror, arglen (" + arg1len + ") is bad: " + args[1].length() + ", '" + args[1].substring(0, arg1len + 1) + "'");
-                                            break;
-                                        }
+                                        Log.d("APPY", "showing error");
 
-                                        String path = args[1].substring(0, arg1len);
-                                        String error = args[1].substring(arg1len + 1);
-
-                                        String title = path.isEmpty() ? "" : new File(path).getName();
-
-                                        Log.d("APPY", "showing error of " + path);
-
-                                        showDialogNoWait(null, title, path + "\n\n" + error, new String[]{"Close"}, new String[0], new String[0], new String[0][]);
+                                        showDialogNoWait(null, title, error, new String[]{"Close"}, new String[0], new String[0], new String[0][]);
                                         break;
                                 }
                             }
@@ -5007,6 +5087,16 @@ public class Widget extends RemoteViewsService
                         Log.d("APPY", "calling event task: item id: " + widgetIntent.hasExtra(Constants.ITEM_ID_EXTRA) + ", collection id: " + widgetIntent.hasExtra(Constants.COLLECTION_ID_EXTRA) + " , collection item position: " + widgetIntent.hasExtra(Constants.COLLECTION_POSITION_EXTRA) + " checked: " + widgetIntent.getBooleanExtra(RemoteViews.EXTRA_CHECKED, false));
                         addTask(eventWidgetId, new Task<>(new CallEventTask(), (long) eventWidgetId, widgetIntent.getLongExtra(Constants.ITEM_ID_EXTRA, 0), widgetIntent.getLongExtra(Constants.COLLECTION_ID_EXTRA, 0), (long) widgetIntent.getIntExtra(Constants.COLLECTION_POSITION_EXTRA, -1), (long) (widgetIntent.getBooleanExtra(RemoteViews.EXTRA_CHECKED, false) ? 1 : 0)), false);
                     }
+                }
+            }
+            else if (AppWidgetManager.ACTION_APPWIDGET_CONFIGURE.equals(widgetIntent.getAction()) && widgetIntent.hasExtra(AppWidgetManager.EXTRA_APPWIDGET_ID))
+            {
+                int androidWidgetId = widgetIntent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, -1);
+                Log.d("APPY", "configure on widget " + androidWidgetId);
+                Integer widgetId = fromAndroidWidget(androidWidgetId, false);
+                if (widgetId != null)
+                {
+                    onWidgetConfigure(widgetId);
                 }
             }
         }

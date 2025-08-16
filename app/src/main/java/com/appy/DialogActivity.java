@@ -28,7 +28,6 @@ import java.io.Serializable;
 
 public class DialogActivity extends Activity
 {
-
     public static final String EXTRA_TITLE = "EXTRA_TITLE";
     public static final String EXTRA_TEXT = "EXTRA_TEXT";
     public static final String EXTRA_BUTTONS = "EXTRA_BUTTONS";

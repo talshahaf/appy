@@ -1,12 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
-                    android:minResizeHeight="40dp"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:minResizeHeight="40dp"
                     android:minResizeWidth="40dp"
                     android:targetCellWidth="1"
                     android:targetCellHeight="1"
                     android:minHeight="50dp"
                     android:minWidth="40dp"
                     android:updatePeriodMillis="1800000"
-                    android:resizeMode="horizontal|vertical">
+                    android:resizeMode="horizontal|vertical"
+                    android:configure="com.appy.ForegroundActivity"
+                    android:widgetFeatures="reconfigurable|configuration_optional">
 
 </appwidget-provider>

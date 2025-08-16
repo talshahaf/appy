@@ -106,36 +106,41 @@
         </activity>
 
         <activity android:name="com.appy.PermissionActivity"
+            android:noHistory="true"
             android:excludeFromRecents="true"
             android:theme="@style/Invisible"
-            android:exported="true"
             android:fitsSystemWindows="true"
             android:configChanges="orientation|screenSize|keyboardHidden|smallestScreenSize|screenLayout"/>
         <activity android:name="com.appy.ForegroundActivity"
+            android:noHistory="true"
             android:excludeFromRecents="true"
             android:theme="@style/Invisible"
             android:exported="true"
             android:fitsSystemWindows="true"
-            android:configChanges="orientation|screenSize|keyboardHidden|smallestScreenSize|screenLayout"/>
+            android:configChanges="orientation|screenSize|keyboardHidden|smallestScreenSize|screenLayout" >
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE"/>
+            </intent-filter>
+        </activity>
         <activity android:name="com.appy.FileBrowserActivity"
-            android:exported="true"
             android:configChanges="orientation|screenSize|keyboardHidden|smallestScreenSize|screenLayout"/>
         <activity android:name="com.appy.FileEditorActivity"
-            android:exported="true"
             android:configChanges="orientation|screenSize|keyboardHidden|smallestScreenSize|screenLayout"/>
         <activity android:name="com.appy.DialogActivity"
             android:noHistory="true"
             android:excludeFromRecents="true"
             android:theme="@style/Theme.AppCompat.Dialog"
-            android:exported="true"
+            android:configChanges="orientation|screenSize|keyboardHidden|smallestScreenSize|screenLayout"/>
+        <activity android:name="com.appy.ButtonDialogActivity"
+            android:noHistory="true"
+            android:excludeFromRecents="true"
+            android:theme="@style/Theme.AppCompat.Dialog"
             android:configChanges="orientation|screenSize|keyboardHidden|smallestScreenSize|screenLayout"/>
         <activity android:name="com.appy.WidgetManagerActivity"
             android:label="Manage Widgets"
-            android:exported="true"
             android:configChanges="orientation|screenSize|keyboardHidden|smallestScreenSize|screenLayout"/>
         <activity android:name="com.appy.WidgetSizeFactorActivity"
             android:label="Widget Size Factors"
-            android:exported="true"
             android:configChanges="orientation|screenSize|keyboardHidden|smallestScreenSize|screenLayout"/>
         <activity android:name="com.appy.ShareActivity"
             android:label="Share with"
