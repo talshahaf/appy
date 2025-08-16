@@ -140,11 +140,10 @@ def do_init():
     except ImportError:
         print('Installing pip')
         try:
-            import ensurepip
-            ensurepip._main()
+            execute([exe, '-m', 'ensurepip'])
             import pip
         except BaseException as e:
-            print('Failed to install pip: ', e)
+            print('Failed to install pip: ', traceback.format_exc())
 
     #running in background
     optional_packages_thread = Thread(target=lambda: install_optional_packages(exe, False))
