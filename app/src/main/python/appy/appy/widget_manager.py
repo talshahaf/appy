@@ -901,33 +901,44 @@ def set_unknown_error(error):
 def call_widget_chosen_listener(widget_id, name):
     java_widget_manager.callWidgetChosenListener(widget_id, name)
 
+import_locks_lock = threading.Lock()
+import_locks = {}
 def load_module(path):
-    __set_importing_module(path)
-    clear_module(path)
-    name = module_name(path)
-    try:
-        spec = importlib.util.spec_from_file_location(name, path)
-        mod = importlib.util.module_from_spec(spec)
-        sys.modules[name] = mod #for pickle
-        spec.loader.exec_module(mod)
-    except:
-        sys.modules.pop(name, None)
-        raise
-    finally:
-        __clear_importing_module()
+    with import_locks_lock:
+        if path not in import_locks:
+            import_locks[path] = threading.RLock()
+    with import_locks[path]:
+        __set_importing_module(path)
+        clear_module(path)
+        name = module_name(path)
+        try:
+            spec = importlib.util.spec_from_file_location(name, path)
+            mod = importlib.util.module_from_spec(spec)
+            sys.modules[name] = mod #for pickle
+            spec.loader.exec_module(mod)
+        except:
+            sys.modules.pop(name, None)
+            raise
+        finally:
+            __clear_importing_module()
 
 def clear_module(path):
     global available_widgets
-    mod = sys.modules.get(module_name(path))
-    if mod and hasattr(mod, '__del__'):
-        try:
-            mod.__del__()
-        except:
-            #destructor should be nothrow
-            print(traceback.format_exc())
-    with available_widgets_lock:
-        available_widgets = {k:v for k,v in available_widgets.items() if v['pythonfile'] != path}
-    sys.modules.pop(module_name(path), None)
+    with import_locks_lock:
+        if path not in import_locks:
+            import_locks[path] = threading.RLock()
+
+    with import_locks[path]:
+        mod = sys.modules.get(module_name(path))
+        if mod and hasattr(mod, '__del__'):
+            try:
+                mod.__del__()
+            except:
+                #destructor should be nothrow
+                print(traceback.format_exc())
+        with available_widgets_lock:
+            available_widgets = {k:v for k,v in available_widgets.items() if v['pythonfile'] != path}
+        sys.modules.pop(module_name(path), None)
 
 def obtain_manager_state():
     manager_state = state.State('__widgetmanager__', -1) #special own scope
