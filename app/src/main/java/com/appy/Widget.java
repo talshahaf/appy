@@ -55,6 +55,7 @@ import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
 import androidx.preference.PreferenceManager;
 
+import android.os.Parcelable;
 import android.system.ErrnoException;
 import android.system.Os;
 import android.util.DisplayMetrics;
@@ -4737,14 +4738,16 @@ public class Widget extends RemoteViewsService
                                          Constants.SPECIAL_WIDGET_CLEAR + "," + widgetId};
         String[] confirm = new String[] {null, null, null, null, null, "Clear " + displayName + "?"};
 
-        Intent[] intents = new Intent[actions.length];
+        Parcelable[] intents = new Parcelable[actions.length];
         for (int i = 0; i < actions.length; i++)
         {
-            intents[i] = new Intent(this, Widget.class);
+            Intent intent = new Intent(this, Widget.class);
             Intent realIntent = new Intent(AppWidgetManager.ACTION_APPWIDGET_UPDATE);
             realIntent.putExtra(Constants.WIDGET_ID_EXTRA, Constants.SPECIAL_WIDGET_ID);
             realIntent.putExtra(Constants.ITEM_TAG_EXTRA, actions[i]);
-            intents[i].putExtra(Constants.WIDGET_INTENT, realIntent);
+            intent.putExtra(Constants.WIDGET_INTENT, realIntent);
+
+            intents[i] = intent;
         }
 
         Intent intent = new Intent(this, ButtonDialogActivity.class);

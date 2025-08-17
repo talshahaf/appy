@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.Parcelable;
 import android.util.Log;
 
 import androidx.appcompat.app.AlertDialog;
@@ -24,14 +25,20 @@ public class ButtonDialogActivity extends Activity
 
         String title = getIntent().getStringExtra(EXTRA_TITLE);
         String[] buttons = getIntent().getStringArrayExtra(EXTRA_BUTTON_TEXTS);
-        Intent[] actions = (Intent[])getIntent().getParcelableArrayExtra(EXTRA_BUTTON_ACTIONS);
+        Parcelable[] actions_ = getIntent().getParcelableArrayExtra(EXTRA_BUTTON_ACTIONS);
         Intent cancelAction = getIntent().getParcelableExtra(EXTRA_CANCEL_ACTION);
         String[] confirm = getIntent().getStringArrayExtra(EXTRA_BUTTON_CONFIRM);
 
-        if (title == null || buttons == null || actions == null || buttons.length != actions.length || (confirm != null && confirm.length != buttons.length))
+        if (title == null || buttons == null || actions_ == null || buttons.length != actions_.length || (confirm != null && confirm.length != buttons.length))
         {
             finish();
             return;
+        }
+
+        Intent[] actions = new Intent[actions_.length];
+        for (int i = 0; i < actions.length; i++)
+        {
+            actions[i] = (Intent)actions_[i];
         }
 
         AlertDialog.Builder builder = new AlertDialog.Builder(this);

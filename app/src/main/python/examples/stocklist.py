@@ -94,7 +94,7 @@ async def symbol_data(symbol, adjusted):
     month = close[month_ind] if month_ind is not None else week
     three_month = close[three_month_ind] if three_month_ind is not None else month
     year = year_close[year_ind] if year_ind is not None else three_month
-    
+
     # return parsed data as a dict
     return {
             'now': current,

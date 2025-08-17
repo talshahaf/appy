@@ -44,17 +44,19 @@ def update_mark_text(widget, views):
     views['mark'].textColor = [color(r=255), color(g=255)][is_done]
     
     # calculate current streak
-    td = relativedelta(datetime.datetime.now(), max(widget.state.missed + [widget.state.created_time]))
-    if widget.state.interval == 'hourly':
-        streak = td.hours
+    fro, to = max(widget.state.missed + [widget.state.created_time]), datetime.datetime.now()
+    td = to - fro
+    rtd = relativedelta(to, fro)
+    if widget.state.interval == 'minutely':
+        streak = td.total_seconds() // 60
+    elif widget.state.interval == 'hourly':
+        streak = td.total_seconds() // 3600
     elif widget.state.interval == 'daily':
-        streak = td.days
+        streak = td.total_seconds() // (3600 * 24)
     elif widget.state.interval == 'weekly':
-        streak = td.days // 7
+        streak = td.total_seconds() // (3600 * 24 * 7)
     elif widget.state.interval == 'monthly':
-        streak = td.months
-    elif widget.state.interval == 'minutely':
-        streak = td.minutes
+        streak = rtd.months + (rtd.years * 12)
             
     views['streak'].text = f'Streak: {streak + is_done}'
 
@@ -83,7 +85,10 @@ def timer_action(widget, views):
     
     # build the previous and next reset_on dates according to interval and reset_on
     # additional data in reset_on (for example: month data on a daily interval) will be ignored
-    if widget.state.interval == 'hourly':
+    if widget.state.interval == 'minutely':
+        combined = now.replace(second=dt.second)
+        td = relativedelta(minutes=1)
+    elif widget.state.interval == 'hourly':
         combined = now.replace(minute=dt.minute, second=dt.second)
         td = relativedelta(hours=1)
     elif widget.state.interval == 'daily':
@@ -96,9 +101,6 @@ def timer_action(widget, views):
     elif widget.state.interval == 'monthly':
         combined = now.replace(day=dt.day, hour=dt.hour, minute=dt.minute, second=dt.second)
         td = relativedelta(months=1)
-    elif widget.state.interval == 'minutely':
-        combined = now.replace(second=dt.second)
-        td = relativedelta(minutes=1)
     
     if combined < now:
         before = combined
