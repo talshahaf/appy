@@ -1,6 +1,7 @@
 package com.appy;
 
 import android.annotation.SuppressLint;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.util.Log;
@@ -30,13 +31,20 @@ public class LogcatFragment extends MyFragment implements RunnerListener
     ScrollView scroller;
     Button clearButton;
     CheckBox filterButton;
+    TextView scrollState;
     String filterTag = "";
     boolean atEnd = true;
     ArrayList<String> selectionBuffer = new ArrayList<>();
     ArrayList<String> allLines = new ArrayList<>();
     static final String EMPTY_TEXT = "Waiting for logcat...";
 
-    @SuppressLint("ClickableViewAccessibility")
+    public void updateAtEnd()
+    {
+        atEnd = scroller.getScrollY() + scroller.getHeight() >= logcatView.getBottom() + scroller.getPaddingBottom();
+        scrollState.setText(atEnd ? "Auto scrolling" : "Not scrolling");
+    }
+
+    @SuppressLint({"ClickableViewAccessibility", "NewApi"})
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState)
@@ -46,9 +54,9 @@ public class LogcatFragment extends MyFragment implements RunnerListener
         handler = new Handler();
         logcatView = layout.findViewById(R.id.logcat_view);
         scroller = layout.findViewById(R.id.scroller);
-        scroller.setOnTouchListener((v, event) -> {
-            atEnd = scroller.getScrollY() == (logcatView.getBottom() + scroller.getPaddingBottom() - scroller.getHeight());
-            return false;
+        scrollState = layout.findViewById(R.id.scroll_state);
+        scroller.setOnScrollChangeListener((View v, int scrollX, int scrollY, int oldScrollX, int oldScrollY) -> {
+            updateAtEnd();
         });
 
         clearButton = layout.findViewById(R.id.logcat_clear);
@@ -64,6 +72,7 @@ public class LogcatFragment extends MyFragment implements RunnerListener
             selectionBuffer.clear();
             allLines.clear();
             refillLines();
+            updateAtEnd();
         });
 
         filterButton = layout.findViewById(R.id.logcat_filter);
@@ -137,35 +146,30 @@ public class LogcatFragment extends MyFragment implements RunnerListener
     {
         if (handler != null)
         {
-            handler.post(new Runnable()
-            {
-                @Override
-                public void run()
+            handler.post(() -> {
+                // freeze when selecting
+                if (logcatView.hasSelection() || !atEnd)
                 {
-                    // freeze when selecting
-                    if (logcatView.hasSelection() || !atEnd)
+                    selectionBuffer.add(line);
+                }
+                else
+                {
+                    for (String bufferedLine : selectionBuffer)
                     {
-                        selectionBuffer.add(line);
-                    }
-                    else
-                    {
-                        for (String bufferedLine : selectionBuffer)
+                        allLines.add(bufferedLine);
+                        if (!lineHidden(bufferedLine))
                         {
-                            allLines.add(bufferedLine);
-                            if (!lineHidden(bufferedLine))
-                            {
-                                logcatView.append("\n" + bufferedLine);
-                            }
+                            logcatView.append("\n" + bufferedLine);
                         }
-                        selectionBuffer.clear();
+                    }
+                    selectionBuffer.clear();
 
-                        allLines.add(line);
-                        if (!lineHidden(line))
-                        {
-                            logcatView.append("\n" + line);
-                        }
-                        handler.post(() -> scroller.fullScroll(View.FOCUS_DOWN));
+                    allLines.add(line);
+                    if (!lineHidden(line))
+                    {
+                        logcatView.append("\n" + line);
                     }
+                    handler.post(() -> scroller.fullScroll(View.FOCUS_DOWN));
                 }
             });
         }
@@ -193,13 +197,11 @@ public class LogcatFragment extends MyFragment implements RunnerListener
         logcat.start();
         if (handler != null)
         {
-            handler.post(new Runnable()
-            {
-                @Override
-                public void run()
-                {
-                    logcatView.setText(EMPTY_TEXT);
-                }
+            handler.post(() -> {
+                selectionBuffer.clear();
+                allLines.clear();
+                refillLines();
+                updateAtEnd();
             });
         }
     }
