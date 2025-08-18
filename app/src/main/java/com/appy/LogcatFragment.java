@@ -3,16 +3,21 @@ package com.appy;
 import android.annotation.SuppressLint;
 import android.os.Bundle;
 import android.os.Handler;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.CheckBox;
+import android.widget.CompoundButton;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Created by Tal on 19/03/2018.
@@ -24,9 +29,12 @@ public class LogcatFragment extends MyFragment implements RunnerListener
     Handler handler;
     ScrollView scroller;
     Button clearButton;
+    CheckBox filterButton;
+    String filterTag = "";
     boolean atEnd = true;
     ArrayList<String> selectionBuffer = new ArrayList<>();
-    static final String EMPTY_TEXT = "Loading...";
+    ArrayList<String> allLines = new ArrayList<>();
+    static final String EMPTY_TEXT = "Waiting for logcat...";
 
     @SuppressLint("ClickableViewAccessibility")
     @Override
@@ -38,41 +46,91 @@ public class LogcatFragment extends MyFragment implements RunnerListener
         handler = new Handler();
         logcatView = layout.findViewById(R.id.logcat_view);
         scroller = layout.findViewById(R.id.scroller);
-        scroller.setOnTouchListener(new View.OnTouchListener()
-        {
-            @Override
-            public boolean onTouch(View v, MotionEvent event)
-            {
-                atEnd = scroller.getScrollY() == (logcatView.getBottom() + scroller.getPaddingBottom() - scroller.getHeight());
-                return false;
-            }
+        scroller.setOnTouchListener((v, event) -> {
+            atEnd = scroller.getScrollY() == (logcatView.getBottom() + scroller.getPaddingBottom() - scroller.getHeight());
+            return false;
         });
 
         clearButton = layout.findViewById(R.id.logcat_clear);
-        clearButton.setOnClickListener(new View.OnClickListener()
-        {
-            @Override
-            public void onClick(View v)
+        clearButton.setOnClickListener(v -> {
+            try
             {
-                try
-                {
-                    Runtime.getRuntime().exec("logcat -c");
-                }
-                catch (IOException e)
-                {
-                }
-                selectionBuffer.clear();
-                logcatView.setText(EMPTY_TEXT);
+                Runtime.getRuntime().exec("logcat -c");
             }
+            catch (IOException ignored)
+            {
+
+            }
+            selectionBuffer.clear();
+            allLines.clear();
+            refillLines();
         });
 
-        startLogcat();
+        filterButton = layout.findViewById(R.id.logcat_filter);
+        filterButton.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            if (isChecked)
+            {
+                filterTag = "APPY";
+            }
+            else
+            {
+                filterTag = "";
+            }
+            refillLines();
+        });
+
+        if (filterButton.isChecked())
+        {
+            filterTag = "APPY";
+        }
+        else
+        {
+            filterTag = "";
+        }
+
         return layout;
     }
 
     public static final int INITIAL_LOGCAT_LINES = 200;
 
     Runner logcat = null;
+
+    Pattern tagExtract = Pattern.compile("^[^VIDWEF]*[VIDWEF].([^\\s]+)\\s.*$");
+    public boolean lineHidden(String line)
+    {
+        if (filterTag.isEmpty())
+        {
+            return false;
+        }
+        Matcher match = tagExtract.matcher(line);
+        if (!match.matches())
+        {
+            //don't hide bad lines
+            return false;
+        }
+        return !filterTag.equalsIgnoreCase(match.group(1));
+    }
+
+    public void refillLines()
+    {
+        ArrayList<String> shown = new ArrayList<>();
+        for (String line : allLines)
+        {
+            if (!lineHidden(line))
+            {
+                shown.add(line);
+            }
+        }
+
+        if (shown.isEmpty())
+        {
+            logcatView.setText(EMPTY_TEXT);
+        }
+        else
+        {
+            logcatView.setText(String.join("\n", shown));
+        }
+    }
 
     @Override
     public void onLine(final String line)
@@ -93,19 +151,20 @@ public class LogcatFragment extends MyFragment implements RunnerListener
                     {
                         for (String bufferedLine : selectionBuffer)
                         {
-                            logcatView.append("\n" + bufferedLine);
+                            allLines.add(bufferedLine);
+                            if (!lineHidden(bufferedLine))
+                            {
+                                logcatView.append("\n" + bufferedLine);
+                            }
                         }
                         selectionBuffer.clear();
 
-                        logcatView.append("\n" + line);
-                        handler.post(new Runnable()
+                        allLines.add(line);
+                        if (!lineHidden(line))
                         {
-                            @Override
-                            public void run()
-                            {
-                                scroller.fullScroll(View.FOCUS_DOWN);
-                            }
-                        });
+                            logcatView.append("\n" + line);
+                        }
+                        handler.post(() -> scroller.fullScroll(View.FOCUS_DOWN));
                     }
                 }
             });

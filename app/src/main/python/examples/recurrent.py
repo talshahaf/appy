@@ -58,7 +58,7 @@ def update_mark_text(widget, views):
     elif widget.state.interval == 'monthly':
         streak = rtd.months + (rtd.years * 12)
             
-    views['streak'].text = f'Streak: {streak + is_done}'
+    views['streak'].text = f'Streak: {int(streak) + is_done}'
 
 def mark(widget, views):
     if widget.state.mark is None:
