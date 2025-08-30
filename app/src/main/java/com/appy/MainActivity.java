@@ -10,6 +10,8 @@ import android.content.pm.PackageManager;
 import android.content.res.Configuration;
 import android.os.Build;
 import android.os.IBinder;
+
+import androidx.activity.OnBackPressedCallback;
 import androidx.appcompat.app.AlertDialog;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
@@ -26,7 +28,6 @@ import androidx.appcompat.app.AppCompatActivity;
 import android.os.Bundle;
 import androidx.appcompat.widget.Toolbar;
 
-import android.util.ArraySet;
 import android.util.Log;
 import android.util.Pair;
 import android.view.MenuItem;
@@ -34,9 +35,9 @@ import android.view.View;
 import android.widget.FrameLayout;
 import android.widget.TextView;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Objects;
 
 public class MainActivity extends AppCompatActivity implements StatusListener, AppPropsListener, WidgetChosenListener
 {
@@ -68,6 +69,16 @@ public class MainActivity extends AppCompatActivity implements StatusListener, A
 
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        getOnBackPressedDispatcher().addCallback(this,
+            new OnBackPressedCallback(true)
+            {
+                @Override
+                public void handleOnBackPressed()
+                {
+                    backPressed(this);
+                }
+            });
 
         fragments.put(R.id.navigation_control, new Pair<>(ControlFragment.class, null));
         fragments.put(R.id.navigation_files, new Pair<>(FilesFragment.class, null));
@@ -185,7 +196,7 @@ public class MainActivity extends AppCompatActivity implements StatusListener, A
         int startingFragmentIndex = 0;
         for (int i = 0; i < navView.getMenu().size(); i++)
         {
-            if (navView.getMenu().getItem(i).getTitle().toString().equalsIgnoreCase(startingFragment))
+            if (Objects.requireNonNull(navView.getMenu().getItem(i).getTitle()).toString().equalsIgnoreCase(startingFragment))
             {
                 startingFragmentIndex = i;
                 break;
@@ -342,14 +353,15 @@ public class MainActivity extends AppCompatActivity implements StatusListener, A
         return super.onOptionsItemSelected(item);
     }
 
-    @Override
-    public void onBackPressed()
+    public void backPressed(OnBackPressedCallback callback)
     {
         if (!tutorial.allowBackPress())
         {
             return;
         }
-        super.onBackPressed();
+        callback.setEnabled(false);
+        getOnBackPressedDispatcher().onBackPressed();
+        callback.setEnabled(true);
     }
 
     public void selectDrawerItem(@NonNull MenuItem menuItem, Bundle fragmentArg)
@@ -364,7 +376,7 @@ public class MainActivity extends AppCompatActivity implements StatusListener, A
             cls = fragments.get(itemId);
         }
 
-        MyFragmentInterface fragment = (MyFragmentInterface) cls.second;
+        MyFragmentInterface fragment = (MyFragmentInterface) Objects.requireNonNull(cls).second;
         if (fragment == null)
         {
             try
@@ -414,7 +426,7 @@ public class MainActivity extends AppCompatActivity implements StatusListener, A
 
     public Widget widgetService = null;
 
-    private ServiceConnection mConnection = new ServiceConnection()
+    private final ServiceConnection mConnection = new ServiceConnection()
     {
         public void onServiceConnected(ComponentName className, IBinder service)
         {
@@ -471,7 +483,7 @@ public class MainActivity extends AppCompatActivity implements StatusListener, A
     @Override
     public void onStartupStatusChange()
     {
-        Fragment fragment = fragments.get(R.id.navigation_control).second;
+        Fragment fragment = Objects.requireNonNull(fragments.get(R.id.navigation_control)).second;
         if (fragment != null)
         {
             ((ControlFragment) fragment).onStartupStatusChange();
@@ -485,7 +497,7 @@ public class MainActivity extends AppCompatActivity implements StatusListener, A
     @Override
     public void onPythonFileStatusChange()
     {
-        Fragment fragment = fragments.get(R.id.navigation_files).second;
+        Fragment fragment = Objects.requireNonNull(fragments.get(R.id.navigation_files)).second;
         if (fragment != null)
         {
             ((FilesFragment) fragment).onPythonFileStatusChange();
@@ -496,7 +508,7 @@ public class MainActivity extends AppCompatActivity implements StatusListener, A
     @Override
     public void onAppPropsChange(int widgetId, int androidWidgetId, DictObj.Dict data)
     {
-        Fragment fragment = fragments.get(R.id.navigation_apps).second;
+        Fragment fragment = Objects.requireNonNull(fragments.get(R.id.navigation_apps)).second;
         if (fragment != null)
         {
             ((AppsFragment) fragment).onAppPropsChange(widgetId, androidWidgetId, data);
@@ -506,7 +518,7 @@ public class MainActivity extends AppCompatActivity implements StatusListener, A
     @Override
     public void onWidgetChosen(int widgetId, int androidWidgetId, String name)
     {
-        Fragment fragment = fragments.get(R.id.navigation_apps).second;
+        Fragment fragment = Objects.requireNonNull(fragments.get(R.id.navigation_apps)).second;
         if (fragment != null)
         {
             ((AppsFragment) fragment).onWidgetChosen(widgetId, androidWidgetId, name);
@@ -516,7 +528,7 @@ public class MainActivity extends AppCompatActivity implements StatusListener, A
     @Override
     public void onWidgetCleared(int widgetId, int androidWidgetId)
     {
-        Fragment fragment = fragments.get(R.id.navigation_apps).second;
+        Fragment fragment = Objects.requireNonNull(fragments.get(R.id.navigation_apps)).second;
         if (fragment != null)
         {
             ((AppsFragment) fragment).onWidgetCleared(widgetId, androidWidgetId);

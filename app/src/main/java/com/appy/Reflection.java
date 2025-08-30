@@ -1,6 +1,9 @@
 package com.appy;
 
+import android.os.Build;
 import android.util.Log;
+
+import androidx.annotation.RequiresApi;
 
 import java.io.UnsupportedEncodingException;
 import java.lang.reflect.Constructor;
@@ -525,6 +528,7 @@ public class Reflection
     }
 
 
+    @RequiresApi(api = Build.VERSION_CODES.N)
     public static Object[] inspectClassContent(Class<?> clazz, boolean withargs, boolean onearray)
     {
         Object[] outMethods = Arrays.stream(getMethods(clazz)).map(method -> {

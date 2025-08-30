@@ -63,3 +63,34 @@ Result:
 And more:  
 ![plot widget preview](readme-res/plot.gif) ![pil widget preview](readme-res/pil.gif)
 ![countdown widget preview](readme-res/count.gif) ![crypto widget preview](readme-res/crypto.gif)  
+
+## Build  
+### Linux  
+```
+# generate debug apk
+./gradlew assembleDebug
+
+# generate release apk
+./gradlew assembleRelease
+
+# generate signed release apk
+./gradlew assembleRelease -Pandroid.injected.signing.store.file=$KEYFILE \
+ -Pandroid.injected.signing.store.password=$STORE_PASSWORD \
+ -Pandroid.injected.signing.key.alias=$KEY_ALIAS \
+ -Pandroid.injected.signing.key.password=$KEY_PASSWORD
+```
+
+### Windows  
+```
+# generate debug apk
+gradlew.bat assembleDebug
+
+# generate release apk
+gradlew.bat assembleRelease
+
+# generate signed release apk
+gradlew.bat assembleRelease -Pandroid.injected.signing.store.file=$KEYFILE \
+ -Pandroid.injected.signing.store.password=$STORE_PASSWORD \
+ -Pandroid.injected.signing.key.alias=$KEY_ALIAS \
+ -Pandroid.injected.signing.key.password=$KEY_PASSWORD
+```

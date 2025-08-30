@@ -8,25 +8,19 @@ import android.text.Editable;
 import android.text.TextWatcher;
 import android.util.Log;
 import android.util.Pair;
-import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.activity.OnBackPressedCallback;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 
-import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
-import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import java.nio.charset.StandardCharsets;
 
 public class FileEditorActivity extends AppCompatActivity
 {
@@ -44,6 +38,16 @@ public class FileEditorActivity extends AppCompatActivity
     {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.fileeditor);
+
+        getOnBackPressedDispatcher().addCallback(this,
+            new OnBackPressedCallback(true)
+            {
+                @Override
+                public void handleOnBackPressed()
+                {
+                    backPressed(this);
+                }
+            });
 
         toolbar = findViewById(R.id.toolbar);
 
@@ -166,11 +170,12 @@ public class FileEditorActivity extends AppCompatActivity
         }
     }
 
-    @Override
-    public void onBackPressed() {
+    public void backPressed(OnBackPressedCallback callback) {
         if(originalContent.equals(content.getText().toString()))
         {
-            super.onBackPressed();
+            callback.setEnabled(false);
+            getOnBackPressedDispatcher().onBackPressed();
+            callback.setEnabled(true);
             return;
         }
 
@@ -181,7 +186,9 @@ public class FileEditorActivity extends AppCompatActivity
                 {
                     public void onClick(DialogInterface dialog, int id)
                     {
-                        FileEditorActivity.super.onBackPressed();
+                        callback.setEnabled(false);
+                        getOnBackPressedDispatcher().onBackPressed();
+                        callback.setEnabled(true);
                     }
                 })
                 .setNegativeButton("Cancel", null)
