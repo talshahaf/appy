@@ -82,13 +82,13 @@ And more:
 
 ### Windows  
 ```
-# generate debug apk
+@rem generate debug apk
 gradlew.bat assembleDebug
 
-# generate release apk
+@rem generate release apk
 gradlew.bat assembleRelease
 
-# generate signed release apk
+@rem generate signed release apk
 gradlew.bat assembleRelease -Pandroid.injected.signing.store.file=$KEYFILE \
  -Pandroid.injected.signing.store.password=$STORE_PASSWORD \
  -Pandroid.injected.signing.key.alias=$KEY_ALIAS \
