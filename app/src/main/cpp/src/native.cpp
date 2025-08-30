@@ -2407,7 +2407,7 @@ static PyObject * check_is_jclass_castable(PyObject * self, PyObject * args)
         }
 
         GET_JNI_ENV();
-        jboolean ret = NULL;
+        jboolean ret = JNI_FALSE;
         WITHOUTGIL(
             ret = env->IsAssignableFrom((jclass) src, (jclass) dest);
         );
