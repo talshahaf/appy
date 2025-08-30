@@ -65,6 +65,11 @@ And more:
 ![countdown widget preview](readme-res/count.gif) ![crypto widget preview](readme-res/crypto.gif)  
 
 ## Build  
+Create a new file called `local.properties` that points to your installed [SDK](https://developer.android.com/tools/releases/platform-tools):
+```
+sdk.dir=<path to SDK>
+```
+
 ### Linux  
 ```
 # generate debug apk
