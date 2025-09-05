@@ -53,7 +53,7 @@ interface WidgetUpdateListener
 
     String onError(int widgetId, String error);
 
-    DictObj.Dict getStateLayoutSnapshot();
+    DictObj.Dict getStateLayoutSnapshot(String scope, String scopeKey);
 
     void cleanState(String scope, String widget, String key);
 

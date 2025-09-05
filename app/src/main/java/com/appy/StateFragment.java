@@ -21,9 +21,6 @@ import java.util.List;
 
 public class StateFragment extends FragmentParent
 {
-    DictObj.Dict stateSnapshot = null;
-    DictObj.Dict widgetProps = null;
-
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState)
@@ -75,24 +72,10 @@ public class StateFragment extends FragmentParent
             return;
         }
 
-        updateDataSource();
-
         WidgetSelectFragment fragment = new WidgetSelectFragment();
         fragment.setParent(this);
         fragment.setKeyPath();
         switchTo(fragment, true);
-    }
-
-    @Override
-    public Object getDataSource()
-    {
-        return new Pair<>(stateSnapshot, widgetProps);
-    }
-
-    public void updateDataSource()
-    {
-        stateSnapshot = getWidgetService().getStateLayoutSnapshot();
-        widgetProps = getWidgetService().getAllWidgetAppProps(false, false);
     }
 
     public static class WidgetSelectFragment extends ChildFragment implements AdapterView.OnItemClickListener
@@ -100,10 +83,9 @@ public class StateFragment extends FragmentParent
         ListView list;
         ArrayList<String> keyPath;
 
-        public Pair<DictObj.Dict, DictObj.Dict> traverse()
+        public DictObj.Dict traverse(DictObj.Dict stateSnapshot)
         {
-            Pair<DictObj.Dict, DictObj.Dict> current_props = (Pair<DictObj.Dict, DictObj.Dict>) parent.getDataSource();
-            DictObj.Dict current = current_props.first;
+            DictObj.Dict current = stateSnapshot;
             for (String key : keyPath)
             {
                 if (current == null)
@@ -112,27 +94,17 @@ public class StateFragment extends FragmentParent
                 }
                 current = current.getDict(key);
             }
-            return new Pair<>(current, current_props.second);
-        }
-
-        public static String numEntries(DictObj.Dict d, String key)
-        {
-            String entries = "?";
-            Object val = d.get(key);
-            if (val instanceof DictObj.Dict)
-            {
-                entries = ((DictObj.Dict) val).size() + "";
-            }
-            return entries + " entries";
+            return current;
         }
 
         public void refresh()
         {
-            parent.updateDataSource();
+            DictObj.Dict widgetProps = getWidgetService().getAllWidgetAppProps(false, false);
 
             ArrayList<ListFragmentAdapter.Item> adapterList = new ArrayList<>();
             if (keyPath.isEmpty())
             {
+                DictObj.Dict stateSnapshot = getWidgetService().getStateLayoutSnapshot(null, null);
                 if (getActivity() != null)
                 {
                     getActivity().setTitle("State");
@@ -140,7 +112,8 @@ public class StateFragment extends FragmentParent
 
                 for (String scope : scopes)
                 {
-                    adapterList.add(new ListFragmentAdapter.Item(scope, numEntries(((Pair<DictObj.Dict, DictObj.Dict>)parent.getDataSource()).first, scope), false));
+                    boolean containStates = getScopeDepth(scope) == 1;
+                    adapterList.add(new ListFragmentAdapter.Item(scope, Utils.enumerableFormat(stateSnapshot.getInt(scope, 0), containStates ? "state" : "widget", containStates ? "states" : "widgets"), null));
                 }
             }
             else
@@ -155,28 +128,39 @@ public class StateFragment extends FragmentParent
                 boolean containStates = depth - 1 == keyPath.size();
                 boolean inLocalScopeView = containStates && depth == 3;
 
-                Pair<DictObj.Dict, DictObj.Dict> current_props = traverse();
-                if (current_props.first != null)
+                DictObj.Dict stateSnapshot = getWidgetService().getStateLayoutSnapshot(keyPath.get(0), areLeaves ? keyPath.get(keyPath.size() - 1) : null);
+                for (String key : stateSnapshot.keys())
                 {
-                    for (String key : current_props.first.keys())
+                    if (areLeaves)
                     {
-                        String entries = numEntries(current_props.first, key);
-
-                        if (areLeaves)
+                        adapterList.add(new ListFragmentAdapter.Item(key, Utils.capWithEllipsis(stateSnapshot.get(key).toString(), 100), item -> item.key, stateSnapshot.get(key).toString()));
+                    }
+                    else if (inLocalScopeView)
+                    {
+                        if (key.equals(keyPath.get(1)))
                         {
-                            adapterList.add(new ListFragmentAdapter.Item(key, current_props.first.get(key).toString(), item -> item.key, true));
+                            DictObj.Dict nameState = stateSnapshot.getDict(key);
+                            for (String widgetId : nameState.keys())
+                            {
+                                DictObj.Dict props = widgetProps.getDict(widgetId);
+                                final boolean isApp = props != null && props.getBoolean("app", false);
+
+                                adapterList.add(new ListFragmentAdapter.Item(widgetId, Utils.enumerableFormat(nameState.getInt(widgetId, 0), "state", "states"), item -> (isApp ? "app #" : "widget #") + item.key, null));
+                            }
                         }
-                        else if (inLocalScopeView)
+                    }
+                    else
+                    {
+                        String numEntries;
+                        if (depth == 3)
                         {
-                            DictObj.Dict props = current_props.second.getDict(key);
-                            final boolean isApp = props != null && props.getBoolean("app", false);
-
-                            adapterList.add(new ListFragmentAdapter.Item(key, entries, item -> (isApp ? "app #" : "widget #") + item.key, false));
+                            numEntries = Utils.enumerableFormat(stateSnapshot.getDict(key).size(), "instance", "instances");
                         }
                         else
                         {
-                            adapterList.add(new ListFragmentAdapter.Item(key, entries, item -> item.key, false));
+                            numEntries = Utils.enumerableFormat(stateSnapshot.getInt(key, 0), containStates ? "state" : "widget", containStates ? "states" : "widgets");
                         }
+                        adapterList.add(new ListFragmentAdapter.Item(key, numEntries, item -> item.key, null));
                     }
                 }
             }
@@ -217,17 +201,16 @@ public class StateFragment extends FragmentParent
         public void onItemClick(AdapterView<?> adapter, View view, int position, long id)
         {
             ListFragmentAdapter.Item item = (ListFragmentAdapter.Item) adapter.getItemAtPosition(position);
-            if (!(Boolean)item.arg)
+            String value = (String)item.arg;
+            if (value == null)
             {
-                //select that widget
                 WidgetSelectFragment fragment = new WidgetSelectFragment();
                 fragment.setKeyPath(keyPath, item.key);
                 parent.switchTo(fragment, false);
             }
             else
             {
-                //maybe pop viewer
-                showViewer(item.key, item.value);
+                showViewer(item.key, value);
             }
         }
 
@@ -296,7 +279,7 @@ public class StateFragment extends FragmentParent
             ArrayList<String> fullPath = new ArrayList<>(keyPath);
             fullPath.add(item.key);
 
-            boolean leaf = (Boolean)item.arg;
+            boolean leaf = item.arg != null;
 
             Utils.showConfirmationDialog(getActivity(),
                     leaf ? "Delete state" : "Delete all",

@@ -72,23 +72,10 @@ public class TimerFragment extends FragmentParent
             return;
         }
 
-        updateDataSource();
-
         WidgetSelectFragment fragment = new WidgetSelectFragment();
         fragment.setParent(this);
         fragment.setWidget(null);
         switchTo(fragment, true);
-    }
-
-    @Override
-    public Object getDataSource()
-    {
-        return timerSnapshot;
-    }
-
-    public void updateDataSource()
-    {
-        timerSnapshot = getWidgetService().getTimersSnapshot();
     }
 
     public static class WidgetSelectFragment extends ChildFragment implements AdapterView.OnItemClickListener
@@ -117,7 +104,8 @@ public class TimerFragment extends FragmentParent
 
         public void refresh()
         {
-            parent.updateDataSource();
+            DictObj.Dict allTimers = getWidgetService().getTimersSnapshot();
+
             ArrayList<ListFragmentAdapter.Item> adapterList = new ArrayList<>();
 
             if (widget == null)
@@ -127,19 +115,18 @@ public class TimerFragment extends FragmentParent
                     getActivity().setTitle("Timers");
                 }
 
-                DictObj.Dict allTimers = ((DictObj.Dict)parent.getDataSource());
                 for (String key : allTimers.keys())
                 {
                     DictObj.Dict val = allTimers.getDict(key);
                     String name = val.getString("display_name");
                     int timers = val.getList("timers").size();
                     boolean isApp = val.getBoolean("app", false);
-                    adapterList.add(new ListFragmentAdapter.Item(key, name + " (" + timers + " timers)", item -> ((isApp ? "app #" : "widget #") + item.key), false));
+                    adapterList.add(new ListFragmentAdapter.Item(key, name + " (" + Utils.enumerableFormat(timers, "timer", "timers") + ")", item -> ((isApp ? "app #" : "widget #") + item.key), false));
                 }
             }
             else
             {
-                DictObj.Dict widgetTimers = ((DictObj.Dict)parent.getDataSource()).getDict(widget);
+                DictObj.Dict widgetTimers = allTimers.getDict(widget);
 
                 if (getActivity() != null)
                 {

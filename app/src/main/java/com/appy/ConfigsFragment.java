@@ -270,7 +270,7 @@ public class ConfigsFragment extends FragmentParent
                 HashMap<String, Integer> widgets = getWidgetService().getConfigurations().listWidgets();
                 for (Map.Entry<String, Integer> item : widgets.entrySet())
                 {
-                    adapterList.add(new ListFragmentAdapter.Item(item.getKey(), item.getValue() + " configurations"));
+                    adapterList.add(new ListFragmentAdapter.Item(item.getKey(), Utils.enumerableFormat(item.getValue(), "configuration", " configurations")));
                 }
             }
             else
@@ -283,7 +283,8 @@ public class ConfigsFragment extends FragmentParent
                 HashMap<String, Pair<String, String>> values = getWidgetService().getConfigurations().getValues(widget);
                 for (Map.Entry<String, Pair<String, String>> item : values.entrySet())
                 {
-                    String subtitle = item.getValue().first != null ? (item.getValue().first + "\n" + item.getValue().second) : item.getValue().second;
+                    String valueSummary = Utils.capWithEllipsis(item.getValue().second.replaceAll("\r", "").replaceAll("\n", "").replaceAll("\t", " ").replaceAll("  ", ""), 100);
+                    String subtitle = item.getValue().first != null ? (item.getValue().first + "\n" + valueSummary) : item.getValue().second;
                     ListFragmentAdapter.Item listitem = new ListFragmentAdapter.Item(item.getKey(), subtitle, item.getValue().second);
                     if (config != null && item.getKey().equals(config))
                     {

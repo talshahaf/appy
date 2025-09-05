@@ -30,15 +30,6 @@ public abstract class FragmentParent extends MyFragment
         }
     }
 
-    public Object getDataSource()
-    {
-        return new DictObj.Dict();
-    }
-    public void updateDataSource()
-    {
-
-    }
-
     public static abstract class ChildFragment extends MyFragment
     {
         FragmentParent parent;

@@ -2609,9 +2609,21 @@ static jobject build_java_dict_object(PyObject * obj, JNIEnv * env)
 
         while (PyDict_Next(obj, &pos, &key_obj, &value_obj))
         {
-            const char *key_cstr = PyUnicode_AsUTF8AndSize(key_obj, &cstr_size); //TODO multithread?
+            PyObject *key_str_obj = NULL;
+            if (!PyUnicode_Check(key_obj))
+            {
+                key_str_obj = PyObject_Str(key_obj);
+                if (key_str_obj == NULL)
+                {
+                    env->DeleteLocalRef(javadict);
+                    return NULL;
+                }
+            }
+
+            const char *key_cstr = PyUnicode_AsUTF8AndSize(key_str_obj != NULL ? key_str_obj : key_obj, &cstr_size); //TODO multithread?
             if (key_cstr == NULL)
             {
+                Py_XDECREF(key_str_obj);
                 env->DeleteLocalRef(javadict);
                 return NULL;
             }
@@ -2619,6 +2631,7 @@ static jobject build_java_dict_object(PyObject * obj, JNIEnv * env)
             jbyteArray keyarr = env->NewByteArray(cstr_size);
             if (keyarr == NULL)
             {
+                Py_XDECREF(key_str_obj);
                 env->DeleteLocalRef(javadict);
                 return NULL;
             }
@@ -2626,6 +2639,7 @@ static jobject build_java_dict_object(PyObject * obj, JNIEnv * env)
             jbyte * key_bytes = env->GetByteArrayElements(keyarr, NULL);
             if (key_bytes == NULL)
             {
+                Py_XDECREF(key_str_obj);
                 env->DeleteLocalRef(keyarr);
                 env->DeleteLocalRef(javadict);
                 return NULL;
@@ -2633,6 +2647,7 @@ static jobject build_java_dict_object(PyObject * obj, JNIEnv * env)
 
             memcpy(key_bytes, key_cstr, cstr_size);
             env->ReleaseByteArrayElements(keyarr, key_bytes, 0);
+            Py_XDECREF(key_str_obj);
 
             if (env->ExceptionCheck())
             {

@@ -7,6 +7,13 @@ import threading
 java_widget_manager = None
 global_state = None
 
+# state layout:
+#  {
+#    'globals': {'globals': {global_name -> global_value}}
+#    'nonlocals: {widget_name: {nonlocal_name -> nonlocal_value}}
+#    'locals': {widget_id}: {local_name -> nonlocal_value}}
+#  }
+
 def default_state():
     return AttrDict.make({
         'globals': {},
@@ -211,9 +218,25 @@ def state_layout():
                     layout[scope_type][scope_key][key] = repr(value)
                 
     return layout
+
+def state_snapshot(scope, scope_key):
+    global global_state
+
+    value_func = pprint.pformat
+    if not scope:
+        return dict(globals=global_state['globals'].get('globals', {}).keys(),
+                    nonlocals=[k for k, v in global_state['nonlocals'].items() if v],
+                    locals=[k for k, v in global_state['locals'].items() if v])
+    elif not scope_key:
+        if scope == 'globals':
+            return {key: value_func(value) for key, value in global_state['globals']['globals'].items()}
+
+        return {scope_key: len(scope_values) for scope_key, scope_values in global_state[scope].items() if scope_values}
+    else:
+        return {key: value_func(value) for key, value in global_state[scope][scope_key].items()}
     
 def print_state():
-    pprint.pprint(global_state)
+    pprint.pp(global_state)
 
 def wipe_state():
     global global_state

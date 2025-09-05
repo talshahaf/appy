@@ -1401,38 +1401,50 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
         return set_error_to_widget_id(widget_id, error)
 
     @java.override
-    def getStateLayoutSnapshot(self):
-        layout = state.state_layout()
-        new_locals = {}
-        #convert locals[widget_id] to locals[widget][widget_id]
-        for widget_id, local_state in layout['locals'].items():
-            if widget_id == -1:
-                #dont include widget manager's state
-                continue
+    def getStateLayoutSnapshot(self, scope, scope_key):
+        if scope == 'locals' and scope_key:
+            scope_key = int(scope_key)
+        snapshot = state.state_snapshot(scope, scope_key)
+        if scope == 'locals' and not scope_key:
+            # group by widget name
+            widget_names = {}
+            new_layout = {}
+            for widget_id in snapshot:
+                if widget_id != -1 and widget_id not in widget_names:
+                    try:
+                        widget_name = get_widget_name(widget_id)
+                    except KeyError:
+                        continue
 
-            try:
-                name = get_widget_name(widget_id)
-            except KeyError:
-                continue
+                    widget_names[widget_id] = widget_name
+                    new_layout[widget_name] = {}
 
-            new_locals.setdefault(name, {})
-            new_locals[name][str(widget_id)] = local_state
+            for widget_id, num_entries in snapshot.items():
+                if widget_id not in widget_names:
+                    #dont include widget manager's state and bad widgets
+                    continue
 
-        layout['locals'] = new_locals
-
-        #flatten globals
-
-        if layout['globals']:
-            layout['globals'] = layout['globals']['globals']
-
-        #layout:
-        #  globals:
-        #     {key -> repr(value)}
-        #  nonlocals:
-        #     {widget_name -> {key -> repr(value)}}
-        #  locals:
-        #     {widget_name -> {widget_id -> {key -> repr(value)}}}
-        return java.build_java_dict(layout)
+                new_layout[widget_names[widget_id]][widget_id] = num_entries
+            snapshot = new_layout
+        if not scope:
+            # group by widget name
+            new_layout = {}
+            for k, v in snapshot.items():
+                if k == 'locals':
+                    widget_names = {}
+                    for widget_id in snapshot[k]:
+                        if widget_id != -1 and widget_id not in widget_names:
+                            try:
+                                widget_name = get_widget_name(widget_id)
+                            except KeyError:
+                                continue
+                            widget_names[widget_id] = widget_name
+                    new_layout[k] = len(set(widget_names.values()))
+                else:
+                    new_layout[k] = len(snapshot[k])
+            snapshot = new_layout
+        print(snapshot)
+        return java.build_java_dict(snapshot)
 
     @java.override
     def cleanState(self, scope, widget, key):
@@ -1513,7 +1525,7 @@ def add_python_file(path):
     return java_context().addPythonFileByPathWithDialog(path)
 
 def register_widget(name, create, update=None, config=None, config_description=None, on_config=None, on_share=None, on_app=None, debug=False):
-    if not name or not isinstance(name, str):
+    if not name or type(name) != str:
         raise ValueError('name must be str')
 
     path = getattr(__importing_module, 'path', None)

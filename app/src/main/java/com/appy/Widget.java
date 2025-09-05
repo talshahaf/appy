@@ -3402,13 +3402,13 @@ public class Widget extends RemoteViewsService
         }
     }
 
-    public DictObj.Dict getStateLayoutSnapshot()
+    public DictObj.Dict getStateLayoutSnapshot(String scope, String scopeKey)
     {
         if (updateListener == null)
         {
             return null;
         }
-        return updateListener.getStateLayoutSnapshot();
+        return updateListener.getStateLayoutSnapshot(scope, scopeKey);
     }
 
     public DictObj.Dict getTimersSnapshot()

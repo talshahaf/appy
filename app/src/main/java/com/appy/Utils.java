@@ -566,22 +566,9 @@ public class Utils
             builder.setIcon(icon);
         }
 
-        DialogInterface.OnClickListener yesClick = new DialogInterface.OnClickListener()
-        {
-            public void onClick(DialogInterface dialog, int whichButton)
-            {
-                yesAction.run();
-            }
-        };
+        DialogInterface.OnClickListener yesClick = (dialog, whichButton) -> yesAction.run();
 
-        DialogInterface.OnClickListener noClick = otherAction == null ? null : new DialogInterface.OnClickListener()
-        {
-            @Override
-            public void onClick(DialogInterface dialog, int which)
-            {
-                otherAction.run();
-            }
-        };
+        DialogInterface.OnClickListener noClick = otherAction == null ? null : (dialog, which) -> otherAction.run();
 
         if (yes == null)
         {
@@ -601,16 +588,31 @@ public class Utils
             builder.setNegativeButton(no, noClick);
         }
 
-        builder.setOnCancelListener(otherAction == null ? null : new DialogInterface.OnCancelListener()
-        {
-            @Override
-            public void onCancel(DialogInterface dialog)
-            {
-                otherAction.run();
-            }
-        });
+        builder.setOnCancelListener(otherAction == null ? null : dialog -> otherAction.run());
 
         builder.show();
+    }
+
+    public static String capWithEllipsis(String s, int maxlen)
+    {
+        if (s.length() > maxlen)
+        {
+            return s.substring(0, maxlen - 3) + "...";
+        }
+        return s;
+    }
+
+    public static String enumerableFormat(int n, String singular, String plural)
+    {
+        if (n == 0)
+        {
+            return "no " + plural;
+        }
+        if (n == 1)
+        {
+            return "1 " + singular;
+        }
+        return n + " " + plural;
     }
 
     public static String getCrashPath(Context context, Constants.CrashIndex index)
