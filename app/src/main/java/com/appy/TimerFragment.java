@@ -180,6 +180,12 @@ public class TimerFragment extends FragmentParent
         }
 
         @Override
+        public void onStartedAndBound()
+        {
+            refresh();
+        }
+
+        @Override
         public void onItemClick(AdapterView<?> adapter, View view, int position, long id)
         {
             ListFragmentAdapter.Item item = (ListFragmentAdapter.Item) adapter.getItemAtPosition(position);

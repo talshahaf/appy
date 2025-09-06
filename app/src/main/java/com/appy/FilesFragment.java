@@ -181,10 +181,18 @@ public class FilesFragment extends MyFragment implements FileGridAdapter.ItemAct
 
     private boolean resumedAndBound = false;
     private boolean handledArgument = false;
+
     @Override
     public void onResumedAndBound()
     {
         resumedAndBound = true;
+        onPythonFileStatusChange();
+        checkFileRequest();
+    }
+
+    @Override
+    public void onStartedAndBound()
+    {
         onPythonFileStatusChange();
         checkFileRequest();
     }

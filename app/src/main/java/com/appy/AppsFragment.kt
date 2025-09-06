@@ -95,6 +95,7 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.random.Random
 
+
 const val APPWIDGET_HOST_ID = 1433
 const val OPTION_APPWIDGET_APPY_APP = "appWidgetAppyApp"
 
@@ -176,7 +177,7 @@ class AppsFragment : MyFragment() {
 
     private var widgetHost: WidgetHost? = null
     private var appyInfo: AppWidgetProviderInfo? = null
-    private var attachedAndBound = false;
+    private var attachedAndBound = false
 
     private val _widgetGridList = mutableStateListOf<WidgetItem>()
     private val selectedState = mutableIntStateOf (-1)

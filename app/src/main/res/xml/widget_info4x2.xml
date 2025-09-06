@@ -9,6 +9,7 @@
                     android:updatePeriodMillis="1800000"
                     android:resizeMode="horizontal|vertical"
                     android:configure="com.appy.ForegroundActivity"
+                    android:initialLayout="@layout/initial_widget"
                     android:widgetFeatures="reconfigurable|configuration_optional">
 
 </appwidget-provider>

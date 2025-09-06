@@ -134,6 +134,12 @@ public class ControlFragment extends MyFragment
         onStartupStatusChange();
     }
 
+    @Override
+    public void onStartedAndBound()
+    {
+        onStartupStatusChange();
+    }
+
     public void onStartupStatusChange()
     {
         if (getWidgetService() == null)

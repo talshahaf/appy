@@ -247,6 +247,12 @@ public class ConfigsFragment extends FragmentParent
         }
 
         @Override
+        public void onStartedAndBound()
+        {
+            refresh();
+        }
+
+        @Override
         public void onStop()
         {
             if (asyncResultAndDie != null)

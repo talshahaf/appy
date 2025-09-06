@@ -1443,7 +1443,6 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
                 else:
                     new_layout[k] = len(snapshot[k])
             snapshot = new_layout
-        print(snapshot)
         return java.build_java_dict(snapshot)
 
     @java.override

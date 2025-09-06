@@ -3520,29 +3520,24 @@ public class Widget extends RemoteViewsService
 
     public void restart(boolean forcePythonReinstall)
     {
-        new Thread(new Runnable()
-        {
-            @Override
-            public void run()
+        new Thread(() -> {
+            saveTimers();
+            saveAllWidgets();
+            saveWidgetMapping();
+            savePythonFiles();
+            new Task<>(new SaveStateTask()).run();
+
+            if (forcePythonReinstall)
             {
-                saveTimers();
-                saveAllWidgets();
-                saveWidgetMapping();
-                savePythonFiles();
-                new Task<>(new SaveStateTask()).run();
-
-                if (forcePythonReinstall)
-                {
-                    setNextStartupFlags(Constants.PYTHON_INIT_FLAGS_REINSTALL);
-                }
-
-                StoreData.Factory.commitAll();
-
-                Log.d("APPY", "restarting process");
-                setAllWidgets(false);
-
-                handler.post(() -> System.exit(0));
+                setNextStartupFlags(Constants.PYTHON_INIT_FLAGS_REINSTALL);
             }
+
+            StoreData.Factory.commitAll();
+
+            Log.d("APPY", "restarting process");
+            setAllWidgets(false);
+
+            handler.post(() -> System.exit(0));
         }).start();
     }
 
