@@ -103,7 +103,7 @@ public class WidgetManagerActivity extends WidgetSelectActivity
         }
         else if (itemid == CONTEXT_MENU_SIZE_FACTOR)
         {
-            Widget.startSizeFactorActivity(this, widgetId);
+            Widget.startSizeFactorActivity(this, null, widgetId);
         }
         return false;
     }

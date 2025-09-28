@@ -3773,7 +3773,9 @@ public class Widget extends RemoteViewsService
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_MULTIPLE_TASK);
         intent.putExtra(PermissionActivity.EXTRA_REQUEST_CODE, requestCode);
         intent.putExtra(PermissionActivity.EXTRA_PERMISSIONS, permissions);
-        startActivity(intent);
+        handler.post(() -> {
+            startActivity(intent);
+        });
 
         return (Pair<String[], int[]>) waitForAsyncReportTwice(requestCode, timeoutMilli);
     }
@@ -3794,7 +3796,9 @@ public class Widget extends RemoteViewsService
         {
             intent.putExtra(DialogActivity.EXTRA_ICON, icon.intValue());
         }
-        startActivity(intent);
+        handler.post(() -> {
+            startActivity(intent);
+        });
         return requestCode;
     }
 
@@ -3840,7 +3844,9 @@ public class Widget extends RemoteViewsService
         {
             intent.putExtra(Constants.FRAGMENT_ARG_EXTRA, arg);
         }
-        startActivity(intent);
+        handler.post(() -> {
+            startActivity(intent);
+        });
     }
 
     public void startConfigFragment(String widget)
@@ -3869,11 +3875,11 @@ public class Widget extends RemoteViewsService
         return waitForAsyncReportTwice(requestCode, timeoutMilli) != null;
     }
 
-    public static void startSizeFactorActivity(Context context)
+    public static void startSizeFactorActivity(Context context, Handler handler)
     {
-        startSizeFactorActivity(context, -1);
+        startSizeFactorActivity(context, handler, -1);
     }
-    public static void startSizeFactorActivity(Context context, int widgetId)
+    public static void startSizeFactorActivity(Context context, Handler handler, int widgetId)
     {
         Intent intent = new Intent(context, WidgetSizeFactorActivity.class);
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_MULTIPLE_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
@@ -3881,7 +3887,17 @@ public class Widget extends RemoteViewsService
         {
             intent.putExtra(Constants.WIDGET_ID_EXTRA, widgetId);
         }
-        context.startActivity(intent);
+        Runnable r = () -> {
+            context.startActivity(intent);
+        };
+        if (handler != null)
+        {
+            handler.post(r);
+        }
+        else
+        {
+            r.run();
+        }
     }
 
     public void setWidget(final int androidWidgetId, final int widgetId, final ArrayList<DynamicView> views, final boolean errorOnFailure)
@@ -4751,7 +4767,9 @@ public class Widget extends RemoteViewsService
         intent.putExtra(ButtonDialogActivity.EXTRA_BUTTON_TEXTS, texts);
         intent.putExtra(ButtonDialogActivity.EXTRA_BUTTON_ACTIONS, intents);
         intent.putExtra(ButtonDialogActivity.EXTRA_BUTTON_CONFIRM, confirm);
-        startActivity(intent);
+        handler.post(() -> {
+            startActivity(intent);
+        });
     }
 
     public void resetState()
@@ -5048,7 +5066,7 @@ public class Widget extends RemoteViewsService
                                                         break;
                                                     case Constants.SPECIAL_WIDGET_SCALE_FACTOR:
                                                         Log.d("APPY", "scale factor of " + widgetId);
-                                                        startSizeFactorActivity(this, widgetId);
+                                                        startSizeFactorActivity(this, handler, widgetId);
                                                         break;
                                                 }
                                             }
