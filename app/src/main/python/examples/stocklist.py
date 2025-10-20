@@ -9,6 +9,7 @@ from appy import widgets
 
 # Use an reasonable user-agent
 user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
+main_currency = 'USD'
 
 # convert tz aware datetime to utc seconds since epoch
 epoch = datetime.datetime.fromtimestamp(0, datetime.UTC)
@@ -49,7 +50,7 @@ async def request_data(symbol, start, end, interval, retries=5):
     return data['chart']['result'][0]
     
 def find_closest_smaller(lst, needle):
-    smaller = [(i, n) for i, n in enumerate(lst) if n <= needle]
+    smaller = [(i, n) for i, n in enumerate(lst) if n is not None and n <= needle]
     if not smaller:
         return None
     return max(smaller, key=lambda x: x[1])[0]
@@ -59,7 +60,7 @@ def gains(v, ref):
     
 async def symbol_data(symbol, adjusted):
     # build datetimes to request
-    today = datetime.datetime.now(datetime.UTC).replace(hour=0, minute=0, second=0, microsecond=0)
+    today = datetime.datetime.now(datetime.UTC)
     weekago = today - relativedelta(days=7)
     monthago = today - relativedelta(months=1)
     threemonthsago = today - relativedelta(months=3)
@@ -67,38 +68,47 @@ async def symbol_data(symbol, adjusted):
     yearago = today - relativedelta(years=1)
     
     # use a minimum number of requests (3) and do them concurrently
-    data, ytd_data, year_data = await asyncio.gather(request_data(symbol, threemonthsago, today, '1wk'), 
-                                                request_data(symbol, jan1ago - relativedelta(days=1), jan1ago, '1d'),
+    day_data, month_data, ytd_data, year_data = await asyncio.gather(request_data(symbol, today - relativedelta(days=7 + 4), today, '1d'), 
+                                                request_data(symbol, threemonthsago, today, '1wk'), 
+                                                request_data(symbol, jan1ago - relativedelta(days=4), jan1ago, '1d'),
                                                 request_data(symbol, yearago, today, '3mo'))
 
     # find the best data point to use
     jitter = 12 * 3600
-    today_ind = find_closest_smaller(data['timestamp'], gmt_epoch(today) + jitter)
-    week_ind = find_closest_smaller(data['timestamp'], gmt_epoch(weekago) + jitter)
-    month_ind = find_closest_smaller(data['timestamp'], gmt_epoch(monthago) + jitter)
-    three_month_ind = find_closest_smaller(data['timestamp'], gmt_epoch(threemonthsago) + jitter)
+    today_ind = find_closest_smaller(day_data['timestamp'], gmt_epoch(today) + jitter)
+    week_ind = find_closest_smaller(day_data['timestamp'], gmt_epoch(weekago) + jitter)
+    month_ind = find_closest_smaller(month_data['timestamp'], gmt_epoch(monthago) + jitter)
+    three_month_ind = find_closest_smaller(month_data['timestamp'], gmt_epoch(threemonthsago) + jitter)
     year_ind = find_closest_smaller(year_data['timestamp'], gmt_epoch(yearago) + jitter)
-
-    if adjusted:
-        close = data['indicators']['adjclose'][0]['adjclose']
-        year_close = year_data['indicators']['adjclose'][0]['adjclose']
-        ytd = ytd_data['indicators']['adjclose'][0]['adjclose'][0]
-    else:
-        close =  data['indicators']['quote'][0]['close']
-        year_close = year_data['indicators']['quote'][0]['close']
-        ytd = ytd_data['indicators']['quote'][0]['close'][0]
     
-    current = data['meta']['regularMarketPrice']
-    day_open = data['indicators']['quote'][0]['open'][today_ind] if today_ind is not None else current
-    week = close[week_ind] if week_ind is not None else day_open
-    month = close[month_ind] if month_ind is not None else week
-    three_month = close[three_month_ind] if three_month_ind is not None else month
-    year = year_close[year_ind] if year_ind is not None else three_month
+    selector = (lambda d: d['indicators']['adjclose'][0]['adjclose']) if adjusted else (lambda d: d['indicators']['quote'][0]['close'])
+    
+    current = day_data['meta']['regularMarketPrice']
+    
+    day_open = current
+    if today_ind is not None:
+        opens = day_data['indicators']['quote'][0]['open']
+        value = opens[today_ind]
+        
+        #try to fall back to previous day open
+        if value == 0 and today_ind > 0:
+            value = opens[today_ind - 1]
+        if value != 0:
+            day_open = value
+    
+    week = selector(day_data)[week_ind] if week_ind is not None else day_open
+    month = selector(month_data)[month_ind] if month_ind is not None else week
+    three_month = selector(month_data)[three_month_ind] if three_month_ind is not None else month
+    year = selector(year_data)[year_ind] if year_ind is not None else three_month
+    ytd = [e for e in selector(ytd_data) if e][-1]
+    
+    currency = day_data['meta']['currency']
 
     # return parsed data as a dict
     return {
             'now': current,
             'symbol': symbol,
+            'currency': currency,
             'history': {
                     'D': gains(current, day_open),
                     'W': gains(current, week),
@@ -119,8 +129,8 @@ def adapter(widget, view, value, index):
     # refresh should return a list of values, adapter is called on each one of them.
     # in our case `value` is the dict returned from symbol_data()
     
-    # use the original textview to display the current value 
-    view[0].text = f'{value['now']:.2f}'
+    # use the original textview to display the current value and maybe the currency as well
+    view[0].text = f'{value['now']:.2f}{f' {value['currency']}' if value['currency'] != main_currency else ''}'
     view[0].hcenter = widget.hcenter
     view[0].vcenter = widget.vcenter
     view[0].textSize = 15
