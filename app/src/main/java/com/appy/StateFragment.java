@@ -21,6 +21,17 @@ import java.util.List;
 
 public class StateFragment extends FragmentParent
 {
+    String clearAllTitle = "";
+    String clearAllMessage = "";
+    Runnable clearAllAction = null;
+
+    public void setClearAll(String title, String message, Runnable action)
+    {
+        clearAllTitle = title;
+        clearAllMessage = message;
+        clearAllAction = action;
+    }
+
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState)
@@ -39,16 +50,12 @@ public class StateFragment extends FragmentParent
     {
         if (item.getItemId() == R.id.action_clearall)
         {
-            Utils.showConfirmationDialog(getActivity(),
-                "Clear all state", "Clear state for all widgets?", android.R.drawable.ic_dialog_alert,
-                null, null, new Runnable()
-                {
-                    @Override
-                    public void run()
-                    {
-                        getWidgetService().resetState();
-                    }
-                });
+            if (clearAllAction != null)
+            {
+                Utils.showConfirmationDialog(getActivity(),
+                        clearAllTitle, clearAllMessage, android.R.drawable.ic_dialog_alert,
+                        null, null, clearAllAction);
+            }
             return true;
         }
 
@@ -110,6 +117,13 @@ public class StateFragment extends FragmentParent
                     getActivity().setTitle("State");
                 }
 
+                ((StateFragment)parent).setClearAll("Clear all state",
+                        "Clear state for all widgets?",
+                        () -> {
+                            getWidgetService().resetState();
+                            refresh();
+                        });
+
                 for (String scope : scopes)
                 {
                     boolean containStates = getScopeDepth(scope) == 1;
@@ -127,6 +141,22 @@ public class StateFragment extends FragmentParent
                 boolean areLeaves = depth == keyPath.size();
                 boolean containStates = depth - 1 == keyPath.size();
                 boolean inLocalScopeView = containStates && depth == 3;
+
+                ((StateFragment)parent).setClearAll("Clear states",
+                        "Clear all states in " + String.join(".", keyPath) + "?",
+                        () -> {
+                            int widgetIndex = depth == 3 ? 2 : 1;
+                            if (depth == 3 && keyPath.size() == 2)
+                            {
+                                //special handling if in locals/widget/
+                                getWidgetService().cleanLocalStateByName(keyPath.get(1));
+                            }
+                            else
+                            {
+                                getWidgetService().cleanState(keyPath.get(0), keyPath.size() > widgetIndex ? keyPath.get(widgetIndex) : null, null);
+                            }
+                            refresh();
+                        });
 
                 DictObj.Dict stateSnapshot = getWidgetService().getStateLayoutSnapshot(keyPath.get(0), areLeaves ? keyPath.get(keyPath.size() - 1) : null);
                 for (String key : stateSnapshot.keys())
@@ -245,25 +275,11 @@ public class StateFragment extends FragmentParent
         {
             if (v == list)
             {
-                boolean hasContextList = true;
-                if (!keyPath.isEmpty())
-                {
-                    int depth = getScopeDepth(keyPath.get(0));
-                    if (depth != keyPath.size() && depth - 1 != keyPath.size())
-                    {
-                        //only two deepest levels has menu
-                        hasContextList = false;
-                    }
-                }
+                getActivity().getMenuInflater().inflate(R.menu.delete_action, menu);
 
-                if (hasContextList)
-                {
-                    getActivity().getMenuInflater().inflate(R.menu.delete_action, menu);
-
-                    AdapterView.AdapterContextMenuInfo info = (AdapterView.AdapterContextMenuInfo) menuInfo;
-                    ListFragmentAdapter.Item item = (ListFragmentAdapter.Item) list.getItemAtPosition(info.position);
-                    menu.setHeaderTitle(item.keyFormat.format(item));
-                }
+                AdapterView.AdapterContextMenuInfo info = (AdapterView.AdapterContextMenuInfo) menuInfo;
+                ListFragmentAdapter.Item item = (ListFragmentAdapter.Item) list.getItemAtPosition(info.position);
+                menu.setHeaderTitle(item.keyFormat.format(item));
             }
             else
             {
@@ -291,32 +307,28 @@ public class StateFragment extends FragmentParent
                     leaf ? "Delete state" : "Delete all",
                     (leaf ? "Delete " : "Delete all ") + String.join(".", fullPath) + " ?",
                     android.R.drawable.ic_dialog_alert,
-                    null, null, new Runnable()
-                    {
-                        @Override
-                        public void run()
+                    null, null, () -> {
+                        if (keyPath.isEmpty())
                         {
-                            if (keyPath.isEmpty())
+                            getWidgetService().cleanState(item.key, null, null);
+                        }
+                        else if (!leaf)
+                        {
+                            if (getScopeDepth(keyPath.get(0)) == 3 && keyPath.size() == 1)
                             {
-                                if (getScopeDepth(item.key) != 1)
-                                {
-                                    Toast.makeText(getActivity(), "Too many inner levels to delete", Toast.LENGTH_SHORT).show();
-                                }
-                                else
-                                {
-                                    getWidgetService().cleanState(item.key, null, null);
-                                }
-                            }
-                            else if (!leaf)
-                            {
-                                getWidgetService().cleanState(keyPath.get(0), item.key, null);
+                                //clean locals by widget name
+                                getWidgetService().cleanLocalStateByName(item.key);
                             }
                             else
                             {
-                                getWidgetService().cleanState(keyPath.get(0), keyPath.get(keyPath.size() - 1), item.key);
+                                getWidgetService().cleanState(keyPath.get(0), item.key, null);
                             }
-                            refresh();
                         }
+                        else
+                        {
+                            getWidgetService().cleanState(keyPath.get(0), keyPath.get(keyPath.size() - 1), item.key);
+                        }
+                        refresh();
                     });
             return true;
         }

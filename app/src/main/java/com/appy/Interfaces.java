@@ -56,6 +56,7 @@ interface WidgetUpdateListener
     DictObj.Dict getStateLayoutSnapshot(String scope, String scopeKey);
 
     void cleanState(String scope, String widget, String key);
+    void cleanLocalStateByName(String name);
 
     void saveState();
 

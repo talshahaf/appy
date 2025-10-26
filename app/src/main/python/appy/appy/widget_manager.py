@@ -1462,6 +1462,16 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
             pass
 
     @java.override
+    def cleanLocalStateByName(self, name):
+        widgets = get_widgets_by_name(name)
+        for widget in widgets:
+            try:
+                state.clean_state('locals', widget, None)
+            except KeyError:
+                # if can't delete, ignore
+                pass
+
+    @java.override
     def saveState(self):
         state.save_modified()
 

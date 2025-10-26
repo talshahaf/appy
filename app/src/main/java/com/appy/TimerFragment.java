@@ -19,7 +19,16 @@ import java.util.Date;
 
 public class TimerFragment extends FragmentParent
 {
-    DictObj.Dict timerSnapshot = null;
+    String clearAllTitle = "";
+    String clearAllMessage = "";
+    Runnable clearAllAction = null;
+
+    public void setClearAll(String title, String message, Runnable action)
+    {
+        clearAllTitle = title;
+        clearAllMessage = message;
+        clearAllAction = action;
+    }
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
@@ -39,16 +48,12 @@ public class TimerFragment extends FragmentParent
     {
         if (item.getItemId() == R.id.action_clearall)
         {
-            Utils.showConfirmationDialog(getActivity(),
-                "Clear all timers", "Clear timers for all widgets?", android.R.drawable.ic_dialog_alert,
-                null, null, new Runnable()
-                {
-                    @Override
-                    public void run()
-                    {
-                        getWidgetService().cancelAllTimers();
-                    }
-                });
+            if (clearAllAction != null)
+            {
+                Utils.showConfirmationDialog(getActivity(),
+                        clearAllTitle, clearAllMessage, android.R.drawable.ic_dialog_alert,
+                        null, null, clearAllAction);
+            }
             return true;
         }
 
@@ -115,6 +120,13 @@ public class TimerFragment extends FragmentParent
                     getActivity().setTitle("Timers");
                 }
 
+                ((TimerFragment)parent).setClearAll("Clear all timers",
+                        "Clear timers for all widgets?",
+                        () -> {
+                            getWidgetService().cancelAllTimers();
+                            refresh();
+                        });
+
                 for (String key : allTimers.keys())
                 {
                     DictObj.Dict val = allTimers.getDict(key);
@@ -127,12 +139,20 @@ public class TimerFragment extends FragmentParent
             else
             {
                 DictObj.Dict widgetTimers = allTimers.getDict(widget);
+                boolean isApp = widgetTimers.getBoolean("app", false);
+                String entity = (isApp ? "app #" : "widget #") + widget;
 
                 if (getActivity() != null)
                 {
-                    boolean isApp = widgetTimers.getBoolean("app", false);
-                    getActivity().setTitle("Timers of " + (isApp ? "app #" : "widget #") + widget);
+                    getActivity().setTitle("Timers of " + entity);
                 }
+
+                ((TimerFragment)parent).setClearAll("Clear " + (isApp ? "app" : "widget") + " timers",
+                        "Clear all timers for " + entity + "?",
+                        () -> {
+                            getWidgetService().cancelWidgetTimers(Integer.parseInt(widget));
+                            refresh();
+                        });
 
                 DictObj.List timers = widgetTimers.getList("timers");
                 for (int i = 0; i < timers.size(); i++)

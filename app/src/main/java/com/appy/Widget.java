@@ -3474,6 +3474,14 @@ public class Widget extends RemoteViewsService
         }
     }
 
+    public void cleanLocalStateByName(String name)
+    {
+        if (updateListener != null)
+        {
+            updateListener.cleanLocalStateByName(name);
+        }
+    }
+
     public void delete(int widgetId)
     {
         delete(widgetId, null);
@@ -3890,6 +3898,7 @@ public class Widget extends RemoteViewsService
         Runnable r = () -> {
             context.startActivity(intent);
         };
+
         if (handler != null)
         {
             handler.post(r);
