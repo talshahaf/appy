@@ -13,6 +13,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Proxy;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.stream.Stream;
@@ -365,6 +366,8 @@ public class Reflection
 
         // printFunc(clazz, method, parameterTypes);
 
+        ArrayList<String> failedLogs = new ArrayList<>();
+
         if (result == null)
         {
             Callable[] methods;
@@ -395,6 +398,7 @@ public class Reflection
                 methods = copy;
             }
 
+            Callable fallback = null;
             for (Callable m : methods)
             {
                 if (m.getParameterTypes().length == (parameterTypes != null ? parameterTypes.length : 0))
@@ -404,6 +408,7 @@ public class Reflection
                     // constructor
                     Class<?>[] methodTypes = m.getParameterTypes();
                     boolean isCompatible = true;
+                    boolean isFallback = true;
                     for (int j = 0; j < (parameterTypes != null ? parameterTypes.length : 0); j++)
                     {
                         if (methodTypes[j].isAssignableFrom(parameterTypes[j]))
@@ -427,8 +432,18 @@ public class Reflection
                                 // conversion allowed
                                 continue;
                             }
-                            Log.d("APPY", "getCompatibleMethod(): candidate method " + m.getName() + " fails because " + methodTypes[j].getName() + " != " + parameterTypes[j].getName());
+
                             isCompatible = false;
+
+                            //maybe as fallback?
+                            if (methodValue != null && parameterValue != null && parameterValue < methodValue)
+                            {
+                                //can still be technically converted into
+                                continue;
+                            }
+
+                            isFallback = false;
+                            failedLogs.add("getCompatibleMethod(): candidate method " + m.getName() + " fails because " + methodTypes[j].getName() + " != " + parameterTypes[j].getName());
                             break;
                         }
                     }
@@ -437,7 +452,16 @@ public class Reflection
                         result = m;
                         break;
                     }
+                    else if (isFallback && fallback == null)
+                    {
+                        fallback = m;
+                        Log.d("APPY", "getCompatibleMethod(): Using implicit numerical conversion to avoid failing");
+                    }
                 }
+            }
+            if (fallback != null && result == null)
+            {
+                result = fallback;
             }
         }
 
@@ -460,7 +484,11 @@ public class Reflection
             return new Object[]{result.get(), result.isStatic() ? 1 : 0, hasSameNameField ? 1 : 0, args};
         }
 
-        Log.d("APPY", "no such func " + method);
+        Log.e("APPY", "No suitable method found: " + method);
+        for (String failed : failedLogs)
+        {
+            Log.e("APPY", failed);
+        }
         return new Object[]{null, 0, hasSameNameField ? 1 : 0, null};
     }
 

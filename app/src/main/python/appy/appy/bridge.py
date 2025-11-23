@@ -222,6 +222,7 @@ class meta_primitive(type):
         if k != 'primitive':
             inst.code = primitive_codes[k]
             inst.wrapper_class = primitive_code_to_wrapper[inst.code]
+            inst.class_name = k
         return inst
 
 class jprimitive(metaclass=meta_primitive):
@@ -380,11 +381,19 @@ def has_field_or_method(clazz, name):
     return (field_id is not None, has_same_name_method != 0)
     
 def call_method(clazz, obj, name, *args):
-    args, arg_classes, _ = zip(*(convert_arg(arg) for arg in args)) if args else ([], [], 0)
+    args, arg_classes, arg_codes = zip(*(convert_arg(arg) for arg in args)) if args else ([], [], 0)
 
     method_id, needed_codes, is_static, _ = get_methodid(clazz, name, tuple(arg.ref.handle for arg in arg_classes))
     if method_id is None:
-        raise AttributeError(f'No method {name} found for the supplied signature')
+        signature = []
+        for arg, arg_class, arg_code in zip(args, arg_classes, arg_codes):
+            if arg is None or arg == JNULL:
+                signature.append('null')
+            elif arg_code == primitive_codes['object']:
+                signature.append(arg_class.class_name)
+            else:
+                signature.append(arg.class_name)
+        raise AttributeError(f'No method {clazz.class_name}.{name} found for the supplied signature: ({', '.join(signature)})')
 
     ret_code, _ = needed_codes[-1]
     needed_codes = needed_codes[:-1]
@@ -395,6 +404,8 @@ def call_method(clazz, obj, name, *args):
     if is_static:
         ret = native_appy.call_jni_object_functions(clazz.ref.handle, method_id, args, ret_code, OP_CALL_STATIC_METHOD)
     else:
+        if obj is None:
+            raise AttributeError('Object method found but it cannot be called as a static method')
         ret = native_appy.call_jni_object_functions(obj.ref.handle, method_id, args, ret_code, OP_CALL_METHOD)
 
     return handle_ret(ret, ret_code)

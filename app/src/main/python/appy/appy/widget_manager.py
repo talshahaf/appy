@@ -1191,7 +1191,8 @@ def register_for_register_widget(name, f):
             return False
         if name not in register_widget_waiters:
             register_widget_waiters[name] = []
-        register_widget_waiters[name].append(f)
+        if f is not None:
+            register_widget_waiters[name].append(f)
         return True
 
 def notify_registered_widget(name):
@@ -1288,6 +1289,11 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
             print('Clicked collection item does not exist, invalidating')
             return java.new.java.lang.Object[()]([True, self.export(None, views, {})])
         widget, manager_state = create_widget(widget_id)
+
+        if widget.name is not None and register_for_register_widget(widget.name, None):
+            print('suppressing item click event because widget is not loaded')
+            return self.export(None, views, {})
+
         handled = collection.__event__('itemclick', widget=widget, views=views, collection=collection, position=position, view=view)
         handled = handled is True
         return self.export(input, views, dict(handled=handled))
@@ -1304,6 +1310,11 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
             print('Clicked element does not exist, invalidating')
             return self.export(None, views, {})
         widget, manager_state = create_widget(widget_id)
+
+        if widget.name is not None and register_for_register_widget(widget.name, None):
+            print('suppressing click event because widget is not loaded')
+            return self.export(None, views, {})
+
         v.__event__('click', widget=widget, views=views, view=v, checked=checked)
         return self.export(input, views, {})
 
@@ -1356,6 +1367,11 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
 
         input, views = self.import_(views_java_list)
         widget, manager_state = create_widget(widget_id)
+
+        if widget.name is not None and register_for_register_widget(widget.name, None):
+            print('suppressing share event because widget is not loaded')
+            return self.export(None, views, {})
+
         return self.export(input, widget_manager_callback(widget, manager_state, views, 'on_share', mimetype=mime, text=text, data=datas), {})
 
     @java.override

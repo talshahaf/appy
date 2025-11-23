@@ -1305,21 +1305,30 @@ static bool python_to_unpacked_jvalue_impl(PyObject * object, int type, jvalue *
             break;
         }
         case FLOAT:
-        {
-            if (!PyFloat_Check(object))
-            {
-                return false;
-            }
-            result->f = (jfloat) PyFloat_AsDouble(object);
-            break;
-        }
         case DOUBLE:
         {
-            if (!PyFloat_Check(object))
+            double value;
+            if (PyFloat_Check(object))
+            {
+                value = PyFloat_AsDouble(object);
+            }
+            else if (PyLong_Check(object))
+            {
+                value = (double)PyLong_AsLongLong(object);
+            }
+            else
             {
                 return false;
             }
-            result->d = (jdouble) PyFloat_AsDouble(object);
+
+            if (type == FLOAT)
+            {
+                result->f = (jfloat) value;
+            }
+            else
+            {
+                result->d = (jfloat) value;
+            }
             break;
         }
         case OBJECT:
