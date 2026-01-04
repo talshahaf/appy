@@ -6,13 +6,8 @@ import android.database.Cursor;
 import android.database.CursorWindow;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
-import android.util.Base64;
 import android.util.Log;
-import android.util.Pair;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.IOException;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -59,7 +54,7 @@ public class StoreData
         {
             if (executor == null)
             {
-                executor = new ThreadPoolExecutor(1, 1, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>());
+                executor = new ThreadPoolExecutor(1, 1, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>());
 
                 try
                 {
@@ -105,7 +100,6 @@ public class StoreData
     }
 
     private static final Object objlock = new Object();
-    private static final Object filelock = new Object();
     private DictObj.Dict store;
     private final Set<String> changed = new HashSet<>();
     private final String domain;
@@ -145,43 +139,6 @@ public class StoreData
                 }
             }
         }
-
-//
-//        byte[] data = null;
-//        try
-//        {
-//            synchronized (filelock)
-//            {
-//                data = Utils.readAndHashFile(path, Constants.STORE_MAX_DOMAIN_SIZE).first;
-//            }
-//
-//            DictObj.Dict obj = DictObj.Dict.deserialize(data);
-//
-//            synchronized (objlock)
-//            {
-//                store = obj;
-//                changed.clear();
-//            }
-//        }
-//        catch (FileNotFoundException e)
-//        {
-//            //ok
-//            synchronized (objlock)
-//            {
-//                store = new DictObj.Dict();
-//                changed.clear();
-//            }
-//        }
-//        catch (IOException e)
-//        {
-//            Log.e("APPY", "StoreData load failed", e);
-//            throw new RuntimeException(e);
-//        }
-//        catch (Exception e)
-//        {
-//            Log.e("APPY", "deserialization failed: "+ (data != null ? Base64.encodeToString(data, Base64.DEFAULT) : "null"), e);
-//            throw new RuntimeException(e);
-//        }
     }
 
     public void commit()
@@ -245,14 +202,7 @@ public class StoreData
 
     public void apply()
     {
-        Factory.post(new Runnable()
-        {
-            @Override
-            public void run()
-            {
-                StoreData.this.commit();
-            }
-        });
+        Factory.post(StoreData.this::commit);
     }
 
     public boolean isSaved()

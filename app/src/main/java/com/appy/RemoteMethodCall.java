@@ -6,9 +6,7 @@ import android.net.Uri;
 import android.os.Parcel;
 import android.os.Parcelable;
 import android.util.Base64;
-import android.util.Log;
 import android.util.Pair;
-import android.util.TypedValue;
 import android.widget.RemoteViews;
 
 import java.lang.reflect.Field;
@@ -326,11 +324,11 @@ public class RemoteMethodCall
 
         try
         {
-            Class clazz = Class.forName(dict.getString("class"));
+            Class<?> clazz = Class.forName(dict.getString("class"));
             switch (type) {
                 case "enum":
                 {
-                    return Enum.valueOf(clazz, dict.getString("value"));
+                    return Enum.valueOf((Class)clazz, dict.getString("value"));
                 }
                 case "stringable":
                 {
@@ -448,7 +446,7 @@ public class RemoteMethodCall
         else if (param instanceof CharSequence)
         {
             dict.put("type", "primitive");
-            dict.put("value", ((CharSequence)param).toString());
+            dict.put("value", param.toString());
         }
         else if (param.getClass().isEnum())
         {

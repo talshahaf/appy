@@ -42,7 +42,7 @@ public class OverlayHoleView extends View implements ValueAnimator.AnimatorUpdat
 
     int overlayColor = Color.argb(200, 0, 0, 0);
 
-    private RadialGradient mGradient = null;
+    private final RadialGradient mGradient = null;
     private Paint mPaintFill = null;
     private Paint mPaintHole = null;
     private Paint mPaintRing = null;
@@ -202,15 +202,10 @@ public class OverlayHoleView extends View implements ValueAnimator.AnimatorUpdat
 
         if (onHoleClick != null)
         {
-            handler.postDelayed(new Runnable()
-            {
-                @Override
-                public void run()
+            handler.postDelayed(() -> {
+                if (onHoleClick != null)
                 {
-                    if (onHoleClick != null)
-                    {
-                        onHoleClick.onHoleClick();
-                    }
+                    onHoleClick.onHoleClick();
                 }
             }, 100);
         }

@@ -1,7 +1,6 @@
 package com.appy;
 
 import android.content.Context;
-import android.content.Intent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -20,7 +19,7 @@ import java.util.HashMap;
 public class FileGridAdapter extends BaseAdapter
 {
     private ArrayList<PythonFile> files;
-    private HashMap<String, PythonFile.State> stateOverride = new HashMap<>();
+    private final HashMap<String, PythonFile.State> stateOverride = new HashMap<>();
     Context context;
     ItemActionListener listener;
 
@@ -143,9 +142,7 @@ public class FileGridAdapter extends BaseAdapter
                 listener.onRefresh(file);
             }
         });
-        viewHolder.edit.setOnClickListener(v -> {
-            FileEditorActivity.launch(context, file.path);
-        });
+        viewHolder.edit.setOnClickListener(v -> FileEditorActivity.launch(context, file.path));
         return view;
     }
 

@@ -14,12 +14,12 @@ import java.util.StringTokenizer;
  */
 public class Runner implements Runnable
 {
-    private String[] command;
-    private File cwd;
-    private String[] envp;
+    private final String[] command;
+    private final File cwd;
+    private final String[] envp;
 
-    private RunnerListener callback;
-    private Thread thread;
+    private final RunnerListener callback;
+    private final Thread thread;
     private Process process = null;
     private boolean shouldStop = false;
 
@@ -94,7 +94,7 @@ public class Runner implements Runnable
 
     public static String[] translateCommandline(String toProcess)
     {
-        if (toProcess == null || toProcess.length() == 0)
+        if (toProcess == null || toProcess.isEmpty())
         {
             // no command? no string
             return new String[0];
@@ -107,7 +107,7 @@ public class Runner implements Runnable
         final int inDoubleQuote = 2;
 
         int state = normal;
-        StringTokenizer tok = new StringTokenizer(toProcess, "\"\' ", true);
+        StringTokenizer tok = new StringTokenizer(toProcess, "\"' ", true);
         ArrayList<String> list = new ArrayList<>();
         StringBuilder current = new StringBuilder();
         boolean lastTokenHasBeenQuoted = false;
@@ -118,7 +118,7 @@ public class Runner implements Runnable
             switch (state)
             {
                 case inQuote:
-                    if ("\'".equals(nextTok))
+                    if ("'".equals(nextTok))
                     {
                         lastTokenHasBeenQuoted = true;
                         state = normal;
@@ -140,7 +140,7 @@ public class Runner implements Runnable
                     }
                     break;
                 default:
-                    if ("\'".equals(nextTok))
+                    if ("'".equals(nextTok))
                     {
                         state = inQuote;
                     }
@@ -203,7 +203,7 @@ public class Runner implements Runnable
                     exitCode = process.exitValue();
                     exited = true;
                 }
-                catch (IllegalThreadStateException e)
+                catch (IllegalThreadStateException ignored)
                 {
 
                 }
@@ -247,7 +247,7 @@ public class Runner implements Runnable
                         try
                         {
                             //avoid busyloop
-                            Thread.sleep(1000);
+                            Thread.sleep(500);
                         }
                         catch (InterruptedException e)
                         {

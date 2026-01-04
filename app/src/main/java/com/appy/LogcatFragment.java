@@ -1,17 +1,13 @@
 package com.appy;
 
 import android.annotation.SuppressLint;
-import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
-import android.util.Log;
 import android.view.LayoutInflater;
-import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.CheckBox;
-import android.widget.CompoundButton;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
@@ -55,9 +51,7 @@ public class LogcatFragment extends MyFragment implements RunnerListener
         logcatView = layout.findViewById(R.id.logcat_view);
         scroller = layout.findViewById(R.id.scroller);
         scrollState = layout.findViewById(R.id.scroll_state);
-        scroller.setOnScrollChangeListener((View v, int scrollX, int scrollY, int oldScrollX, int oldScrollY) -> {
-            updateAtEnd();
-        });
+        scroller.setOnScrollChangeListener((View v, int scrollX, int scrollY, int oldScrollX, int oldScrollY) -> updateAtEnd());
 
         clearButton = layout.findViewById(R.id.logcat_clear);
         clearButton.setOnClickListener(v -> {

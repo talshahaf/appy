@@ -1,8 +1,5 @@
 package com.appy;
 
-import android.util.Log;
-import android.util.Pair;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;

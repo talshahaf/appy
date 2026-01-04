@@ -7,10 +7,7 @@ import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
-import android.graphics.Rect;
-import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
-import android.graphics.drawable.Icon;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.OpenableColumns;
@@ -30,22 +27,20 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
-import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.math.RoundingMode;
+import java.net.URL;
+import java.net.URLConnection;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.text.DecimalFormat;
-import java.text.DecimalFormatSymbols;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
@@ -70,7 +65,7 @@ public class Utils
         public abstract void run();
     }
 
-    public static interface KeyMapper<T>
+    public interface KeyMapper<T>
     {
         float map(T t);
     }
@@ -703,6 +698,47 @@ public class Utils
             //not ours
             Thread.setDefaultUncaughtExceptionHandler(new CrashHandler(path, handler));
         }
+    }
+
+    public interface DownloadProgress
+    {
+        void progress(float progress);
+    }
+
+    public static byte[] downloadFile(String url, String savePath, DownloadProgress callback) throws IOException
+    {
+        URLConnection connection = new URL(url).openConnection();
+        connection.setConnectTimeout(10000);
+        connection.setReadTimeout(10000);
+        connection.connect();
+
+        int size = connection.getContentLength();
+
+        InputStream input = new BufferedInputStream(connection.getInputStream());
+        OutputStream output = savePath != null ? new FileOutputStream(savePath) : new ByteArrayOutputStream();
+
+        byte[] buffer = new byte[8192];
+        int count = 0;
+        long total = 0;
+        while ((count = input.read(buffer)) != -1) {
+            output.write(buffer, 0, count);
+            total += count;
+            if (size > 0 && callback != null) {
+                callback.progress((float)total / size);
+            }
+        }
+
+        output.flush();
+
+        byte[] ret = null;
+        if (savePath == null)
+        {
+            ret = ((ByteArrayOutputStream)output).toByteArray();
+        }
+
+        output.close();
+        input.close();
+        return ret;
     }
 
     public static void writeFile(File path, String data) throws IOException

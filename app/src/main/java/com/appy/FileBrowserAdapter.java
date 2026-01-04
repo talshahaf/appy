@@ -6,7 +6,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
 import android.widget.CheckBox;
-import android.widget.CompoundButton;
 import android.widget.ImageView;
 import android.widget.TextView;
 
@@ -30,8 +29,8 @@ public class FileBrowserAdapter extends BaseAdapter
         void onCheckedChanged(FileBrowserAdapter adapter, File file, boolean checked);
     }
 
-    private FileItem current;
-    private FileItem[] files;
+    private final FileItem current;
+    private final FileItem[] files;
     Context context;
     boolean isRoot;
     OnCheckedChanged checkedListener;
@@ -143,28 +142,23 @@ public class FileBrowserAdapter extends BaseAdapter
 
         view.setContentDescription("fileitem_" + viewHolder.filename.getText());
 
-        viewHolder.checkbox.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener()
-        {
-            @Override
-            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked)
+        viewHolder.checkbox.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            if (!buttonView.isPressed())
             {
-                if (!buttonView.isPressed())
-                {
-                    // Not from user!
-                    return;
-                }
+                // Not from user!
+                return;
+            }
 
-                item.checked = isChecked;
-                if (checkedListener != null)
-                {
-                    checkedListener.onCheckedChanged(FileBrowserAdapter.this, item.file, isChecked);
-                }
+            item.checked = isChecked;
+            if (checkedListener != null)
+            {
+                checkedListener.onCheckedChanged(FileBrowserAdapter.this, item.file, isChecked);
             }
         });
         return view;
     }
 
-    class ViewHolder
+    static class ViewHolder
     {
         CheckBox checkbox;
         ImageView icon;

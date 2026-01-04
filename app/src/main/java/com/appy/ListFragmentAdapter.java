@@ -47,8 +47,8 @@ public class ListFragmentAdapter extends BaseAdapter
         }
     }
     public static int MAX_VALUE_LENGTH = 100;
-    private Context context;
-    private ArrayList<Item> items;
+    private final Context context;
+    private final ArrayList<Item> items;
 
     public ListFragmentAdapter(Context context, ArrayList<Item> items)
     {

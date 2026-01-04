@@ -3,12 +3,12 @@ package com.appy;
 import android.Manifest;
 import android.content.ComponentName;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.ServiceConnection;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
 import android.os.Build;
+import android.os.Handler;
 import android.os.IBinder;
 
 import androidx.activity.OnBackPressedCallback;
@@ -21,7 +21,7 @@ import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
 import android.content.Intent;
 import com.google.android.material.navigation.NavigationView;
-import androidx.fragment.app.FragmentManager;
+
 import androidx.appcompat.app.ActionBar;
 import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.appcompat.app.AppCompatActivity;
@@ -31,16 +31,35 @@ import androidx.appcompat.widget.Toolbar;
 import android.util.Log;
 import android.util.Pair;
 import android.view.MenuItem;
-import android.view.View;
+import android.view.ViewGroup;
+import android.webkit.MimeTypeMap;
 import android.widget.FrameLayout;
+import android.widget.RelativeLayout;
 import android.widget.TextView;
 
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Objects;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class MainActivity extends AppCompatActivity implements StatusListener, AppPropsListener, WidgetChosenListener
 {
+    private static final boolean checkUpdates = true;
+    private static final String githubRepo = "talshahaf/appy";
+    private static final String latestReleaseUrl = "https://api.github.com/repos/" + githubRepo + "/releases/latest";
+    private static final String tagsUrl = "https://api.github.com/repos/" + githubRepo + "/tags";
+    private static final String bundleExtension = ".apk";
+    private String latestDownloadUrl = null;
+    private boolean downloadingUpdate = false;
+
     private TutorialOverlayView tutorialOverlayView;
     private Tutorial tutorial = null;
     private FrameLayout fragmentContainer;
@@ -48,7 +67,11 @@ public class MainActivity extends AppCompatActivity implements StatusListener, A
     private Toolbar toolbar;
     private NavigationView navView;
     private TextView bottomText;
-    private HashMap<Integer, Pair<Class<?>, Fragment>> fragments = new HashMap<>();
+    private RelativeLayout updateBar;
+    private TextView updateText;
+    private Handler handler;
+    private ExecutorService executor;
+    private final HashMap<Integer, Pair<Class<?>, Fragment>> fragments = new HashMap<>();
     public static final String FRAGMENT_TAG = "FRAGMENT";
 
     @Override
@@ -60,6 +83,67 @@ public class MainActivity extends AppCompatActivity implements StatusListener, A
         {
             tutorial.onConfigurationChanged();
         }
+    }
+
+    public String checkUpdates()
+    {
+        try
+        {
+            byte[] data = Utils.downloadFile(latestReleaseUrl, null, null);
+            JSONObject latest = new JSONObject(new String(data, StandardCharsets.UTF_8));
+            String tagName = latest.getString("tag_name");
+
+            JSONArray assets = latest.getJSONArray("assets");
+            String latestUrl = null;
+            for (int i = 0; i < assets.length(); i++)
+            {
+                JSONObject obj = assets.getJSONObject(i);
+                String name = obj.getString("name");
+                String url = obj.getString("browser_download_url");
+                if (name.toLowerCase().endsWith(bundleExtension))
+                {
+                    latestUrl = url;
+                    break;
+                }
+            }
+
+            if (latestUrl == null)
+            {
+                return null;
+            }
+
+            data = Utils.downloadFile(tagsUrl, null, null);
+            JSONArray tags = new JSONArray(new String(data, StandardCharsets.UTF_8));
+            String commit = null;
+            for (int i = 0; i < tags.length(); i++)
+            {
+                JSONObject obj = tags.getJSONObject(i);
+                if(obj != null && tagName.equals(obj.getString("name")))
+                {
+                    obj = obj.getJSONObject("commit");
+                    commit = obj.getString("sha");
+                    break;
+                }
+            }
+
+            if (commit == null)
+            {
+                return null;
+            }
+
+            Log.d("APPY", "Updater: Latest: " + commit + ", self: " + BuildConfig.COMMIT);
+            if (commit.equalsIgnoreCase(BuildConfig.COMMIT))
+            {
+                return null;
+            }
+
+            return latestUrl;
+        }
+        catch (JSONException | IOException e)
+        {
+            Log.e("APPY", "Update check failed", e);
+        }
+        return null;
     }
 
     @Override
@@ -107,45 +191,98 @@ public class MainActivity extends AppCompatActivity implements StatusListener, A
 
         // Setup drawer view
         navView.setNavigationItemSelectedListener(
-                new NavigationView.OnNavigationItemSelectedListener()
-                {
-                    @Override
-                    public boolean onNavigationItemSelected(@NonNull MenuItem menuItem)
-                    {
-                        Log.d("APPY", "onNavigationItemSelected");
-                        selectDrawerItem(menuItem, null);
-                        return true;
-                    }
+                menuItem -> {
+                    Log.d("APPY", "onNavigationItemSelected");
+                    selectDrawerItem(menuItem, null);
+                    return true;
                 });
 
-        bottomText = findViewById(R.id.bottomtext);
-        bottomText.setVisibility(View.GONE);
+        executor = Executors.newSingleThreadExecutor();
+        handler = new Handler();
 
-        getSupportFragmentManager().addOnBackStackChangedListener(new FragmentManager.OnBackStackChangedListener()
+        updateText = findViewById(R.id.updatetext);
+        bottomText = findViewById(R.id.bottomtext);
+        bottomText.getLayoutParams().height = 0;
+        bottomText.requestLayout();
+
+        updateBar = findViewById(R.id.updatebar);
+        updateBar.getLayoutParams().height = 0;
+        updateBar.requestLayout();
+
+        if (checkUpdates)
         {
-            @Override
-            public void onBackStackChanged()
+            executor.execute(() -> {
+                latestDownloadUrl = checkUpdates();
+                handler.post(() -> {
+                    if (latestDownloadUrl == null)
+                    {
+                        updateBar.getLayoutParams().height = 0;
+                        updateBar.requestLayout();
+                    }
+                    else
+                    {
+                        updateBar.getLayoutParams().height = ViewGroup.LayoutParams.WRAP_CONTENT;
+                        updateBar.requestLayout();
+                    }
+                });
+            });
+        }
+
+        downloadingUpdate = false;
+
+        updateBar.setOnClickListener(v -> {
+            if (downloadingUpdate)
             {
-                MyFragmentInterface fragment = (MyFragmentInterface) getSupportFragmentManager().findFragmentByTag(FRAGMENT_TAG);
-                MenuItem menuItem = navView.getMenu().findItem(fragment.getMenuId());
-                if (menuItem != null)
+                return;
+            }
+
+            downloadingUpdate = true;
+
+            executor.execute(() -> {
+                try
                 {
-                    menuItem.setChecked(true);
-                    setTitle(menuItem.getTitle());
+                    if (latestDownloadUrl == null)
+                    {
+                        return;
+                    }
+
+                    String dest = new File(new File(getCacheDir(), "resources"), "latest" + bundleExtension).getAbsolutePath();
+                    Utils.downloadFile(latestDownloadUrl, dest, f -> handler.post(() -> updateText.setText("Downloading update: " + Math.round(f * 100) + "%")));
+
+                    Intent install = new Intent(Intent.ACTION_VIEW);
+                    install.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                    install.setDataAndType(Widget.getUriForPathStatic(this, dest),
+                            MimeTypeMap.getSingleton().getMimeTypeFromExtension(bundleExtension.replace(".", "")));
+
+                    Log.d("APPY", "Launching update");
+                    startActivity(install);
                 }
+                catch (IOException e)
+                {
+                    handler.post(() -> updateText.setText("Error downloading update. Click to try again"));
+                }
+                finally
+                {
+                    downloadingUpdate = false;
+                }
+            });
+        });
+
+        getSupportFragmentManager().addOnBackStackChangedListener(() -> {
+            MyFragmentInterface fragment = (MyFragmentInterface) getSupportFragmentManager().findFragmentByTag(FRAGMENT_TAG);
+            MenuItem menuItem = navView.getMenu().findItem(fragment.getMenuId());
+            if (menuItem != null)
+            {
+                menuItem.setChecked(true);
+                setTitle(menuItem.getTitle());
             }
         });
 
         tutorial = new Tutorial();
         tutorial.fillMainComponents(this, tutorialOverlayView, drawer, fragmentContainer);
-        tutorial.setTutorialFinishedListener(new Tutorial.TutorialFinishedListener()
-        {
-            @Override
-            public void tutorialFinished()
-            {
-                permissionDialogShown = false;
-                requestPermissionsIfNeeded();
-            }
+        tutorial.setTutorialFinishedListener(() -> {
+            permissionDialogShown = false;
+            requestPermissionsIfNeeded();
         });
 
         Widget.startService(this, new Intent(this, Widget.class));
@@ -209,12 +346,13 @@ public class MainActivity extends AppCompatActivity implements StatusListener, A
     {
         if (!granted)
         {
-            bottomText.setVisibility(View.VISIBLE);
-            //Toast.makeText(this, "All time location access denied, appy might have trouble running (because android kills it)", Toast.LENGTH_LONG).show();
+            bottomText.getLayoutParams().height = ViewGroup.LayoutParams.WRAP_CONTENT;
+            bottomText.requestLayout();
         }
         else
         {
-            bottomText.setVisibility(View.GONE);
+            bottomText.getLayoutParams().height = 0;
+            bottomText.requestLayout();
         }
     }
 
@@ -276,22 +414,10 @@ public class MainActivity extends AppCompatActivity implements StatusListener, A
                 builder.setTitle(permission_ask_title);
                 builder.setMessage(permission_ask_message);
                 builder.setCancelable(false);
-                builder.setPositiveButton("OK", new DialogInterface.OnClickListener()
-                {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which)
-                    {
-                        ActivityCompat.requestPermissions(MainActivity.this, permissionsSteps[neededStep], REQUEST_PERMISSION_STEPS[neededStep]);
-                    }
-                });
-                builder.setNeutralButton("Don't show again", new DialogInterface.OnClickListener()
-                {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which)
-                    {
-                        setShowPermissionDialog(false);
-                        permissionsResult(false);
-                    }
+                builder.setPositiveButton("OK", (dialog, which) -> ActivityCompat.requestPermissions(MainActivity.this, permissionsSteps[neededStep], REQUEST_PERMISSION_STEPS[neededStep]));
+                builder.setNeutralButton("Don't show again", (dialog, which) -> {
+                    setShowPermissionDialog(false);
+                    permissionsResult(false);
                 });
 
                 builder.show();

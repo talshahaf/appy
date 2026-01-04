@@ -1,20 +1,15 @@
 package com.appy;
 
 import android.content.Context;
-import android.media.MediaPlayer;
-import android.media.MediaTimestamp;
 import android.net.Uri;
 import android.util.AttributeSet;
-import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.VideoView;
 
-import androidx.annotation.NonNull;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.constraintlayout.widget.ConstraintProperties;
-import androidx.constraintlayout.widget.ConstraintSet;
 import androidx.constraintlayout.widget.Guideline;
 
 public class TutorialOverlayView extends ConstraintLayout
@@ -57,12 +52,7 @@ public class TutorialOverlayView extends ConstraintLayout
         video = findViewById(R.id.overlay_video);
 
         video.setVisibility(View.GONE);
-        video.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
-            @Override
-            public void onPrepared(MediaPlayer mp) {
-                mp.setLooping(true);
-            }
-        });
+        video.setOnPreparedListener(mp -> mp.setLooping(true));
     }
 
     public void setOverlayColor(int color)

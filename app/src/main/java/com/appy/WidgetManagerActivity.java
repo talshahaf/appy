@@ -48,18 +48,13 @@ public class WidgetManagerActivity extends WidgetSelectActivity
     {
         super.onCreate(savedInstanceState);
 
-        listview.setOnTouchListener(new View.OnTouchListener()
-        {
-            @Override
-            public boolean onTouch(View v, MotionEvent event)
+        listview.setOnTouchListener((v, event) -> {
+            if (event.getAction() == MotionEvent.ACTION_DOWN)
             {
-                if (event.getAction() == MotionEvent.ACTION_DOWN)
-                {
-                    lastTouchX = event.getX();
-                    lastTouchY = event.getY();
-                }
-                return false;
+                lastTouchX = event.getX();
+                lastTouchY = event.getY();
             }
+            return false;
         });
 
         registerForContextMenu(listview);
@@ -86,14 +81,9 @@ public class WidgetManagerActivity extends WidgetSelectActivity
         {
             Utils.showConfirmationDialog(this,
             "Clear widget", "Clear widget #" + widgetId + " (" + widgetName + ")?", android.R.drawable.ic_dialog_alert,
-            null, null, new Runnable()
-            {
-                @Override
-                public void run()
-                {
-                    widgetService.clearWidget(widgetId);
-                    updateWidgetList();
-                }
+            null, null, () -> {
+                widgetService.clearWidget(widgetId);
+                updateWidgetList();
             });
         }
         else if (itemid == CONTEXT_MENU_RECREATE)
@@ -127,28 +117,16 @@ public class WidgetManagerActivity extends WidgetSelectActivity
         {
             Utils.showConfirmationDialog(this,
                     "Recreate all widgets", "Recreate all widgets?", android.R.drawable.ic_dialog_alert,
-                    null, null, new Runnable()
-                    {
-                        @Override
-                        public void run()
-                        {
-                            widgetService.recreateWidgets();
-                        }
-                    });
+                    null, null, () -> widgetService.recreateWidgets());
             return true;
         }
         else if (item.getItemId() == R.id.action_clearall)
         {
             Utils.showConfirmationDialog(this,
             "Clear all widgets", "Clear all widgets?", android.R.drawable.ic_dialog_alert,
-            null, null, new Runnable()
-            {
-                @Override
-                public void run()
-                {
-                    widgetService.resetWidgets();
-                    finish();
-                }
+            null, null, () -> {
+                widgetService.resetWidgets();
+                finish();
             });
             return true;
         }

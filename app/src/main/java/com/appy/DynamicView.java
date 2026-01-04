@@ -1,7 +1,5 @@
 package com.appy;
 
-import android.util.Log;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Random;
@@ -32,10 +30,6 @@ public class DynamicView
         while (id == 0)
         {
             id = Math.abs(random.nextLong());
-            if (id < 0)
-            {
-                id = -id;
-            }
         }
         return id;
     }

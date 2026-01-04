@@ -44,73 +44,32 @@ public class ControlFragment extends MyFragment
 
         handler = new Handler();
 
-        manageWidgets.setOnClickListener(new View.OnClickListener()
-        {
-            @Override
-            public void onClick(final View v)
-            {
-                startActivity(new Intent(getActivity(), WidgetManagerActivity.class));
-            }
+        manageWidgets.setOnClickListener(v -> startActivity(new Intent(getActivity(), WidgetManagerActivity.class)));
+
+        resetExamples.setOnClickListener(v -> Utils.showConfirmationDialog(getActivity(),
+                "Reset examples", "Reset examples?", android.R.drawable.ic_dialog_alert,
+                null, null, () -> {
+                    getWidgetService().unpackExamples(true);
+                    debounce(v);
+                }));
+
+        dumpStacktrace.setOnClickListener(v -> {
+            getWidgetService().dumpStacktrace();
+            debounce(v);
         });
 
-        resetExamples.setOnClickListener(new View.OnClickListener()
-        {
-            @Override
-            public void onClick(final View v)
-            {
-                Utils.showConfirmationDialog(getActivity(),
-                        "Reset examples", "Reset examples?", android.R.drawable.ic_dialog_alert,
-                        null, null, new Runnable()
-                        {
-                            @Override
-                            public void run()
-                            {
-                                getWidgetService().unpackExamples(true);
-                                debounce(v);
-                            }
-                        });
-            }
+        restart.setOnClickListener(v -> {
+            getWidgetService().restart(false);
+            debounce(v);
         });
 
-        dumpStacktrace.setOnClickListener(new View.OnClickListener()
-        {
-            @Override
-            public void onClick(View v)
-            {
-                getWidgetService().dumpStacktrace();
-                debounce(v);
-            }
-        });
-
-        restart.setOnClickListener(new View.OnClickListener()
-        {
-            @Override
-            public void onClick(final View v)
-            {
-                getWidgetService().restart(false);
-                debounce(v);
-            }
-        });
-
-        reinstall.setOnClickListener(new View.OnClickListener()
-        {
-            @Override
-            public void onClick(final View v)
-            {
-                Utils.showConfirmationDialog(getActivity(),
-                        "Reinstall package", "This would also restart the app", android.R.drawable.ic_dialog_alert,
-                        null, null, new Runnable()
-                        {
-                            @Override
-                            public void run()
-                            {
-                                getWidgetService().restart(true);
-                                debounce(v);
-                            }
-                        }
-                );
-            }
-        });
+        reinstall.setOnClickListener(v -> Utils.showConfirmationDialog(getActivity(),
+                "Reinstall package", "This would also restart the app", android.R.drawable.ic_dialog_alert,
+                null, null, () -> {
+                    getWidgetService().restart(true);
+                    debounce(v);
+                }
+        ));
 
         return layout;
     }
@@ -118,14 +77,7 @@ public class ControlFragment extends MyFragment
     public void debounce(final View v)
     {
         v.setEnabled(false);
-        handler.postDelayed(new Runnable()
-        {
-            @Override
-            public void run()
-            {
-                v.setEnabled(true);
-            }
-        }, 1000);
+        handler.postDelayed(() -> v.setEnabled(true), 1000);
     }
 
     @Override

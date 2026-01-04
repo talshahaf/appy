@@ -29,7 +29,7 @@ public class PermissionActivity extends Activity
     private String[] permissions;
     private int doneRequestCode = -1;
 
-    private ServiceConnection mConnection = new ServiceConnection()
+    private final ServiceConnection mConnection = new ServiceConnection()
     {
         public void onServiceConnected(ComponentName className, IBinder service)
         {

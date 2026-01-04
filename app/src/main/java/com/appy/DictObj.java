@@ -2,9 +2,7 @@ package com.appy;
 
 import android.os.Parcel;
 import android.util.Base64;
-import android.util.Log;
 
-import java.io.UnsupportedEncodingException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -292,7 +290,7 @@ public class DictObj
 
         public void set(int index, byte[] val, boolean string)
         {
-            set(index, (Object) (string ? new String(val, StandardCharsets.UTF_8) : val));
+            set(index, string ? new String(val, StandardCharsets.UTF_8) : val);
         }
 
         public void set(int index, long val)
@@ -337,7 +335,7 @@ public class DictObj
 
         public void add(byte[] val, boolean string)
         {
-            add((Object) (string ? new String(val, StandardCharsets.UTF_8) : val));
+            add(string ? new String(val, StandardCharsets.UTF_8) : val);
         }
 
         public void add(long val)
@@ -533,7 +531,7 @@ public class DictObj
 
         public void put(String key, byte[] val, boolean string)
         {
-            put(key, (Object) (string ? new String(val, StandardCharsets.UTF_8) : val));
+            put(key, string ? new String(val, StandardCharsets.UTF_8) : val);
         }
 
         public void put(String key, long val)
@@ -573,7 +571,7 @@ public class DictObj
 
         public void put(byte[] key, byte[] val, boolean string)
         {
-            put(new String(key, StandardCharsets.UTF_8), (Object) (string ? new String(val, StandardCharsets.UTF_8) : val));
+            put(new String(key, StandardCharsets.UTF_8), string ? new String(val, StandardCharsets.UTF_8) : val);
         }
 
         public void put(byte[] key, long val)

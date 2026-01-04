@@ -27,7 +27,22 @@ android {
             }
         }
     }
+
+    ext.getCommit = { ->
+        try {
+            return "git rev-parse HEAD".execute().text.trim()
+        }
+        catch (IOException ignored) {
+            return ""
+        }
+    }
+
+    def commit = getCommit()
+
     buildTypes {
+        buildTypes.each {
+            it.buildConfigField "String", "COMMIT", "\"" + commit + "\""
+        }
         release {
             minifyEnabled true
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'

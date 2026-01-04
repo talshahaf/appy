@@ -221,7 +221,7 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
 
     @Override
     public void onRequestPermissionsResult(int requestCode,
-                                           @NonNull String permissions[], @NonNull int[] grantResults)
+                                           @NonNull String[] permissions, @NonNull int[] grantResults)
     {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == REQUEST_PERMISSION_STORAGE)
@@ -319,7 +319,7 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
         copying = false;
         cutting = false;
         selectingEnabled = true;
-        adapter.setSelectingEnabled(selectingEnabled);
+        adapter.setSelectingEnabled(true);
         updateMenu();
     }
 
@@ -469,7 +469,7 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
             {
                 copying = true;
                 selectingEnabled = false;
-                adapter.setSelectingEnabled(selectingEnabled);
+                adapter.setSelectingEnabled(false);
                 updateMenu();
                 return true;
             }
@@ -477,7 +477,7 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
             {
                 cutting = true;
                 selectingEnabled = false;
-                adapter.setSelectingEnabled(selectingEnabled);
+                adapter.setSelectingEnabled(false);
                 updateMenu();
                 return true;
             }

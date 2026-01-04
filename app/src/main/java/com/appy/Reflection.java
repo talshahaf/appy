@@ -5,7 +5,6 @@ import android.util.Log;
 
 import androidx.annotation.RequiresApi;
 
-import java.io.UnsupportedEncodingException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
@@ -25,8 +24,8 @@ import java.util.stream.Stream;
 public class Reflection
 {
 
-    private static HashMap<Class<?>, Integer> groups;
-    private static HashMap<Class<?>, Integer> enumTypes;
+    private static final HashMap<Class<?>, Integer> groups;
+    private static final HashMap<Class<?>, Integer> enumTypes;
     private static final int OBJECT_TYPE = -1;
 
     static
@@ -54,13 +53,13 @@ public class Reflection
         enumTypes.put(null, 9); //constructors
     }
 
-    private static Method forNameMethod;
-    private static Method getFieldMethod;
-    private static Method getFieldsMethod;
-    private static Method getMethodMethod;
-    private static Method getMethodsMethod;
-    private static Method getConstructorMethod;
-    private static Method getConstructorsMethod;
+    private static final Method forNameMethod;
+    private static final Method getFieldMethod;
+    private static final Method getFieldsMethod;
+    private static final Method getMethodMethod;
+    private static final Method getMethodsMethod;
+    private static final Method getConstructorMethod;
+    private static final Method getConstructorsMethod;
 
     static
     {
@@ -87,7 +86,7 @@ public class Reflection
         if (checkSameNameMethods)
         {
             Method[] methods = getMethods(clazz);
-            Constructor[] constructors = getConstructors(clazz);
+            Constructor<?>[] constructors = getConstructors(clazz);
             for (Method method : methods)
             {
                 if (method.getName().equals(field))
@@ -98,7 +97,7 @@ public class Reflection
             }
             if (!hasSameNameMethod)
             {
-                for (Constructor method : constructors)
+                for (Constructor<?> method : constructors)
                 {
                     if (method.getName().equals(field))
                     {
@@ -196,7 +195,7 @@ public class Reflection
     {
         try
         {
-            return (Method) getMethodMethod.invoke(clazz, method, (Object) parameterTypes);
+            return (Method) getMethodMethod.invoke(clazz, method, parameterTypes);
         }
         catch (IllegalAccessException | InvocationTargetException e)
         {
@@ -216,11 +215,11 @@ public class Reflection
         }
     }
 
-    public static Constructor getConstructor(Class<?> clazz, Class<?>... parameterTypes) throws NoSuchMethodException
+    public static Constructor<?> getConstructor(Class<?> clazz, Class<?>... parameterTypes) throws NoSuchMethodException
     {
         try
         {
-            return (Constructor) getConstructorMethod.invoke(clazz, (Object) parameterTypes);
+            return (Constructor<?>) getConstructorMethod.invoke(clazz, (Object) parameterTypes);
         }
         catch (IllegalAccessException | InvocationTargetException e)
         {
@@ -228,11 +227,11 @@ public class Reflection
         }
     }
 
-    public static Constructor[] getConstructors(Class<?> clazz)
+    public static Constructor<?>[] getConstructors(Class<?> clazz)
     {
         try
         {
-            return (Constructor[]) getConstructorsMethod.invoke(clazz);
+            return (Constructor<?>[]) getConstructorsMethod.invoke(clazz);
         }
         catch (IllegalAccessException | InvocationTargetException e)
         {
@@ -242,10 +241,10 @@ public class Reflection
 
     public static void printFunc(Class<?> clazz, String method, Class<?>[] parameterTypes)
     {
-        String types = "";
+        StringBuilder types = new StringBuilder();
         for (Class<?> t : parameterTypes)
         {
-            types += ", " + t.getName();
+            types.append(", ").append(t.getName());
         }
         Log.d("APPY", clazz.getName() + "." + method + " " + types);
     }
@@ -267,7 +266,7 @@ public class Reflection
 
     public static class CallableMethod implements Callable
     {
-        private Method m;
+        private final Method m;
 
         CallableMethod(Method m)
         {
@@ -307,7 +306,7 @@ public class Reflection
 
     public static class CallableConstructor implements Callable
     {
-        private Constructor<?> m;
+        private final Constructor<?> m;
 
         CallableConstructor(Constructor<?> m)
         {
@@ -359,7 +358,7 @@ public class Reflection
                 result = new CallableMethod(getMethod(clazz, method, parameterTypes));
             }
         }
-        catch (NoSuchMethodException e)
+        catch (NoSuchMethodException ignored)
         {
 
         }
@@ -564,15 +563,13 @@ public class Reflection
             return method.getName() + (withargs ? fullmethod.substring(fullmethod.indexOf('(') - 1, fullmethod.indexOf(')') + 1) : "");
         }).toArray();
 
-        Constructor[] constructors = getConstructors(clazz);
+        Constructor<?>[] constructors = getConstructors(clazz);
         Object[] outConstructors = withargs ? (Arrays.stream(constructors).map(method -> {
             String fullmethod = method.toString();
             return "<init>" + fullmethod.substring(fullmethod.indexOf('(') - 1, fullmethod.indexOf(')') + 1);
         }).toArray()) : (constructors.length == 0 ? new Object[]{} : new Object[]{"<init>"});
 
-        Object[] outFields = Arrays.stream(getFields(clazz)).map(field -> {
-            return field.getName();
-        }).toArray();
+        Object[] outFields = Arrays.stream(getFields(clazz)).map(Field::getName).toArray();
 
         if (onearray)
         {
@@ -596,7 +593,7 @@ public class Reflection
 
     public static class ProxyListener implements java.lang.reflect.InvocationHandler
     {
-        private long id;
+        private final long id;
 
         public ProxyListener(long id)
         {

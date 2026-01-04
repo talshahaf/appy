@@ -272,19 +272,14 @@ public class TimerFragment extends FragmentParent
                     leaf ? "Delete timer" : "Delete widget timer",
                     leaf ? "Delete " + display + "?" : "Delete all " + display + " timers?",
                     android.R.drawable.ic_dialog_alert,
-            null, null, new Runnable()
-            {
-                @Override
-                public void run()
+            null, null, () -> {
+                if (leaf)
                 {
-                    if (leaf)
-                    {
-                        getWidgetService().cancelTimer(Long.parseLong(item.key));
-                    }
-                    else
-                    {
-                        getWidgetService().cancelWidgetTimers(Integer.parseInt(item.key));
-                    }
+                    getWidgetService().cancelTimer(Long.parseLong(item.key));
+                }
+                else
+                {
+                    getWidgetService().cancelWidgetTimers(Integer.parseInt(item.key));
                 }
             });
             return true;

@@ -52,34 +52,14 @@ public class PythonFileImport
         container.addView(extview);
         container.addView(textView);
 
-        DialogInterface.OnClickListener yesClick = new DialogInterface.OnClickListener()
-        {
-            public void onClick(DialogInterface dialog, int whichButton)
-            {
-                yesAction.run(context, editText.getText().toString().strip() + ext);
-            }
-        };
+        DialogInterface.OnClickListener yesClick = (dialog, whichButton) -> yesAction.run(context, editText.getText().toString().strip() + ext);
 
 
         AlertDialog.Builder builder = new AlertDialog.Builder(context)
                 .setTitle("Import File?")
                 .setPositiveButton("Import", yesClick)
-                .setNegativeButton("Cancel", otherAction == null ? null : new DialogInterface.OnClickListener()
-                {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which)
-                    {
-                        otherAction.run();
-                    }
-                })
-                .setOnCancelListener(otherAction == null ? null : new DialogInterface.OnCancelListener()
-                {
-                    @Override
-                    public void onCancel(DialogInterface dialog)
-                    {
-                        otherAction.run();
-                    }
-                })
+                .setNegativeButton("Cancel", otherAction == null ? null : (dialog, which) -> otherAction.run())
+                .setOnCancelListener(otherAction == null ? null : dialog -> otherAction.run())
                 .setView(container);
 
         builder.show();
@@ -94,63 +74,20 @@ public class PythonFileImport
 
         String defaultname = Utils.getFilenameFromUri(context, uri, "unnamed.py");
 
-        showRenamableDialog(context, defaultname, new DialogRunnable()
-        {
-            @Override
-            public void run(Context context, String name)
+        showRenamableDialog(context, defaultname, (context1, name) -> {
+            File destPath = new File(widgetService.getPreferredScriptDir(), name);
+            try
             {
-                File destPath = new File(widgetService.getPreferredScriptDir(), name);
-                try
+                InputStream is = context1.getContentResolver().openInputStream(uri);
+                if (is != null)
                 {
-                    InputStream is = context.getContentResolver().openInputStream(uri);
-                    if (is != null)
+                    Pair<byte[], String> fileData = Utils.readAndHashFile(is, Constants.PYTHON_FILE_MAX_SIZE);
+                    if (destPath.exists())
                     {
-                        Pair<byte[], String> fileData = Utils.readAndHashFile(is, Constants.PYTHON_FILE_MAX_SIZE);
-                        if (destPath.exists())
+                        Pair<byte[], String> existing = Utils.readAndHashFile(destPath, Constants.PYTHON_FILE_MAX_SIZE);
+                        if (existing.second.equalsIgnoreCase(fileData.second))
                         {
-                            Pair<byte[], String> existing = Utils.readAndHashFile(destPath, Constants.PYTHON_FILE_MAX_SIZE);
-                            if (existing.second.equalsIgnoreCase(fileData.second))
-                            {
-                                //same file, just refresh
-                                widgetService.addPythonFileByPath(destPath.getAbsolutePath());
-
-                                if (onDone != null)
-                                {
-                                    onDone.run();
-                                }
-                            }
-                            else
-                            {
-                                //different files, ask again.
-                                Utils.showConfirmationDialog(context, "Overwrite '" + name + "'?", "File in script dir will be overwritten", -1, "Overwrite", "Cancel", new Runnable()
-                                {
-                                    @Override
-                                    public void run()
-                                    {
-                                        //overwrite
-                                        try
-                                        {
-                                            Utils.writeFile(destPath, fileData.first);
-                                            widgetService.addPythonFileByPath(destPath.getAbsolutePath());
-                                        }
-                                        catch (IOException e)
-                                        {
-                                            Log.e("APPY", "Could not process file: " + destPath.getPath(), e);
-                                            Toast.makeText(context, "Could not process file", Toast.LENGTH_SHORT).show();
-                                        }
-
-                                        if (onDone != null)
-                                        {
-                                            onDone.run();
-                                        }
-                                    }
-                                }, onDone);
-                            }
-                        }
-                        else
-                        {
-                            // file does not exist, copy and import
-                            Utils.writeFile(destPath, fileData.first);
+                            //same file, just refresh
                             widgetService.addPythonFileByPath(destPath.getAbsolutePath());
 
                             if (onDone != null)
@@ -158,16 +95,49 @@ public class PythonFileImport
                                 onDone.run();
                             }
                         }
+                        else
+                        {
+                            //different files, ask again.
+                            Utils.showConfirmationDialog(context1, "Overwrite '" + name + "'?", "File in script dir will be overwritten", -1, "Overwrite", "Cancel", () -> {
+                                //overwrite
+                                try
+                                {
+                                    Utils.writeFile(destPath, fileData.first);
+                                    widgetService.addPythonFileByPath(destPath.getAbsolutePath());
+                                }
+                                catch (IOException e)
+                                {
+                                    Log.e("APPY", "Could not process file: " + destPath.getPath(), e);
+                                    Toast.makeText(context1, "Could not process file", Toast.LENGTH_SHORT).show();
+                                }
+
+                                if (onDone != null)
+                                {
+                                    onDone.run();
+                                }
+                            }, onDone);
+                        }
+                    }
+                    else
+                    {
+                        // file does not exist, copy and import
+                        Utils.writeFile(destPath, fileData.first);
+                        widgetService.addPythonFileByPath(destPath.getAbsolutePath());
+
+                        if (onDone != null)
+                        {
+                            onDone.run();
+                        }
                     }
                 }
-                catch (IOException e)
+            }
+            catch (IOException e)
+            {
+                Log.e("APPY", "Could not process file: " + destPath.getPath(), e);
+                Toast.makeText(context1, "Could not process file", Toast.LENGTH_SHORT).show();
+                if (onDone != null)
                 {
-                    Log.e("APPY", "Could not process file: " + destPath.getPath(), e);
-                    Toast.makeText(context, "Could not process file", Toast.LENGTH_SHORT).show();
-                    if (onDone != null)
-                    {
-                        onDone.run();
-                    }
+                    onDone.run();
                 }
             }
         }, onDone);

@@ -182,14 +182,10 @@ public class FileEditorActivity extends AppCompatActivity
         new AlertDialog.Builder(this)
                 .setTitle("Unsaved changes")
                 .setMessage("Discard unsaved changes?")
-                .setPositiveButton("Yes", new DialogInterface.OnClickListener()
-                {
-                    public void onClick(DialogInterface dialog, int id)
-                    {
-                        callback.setEnabled(false);
-                        getOnBackPressedDispatcher().onBackPressed();
-                        callback.setEnabled(true);
-                    }
+                .setPositiveButton("Yes", (dialog, id) -> {
+                    callback.setEnabled(false);
+                    getOnBackPressedDispatcher().onBackPressed();
+                    callback.setEnabled(true);
                 })
                 .setNegativeButton("Cancel", null)
                 .show();

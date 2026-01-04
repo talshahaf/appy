@@ -63,7 +63,8 @@ public class Tutorial implements OverlayHoleView.OnHoleClick, TutorialStepListen
             ABSOLUTE,
             ABOVE_HOLE,
             BELOW_HOLE,
-        };
+        }
+
         public String text;
         public float y;
         public boolean yIsFactor;
@@ -224,14 +225,7 @@ public class Tutorial implements OverlayHoleView.OnHoleClick, TutorialStepListen
         tutorialDone = sharedPref.getBoolean("tutorial_done", false);
 
         overlay.setOnHoleClick(this);
-        overlay.setOnButtonClick(new View.OnClickListener()
-        {
-            @Override
-            public void onClick(View v)
-            {
-                onOverlayButtonClick();
-            }
-        });
+        overlay.setOnButtonClick(v -> onOverlayButtonClick());
     }
 
     public void fillFileBrowserComponents(Activity fileBrowserActivity, TutorialOverlayView fileBrowserOverlay, Toolbar fileBrowserToolbar, ListView fileBrowserList)
@@ -242,14 +236,7 @@ public class Tutorial implements OverlayHoleView.OnHoleClick, TutorialStepListen
         this.overlay = fileBrowserOverlay;
 
         fileBrowserOverlay.setOnHoleClick(this);
-        overlay.setOnButtonClick(new View.OnClickListener()
-        {
-            @Override
-            public void onClick(View v)
-            {
-                onOverlayButtonClick();
-            }
-        });
+        overlay.setOnButtonClick(v -> onOverlayButtonClick());
     }
 
     public void setTutorialFinishedListener(TutorialFinishedListener tutorialFinishedListener)
@@ -611,30 +598,20 @@ public class Tutorial implements OverlayHoleView.OnHoleClick, TutorialStepListen
         //fragmentContainer
         //drawer
 
-        return viewTraversal(root, new ViewFinder()
-        {
-            @Override
-            public boolean match(View view)
+        return viewTraversal(root, view -> {
+            if (view instanceof TextView)
             {
-                if (view instanceof TextView)
-                {
-                    return ((TextView) view).getText().toString().equals(text);
-                }
-                return false;
+                return ((TextView) view).getText().toString().equals(text);
             }
+            return false;
         }, oneEnough);
     }
 
     public View[] findViewByDesc(View root, String desc, boolean oneEnough)
     {
-        return viewTraversal(root, new ViewFinder()
-        {
-            @Override
-            public boolean match(View view)
-            {
-                CharSequence seq = view.getContentDescription();
-                return seq != null && desc.equals(seq.toString());
-            }
+        return viewTraversal(root, view -> {
+            CharSequence seq = view.getContentDescription();
+            return seq != null && desc.equals(seq.toString());
         }, oneEnough);
     }
 

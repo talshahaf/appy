@@ -25,10 +25,28 @@
         <FrameLayout
             android:id="@+id/container"
             android:layout_below="@+id/toolbar"
-            android:layout_above="@id/bottomtext"
+            android:layout_above="@id/updatebar"
             android:layout_width="match_parent"
             android:layout_height="match_parent" />
-
+        <RelativeLayout
+            android:id="@+id/updatebar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_above="@id/bottomtext"
+            android:layout_gravity="bottom"
+            android:background="@color/color_success_btn_bg">
+            <TextView
+                android:id="@+id/updatetext"
+                android:textSize="18sp"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:layout_marginEnd="8dp"
+                android:layout_marginTop="8dp"
+                android:layout_marginBottom="8dp"
+                android:text="New version available. Click here to update"
+                />
+        </RelativeLayout>
         <TextView
             android:id="@+id/bottomtext"
             android:layout_width="match_parent"
@@ -40,7 +58,7 @@
             android:layout_gravity="bottom"
             android:text="All time location permission not granted.\nExpect unresponsiveness due to android killing the service"
             android:textColor="#DD3A3A"
-            />
+        />
     </RelativeLayout>
 
     <com.google.android.material.navigation.NavigationView

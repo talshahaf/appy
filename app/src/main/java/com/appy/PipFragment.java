@@ -52,53 +52,29 @@ public class PipFragment extends MyFragment implements RunnerListener
         cwd = new File(System.getenv("PYTHONHOME"), "bin");
         lib = new File(System.getenv("PYTHONHOME"), "lib");
 
-        run.setOnClickListener(new View.OnClickListener()
-        {
-            @Override
-            public void onClick(final View v)
+        run.setOnClickListener(v -> {
+            if (runner != null)
             {
-                if (runner != null)
-                {
-                    runner.stop();
-                }
-                output.setText("Running...\n\n");
-                runner = new Runner(Runner.translateCommandline(command.getText().toString()), cwd, null, PipFragment.this);
-                runner.start();
-
-                v.setEnabled(false);
-                handler.postDelayed(new Runnable()
-                {
-                    @Override
-                    public void run()
-                    {
-                        v.setEnabled(true);
-                    }
-                }, 1000);
+                runner.stop();
             }
+            output.setText("Running...\n\n");
+            runner = new Runner(Runner.translateCommandline(command.getText().toString()), cwd, null, PipFragment.this);
+            runner.start();
+
+            v.setEnabled(false);
+            handler.postDelayed(() -> v.setEnabled(true), 1000);
         });
 
-        stop.setOnClickListener(new View.OnClickListener()
-        {
-            @Override
-            public void onClick(final View v)
+        stop.setOnClickListener(v -> {
+            if (runner != null)
             {
-                if (runner != null)
+                if (runner.isRunning())
                 {
-                    if (runner.isRunning())
-                    {
-                        output.setText(output.getText() + "\n\nStopping...");
-                        v.setEnabled(false);
-                        handler.postDelayed(new Runnable()
-                        {
-                            @Override
-                            public void run()
-                            {
-                                v.setEnabled(true);
-                            }
-                        }, 1000);
-                    }
-                    runner.stop();
+                    output.setText(output.getText() + "\n\nStopping...");
+                    v.setEnabled(false);
+                    handler.postDelayed(() -> v.setEnabled(true), 1000);
                 }
+                runner.stop();
             }
         });
 
@@ -108,33 +84,23 @@ public class PipFragment extends MyFragment implements RunnerListener
     @Override
     public void onLine(final String line)
     {
-        handler.post(new Runnable()
-        {
-            @Override
-            public void run()
-            {
-                output.setText(output.getText() + "\n" + line);
-                scroller.fullScroll(View.FOCUS_DOWN);
-            }
+        handler.post(() -> {
+            output.setText(output.getText() + "\n" + line);
+            scroller.fullScroll(View.FOCUS_DOWN);
         });
     }
 
     @Override
     public void onExited(final Integer code)
     {
-        handler.post(new Runnable()
-        {
-            @Override
-            public void run()
+        handler.post(() -> {
+            if (code == null)
             {
-                if (code == null)
-                {
-                    output.setText(output.getText() + "\nTerminated");
-                }
-                else
-                {
-                    output.setText(output.getText() + "\nExited: " + code);
-                }
+                output.setText(output.getText() + "\nTerminated");
+            }
+            else
+            {
+                output.setText(output.getText() + "\nExited: " + code);
             }
         });
     }

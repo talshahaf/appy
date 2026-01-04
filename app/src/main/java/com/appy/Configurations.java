@@ -1,7 +1,6 @@
 package com.appy;
 
 import android.content.Context;
-import android.util.Log;
 import android.util.Pair;
 
 import java.util.ArrayList;
@@ -25,7 +24,7 @@ public class Configurations
         void onChange(String widget, String key);
     }
 
-    private ChangeListener listener;
+    private final ChangeListener listener;
 
     public Configurations(Context context, ChangeListener listener)
     {

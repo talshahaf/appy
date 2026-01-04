@@ -1,12 +1,9 @@
 package com.appy;
 
-import android.app.Activity;
-import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
 
-import androidx.fragment.app.FragmentTransaction;
 import androidx.appcompat.app.AlertDialog;
 
 import android.text.InputType;
@@ -21,11 +18,9 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
-import android.widget.BaseAdapter;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ListView;
-import android.widget.TextView;
 import android.widget.Toast;
 
 import org.json.JSONArray;
@@ -33,10 +28,6 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -139,13 +130,10 @@ public class ConfigsFragment extends FragmentParent
                 final DictObj.Dict finalConfig = newConfig;
                 Utils.showConfirmationDialog(getActivity(),
                         "Import Configuration", "This will overwrite all existing configurations", android.R.drawable.ic_dialog_alert,
-                        null, null, new Runnable() {
-                            @Override
-                            public void run() {
-                                configurations.replaceConfiguration(finalConfig);
-                                    Toast.makeText(getActivity(), "Configurations imported from " + files[0], Toast.LENGTH_LONG).show();
-                                    start();
-                                }
+                        null, null, () -> {
+                            configurations.replaceConfiguration(finalConfig);
+                                Toast.makeText(getActivity(), "Configurations imported from " + files[0], Toast.LENGTH_LONG).show();
+                                start();
                             });
                 }
             }
@@ -395,65 +383,42 @@ public class ConfigsFragment extends FragmentParent
 
             builder.setPositiveButton("Ok", null);
 
-            final DialogInterface.OnClickListener onDismiss = new DialogInterface.OnClickListener()
-            {
-                @Override
-                public void onClick(DialogInterface dialog, int which)
+            final DialogInterface.OnClickListener onDismiss = (dialog, which) -> {
+                if (dieAfter)
                 {
-                    if (dieAfter)
-                    {
-                        handleAsyncRequestAndDie((String)item.arg);
-                    }
-                    dialog.dismiss();
+                    handleAsyncRequestAndDie((String)item.arg);
                 }
+                dialog.dismiss();
             };
             builder.setNegativeButton("Cancel", onDismiss);
-            builder.setOnCancelListener(new DialogInterface.OnCancelListener()
-            {
-                @Override
-                public void onCancel(DialogInterface dialog)
-                {
-                    onDismiss.onClick(dialog, 0);
-                }
-            });
+            builder.setOnCancelListener(dialog -> onDismiss.onClick(dialog, 0));
 
             final AlertDialog alert = builder.create();
 
-            alert.setOnShowListener(new DialogInterface.OnShowListener()
-            {
+            alert.setOnShowListener(dialogInterface -> {
 
-                @Override
-                public void onShow(DialogInterface dialogInterface)
-                {
-
-                    Button button = alert.getButton(AlertDialog.BUTTON_POSITIVE);
-                    button.setOnClickListener(new View.OnClickListener()
+                Button button = alert.getButton(AlertDialog.BUTTON_POSITIVE);
+                button.setOnClickListener(view -> {
+                    String newValue = input.getText().toString();
+                    if (item.key.endsWith("_nojson") || isValidJSON(newValue))
                     {
-                        @Override
-                        public void onClick(View view)
+                        getWidgetService().getConfigurations().setConfig(widget, item.key, newValue);
+                        if (dieAfter)
                         {
-                            String newValue = input.getText().toString();
-                            if (item.key.endsWith("_nojson") || isValidJSON(newValue))
-                            {
-                                getWidgetService().getConfigurations().setConfig(widget, item.key, newValue);
-                                if (dieAfter)
-                                {
-                                    handleAsyncRequestAndDie(newValue);
-                                }
-                                else
-                                {
-                                    refresh();
-                                }
-                                alert.dismiss();
-                            }
-                            else
-                            {
-                                // dont dismiss
-                                input.setBackgroundColor(0x50FF0000);
-                            }
+                            handleAsyncRequestAndDie(newValue);
                         }
-                    });
-                }
+                        else
+                        {
+                            refresh();
+                        }
+                        alert.dismiss();
+                    }
+                    else
+                    {
+                        // dont dismiss
+                        input.setBackgroundColor(0x50FF0000);
+                    }
+                });
             });
 
             alert.show();
@@ -531,35 +496,30 @@ public class ConfigsFragment extends FragmentParent
 
             Utils.showConfirmationDialog(getActivity(),
                     title, message, android.R.drawable.ic_dialog_alert,
-                    null, null, new Runnable()
-                    {
-                        @Override
-                        public void run()
+                    null, null, () -> {
+                        if (widget == null)
                         {
-                            if (widget == null)
+                            if (delete)
                             {
-                                if (delete)
-                                {
-                                    getWidgetService().getConfigurations().deleteWidget(item.key);
-                                }
-                                else
-                                {
-                                    getWidgetService().getConfigurations().resetWidget(item.key);
-                                }
+                                getWidgetService().getConfigurations().deleteWidget(item.key);
                             }
                             else
                             {
-                                if (delete)
-                                {
-                                    getWidgetService().getConfigurations().deleteKey(widget, item.key);
-                                }
-                                else
-                                {
-                                    getWidgetService().getConfigurations().resetKey(widget, item.key);
-                                }
+                                getWidgetService().getConfigurations().resetWidget(item.key);
                             }
-                            refresh();
                         }
+                        else
+                        {
+                            if (delete)
+                            {
+                                getWidgetService().getConfigurations().deleteKey(widget, item.key);
+                            }
+                            else
+                            {
+                                getWidgetService().getConfigurations().resetKey(widget, item.key);
+                            }
+                        }
+                        refresh();
                     });
             return true;
         }

@@ -1,7 +1,5 @@
 package com.appy;
 
-import android.app.Activity;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
@@ -45,27 +43,15 @@ public class FilesFragment extends MyFragment implements FileGridAdapter.ItemAct
         handler = new Handler();
 
         browse = layout.findViewById(R.id.browse);
-        browse.setOnClickListener(new View.OnClickListener()
-        {
-            @Override
-            public void onClick(View v)
-            {
-                Intent intent = new Intent(getActivity(), FileBrowserActivity.class);
-                intent.putExtra(FileBrowserActivity.REQUEST_ALLOW_RETURN_MULTIPLE, true);
-                intent.putExtra(FileBrowserActivity.REQUEST_SPECIFIC_EXTENSION_CONFIRMATION, ".py");
-                requestActivityResult(intent);
-            }
+        browse.setOnClickListener(v -> {
+            Intent intent = new Intent(getActivity(), FileBrowserActivity.class);
+            intent.putExtra(FileBrowserActivity.REQUEST_ALLOW_RETURN_MULTIPLE, true);
+            intent.putExtra(FileBrowserActivity.REQUEST_SPECIFIC_EXTENSION_CONFIRMATION, ".py");
+            requestActivityResult(intent);
         });
 
         unknownInfo = layout.findViewById(R.id.unknown_info);
-        unknownInfo.setOnClickListener(new View.OnClickListener()
-        {
-            @Override
-            public void onClick(View v)
-            {
-                onInfo(getWidgetService().unknownPythonFile);
-            }
-        });
+        unknownInfo.setOnClickListener(v -> onInfo(getWidgetService().unknownPythonFile));
 
         filegrid = layout.findViewById(R.id.filegrid);
         adapter = new FileGridAdapter(getActivity(), this);
@@ -91,14 +77,9 @@ public class FilesFragment extends MyFragment implements FileGridAdapter.ItemAct
         adapter.notifyDataSetChanged();
 
         //give it time to load
-        handler.postDelayed(new Runnable()
-        {
-            @Override
-            public void run()
-            {
-                adapter.setItems(getWidgetService().getPythonFiles());
-                adapter.notifyDataSetChanged();
-            }
+        handler.postDelayed(() -> {
+            adapter.setItems(getWidgetService().getPythonFiles());
+            adapter.notifyDataSetChanged();
         }, 500);
     }
 
@@ -107,16 +88,11 @@ public class FilesFragment extends MyFragment implements FileGridAdapter.ItemAct
     {
         Utils.showConfirmationDialog(getActivity(),
                 "Confirm Delete", "Are you sure?", android.R.drawable.ic_dialog_alert,
-                null, null, new Runnable()
-                {
-                    @Override
-                    public void run()
-                    {
-                        Log.d("APPY", "on delete");
-                        getWidgetService().removePythonFile(file);
-                        adapter.setItems(getWidgetService().getPythonFiles());
-                        adapter.notifyDataSetChanged();
-                    }
+                null, null, () -> {
+                    Log.d("APPY", "on delete");
+                    getWidgetService().removePythonFile(file);
+                    adapter.setItems(getWidgetService().getPythonFiles());
+                    adapter.notifyDataSetChanged();
                 });
     }
 
@@ -124,16 +100,11 @@ public class FilesFragment extends MyFragment implements FileGridAdapter.ItemAct
     public void onRefresh(final PythonFile file)
     {
         Log.d("APPY", "on refresh");
-        getWidgetService().refreshPythonFile(file);
+        getWidgetService().refreshPythonFile(file, true);
         adapter.setStateOverride(file, PythonFile.State.RUNNING);
-        handler.postDelayed(new Runnable()
-        {
-            @Override
-            public void run()
-            {
-                adapter.clearStateOverride(file);
-                adapter.notifyDataSetChanged();
-            }
+        handler.postDelayed(() -> {
+            adapter.clearStateOverride(file);
+            adapter.notifyDataSetChanged();
         }, 500);
         adapter.notifyDataSetChanged();
     }
@@ -143,16 +114,9 @@ public class FilesFragment extends MyFragment implements FileGridAdapter.ItemAct
     {
         AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
 
-        builder.setTitle(new File(file.path).getName() + (file.lastErrorDate != null ? " from " + file.lastErrorDate.toString() : ""));
+        builder.setTitle(new File(file.path).getName() + (file.lastErrorDate != null ? " from " + file.lastErrorDate : ""));
         builder.setNeutralButton("OK", null);
-        builder.setNegativeButton("Clear", new DialogInterface.OnClickListener()
-        {
-            @Override
-            public void onClick(DialogInterface dialog, int which)
-            {
-                getWidgetService().clearFileError(file);
-            }
-        });
+        builder.setNegativeButton("Clear", (dialog, which) -> getWidgetService().clearFileError(file));
 
         View layout = LayoutInflater.from(getActivity()).inflate(R.layout.alert_error_view, null);
         TextView message = layout.findViewById(R.id.message);
@@ -167,14 +131,9 @@ public class FilesFragment extends MyFragment implements FileGridAdapter.ItemAct
         builder.setView(layout);
 
         AlertDialog alert = builder.create();
-        alert.setOnShowListener(new DialogInterface.OnShowListener()
-        {
-            @Override
-            public void onShow(DialogInterface dialog)
-            {
-                ScrollView vertical = layout.findViewById(R.id.verticalscroll);
-                vertical.fullScroll(View.FOCUS_DOWN);
-            }
+        alert.setOnShowListener(dialog -> {
+            ScrollView vertical = layout.findViewById(R.id.verticalscroll);
+            vertical.fullScroll(View.FOCUS_DOWN);
         });
         alert.show();
     }

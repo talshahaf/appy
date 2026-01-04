@@ -1,6 +1,5 @@
 package com.appy;
 
-import android.content.DialogInterface;
 import android.text.InputType;
 import android.view.Gravity;
 import android.view.Menu;
@@ -97,14 +96,9 @@ public class WidgetSizeFactorActivity extends WidgetSelectActivity
         {
             Utils.showConfirmationDialog(this,
             "Reset size factors", "Reset all widget size factors?", android.R.drawable.ic_dialog_alert,
-            null, null, new Runnable()
-            {
-                @Override
-                public void run()
-                {
-                    widgetService.resetWidgetSizeFactors();
-                    updateWidgetList();
-                }
+            null, null, () -> {
+                widgetService.resetWidgetSizeFactors();
+                updateWidgetList();
             });
             return true;
         }

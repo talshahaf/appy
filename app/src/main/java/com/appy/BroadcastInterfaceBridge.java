@@ -7,7 +7,7 @@ import android.util.Log;
 
 public class BroadcastInterfaceBridge extends BroadcastReceiver
 {
-    private BroadcastInterface iface;
+    private final BroadcastInterface iface;
 
     public BroadcastInterfaceBridge(BroadcastInterface iface)
     {

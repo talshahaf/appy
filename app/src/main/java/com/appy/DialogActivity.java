@@ -40,7 +40,7 @@ public class DialogActivity extends Activity
     private Widget widgetService;
     private int doneRequestCode = -1;
 
-    private ServiceConnection mConnection = new ServiceConnection()
+    private final ServiceConnection mConnection = new ServiceConnection()
     {
         public void onServiceConnected(ComponentName className, IBinder service)
         {
@@ -221,7 +221,7 @@ public class DialogActivity extends Activity
 
         switch (buttons.length)
         {
-            //fallthroughs
+            //fallthrough
             default:
             case 3:
                 builder.setNeutralButton(buttons[2], dialogClick);

@@ -18,11 +18,6 @@ interface BroadcastInterface
     void onReceive(Context context, Intent intent);
 }
 
-interface HandlerInterface
-{
-    void handleMessage(Message msg);
-}
-
 interface WidgetUpdateListener
 {
     DictObj.Dict onUpdate(int widgetId, DictObj.List views, boolean isApp);

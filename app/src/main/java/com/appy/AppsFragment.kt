@@ -100,7 +100,7 @@ const val APPWIDGET_HOST_ID = 1433
 const val OPTION_APPWIDGET_APPY_APP = "appWidgetAppyApp"
 
 class AppsFragment : MyFragment() {
-    class WidgetHost(context: Context?) : AppWidgetHost(context, APPWIDGET_HOST_ID);
+    class WidgetHost(context: Context?) : AppWidgetHost(context, APPWIDGET_HOST_ID)
 
     class ScaleLayout(context : Context) : FrameLayout(context)
     {
@@ -334,8 +334,8 @@ class AppsFragment : MyFragment() {
         }
 
         _widgetGridList.clear()
-        lastSelectedState.intValue = -1;
-        selectedState.intValue = -1;
+        lastSelectedState.intValue = -1
+        selectedState.intValue = -1
         doStateAnimation.value = true
         saveWidgets()
     }
@@ -407,8 +407,8 @@ class AppsFragment : MyFragment() {
         val store = StoreData.Factory.create(requireActivity(), "app_fragment_widgets")
         val widgetsStored = store.getList("widgets")
 
-        lastSelectedState.intValue = -1;
-        selectedState.intValue = -1;
+        lastSelectedState.intValue = -1
+        selectedState.intValue = -1
         doStateAnimation.value = false
 
         if (widgetsStored == null) {
@@ -547,12 +547,12 @@ class AppsFragment : MyFragment() {
     }
 
     fun configureWidget(widgetId : Int) {
-        val appWidgetInfo = AppWidgetManager.getInstance(context).getAppWidgetInfo(widgetId);
+        val appWidgetInfo = AppWidgetManager.getInstance(context).getAppWidgetInfo(widgetId)
         if (appWidgetInfo.configure != null) {
-            val intent = Intent(AppWidgetManager.ACTION_APPWIDGET_CONFIGURE);
-            intent.setComponent(appWidgetInfo.configure);
-            intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId);
-            startActivityForResult(intent, 101);
+            val intent = Intent(AppWidgetManager.ACTION_APPWIDGET_CONFIGURE)
+            intent.setComponent(appWidgetInfo.configure)
+            intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId)
+            startActivityForResult(intent, 101)
         }
     }
 

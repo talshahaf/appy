@@ -73,13 +73,14 @@ public class Constants
     public static final int SPECIAL_WIDGET_ID = 10000;
     public static final int SPECIAL_WIDGET_RESTART = 1;
     public static final int SPECIAL_WIDGET_CLEAR = 2;
-    public static final int SPECIAL_WIDGET_RELOAD = 3;
+    public static final int SPECIAL_WIDGET_UPDATE = 3;
     public static final int SPECIAL_WIDGET_SHOWERROR = 4;
     public static final int SPECIAL_WIDGET_OPENAPP = 5;
     public static final int SPECIAL_WIDGET_RECREATE = 6;
     public static final int SPECIAL_WIDGET_SCALE_FACTOR = 7;
     public static final int SPECIAL_WIDGET_CONFIG = 8;
     public static final int SPECIAL_WIDGET_EDIT_FILE = 9;
+    public static final int SPECIAL_WIDGET_RELOAD = 10;
     public static final int TIMER_RELATIVE = 1;
     public static final int TIMER_ABSOLUTE = 2;
     public static final int TIMER_REPEATING = 3;
@@ -280,13 +281,13 @@ public class Constants
 
     static
     {
-        element_map.put("AnalogClock", new ArrayList<SelectorElement>());
+        element_map.put("AnalogClock", new ArrayList<>());
         element_map.get("AnalogClock").add(new SelectorElement(R.layout.element_analogclock, "", ""));
-        element_map.put("Button", new ArrayList<SelectorElement>());
+        element_map.put("Button", new ArrayList<>());
         element_map.get("Button").add(new SelectorElement(R.layout.element_button, "", ""));
-        element_map.put("CheckBox", new ArrayList<SelectorElement>());
+        element_map.put("CheckBox", new ArrayList<>());
         element_map.get("CheckBox").add(new SelectorElement(R.layout.element_checkbox, "", ""));
-        element_map.put("Chronometer", new ArrayList<SelectorElement>());
+        element_map.put("Chronometer", new ArrayList<>());
         element_map.get("Chronometer").add(new SelectorElement(R.layout.element_chronometer, "", ""));
         element_map.get("Chronometer").add(new SelectorElement(R.layout.element_chronometer_alignment_left, "alignment", "left"));
         element_map.get("Chronometer").add(new SelectorElement(R.layout.element_chronometer_alignment_right, "alignment", "right"));
@@ -311,18 +312,18 @@ public class Constants
         element_map.get("Chronometer").add(new SelectorElement(R.layout.element_chronometer_alignment_center, "alignment", "center"));
         element_map.get("Chronometer").add(new SelectorElement(R.layout.element_chronometer_alignment_center_start, "alignment", "center_start"));
         element_map.get("Chronometer").add(new SelectorElement(R.layout.element_chronometer_alignment_center_end, "alignment", "center_end"));
-        element_map.put("ImageButton", new ArrayList<SelectorElement>());
+        element_map.put("ImageButton", new ArrayList<>());
         element_map.get("ImageButton").add(new SelectorElement(R.layout.element_imagebutton, "", ""));
-        element_map.put("ImageView", new ArrayList<SelectorElement>());
+        element_map.put("ImageView", new ArrayList<>());
         element_map.get("ImageView").add(new SelectorElement(R.layout.element_imageview, "", ""));
-        element_map.put("ProgressBar", new ArrayList<SelectorElement>());
+        element_map.put("ProgressBar", new ArrayList<>());
         element_map.get("ProgressBar").add(new SelectorElement(R.layout.element_progressbar, "", ""));
         element_map.get("ProgressBar").add(new SelectorElement(R.layout.element_progressbar, "mode", "indeterminate"));
         element_map.get("ProgressBar").add(new SelectorElement(R.layout.element_progressbar_mode_determinate, "mode", "horizontal"));
         element_map.get("ProgressBar").add(new SelectorElement(R.layout.element_progressbar_mode_determinate, "mode", "determinate"));
-        element_map.put("Switch", new ArrayList<SelectorElement>());
+        element_map.put("Switch", new ArrayList<>());
         element_map.get("Switch").add(new SelectorElement(R.layout.element_switch, "", ""));
-        element_map.put("TextClock", new ArrayList<SelectorElement>());
+        element_map.put("TextClock", new ArrayList<>());
         element_map.get("TextClock").add(new SelectorElement(R.layout.element_textclock, "", ""));
         element_map.get("TextClock").add(new SelectorElement(R.layout.element_textclock_alignment_left, "alignment", "left"));
         element_map.get("TextClock").add(new SelectorElement(R.layout.element_textclock_alignment_right, "alignment", "right"));
@@ -347,7 +348,7 @@ public class Constants
         element_map.get("TextClock").add(new SelectorElement(R.layout.element_textclock_alignment_center, "alignment", "center"));
         element_map.get("TextClock").add(new SelectorElement(R.layout.element_textclock_alignment_center_start, "alignment", "center_start"));
         element_map.get("TextClock").add(new SelectorElement(R.layout.element_textclock_alignment_center_end, "alignment", "center_end"));
-        element_map.put("TextView", new ArrayList<SelectorElement>());
+        element_map.put("TextView", new ArrayList<>());
         element_map.get("TextView").add(new SelectorElement(R.layout.element_textview, "", ""));
         element_map.get("TextView").add(new SelectorElement(R.layout.element_textview_alignment_left, "alignment", "left"));
         element_map.get("TextView").add(new SelectorElement(R.layout.element_textview_alignment_right, "alignment", "right"));
@@ -372,7 +373,7 @@ public class Constants
         element_map.get("TextView").add(new SelectorElement(R.layout.element_textview_alignment_center, "alignment", "center"));
         element_map.get("TextView").add(new SelectorElement(R.layout.element_textview_alignment_center_start, "alignment", "center_start"));
         element_map.get("TextView").add(new SelectorElement(R.layout.element_textview_alignment_center_end, "alignment", "center_end"));
-        element_map.put("RelativeLayout", new ArrayList<SelectorElement>());
+        element_map.put("RelativeLayout", new ArrayList<>());
         element_map.get("RelativeLayout").add(new SelectorElement(R.layout.element_relativelayout, "", ""));
         collection_map.put(Arrays.asList("ListView"), R.layout.root_listview);
         collection_map.put(Arrays.asList("GridView"), R.layout.root_gridview);

@@ -72,14 +72,7 @@ public class ShareActivity extends WidgetSelectActivity
                     Log.e("APPY", "Exception while reading shared data", e);
                 }
 
-                handler.post(new Runnable()
-                {
-                    @Override
-                    public void run()
-                    {
-                        finish();
-                    }
-                });
+                handler.post(() -> finish());
             }
         };
 
@@ -156,14 +149,9 @@ public class ShareActivity extends WidgetSelectActivity
         if (item.getItemId() == R.id.action_import)
         {
             Log.d("APPY", "preparing to share ");
-            PythonFileImport.importPythonFromExternalUri(this, widgetService, shareUris.get(0), new Runnable()
-            {
-                @Override
-                public void run()
-                {
-                    Log.d("APPY", "prepared to share ");
-                    finish();
-                }
+            PythonFileImport.importPythonFromExternalUri(this, widgetService, shareUris.get(0), () -> {
+                Log.d("APPY", "prepared to share ");
+                finish();
             });
             return true;
         }
