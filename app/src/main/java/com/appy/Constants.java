@@ -12,6 +12,7 @@ import android.graphics.drawable.Icon;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.util.Pair;
 import android.util.Size;
 import android.widget.AdapterViewFlipper;
 import android.widget.AnalogClock;
@@ -221,24 +222,24 @@ public class Constants
         collection_layout_type.put("AdapterViewFlipper", CollectionLayout.UNCONSTRAINED);
     }
 
-    static HashMap<List<String>, Integer> collection_map = new HashMap<>();
+    static HashMap<List<String>, int[]> collection_map = new HashMap<>();
 
     static
     {
-        collection_map.put(Collections.singletonList("ListView"), R.layout.root_listview);
-        collection_map.put(Collections.singletonList("GridView"), R.layout.root_gridview);
-        collection_map.put(Collections.singletonList("StackView"), R.layout.root_stackview);
-        collection_map.put(Collections.singletonList("AdapterViewFlipper"), R.layout.root_adapterviewflipper);
-        collection_map.put(Arrays.asList("AdapterViewFlipper", "AdapterViewFlipper"), R.layout.root_adapterviewflipper_adapterviewflipper);
-        collection_map.put(Arrays.asList("AdapterViewFlipper", "GridView"), R.layout.root_adapterviewflipper_gridview);
-        collection_map.put(Arrays.asList("AdapterViewFlipper", "ListView"), R.layout.root_adapterviewflipper_listview);
-        collection_map.put(Arrays.asList("AdapterViewFlipper", "StackView"), R.layout.root_adapterviewflipper_stackview);
-        collection_map.put(Arrays.asList("GridView", "GridView"), R.layout.root_gridview_gridview);
-        collection_map.put(Arrays.asList("GridView", "ListView"), R.layout.root_gridview_listview);
-        collection_map.put(Arrays.asList("GridView", "StackView"), R.layout.root_gridview_stackview);
-        collection_map.put(Arrays.asList("ListView", "ListView"), R.layout.root_listview_listview);
-        collection_map.put(Arrays.asList("ListView", "StackView"), R.layout.root_listview_stackview);
-        collection_map.put(Arrays.asList("StackView", "StackView"), R.layout.root_stackview_stackview);
+        collection_map.put(Collections.singletonList("ListView"), new int[]{R.layout.root_listview, R.layout.root_listview2});
+        collection_map.put(Collections.singletonList("GridView"), new int[]{R.layout.root_gridview, R.layout.root_gridview2});
+        collection_map.put(Collections.singletonList("StackView"), new int[]{R.layout.root_stackview, R.layout.root_stackview2});
+        collection_map.put(Collections.singletonList("AdapterViewFlipper"), new int[]{R.layout.root_adapterviewflipper, R.layout.root_adapterviewflipper2});
+        collection_map.put(Arrays.asList("AdapterViewFlipper", "AdapterViewFlipper"), new int[]{R.layout.root_adapterviewflipper_adapterviewflipper, R.layout.root_adapterviewflipper_adapterviewflipper2});
+        collection_map.put(Arrays.asList("AdapterViewFlipper", "GridView"), new int[]{R.layout.root_adapterviewflipper_gridview, R.layout.root_adapterviewflipper_gridview2});
+        collection_map.put(Arrays.asList("AdapterViewFlipper", "ListView"), new int[]{R.layout.root_adapterviewflipper_listview, R.layout.root_adapterviewflipper_listview2});
+        collection_map.put(Arrays.asList("AdapterViewFlipper", "StackView"), new int[]{R.layout.root_adapterviewflipper_stackview, R.layout.root_adapterviewflipper_stackview2});
+        collection_map.put(Arrays.asList("GridView", "GridView"), new int[]{R.layout.root_gridview_gridview, R.layout.root_gridview_gridview2});
+        collection_map.put(Arrays.asList("GridView", "ListView"), new int[]{R.layout.root_gridview_listview, R.layout.root_gridview_listview2});
+        collection_map.put(Arrays.asList("GridView", "StackView"), new int[]{R.layout.root_gridview_stackview, R.layout.root_gridview_stackview2});
+        collection_map.put(Arrays.asList("ListView", "ListView"), new int[]{R.layout.root_listview_listview, R.layout.root_listview_listview2});
+        collection_map.put(Arrays.asList("ListView", "StackView"), new int[]{R.layout.root_listview_stackview, R.layout.root_listview_stackview2});
+        collection_map.put(Arrays.asList("StackView", "StackView"), new int[]{R.layout.root_stackview_stackview, R.layout.root_stackview_stackview2});
     }
 
     static class SelectorElement
@@ -375,20 +376,6 @@ public class Constants
         element_map.get("TextView").add(new SelectorElement(R.layout.element_textview_alignment_center_end, "alignment", "center_end"));
         element_map.put("RelativeLayout", new ArrayList<>());
         element_map.get("RelativeLayout").add(new SelectorElement(R.layout.element_relativelayout, "", ""));
-        collection_map.put(Arrays.asList("ListView"), R.layout.root_listview);
-        collection_map.put(Arrays.asList("GridView"), R.layout.root_gridview);
-        collection_map.put(Arrays.asList("StackView"), R.layout.root_stackview);
-        collection_map.put(Arrays.asList("AdapterViewFlipper"), R.layout.root_adapterviewflipper);
-        collection_map.put(Arrays.asList("AdapterViewFlipper", "AdapterViewFlipper"), R.layout.root_adapterviewflipper_adapterviewflipper);
-        collection_map.put(Arrays.asList("AdapterViewFlipper", "GridView"), R.layout.root_adapterviewflipper_gridview);
-        collection_map.put(Arrays.asList("AdapterViewFlipper", "ListView"), R.layout.root_adapterviewflipper_listview);
-        collection_map.put(Arrays.asList("AdapterViewFlipper", "StackView"), R.layout.root_adapterviewflipper_stackview);
-        collection_map.put(Arrays.asList("GridView", "GridView"), R.layout.root_gridview_gridview);
-        collection_map.put(Arrays.asList("GridView", "ListView"), R.layout.root_gridview_listview);
-        collection_map.put(Arrays.asList("GridView", "StackView"), R.layout.root_gridview_stackview);
-        collection_map.put(Arrays.asList("ListView", "ListView"), R.layout.root_listview_listview);
-        collection_map.put(Arrays.asList("ListView", "StackView"), R.layout.root_listview_stackview);
-        collection_map.put(Arrays.asList("StackView", "StackView"), R.layout.root_stackview_stackview);
     }
 
     public static String getSetterMethod(String type, String method)

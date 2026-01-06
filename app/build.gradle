@@ -104,6 +104,14 @@ android {
     sourceSets {
         main {
             jniLibs.srcDir 'src/main/cpp/exe'
+            res.srcDirs = [
+                    'src/main/res/layout/elements/chronometer',
+                    'src/main/res/layout/elements/textclock',
+                    'src/main/res/layout/elements/textview',
+                    'src/main/res/layout/elements',
+                    'src/main/res/layout/roots',
+                    'src/main/res'
+            ]
         }
     }
 

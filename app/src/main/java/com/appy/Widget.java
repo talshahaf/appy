@@ -97,6 +97,8 @@ public class Widget extends RemoteViewsService
     final Object widgetLock = new Object();
     ConcurrentHashMap<Integer, ArrayList<DynamicView>> widgets = new ConcurrentHashMap<>();
 
+    final ConcurrentHashMap<Integer, Integer> widgetUpdateCounter = new ConcurrentHashMap<>();
+
     final Object activeTimersLock = new Object();
     ConcurrentHashMap<Long, Timer> activeTimers = new ConcurrentHashMap<>();
     ConcurrentHashMap<Long, PendingIntent[]> activeTimersIntents = new ConcurrentHashMap<>();
@@ -777,25 +779,31 @@ public class Widget extends RemoteViewsService
         return bundle.getBoolean(AppsFragmentKt.OPTION_APPWIDGET_APPY_APP);
     }
 
-    public static Pair<Integer, HashMap<String, ArrayList<Integer>>> selectRootView(ArrayList<String> collections)
+    public static Pair<Integer, HashMap<String, ArrayList<Integer>>> selectRootView(Widget service, int widgetId, ArrayList<String> collections)
     {
         if (collections.size() > 2)
         {
             throw new IllegalArgumentException("more than 2 collections are not supported");
         }
 
+        // we alternate between identical layouts to prevent layout caching depending on update counter per widget
+        Integer counter = service.widgetUpdateCounter.get(widgetId);
+        int updateCounter = counter != null ? counter : 0;
+
         if (collections.isEmpty())
         {
-            return new Pair<>(R.layout.root, new HashMap<>());
+            int[] roots = new int[]{R.layout.root, R.layout.root2};
+            return new Pair<>(roots[updateCounter % roots.length], new HashMap<>());
         }
 
         Collections.sort(collections, String::compareToIgnoreCase);
 
-        Integer res = Constants.collection_map.get(collections);
-        if (res == null)
+        int[] reses = Constants.collection_map.get(collections);
+        if (reses == null)
         {
             throw new IllegalArgumentException("collection types not supported");
         }
+        int res = reses[updateCounter % reses.length];
 
         HashMap<String, ArrayList<Integer>> ret = new HashMap<>();
         for (int i = 0; i < collections.size(); i++)
@@ -896,7 +904,7 @@ public class Widget extends RemoteViewsService
             throw new IllegalArgumentException("cannot have collections in collection");
         }
 
-        Pair<Integer, HashMap<String, ArrayList<Integer>>> root = selectRootView(collections);
+        Pair<Integer, HashMap<String, ArrayList<Integer>>> root = selectRootView(service, widgetId, collections);
         int root_xml = root.first;
         int elements_id = -1;
 
@@ -3905,6 +3913,16 @@ public class Widget extends RemoteViewsService
         synchronized (needUpdateWidgets)
         {
             needUpdateWidgets.remove(widgetId);
+        }
+
+        synchronized (widgetUpdateCounter)
+        {
+            Integer counter = widgetUpdateCounter.get(widgetId);
+            if (counter == null)
+            {
+                counter = 0;
+            }
+            widgetUpdateCounter.put(widgetId, counter + 1);
         }
 
         try
