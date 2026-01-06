@@ -27,6 +27,7 @@ StackView          = lambda **kwargs: widget_manager.Element.create('StackView',
 AdapterViewFlipper = lambda **kwargs: widget_manager.Element.create('AdapterViewFlipper', **kwargs)
 
 Var = lambda attr: widget_manager.EmptyElement.create(attr)
+parentattributes = widget_manager.ContainerAttributes()
     
 class Widget:
     def __init__(self, widget_id, widget_name):
@@ -37,7 +38,7 @@ class Widget:
         else:
             self.name = None
             self.state = None
-        self.widget_dims = widget_manager.widget_dims
+        self.widget_dims = parentattributes
 
     def __copy__(self):
         new = self.__class__.__new__(self.__class__)

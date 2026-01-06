@@ -1,6 +1,6 @@
 import datetime, random
 from dateutil.parser import parse as dateutil_parse
-from dateutil.relativedelta import relativedelta as relativedelta
+from dateutil.relativedelta import relativedelta
 from appy.widgets import register_widget, show_dialog, DialogEditText, background, Button, TextView, ImageView, color, androidR, simple_notification, cancel_notification
 
 NOTIFICATION_ID = random.randint(1, 2 ** 30)

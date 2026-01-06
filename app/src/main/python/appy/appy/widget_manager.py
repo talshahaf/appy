@@ -256,7 +256,7 @@ attrs = dict(left='LEFT', top='TOP', right='RIGHT', bottom='BOTTOM', width='WIDT
 composite_attrs = dict(ileft=attribute_ileft, itop=attribute_itop, iright=attribute_iright, ibottom=attribute_ibottom,
                        hcenter=attribute_hcenter, vcenter=attribute_vcenter, center=attribute_center, ihcenter=attribute_ihcenter, ivcenter=attribute_ivcenter, icenter=attribute_icenter)
 write_attrs = dict(hcenter=attribute_write_hcenter, vcenter=attribute_write_vcenter, center=attribute_write_center)
-class WidgetAttribute:
+class ContainerAttributes:
     def __getattr__(self, item):
         if item in attrs:
             return AttributeValue(None, Reference(-1, attrs[item]))
@@ -870,9 +870,6 @@ class ChildrenList(elist):
 
     def count(self, item):
         return super().count(self.adapt(item))
-
-
-widget_dims = WidgetAttribute()
 
 available_widgets_lock = threading.Lock()
 available_widgets = {}
