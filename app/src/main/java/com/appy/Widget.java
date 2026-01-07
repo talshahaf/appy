@@ -97,7 +97,7 @@ public class Widget extends RemoteViewsService
     final Object widgetLock = new Object();
     ConcurrentHashMap<Integer, ArrayList<DynamicView>> widgets = new ConcurrentHashMap<>();
 
-    final ConcurrentHashMap<Integer, Integer> widgetUpdateCounter = new ConcurrentHashMap<>();
+    final ConcurrentHashMap<Integer, Integer> widgetSwapLayoutCounter = new ConcurrentHashMap<>();
 
     final Object activeTimersLock = new Object();
     ConcurrentHashMap<Long, Timer> activeTimers = new ConcurrentHashMap<>();
@@ -787,7 +787,7 @@ public class Widget extends RemoteViewsService
         }
 
         // we alternate between identical layouts to prevent layout caching depending on update counter per widget
-        Integer counter = service.widgetUpdateCounter.get(widgetId);
+        Integer counter = service.widgetSwapLayoutCounter.get(widgetId);
         int updateCounter = counter != null ? counter : 0;
 
         if (collections.isEmpty())
@@ -3908,21 +3908,24 @@ public class Widget extends RemoteViewsService
         }
     }
 
+    public void triggerWidgetLayoutSwap(int widgetId)
+    {
+        synchronized (widgetSwapLayoutCounter)
+        {
+            Integer counter = widgetSwapLayoutCounter.get(widgetId);
+            if (counter == null)
+            {
+                counter = 0;
+            }
+            widgetSwapLayoutCounter.put(widgetId, counter + 1);
+        }
+    }
+
     public void setWidget(final int androidWidgetId, final int widgetId, final ArrayList<DynamicView> views, final boolean errorOnFailure)
     {
         synchronized (needUpdateWidgets)
         {
             needUpdateWidgets.remove(widgetId);
-        }
-
-        synchronized (widgetUpdateCounter)
-        {
-            Integer counter = widgetUpdateCounter.get(widgetId);
-            if (counter == null)
-            {
-                counter = 0;
-            }
-            widgetUpdateCounter.put(widgetId, counter + 1);
         }
 
         try
@@ -4484,6 +4487,12 @@ public class Widget extends RemoteViewsService
 
             updated = true;
             deferredWidgetSave(widgetId);
+        }
+
+        if (result.getBoolean("collectionMethodsChanged", false))
+        {
+            //swap layouts only if collection methods changed to maintain collection state otherwise (such as scroll position)
+            triggerWidgetLayoutSwap(widgetId);
         }
 
         boolean needUpdate;
