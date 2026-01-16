@@ -8,6 +8,7 @@ import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ScrollView;
+import android.widget.Switch;
 import android.widget.TextView;
 
 import java.io.File;
@@ -19,10 +20,12 @@ import java.io.File;
 public class PipFragment extends MyFragment implements RunnerListener
 {
     EditText command;
+    Switch useShell;
     Button run;
     Button stop;
     TextView output;
     ScrollView scroller;
+    String fulloutput = "";
 
     Runner runner = null;
 
@@ -35,10 +38,10 @@ public class PipFragment extends MyFragment implements RunnerListener
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState)
     {
-
         View layout = inflater.inflate(R.layout.fragment_pip, container, false);
 
         command = layout.findViewById(R.id.command);
+        useShell = layout.findViewById(R.id.useshell);
         run = layout.findViewById(R.id.run);
         stop = layout.findViewById(R.id.stop);
         output = layout.findViewById(R.id.output);
@@ -57,8 +60,12 @@ public class PipFragment extends MyFragment implements RunnerListener
             {
                 runner.stop();
             }
-            output.setText("Running...\n\n");
-            runner = new Runner(Runner.translateCommandline(command.getText().toString()), cwd, null, PipFragment.this);
+            fulloutput = "Running...\n\n";
+            output.setText(fulloutput);
+
+            String cmd = command.getText().toString();
+            String[] args = useShell.isChecked() ? new String[] {"sh", "-c", cmd} : Runner.translateCommandline(cmd);
+            runner = new Runner(args, cwd, null, PipFragment.this);
             runner.start();
 
             v.setEnabled(false);
@@ -70,7 +77,8 @@ public class PipFragment extends MyFragment implements RunnerListener
             {
                 if (runner.isRunning())
                 {
-                    output.setText(output.getText() + "\n\nStopping...");
+                    fulloutput += "\n\nStopping...";
+                    output.setText(fulloutput);
                     v.setEnabled(false);
                     handler.postDelayed(() -> v.setEnabled(true), 1000);
                 }
@@ -82,11 +90,24 @@ public class PipFragment extends MyFragment implements RunnerListener
     }
 
     @Override
+    public void onResume()
+    {
+        output.setText(fulloutput);
+        super.onResume();
+    }
+
+    @Override
     public void onLine(final String line)
     {
         handler.post(() -> {
-            output.setText(output.getText() + "\n" + line);
+            fulloutput += "\n" + line;
+            output.setText(fulloutput);
+            boolean commandFocused = command.hasFocus();
             scroller.fullScroll(View.FOCUS_DOWN);
+            if (commandFocused)
+            {
+                command.requestFocus();
+            }
         });
     }
 
@@ -94,14 +115,8 @@ public class PipFragment extends MyFragment implements RunnerListener
     public void onExited(final Integer code)
     {
         handler.post(() -> {
-            if (code == null)
-            {
-                output.setText(output.getText() + "\nTerminated");
-            }
-            else
-            {
-                output.setText(output.getText() + "\nExited: " + code);
-            }
+            fulloutput += code == null ? "\nTerminated" : ("\nExited: " + code);
+            output.setText(fulloutput);
         });
     }
 }

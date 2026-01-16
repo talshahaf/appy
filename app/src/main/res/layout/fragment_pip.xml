@@ -15,22 +15,36 @@
         android:text="" app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.503" app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"/>
+
+    <Switch
+        android:id="@+id/useshell"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:checked="true"
+        android:text="Use Shell"
+        app:layout_constraintEnd_toEndOf="@+id/command"
+        app:layout_constraintStart_toStartOf="@+id/command"
+        app:layout_constraintTop_toBottomOf="@+id/command" />
+
     <Button
         android:id="@+id/run"
+        style="@style/secondary_btn"
         android:layout_width="89dp"
-        android:layout_height="wrap_content" android:text="Run"
+        android:layout_height="wrap_content"
+        android:text="Run"
         app:layout_constraintEnd_toStartOf="@+id/stop"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/command"
-        style="@style/secondary_btn"/>
+        app:layout_constraintTop_toBottomOf="@+id/useshell" />
+
     <Button
         android:id="@+id/stop"
+        style="@style/secondary_btn"
         android:layout_width="wrap_content"
-        android:layout_height="wrap_content" android:text="Stop"
-        app:layout_constraintStart_toEndOf="@+id/run"
+        android:layout_height="wrap_content"
+        android:text="Stop"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/command"
-        style="@style/secondary_btn"/>
+        app:layout_constraintStart_toEndOf="@+id/run"
+        app:layout_constraintTop_toBottomOf="@+id/useshell" />
 
     <HorizontalScrollView android:layout_width="0dp"
                           android:layout_height="0dp"
@@ -56,4 +70,5 @@
                 android:textIsSelectable="true"/>
         </ScrollView>
     </HorizontalScrollView>
+
 </androidx.constraintlayout.widget.ConstraintLayout>
