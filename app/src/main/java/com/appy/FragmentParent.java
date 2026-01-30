@@ -14,7 +14,7 @@ public abstract class FragmentParent extends MyFragment
         transaction.setCustomAnimations(
                 R.animator.slide_in_from_right, R.animator.slide_out_to_left,
                 R.animator.slide_in_from_left, R.animator.slide_out_to_right);
-        transaction.replace(R.id.configs_container, fragment, FRAGMENT_TAG);
+        transaction.replace(R.id.container, fragment, FRAGMENT_TAG);
         if (getChildFragmentManager().findFragmentByTag(FRAGMENT_TAG) != null && !noBackStack)
         {
             transaction.addToBackStack(null);

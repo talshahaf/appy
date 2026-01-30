@@ -2318,15 +2318,33 @@ public class Widget extends RemoteViewsService
 
     public DictObj.Dict getAllWidgetAppProps(boolean useAndroidWidgetId, boolean withIcons)
     {
-        DictObj.Dict names = getAllWidgetNames();
-        DictObj.Dict result = new DictObj.Dict();
+        return getAllWidgetAppProps(null, useAndroidWidgetId, withIcons);
+    }
 
-        for (String key : names.keys())
+    public DictObj.Dict getAllWidgetAppProps(String name, boolean useAndroidWidgetId, boolean withIcons)
+    {
+        DictObj.Dict result = new DictObj.Dict();
+        if (name == null)
         {
-            DictObj.Dict data = new DictObj.Dict();
-            data.put("name", names.getString(key));
-            data.put("display_name", data.getString("name"));
-            result.put(key, data);
+            DictObj.Dict names = getAllWidgetNames();
+            for (String key : names.keys())
+            {
+                DictObj.Dict data = new DictObj.Dict();
+                data.put("name", names.getString(key));
+                data.put("display_name", data.getString("name"));
+                result.put(key, data);
+            }
+        }
+        else
+        {
+            int[] widgetIds = getAllWidgetsByName(name);
+            for (int widgetId : widgetIds)
+            {
+                DictObj.Dict data = new DictObj.Dict();
+                data.put("name", name);
+                data.put("display_name", name);
+                result.put(widgetId+"", data);
+            }
         }
 
         synchronized (widgetPropsLock)
@@ -2743,7 +2761,7 @@ public class Widget extends RemoteViewsService
         addTask(widgetId, new Task<>(new CallPostTask(), widgetId, data), false);
     }
 
-    public void configurationUpdate(String widget, String key)
+    public void configurationUpdate(String widget, String key, int widgetId)
     {
         if (updateListener != null)
         {
@@ -2758,8 +2776,15 @@ public class Widget extends RemoteViewsService
 
             if (widget != null)
             {
-                int[] widgetIds = updateListener.findWidgetsByMame(widget);
-                for (int widgetId : widgetIds)
+                if (widgetId == Configurations.NONLOCAL_ID)
+                {
+                    int[] widgetIds = getAllWidgetsByName(widget);
+                    for (int id : widgetIds)
+                    {
+                        addTask(id, new Task<>(new CallConfigTask(), id, key), false);
+                    }
+                }
+                else
                 {
                     addTask(widgetId, new Task<>(new CallConfigTask(), widgetId, key), false);
                 }
@@ -2780,6 +2805,16 @@ public class Widget extends RemoteViewsService
         }
 
         return updateListener.getAllWidgetNames();
+    }
+
+    public int[] getAllWidgetsByName(String name)
+    {
+        if (updateListener == null)
+        {
+            return new int[0];
+        }
+
+        return updateListener.findWidgetsByMame(name);
     }
 
     public String getWidgetPathByName(String name)
@@ -3860,12 +3895,23 @@ public class Widget extends RemoteViewsService
 
     public void startConfigFragment(String widget)
     {
+        startConfigFragment(widget, Configurations.NONLOCAL_ID);
+    }
+
+    public void startConfigFragment(String widget, int widgetId)
+    {
         Bundle bundle = new Bundle();
         bundle.putString(Constants.FRAGMENT_ARG_WIDGET, widget);
+        bundle.putInt(Constants.FRAGMENT_ARG_WIDGET_ID, widgetId);
         startMainActivity("Configurations", bundle);
     }
 
     public boolean requestConfigChange(String widget, String config, int timeoutMilli)
+    {
+        return requestConfigChange(widget, Configurations.NONLOCAL_ID, config, timeoutMilli);
+    }
+
+    public boolean requestConfigChange(String widget, int widgetId, String config, int timeoutMilli)
     {
         if (Looper.myLooper() != null)
         {
@@ -3875,6 +3921,7 @@ public class Widget extends RemoteViewsService
         int requestCode = generateRequestCode();
         Bundle bundle = new Bundle();
         bundle.putString(Constants.FRAGMENT_ARG_WIDGET, widget);
+        bundle.putInt(Constants.FRAGMENT_ARG_WIDGET_ID, widgetId);
         bundle.putString(Constants.FRAGMENT_ARG_CONFIG, config);
         bundle.putInt(Constants.FRAGMENT_ARG_REQUESTCODE, requestCode);
 
@@ -4755,7 +4802,7 @@ public class Widget extends RemoteViewsService
         String displayName = "widget #" + widgetId + " (" + widgetName + ")";
 
         String[] texts = new String[]{ "Open Config", "Recreate", "Reload", "Set Scale Factor", "Edit", "Show Last Error", "Clear"};
-        String[] actions = new String[] {Constants.SPECIAL_WIDGET_CONFIG + "," + widgetName,
+        String[] actions = new String[] {Constants.SPECIAL_WIDGET_CONFIG + "," + widgetId + "," + widgetName,
                                          Constants.SPECIAL_WIDGET_RECREATE + "," + widgetId,
                                          widgetPath == null ? null : (Constants.SPECIAL_WIDGET_RELOAD + "," + widgetPath),
                                          Constants.SPECIAL_WIDGET_SCALE_FACTOR + "," + widgetId,
@@ -5101,9 +5148,14 @@ public class Widget extends RemoteViewsService
                                     case Constants.SPECIAL_WIDGET_CONFIG:
                                         if (arg != null)
                                         {
-                                            String widgetName = arg;
-                                            Log.d("APPY", "configuration of " + widgetName);
-                                            startConfigFragment(widgetName);
+                                            String[] parts = arg.split(",", 2);
+                                            if (parts.length == 2)
+                                            {
+                                                int widgetId = Integer.parseInt(parts[0]);
+                                                String widgetName = parts[1];
+                                                Log.d("APPY", "configuration of " + widgetName + " " + widgetId);
+                                                startConfigFragment(widgetName, widgetId);
+                                            }
                                         }
                                         break;
                                     case Constants.SPECIAL_WIDGET_EDIT_FILE:

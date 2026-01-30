@@ -21,6 +21,7 @@ public class ListFragmentAdapter extends BaseAdapter
         String value;
         KeyFormat keyFormat;
         Object arg;
+        boolean enabled;
 
         @Override
         public String toString()
@@ -34,6 +35,7 @@ public class ListFragmentAdapter extends BaseAdapter
             this.value = value;
             this.keyFormat = keyFormat;
             this.arg = arg;
+            this.enabled = true;
         }
 
         public Item(String key, String value)
@@ -44,6 +46,11 @@ public class ListFragmentAdapter extends BaseAdapter
         public Item(String key, String value, Object arg)
         {
             this(key, value, item -> item.key, arg);
+        }
+
+        public void setEnabled(boolean enabled)
+        {
+            this.enabled = enabled;
         }
     }
     public static int MAX_VALUE_LENGTH = 100;
@@ -110,18 +117,23 @@ public class ListFragmentAdapter extends BaseAdapter
             twoLineListItem = convertView;
         }
 
+        Item item = items.get(position);
+
         TextView text1 = twoLineListItem.findViewById(R.id.text1);
         TextView text2 = twoLineListItem.findViewById(R.id.text2);
 
-        text1.setText(trimValue(items.get(position).keyFormat.format(items.get(position))));
+        text1.setText(trimValue(item.keyFormat.format(item)));
 
-        String value = items.get(position).value;
+        String value = item.value;
         if (value == null)
         {
             value = "null";
         }
 
         text2.setText(trimValuePerLine(value, 2));
+
+        text1.setEnabled(item.enabled);
+        text2.setEnabled(item.enabled);
 
         return twoLineListItem;
     }

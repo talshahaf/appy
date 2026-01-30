@@ -29,7 +29,7 @@ public class CrashFragment extends FragmentParent
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState)
     {
-        View layout = inflater.inflate(R.layout.fragment_configs, container, false);
+        View layout = inflater.inflate(R.layout.fragment_parent, container, false);
 
         setHasOptionsMenu(true);
         switchTo(new CrashListFragment(), true);
@@ -79,8 +79,8 @@ public class CrashFragment extends FragmentParent
         public View onCreateView(LayoutInflater inflater, ViewGroup container,
                                  Bundle savedInstanceState)
         {
-            View layout = inflater.inflate(R.layout.fragment_configs_list, container, false);
-            list = layout.findViewById(R.id.configs_list);
+            View layout = inflater.inflate(R.layout.fragment_list, container, false);
+            list = layout.findViewById(R.id.list_view);
             list.setOnItemClickListener(this);
             refresh();
             return layout;

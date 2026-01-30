@@ -1561,6 +1561,9 @@ def register_widget(name, create, update=None, config=None, config_description=N
     if not name or type(name) != str:
         raise ValueError('name must be str')
 
+    if len(name) > 256:
+        raise ValueError('name length > 256')
+
     path = getattr(__importing_module, 'path', None)
     if path is None:
         raise ValueError('register_widget can only be called on import')

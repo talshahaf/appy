@@ -1,5 +1,6 @@
 package com.appy;
 
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
@@ -8,7 +9,6 @@ import androidx.appcompat.app.AlertDialog;
 
 import android.text.InputType;
 import android.util.Log;
-import android.util.Pair;
 import android.view.ContextMenu;
 import android.view.Gravity;
 import android.view.LayoutInflater;
@@ -18,10 +18,16 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.LinearLayout;
 import android.widget.ListView;
+import android.widget.Spinner;
+import android.widget.TextView;
 import android.widget.Toast;
+
+import com.google.android.material.switchmaterial.SwitchMaterial;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -30,8 +36,11 @@ import org.json.JSONObject;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+
+import kotlin.Triple;
 
 public class ConfigsFragment extends FragmentParent
 {
@@ -42,7 +51,7 @@ public class ConfigsFragment extends FragmentParent
         super.onCreateView(inflater, container, savedInstanceState);
 
         setHasOptionsMenu(true);
-        return inflater.inflate(R.layout.fragment_configs, container, false);
+        return inflater.inflate(R.layout.fragment_parent, container, false);
     }
 
     @Override
@@ -173,20 +182,21 @@ public class ConfigsFragment extends FragmentParent
         }
         if (fragmentArg == null)
         {
-            switchTo(new WidgetSelectFragment(), false);
+            switchTo(new ConfigSelectFragment(), true);
             return;
         }
 
         String widget = fragmentArg.getString(Constants.FRAGMENT_ARG_WIDGET);
-        HashMap<String, Pair<String, String>> configs = getWidgetService().getConfigurations().getValues(widget);
+        int widgetId = fragmentArg.getInt(Constants.FRAGMENT_ARG_WIDGET_ID, Configurations.NONLOCAL_ID);
+        HashMap<String, Triple<String, String, Boolean>> configs = getWidgetService().getConfigurations().getValues(widget, widgetId);
         if (configs.isEmpty())
         {
-            switchTo(new WidgetSelectFragment(), true);
+            switchTo(new ConfigSelectFragment(), true);
             return;
         }
 
-        WidgetSelectFragment fragment = new WidgetSelectFragment();
-        fragment.setWidget(widget);
+        ConfigSelectFragment fragment = new ConfigSelectFragment();
+        fragment.setWidget(widget, widgetId);
         String config = fragmentArg.getString(Constants.FRAGMENT_ARG_CONFIG);
         if (configs.containsKey(config))
         {
@@ -219,14 +229,55 @@ public class ConfigsFragment extends FragmentParent
         super.onPause();
     }
 
-    public static class WidgetSelectFragment extends ChildFragment implements AdapterView.OnItemClickListener
+    public static class ConfigSelectFragment extends ChildFragment implements AdapterView.OnItemClickListener
     {
         ListView list;
+        Spinner widgetPicker;
         String widget = null;
+        int widgetId = Configurations.NONLOCAL_ID;
         String config = null;
         int requestCode_ = 0;
 
         String asyncResultAndDie = null;
+
+        static class WidgetListElement implements Comparable<WidgetListElement>
+        {
+            int widgetId;
+            DictObj.Dict props;
+            public WidgetListElement(int widgetId, DictObj.Dict props)
+            {
+                this.widgetId = widgetId;
+                this.props = props;
+            }
+
+            @Override
+            public String toString()
+            {
+                if (widgetId == Configurations.NONLOCAL_ID)
+                {
+                    return "All widgets";
+                }
+                return (props.getBoolean("app", false) ? "app #" : "widget #") + widgetId;
+            }
+
+            @Override
+            public int compareTo(WidgetListElement other)
+            {
+                if (widgetId == other.widgetId)
+                {
+                    return 0;
+                }
+                if (widgetId == Configurations.NONLOCAL_ID)
+                {
+                    return -1;
+                }
+                if (other.widgetId == Configurations.NONLOCAL_ID)
+                {
+                    return 1;
+                }
+                return Integer.compare(widgetId, other.widgetId);
+            }
+        }
 
         @Override
         public void onResumedAndBound()
@@ -256,6 +307,10 @@ public class ConfigsFragment extends FragmentParent
             ListFragmentAdapter.Item selectedConfigItem = null;
             if (widget == null)
             {
+                widgetPicker.getLayoutParams().height = 0;
+                widgetPicker.setVisibility(View.INVISIBLE);
+                widgetPicker.requestLayout();
+
                 if (getActivity() != null)
                 {
                     getActivity().setTitle("Configurations");
@@ -272,14 +327,40 @@ public class ConfigsFragment extends FragmentParent
                 if (getActivity() != null)
                 {
                     getActivity().setTitle("Configurations of " + widget);
+                    widgetPicker.getLayoutParams().height = ViewGroup.LayoutParams.WRAP_CONTENT;
+                    widgetPicker.setVisibility(View.VISIBLE);
+                    widgetPicker.requestLayout();
+
+                    DictObj.Dict widgetInstances = getWidgetService().getAllWidgetAppProps(widget, false, false);
+                    WidgetListElement[] elements = new WidgetListElement[widgetInstances.size() + 1];
+                    elements[0] = new WidgetListElement(Configurations.NONLOCAL_ID, null);
+                    int i = 1;
+                    for (DictObj.Entry entry : widgetInstances.entries())
+                    {
+                        elements[i] = new WidgetListElement(Integer.parseInt(entry.key), (DictObj.Dict) entry.value);
+                        i++;
+                    }
+                    Arrays.sort(elements);
+                    int current_position = -1;
+                    for (i = 0; i < elements.length; i++)
+                    {
+                        if (elements[i].widgetId == widgetId)
+                        {
+                            current_position = i;
+                            break;
+                        }
+                    }
+                    widgetPicker.setAdapter(new ArrayAdapter<>(getActivity(), R.layout.dropdown_text_item, elements));
+                    widgetPicker.setSelection(current_position);
                 }
 
-                HashMap<String, Pair<String, String>> values = getWidgetService().getConfigurations().getValues(widget);
-                for (Map.Entry<String, Pair<String, String>> item : values.entrySet())
+                HashMap<String, Triple<String, String, Boolean>> values = getWidgetService().getConfigurations().getValues(widget, widgetId);
+                for (Map.Entry<String, Triple<String, String, Boolean>> item : values.entrySet())
                 {
-                    String valueSummary = Utils.capWithEllipsis(item.getValue().second.replaceAll("\r", "").replaceAll("\n", "").replaceAll("\t", " ").replaceAll("  ", ""), 100);
-                    String subtitle = item.getValue().first != null ? (item.getValue().first + "\n" + valueSummary) : item.getValue().second;
-                    ListFragmentAdapter.Item listitem = new ListFragmentAdapter.Item(item.getKey(), subtitle, item.getValue().second);
+                    String valueSummary = Utils.capWithEllipsis(Utils.collapseSpaces(item.getValue().component2().replaceAll("\r", "").replaceAll("\n", "\\\\n").replaceAll("\t", " ")), 100);
+                    String subtitle = (item.getValue().component1() != null ? (item.getValue().component1() + "\n") : "") + valueSummary;
+                    ListFragmentAdapter.Item listitem = new ListFragmentAdapter.Item(item.getKey(), subtitle, item1 -> item1.key + (widgetId == Configurations.NONLOCAL_ID || ((Triple<String, String, Boolean>)item1.arg).component3() ? "" : " (all widgets)"), item.getValue());
+                    listitem.setEnabled(widgetId == Configurations.NONLOCAL_ID || item.getValue().component3());
                     if (config != null && item.getKey().equals(config))
                     {
                         selectedConfigItem = listitem;
@@ -290,7 +371,7 @@ public class ConfigsFragment extends FragmentParent
             list.setAdapter(new ListFragmentAdapter(getActivity(), adapterList));
             if (selectedConfigItem != null)
             {
-                asyncResultAndDie = (String)selectedConfigItem.arg;
+                asyncResultAndDie = ((Triple<String, String, Boolean>)selectedConfigItem.arg).component2();
                 showEditor(selectedConfigItem, true);
             }
             else
@@ -303,10 +384,41 @@ public class ConfigsFragment extends FragmentParent
         public View onCreateView(LayoutInflater inflater, ViewGroup container,
                                  Bundle savedInstanceState)
         {
-            View layout = inflater.inflate(R.layout.fragment_configs_list, container, false);
-            list = layout.findViewById(R.id.configs_list);
+            View layout = inflater.inflate(R.layout.fragment_config_list, container, false);
+            list = layout.findViewById(R.id.config_list);
             list.setOnItemClickListener(this);
+            list.setEmptyView(layout.findViewById(R.id.empty_view));
             registerForContextMenu(list);
+
+            widgetPicker = layout.findViewById(R.id.config_picker);
+            widgetPicker.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener()
+            {
+                @Override
+                public void onItemSelected(AdapterView<?> parent, View view, int position, long id)
+                {
+                    int newWidgetId = ((WidgetListElement)parent.getItemAtPosition(position)).widgetId;
+                    if (widgetId != newWidgetId)
+                    {
+                        widgetId = newWidgetId;
+                        refresh();
+                    }
+                }
+
+                @Override
+                public void onNothingSelected(AdapterView<?> parent)
+                {
+                    if (widgetId != Configurations.NONLOCAL_ID)
+                    {
+                        widgetId = Configurations.NONLOCAL_ID;
+                        refresh();
+                    }
+                }
+            });
+
+            widgetPicker.getLayoutParams().height = 0;
+            widgetPicker.setVisibility(View.INVISIBLE);
+            widgetPicker.requestLayout();
+
             refresh();
             return layout;
         }
@@ -318,8 +430,8 @@ public class ConfigsFragment extends FragmentParent
             if (widget == null)
             {
                 //select that widget
-                WidgetSelectFragment fragment = new WidgetSelectFragment();
-                fragment.setWidget(item.key);
+                ConfigSelectFragment fragment = new ConfigSelectFragment();
+                fragment.setWidget(item.key, Configurations.NONLOCAL_ID);
                 parent.switchTo(fragment, false);
             }
             else
@@ -355,20 +467,55 @@ public class ConfigsFragment extends FragmentParent
 
         public void showEditor(final ListFragmentAdapter.Item item, final boolean dieAfter)
         {
-            AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
+            Context context = getActivity();
+            if (context == null)
+            {
+                return;
+            }
+
+            AlertDialog.Builder builder = new AlertDialog.Builder(context);
             builder.setTitle(widget + "." + item.key);
 
-            final EditText input = new EditText(getActivity());
+            LinearLayout container = new LinearLayout(context);
+            container.setOrientation(LinearLayout.VERTICAL);
+
+            EditText input = new EditText(context);
+            LinearLayout switchContainer = new LinearLayout(context);
+            switchContainer.setOrientation(LinearLayout.HORIZONTAL);
+
+            SwitchMaterial check = new SwitchMaterial(context);
+            TextView checkText = new TextView(context);
+            String textOn = "Set for widget instance";
+            String textOff = "Set for all widgets";
+
+            checkText.setText(textOn);
+            check.setChecked(true);
+            check.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
+            checkText.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
+            check.setOnCheckedChangeListener((buttonView, isChecked) -> checkText.setText(isChecked ? textOn : textOff));
+            switchContainer.addView(check);
+            switchContainer.addView(checkText);
+            switchContainer.setVisibility(View.GONE);
+
+            container.addView(input);
+            container.addView(switchContainer);
 
             if (item.arg != null)
             {
+                Triple<String, String, Boolean> arg = (Triple<String, String, Boolean>) item.arg;
                 try
                 {
-                    input.setText(new JSONObject((String) item.arg).toString(2));
+                    input.setText(new JSONObject(arg.component2()).toString(2));
                 }
                 catch (JSONException e)
                 {
-                    input.setText((String) item.arg);
+                    input.setText(arg.component2());
+                }
+
+                if (dieAfter && widgetId != Configurations.NONLOCAL_ID)
+                {
+                    //add switch to choose where to set
+                    switchContainer.setVisibility(View.VISIBLE);
                 }
             }
             else
@@ -379,14 +526,15 @@ public class ConfigsFragment extends FragmentParent
             input.setInputType(InputType.TYPE_TEXT_FLAG_MULTI_LINE);
             input.setSingleLine(false);
             input.setGravity(Gravity.START | Gravity.TOP);
-            builder.setView(input);
+
+            builder.setView(container);
 
             builder.setPositiveButton("Ok", null);
 
             final DialogInterface.OnClickListener onDismiss = (dialog, which) -> {
                 if (dieAfter)
                 {
-                    handleAsyncRequestAndDie((String)item.arg);
+                    handleAsyncRequestAndDie(((Triple<String, String, Boolean>)item.arg).component2());
                 }
                 dialog.dismiss();
             };
@@ -402,7 +550,7 @@ public class ConfigsFragment extends FragmentParent
                     String newValue = input.getText().toString();
                     if (item.key.endsWith("_nojson") || isValidJSON(newValue))
                     {
-                        getWidgetService().getConfigurations().setConfig(widget, item.key, newValue);
+                        getWidgetService().getConfigurations().setConfig(widget, check.isChecked() ? widgetId : Configurations.NONLOCAL_ID, item.key, newValue);
                         if (dieAfter)
                         {
                             handleAsyncRequestAndDie(newValue);
@@ -430,10 +578,23 @@ public class ConfigsFragment extends FragmentParent
         {
             if (v == list)
             {
-                getActivity().getMenuInflater().inflate(R.menu.config_actions, menu);
-
                 AdapterView.AdapterContextMenuInfo info = (AdapterView.AdapterContextMenuInfo) menuInfo;
                 ListFragmentAdapter.Item item = (ListFragmentAdapter.Item) list.getItemAtPosition(info.position);
+
+                Triple<String, String, Boolean> arg = (Triple<String, String, Boolean>)item.arg;
+                if (widgetId != Configurations.NONLOCAL_ID && !arg.component3())
+                {
+                    // no menu if in widget instance and config does not have override
+                    super.onCreateContextMenu(menu, v, menuInfo);
+                    return;
+                }
+
+                getActivity().getMenuInflater().inflate(R.menu.config_actions, menu);
+
+                if (widgetId != Configurations.NONLOCAL_ID)
+                {
+                    menu.removeItem(R.id.action_delete);
+                }
                 menu.setHeaderTitle(item.key);
             }
             else
@@ -482,15 +643,23 @@ public class ConfigsFragment extends FragmentParent
             }
             else
             {
-                if (delete)
+                if (widgetId == Configurations.NONLOCAL_ID)
                 {
-                    title = "Delete configuration";
-                    message = "Delete " + item.key + "?";
+                    if (delete)
+                    {
+                        title = "Delete configuration";
+                        message = "Delete " + item.key + "?";
+                    }
+                    else
+                    {
+                        title = "Reset configuration";
+                        message = "Reset " + item.key + "?";
+                    }
                 }
                 else
                 {
                     title = "Reset configuration";
-                    message = "Reset " + item.key + "?";
+                    message = "Reset " + item.key + " for widget?";
                 }
             }
 
@@ -510,13 +679,13 @@ public class ConfigsFragment extends FragmentParent
                         }
                         else
                         {
-                            if (delete)
+                            if (delete && widgetId == Configurations.NONLOCAL_ID)
                             {
                                 getWidgetService().getConfigurations().deleteKey(widget, item.key);
                             }
                             else
                             {
-                                getWidgetService().getConfigurations().resetKey(widget, item.key);
+                                getWidgetService().getConfigurations().resetKey(widget, item.key, widgetId);
                             }
                         }
                         refresh();
@@ -524,9 +693,10 @@ public class ConfigsFragment extends FragmentParent
             return true;
         }
 
-        public void setWidget(String widget)
+        public void setWidget(String widget, int widgetId)
         {
             this.widget = widget;
+            this.widgetId = widgetId;
         }
 
         public void setConfig(String config)

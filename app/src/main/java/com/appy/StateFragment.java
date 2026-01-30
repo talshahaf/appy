@@ -35,7 +35,7 @@ public class StateFragment extends FragmentParent
                              Bundle savedInstanceState)
     {
         setHasOptionsMenu(true);
-        return inflater.inflate(R.layout.fragment_configs, container, false);
+        return inflater.inflate(R.layout.fragment_parent, container, false);
     }
 
     @Override
@@ -77,13 +77,13 @@ public class StateFragment extends FragmentParent
             return;
         }
 
-        WidgetSelectFragment fragment = new WidgetSelectFragment();
+        StateSelectFragment fragment = new StateSelectFragment();
         fragment.setParent(this);
         fragment.setKeyPath();
         switchTo(fragment, true);
     }
 
-    public static class WidgetSelectFragment extends ChildFragment implements AdapterView.OnItemClickListener
+    public static class StateSelectFragment extends ChildFragment implements AdapterView.OnItemClickListener
     {
         ListView list;
         ArrayList<String> keyPath;
@@ -210,8 +210,8 @@ public class StateFragment extends FragmentParent
         public View onCreateView(LayoutInflater inflater, ViewGroup container,
                                  Bundle savedInstanceState)
         {
-            View layout = inflater.inflate(R.layout.fragment_configs_list, container, false);
-            list = layout.findViewById(R.id.configs_list);
+            View layout = inflater.inflate(R.layout.fragment_list, container, false);
+            list = layout.findViewById(R.id.list_view);
             list.setOnItemClickListener(this);
             list.setEmptyView(layout.findViewById(R.id.empty_view));
             registerForContextMenu(list);
@@ -238,7 +238,7 @@ public class StateFragment extends FragmentParent
             String value = (String)item.arg;
             if (value == null)
             {
-                WidgetSelectFragment fragment = new WidgetSelectFragment();
+                StateSelectFragment fragment = new StateSelectFragment();
                 fragment.setKeyPath(keyPath, item.key);
                 parent.switchTo(fragment, false);
             }

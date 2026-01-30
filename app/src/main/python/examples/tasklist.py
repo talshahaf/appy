@@ -11,7 +11,7 @@ def edit_btn_click(widget):
     
 def on_check(widget, view, checked):
     # Update checked in state so remember through reboots and list changes
-    widget.nonlocals(view.text)
+    widget.locals(view.text)
     widget.state[view.text] = checked
     # Strikethrough on checked
     view.paintFlags = strikethrough_flags if checked else normal_flags

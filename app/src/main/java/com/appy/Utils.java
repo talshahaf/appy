@@ -588,6 +588,15 @@ public class Utils
         builder.show();
     }
 
+    public static String collapseSpaces(String s)
+    {
+        while (s.contains("  "))
+        {
+            s = s.replaceAll("  ", " ");
+        }
+        return s;
+    }
+
     public static String capWithEllipsis(String s, int maxlen)
     {
         if (s.length() > maxlen)

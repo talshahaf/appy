@@ -35,7 +35,7 @@ public class TimerFragment extends FragmentParent
                              Bundle savedInstanceState)
     {
         setHasOptionsMenu(true);
-        return inflater.inflate(R.layout.fragment_configs, container, false);
+        return inflater.inflate(R.layout.fragment_parent, container, false);
     }
 
     @Override
@@ -77,13 +77,13 @@ public class TimerFragment extends FragmentParent
             return;
         }
 
-        WidgetSelectFragment fragment = new WidgetSelectFragment();
+        TimerSelectFragment fragment = new TimerSelectFragment();
         fragment.setParent(this);
         fragment.setWidget(null);
         switchTo(fragment, true);
     }
 
-    public static class WidgetSelectFragment extends ChildFragment implements AdapterView.OnItemClickListener
+    public static class TimerSelectFragment extends ChildFragment implements AdapterView.OnItemClickListener
     {
         ListView list;
         String widget = null;
@@ -184,8 +184,8 @@ public class TimerFragment extends FragmentParent
         public View onCreateView(LayoutInflater inflater, ViewGroup container,
                                  Bundle savedInstanceState)
         {
-            View layout = inflater.inflate(R.layout.fragment_configs_list, container, false);
-            list = layout.findViewById(R.id.configs_list);
+            View layout = inflater.inflate(R.layout.fragment_list, container, false);
+            list = layout.findViewById(R.id.list_view);
             list.setOnItemClickListener(this);
             list.setEmptyView(layout.findViewById(R.id.empty_view));
             registerForContextMenu(list);
@@ -212,7 +212,7 @@ public class TimerFragment extends FragmentParent
             if (!(Boolean)item.arg)
             {
                 //select that widget
-                WidgetSelectFragment fragment = new WidgetSelectFragment();
+                TimerSelectFragment fragment = new TimerSelectFragment();
                 fragment.setWidget(item.key);
                 parent.switchTo(fragment, false);
             }

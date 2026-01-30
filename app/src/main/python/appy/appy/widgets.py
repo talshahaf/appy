@@ -55,9 +55,9 @@ class Widget:
 
     def __getattr__(self, item):
         if item == 'config':
-            return configs.global_configs[self.name]
+            return configs.get_dict(self.name, self.widget_id, False)
         if item == 'raw_config':
-            return configs.global_raw_configs[self.name]
+            return configs.get_dict(self.name, self.widget_id, True)
         return getattr(self.widget_dims, item)
         
     def __eq__(self, other):
@@ -138,11 +138,14 @@ class Widget:
     def start_activity(self, screen=None):
         widget_manager.java_context().startMainActivity(screen, None)
 
-    def start_config_activity(self):
-        widget_manager.java_context().startConfigFragment(self.name)
+    def start_config_activity(self, all_widgets=False):
+        f = widget_manager.java_context().startConfigFragment
+        f(self.name) if all_widgets else f(self.name, self.widget_id)
 
-    def request_config_change(self, config, timeout=None):
-        completed = widget_manager.java_context().requestConfigChange(self.name, config, int(timeout * 1000) if timeout is not None else -1)
+    def request_config_change(self, config, all_widgets=False, timeout=None):
+        f = widget_manager.java_context().requestConfigChange
+        t = int(timeout * 1000) if timeout is not None else -1
+        completed = f(self.name, config, t) if all_widgets else f(self.name, self.widget_id, config, t)
         if not completed:
             raise RuntimeError('timeout')
 
