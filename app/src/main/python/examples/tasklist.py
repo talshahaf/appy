@@ -7,7 +7,7 @@ normal_flags = java.clazz.android.graphics.Paint().ANTI_ALIAS_FLAG
 
 def edit_btn_click(widget):
     # Make the user change 'list' configuration
-    widget.request_config_change('list_nojson')
+    widget.request_config_change('list_nojson', all_widgets=widget.config.main_list)
     
 def on_check(widget, view, checked):
     # Update checked in state so remember through reboots and list changes
@@ -52,7 +52,7 @@ register_widget('tasklist', create,
                     # Also refresh list every update so we can call invalidate from other tasklists
                     update_list,
                     # no json so it would be easier to read and to change
-                    config=dict(list_nojson='Task 1\nTask 2\nTask 3', newline_delimiter=True, delimiter=', '),
-                    config_description=dict(newline_delimiter='Use newlines to split the task list', delimiter='Use this delimiter, works only if newline_delimiter is False'),
+                    config=dict(list_nojson='Task 1\nTask 2\nTask 3', newline_delimiter=True, delimiter=', ', main_list=False),
+                    config_description=dict(newline_delimiter='Use newlines to split the task list', delimiter='Use this delimiter, works only if newline_delimiter is False', main_list='request config update for all widgets'),
                     # Refresh list every config change
                     on_config=update_list)

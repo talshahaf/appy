@@ -50,6 +50,32 @@ public class Configurations
         }
     }
 
+    public HashMap<String, Set<Integer>> getInstanceValues(String widget)
+    {
+        HashMap<String, Set<Integer>> result = new HashMap<>();
+        synchronized (lock)
+        {
+            DictObj.Dict configs = configurations.getDict(widget);
+            if (configs != null)
+            {
+                for (DictObj.Entry config : configs.entries())
+                {
+                    DictObj.Dict values = ((DictObj.Dict) config.value).getDict("instance_values");
+                    if (values != null)
+                    {
+                        HashSet<Integer> widgetIds = new HashSet<>();
+                        for (DictObj.Entry entry : values.entries())
+                        {
+                            widgetIds.add(Integer.parseInt(entry.key));
+                        }
+                        result.put(config.key, widgetIds);
+                    }
+                }
+            }
+        }
+        return result;
+    }
+
     public HashMap<String, Triple<String, String, Boolean>> getValues(String widget, int widgetId)
     {
         synchronized (lock)

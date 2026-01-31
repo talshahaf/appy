@@ -2,6 +2,7 @@ package com.appy;
 
 import android.content.Intent;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 
@@ -19,6 +20,7 @@ import android.widget.TextView;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Comparator;
 
 /**
  * Created by Tal on 19/03/2018.
@@ -59,6 +61,16 @@ public class FilesFragment extends MyFragment implements FileGridAdapter.ItemAct
         return layout;
     }
 
+    private ArrayList<PythonFile> getPythonFiles()
+    {
+        ArrayList<PythonFile> files = getWidgetService().getPythonFiles();
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N)
+        {
+            files.sort(Comparator.comparing(o -> new File(o.path).getName()));
+        }
+        return files;
+    }
+
     @Override
     public void onActivityResult(Intent data)
     {
@@ -73,12 +85,12 @@ public class FilesFragment extends MyFragment implements FileGridAdapter.ItemAct
             }
         }
         getWidgetService().addPythonFiles(pythonFiles);
-        adapter.setItems(getWidgetService().getPythonFiles());
+        adapter.setItems(getPythonFiles());
         adapter.notifyDataSetChanged();
 
         //give it time to load
         handler.postDelayed(() -> {
-            adapter.setItems(getWidgetService().getPythonFiles());
+            adapter.setItems(getPythonFiles());
             adapter.notifyDataSetChanged();
         }, 500);
     }
@@ -91,7 +103,7 @@ public class FilesFragment extends MyFragment implements FileGridAdapter.ItemAct
                 null, null, () -> {
                     Log.d("APPY", "on delete");
                     getWidgetService().removePythonFile(file);
-                    adapter.setItems(getWidgetService().getPythonFiles());
+                    adapter.setItems(getPythonFiles());
                     adapter.notifyDataSetChanged();
                 });
     }
@@ -211,7 +223,7 @@ public class FilesFragment extends MyFragment implements FileGridAdapter.ItemAct
         {
             return;
         }
-        adapter.setItems(getWidgetService().getPythonFiles());
+        adapter.setItems(getPythonFiles());
         adapter.notifyDataSetChanged();
     }
 }

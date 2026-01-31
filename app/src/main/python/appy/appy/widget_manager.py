@@ -1082,6 +1082,7 @@ def widget_manager_create(widget, manager_state):
 
     with available_widgets_lock:
         names = [name for name in available_widgets]
+    names.sort()
 
     if not names:
         lst = widgets.TextView(top=10, left=10, text='No widgets', textColor=0xb3ffffff, textSize=15)

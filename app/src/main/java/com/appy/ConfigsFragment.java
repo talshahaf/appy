@@ -38,7 +38,9 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 import kotlin.Triple;
 
@@ -244,10 +246,12 @@ public class ConfigsFragment extends FragmentParent
         {
             int widgetId;
             DictObj.Dict props;
-            public WidgetListElement(int widgetId, DictObj.Dict props)
+            boolean deleted;
+            public WidgetListElement(int widgetId, boolean deleted, DictObj.Dict props)
             {
                 this.widgetId = widgetId;
                 this.props = props;
+                this.deleted = deleted;
             }
 
             @Override
@@ -257,7 +261,7 @@ public class ConfigsFragment extends FragmentParent
                 {
                     return "All widgets";
                 }
-                return (props.getBoolean("app", false) ? "app #" : "widget #") + widgetId;
+                return ((props != null && props.getBoolean("app", false)) ? "app #" : "widget #") + widgetId + (deleted ? " (deleted)" : "");
             }
 
             @Override
@@ -307,8 +311,7 @@ public class ConfigsFragment extends FragmentParent
             ListFragmentAdapter.Item selectedConfigItem = null;
             if (widget == null)
             {
-                widgetPicker.getLayoutParams().height = 0;
-                widgetPicker.setVisibility(View.INVISIBLE);
+                widgetPicker.setVisibility(View.GONE);
                 widgetPicker.requestLayout();
 
                 if (getActivity() != null)
@@ -327,17 +330,35 @@ public class ConfigsFragment extends FragmentParent
                 if (getActivity() != null)
                 {
                     getActivity().setTitle("Configurations of " + widget);
-                    widgetPicker.getLayoutParams().height = ViewGroup.LayoutParams.WRAP_CONTENT;
                     widgetPicker.setVisibility(View.VISIBLE);
                     widgetPicker.requestLayout();
 
                     DictObj.Dict widgetInstances = getWidgetService().getAllWidgetAppProps(widget, false, false);
-                    WidgetListElement[] elements = new WidgetListElement[widgetInstances.size() + 1];
-                    elements[0] = new WidgetListElement(Configurations.NONLOCAL_ID, null);
+                    HashMap<String, Set<Integer>> widgetConfigInstances = getWidgetService().getConfigurations().getInstanceValues(widget);
+
+                    HashSet<Integer> deletedInstances = new HashSet<>();
+                    for (Set<Integer> widgetIds : widgetConfigInstances.values())
+                    {
+                        for (int widgetId : widgetIds)
+                        {
+                            if (!widgetInstances.hasKey(widgetId+""))
+                            {
+                                deletedInstances.add(widgetId);
+                            }
+                        }
+                    }
+
+                    WidgetListElement[] elements = new WidgetListElement[widgetInstances.size() + deletedInstances.size() + 1];
+                    elements[0] = new WidgetListElement(Configurations.NONLOCAL_ID, false,null);
                     int i = 1;
                     for (DictObj.Entry entry : widgetInstances.entries())
                     {
-                        elements[i] = new WidgetListElement(Integer.parseInt(entry.key), (DictObj.Dict) entry.value);
+                        elements[i] = new WidgetListElement(Integer.parseInt(entry.key), false, (DictObj.Dict) entry.value);
+                        i++;
+                    }
+                    for (int deletedInstance : deletedInstances)
+                    {
+                        elements[i] = new WidgetListElement(deletedInstance, true, null);
                         i++;
                     }
                     Arrays.sort(elements);
@@ -415,8 +436,7 @@ public class ConfigsFragment extends FragmentParent
                 }
             });
 
-            widgetPicker.getLayoutParams().height = 0;
-            widgetPicker.setVisibility(View.INVISIBLE);
+            widgetPicker.setVisibility(View.GONE);
             widgetPicker.requestLayout();
 
             refresh();
@@ -536,7 +556,10 @@ public class ConfigsFragment extends FragmentParent
                 {
                     handleAsyncRequestAndDie(((Triple<String, String, Boolean>)item.arg).component2());
                 }
-                dialog.dismiss();
+                else
+                {
+                    dialog.dismiss();
+                }
             };
             builder.setNegativeButton("Cancel", onDismiss);
             builder.setOnCancelListener(dialog -> onDismiss.onClick(dialog, 0));
@@ -558,8 +581,8 @@ public class ConfigsFragment extends FragmentParent
                         else
                         {
                             refresh();
+                            alert.dismiss();
                         }
-                        alert.dismiss();
                     }
                     else
                     {
