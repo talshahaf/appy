@@ -81,10 +81,10 @@ public class PythonFileImport
                 InputStream is = context1.getContentResolver().openInputStream(uri);
                 if (is != null)
                 {
-                    Pair<byte[], String> fileData = Utils.readAndHashFile(is, Constants.PYTHON_FILE_MAX_SIZE);
+                    Pair<byte[], String> fileData = Utils.readAndHashFile(is, Constants.PYTHON_FILE_MAX_SIZE, false);
                     if (destPath.exists())
                     {
-                        Pair<byte[], String> existing = Utils.readAndHashFile(destPath, Constants.PYTHON_FILE_MAX_SIZE);
+                        Pair<byte[], String> existing = Utils.readAndHashFile(destPath, Constants.PYTHON_FILE_MAX_SIZE, false);
                         if (existing.second.equalsIgnoreCase(fileData.second))
                         {
                             //same file, just refresh

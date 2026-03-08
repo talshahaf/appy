@@ -1,5 +1,6 @@
 package com.appy;
 
+import android.content.Context;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -16,6 +17,7 @@ import android.widget.Toast;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Date;
 
@@ -29,11 +31,15 @@ public class CrashFragment extends FragmentParent
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState)
     {
-        View layout = inflater.inflate(R.layout.fragment_parent, container, false);
-
         setHasOptionsMenu(true);
+        return inflater.inflate(R.layout.fragment_parent, container, false);
+    }
+
+    @Override
+    public void onAttach(Context context)
+    {
+        super.onAttach(context);
         switchTo(new CrashListFragment(), true);
-        return layout;
     }
 
     @Override
@@ -57,14 +63,27 @@ public class CrashFragment extends FragmentParent
             {
                 crashFiles[i.ordinal()] = Utils.getCrashPath(getActivity(), i);
             }
-            try
+
+            Runnable doZip = () -> {
+                try
+                {
+
+                    Utils.zipWithoutPath(crashFiles, zipPath, true);
+                    Toast.makeText(getActivity(), "Crashes saved to "+zipPath, Toast.LENGTH_LONG).show();
+                }
+                catch (IOException e)
+                {
+                    Log.e("APPY", "Failed to write crash zip", e);
+                }
+            };
+
+            if (new File(zipPath).exists())
             {
-                Utils.zipWithoutPath(crashFiles, zipPath, true);
-                Toast.makeText(getActivity(), "Crashes saved to "+zipPath, Toast.LENGTH_LONG).show();
+                Utils.showConfirmationDialog(getActivity(), "Crash Exists", "Previous crash zip already exists, replace?", android.R.drawable.ic_dialog_alert, "Overwrite", "Cancel", doZip);
             }
-            catch (IOException e)
+            else
             {
-                Log.e("APPY", "Failed to write crash zip", e);
+                doZip.run();
             }
             return true;
         }
@@ -74,7 +93,6 @@ public class CrashFragment extends FragmentParent
     public static class CrashListFragment extends ChildFragment implements AdapterView.OnItemClickListener
     {
         ListView list;
-
         @Override
         public View onCreateView(LayoutInflater inflater, ViewGroup container,
                                  Bundle savedInstanceState)
@@ -91,11 +109,8 @@ public class CrashFragment extends FragmentParent
         {
             ListFragmentAdapter.Item item = (ListFragmentAdapter.Item) adapter.getItemAtPosition(position);
             CrashViewerFragment fragment = new CrashViewerFragment();
-            fragment.setParent(parent);
-
             fragment.setTitle(item.key);
             fragment.setFile((File)item.arg);
-
             parent.switchTo(fragment, false);
         }
 
@@ -129,8 +144,10 @@ public class CrashFragment extends FragmentParent
     {
         String title;
         File file;
-        TextView crashText;
-        Button clearButton;
+        TextView crashText = null;
+        Button clearButton = null;
+        Long knownLastModified = null;
+
         @Override
         public View onCreateView(LayoutInflater inflater, ViewGroup container,
                                  Bundle savedInstanceState)
@@ -140,15 +157,12 @@ public class CrashFragment extends FragmentParent
             crashText = layout.findViewById(R.id.crash_view);
 
             clearButton = layout.findViewById(R.id.crash_clear);
-            clearButton.setOnClickListener(new View.OnClickListener()
-            {
-                @Override
-                public void onClick(View v)
-                {
-                    file.delete();
-                    refresh();
-                }
+            clearButton.setOnClickListener(v -> {
+                file.delete();
+                refresh();
             });
+            knownLastModified = null;
+            refresh();
             return layout;
         }
 
@@ -161,14 +175,34 @@ public class CrashFragment extends FragmentParent
 
         public void refresh()
         {
+            if (file == null || crashText == null)
+            {
+                return;
+            }
             try
             {
-                String data = Utils.readAndHashFileAsString(file, Constants.CRASH_FILE_MAX_SIZE).first;
-                if (data.length() > Constants.CRASH_FILE_MAX_DISPLAY_SIZE)
+                if (file.exists())
                 {
-                    data = "<Large file (" + data.length() + ") trimmed>\n" + data.substring(data.length() - Constants.CRASH_FILE_MAX_DISPLAY_SIZE);
+                    long lastModified = file.lastModified();
+                    if (knownLastModified == null || knownLastModified != lastModified)
+                    {
+                        String data = Utils.readAndHashFileAsString(file, Constants.CRASH_FILE_MAX_SIZE, true, StandardCharsets.ISO_8859_1).first;
+                        if (data.length() > Constants.CRASH_FILE_MAX_DISPLAY_SIZE)
+                        {
+                            data = data.substring(0, Constants.CRASH_FILE_MAX_DISPLAY_SIZE);
+                        }
+                        if (data.length() < file.length())
+                        {
+                            data += "\n<additional " + (file.length() - data.length()) + " bytes trimmed>";
+                        }
+                        crashText.setText(data);
+                    }
+                    knownLastModified = file.lastModified();
                 }
-                crashText.setText(file.exists() ? data : "");
+                else
+                {
+                    crashText.setText("");
+                }
             }
             catch (IOException e)
             {
@@ -184,6 +218,7 @@ public class CrashFragment extends FragmentParent
         public void setFile(File file)
         {
             this.file = file;
+            refresh();
         }
     }
 }

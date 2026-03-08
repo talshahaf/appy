@@ -10,6 +10,7 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import java.io.File;
+import java.text.SimpleDateFormat;
 import java.util.Collection;
 
 /**
@@ -188,6 +189,6 @@ public class FileBrowserAdapter extends BaseAdapter
 
     String getLastDate(FileItem file)
     {
-        return Constants.DATE_FORMAT.format(file.file.lastModified());
+        return new SimpleDateFormat(Constants.DATE_FORMAT).format(file.file.lastModified());
     }
 }

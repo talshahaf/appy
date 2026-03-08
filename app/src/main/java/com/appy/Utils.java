@@ -34,12 +34,15 @@ import java.io.OutputStream;
 import java.math.RoundingMode;
 import java.net.URL;
 import java.net.URLConnection;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.text.DecimalFormat;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Date;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -309,13 +312,13 @@ public class Utils
         return newbitmap;
     }
 
-    public static Pair<byte[], String> readAndHashFile(File path, int sizeLimit) throws IOException
+    public static Pair<byte[], String> readAndHashFile(File path, int sizeLimit, boolean returnTrimmed) throws IOException
     {
         InputStream fis = new FileInputStream(path);
-        return readAndHashFile(fis, sizeLimit);
+        return readAndHashFile(fis, sizeLimit, returnTrimmed);
     }
 
-    public static Pair<byte[], String> readAndHashFile(InputStream fis, int sizeLimit) throws IOException
+    public static Pair<byte[], String> readAndHashFile(InputStream fis, int sizeLimit, boolean returnTrimmed) throws IOException
     {
         try
         {
@@ -325,14 +328,19 @@ public class Utils
 
             while (true)
             {
-                int read = fis.read(buffer);
+                int toread = Math.min(buffer.length, sizeLimit > 0 ? sizeLimit - total.size() : buffer.length);
+                int read = fis.read(buffer, 0, toread);
                 if (read > 0)
                 {
                     digest.update(buffer, 0, read);
                     total.write(buffer, 0, read);
 
-                    if (sizeLimit > 0 && sizeLimit < total.size())
+                    if (sizeLimit > 0 && sizeLimit <= total.size())
                     {
+                        if (returnTrimmed)
+                        {
+                            break;
+                        }
                         throw new IOException("File size exceeded limit: " + sizeLimit);
                     }
                 }
@@ -350,17 +358,27 @@ public class Utils
         }
     }
 
-    public static Pair<String, String> readAndHashFileAsString(InputStream fis, int sizeLimit) throws IOException
+    public static Pair<String, String> readAndHashFileAsString(InputStream fis, int sizeLimit, boolean returnTrimmed) throws IOException
     {
-        Pair<byte[], String> result = readAndHashFile(fis, sizeLimit);
-        String text = new String(result.first, StandardCharsets.UTF_8);
+        return readAndHashFileAsString(fis, sizeLimit, returnTrimmed, StandardCharsets.UTF_8);
+    }
+
+    public static Pair<String, String> readAndHashFileAsString(File path, int sizeLimit, boolean returnTrimmed) throws IOException
+    {
+        return readAndHashFileAsString(path, sizeLimit, returnTrimmed, StandardCharsets.UTF_8);
+    }
+
+    public static Pair<String, String> readAndHashFileAsString(InputStream fis, int sizeLimit, boolean returnTrimmed, Charset encoding) throws IOException
+    {
+        Pair<byte[], String> result = readAndHashFile(fis, sizeLimit, returnTrimmed);
+        String text = new String(result.first, encoding);
         return new Pair<>(text, result.second);
     }
 
-    public static Pair<String, String> readAndHashFileAsString(File path, int sizeLimit) throws IOException
+    public static Pair<String, String> readAndHashFileAsString(File path, int sizeLimit, boolean returnTrimmed, Charset encoding) throws IOException
     {
-        Pair<byte[], String> result = readAndHashFile(path, sizeLimit);
-        String text = new String(result.first, StandardCharsets.UTF_8);
+        Pair<byte[], String> result = readAndHashFile(path, sizeLimit, returnTrimmed);
+        String text = new String(result.first, encoding);
         return new Pair<>(text, result.second);
     }
 
@@ -653,6 +671,11 @@ public class Utils
         }
     }
 
+    public static String crashHeader()
+    {
+        return "======= from " + new SimpleDateFormat(Constants.DATE_FORMAT).format(new Date()) + "=======\n\n";
+    }
+
     public static void dumpStacktrace(String path)
     {
         Log.e("APPY", "Dumping java stacktrace:");
@@ -672,9 +695,8 @@ public class Utils
             sb.append("\n");
         }
 
-        String trace = sb.toString();
-
-        tryWriteStringFile(path, trace);
+        String trace = crashHeader() + sb + "\n\n";
+        tryPrependStringFile(path, trace, Constants.CRASH_FILE_MAX_SIZE);
 
         for (String line : trace.split("\n"))
         {
@@ -702,7 +724,7 @@ public class Utils
     public static void setCrashHandlerIfNeeded(String path)
     {
         Thread.UncaughtExceptionHandler handler = Thread.getDefaultUncaughtExceptionHandler();
-        if (handler == null || !(handler instanceof CrashHandler))
+        if (!(handler instanceof CrashHandler))
         {
             //not ours
             Thread.setDefaultUncaughtExceptionHandler(new CrashHandler(path, handler));
@@ -763,13 +785,27 @@ public class Utils
         }
     }
 
-    public static void tryWriteStringFile(String path, String data)
+    public static void tryPrependStringFile(String path, String data, int trimSize)
     {
+        String prev = "";
+        try
+        {
+            prev = Utils.readAndHashFileAsString(new File(path), trimSize, true).first;
+        }
+        catch (IOException e)
+        {
+            Log.e("APPY", "Exception on reading prev data on tryWriteFile", e);
+        }
+
         BufferedWriter bw = null;
         try
         {
-            bw = new BufferedWriter(new FileWriter(path, true));
+            bw = new BufferedWriter(new FileWriter(path, false));
             bw.write(data);
+            if (!prev.isEmpty())
+            {
+                bw.write(prev);
+            }
             bw.flush();
             bw.close();
         }
@@ -807,9 +843,8 @@ public class Utils
         @Override
         public void uncaughtException(Thread t, Throwable e)
         {
-            String trace = Stacktrace.stackTraceString(e);
-
-            tryWriteStringFile(path, trace);
+            String trace = crashHeader() + Stacktrace.stackTraceString(e) + "\n\n";
+            tryPrependStringFile(path, trace, Constants.CRASH_FILE_MAX_SIZE);
 
             for (String line : trace.split("\n"))
             {

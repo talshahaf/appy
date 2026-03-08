@@ -425,7 +425,7 @@ element_attr_aliases = dict(checked='compoundButtonChecked',
                             compoundDrawables='textViewCompoundDrawables',
                             compoundDrawablesRelative='textViewCompoundDrawablesRelative',
                             padding='viewPadding')
-element_event_hooks = {} #global for all
+element_event_hooks = {} # global for all
 class Element:
     __slots__ = ('d',)
     def __init__(self, d):
@@ -444,7 +444,7 @@ class Element:
             self.d.children = ChildrenList([c if isinstance(c, Element) else Element(c) for c in arr] for arr in self.d.children)
         else:
             self.d.children = ChildrenList()
-        self.d.methodCallsChanged = False
+        self.d.methodCallsDeleted = set()
 
     def __copy__(self):
         raise RuntimeError('Cannot copy Element object')
@@ -489,13 +489,13 @@ class Element:
             style_attrs = [k for k in self.d.methodCalls.keys() if k.startswith('style*')]
             for attr in style_attrs:
                 del self.d.methodCalls[attr]
-                self.d.methodCallsChanged = True
+                self.d.methodCallsDeleted.add(attr)
         elif key in ('name', 'click', 'itemclick'):
             del self.d.tag[key]
         else:
             # might throw
             del self.d.methodCalls[key]
-            self.d.methodCallsChanged = True
+            self.d.methodCallsDeleted.add(key)
 
     def __getattr__(self, item):
         if item in attrs:
@@ -651,11 +651,13 @@ class Element:
         self.d.methodCalls[identifier] = AttrDict(identifier=identifier, method=method, arguments=arguments)
         if order_at_start:
             self.d.methodCalls.move_to_end(identifier, False)
-        self.d.methodCallsChanged = True
+        if key in self.d.methodCallsDeleted:
+            self.d.methodCallsDeleted.remove(key)
 
     @classmethod
     def create(cls, type, **kwargs):
         e = cls(dict(type=type))
+        e.d.methodCallsDeleted.add('NONEXISTENT')
         [setattr(e, k, v) for k,v in kwargs.items()]
         return e
 
@@ -666,7 +668,7 @@ class Element:
     def dict(self, do_copy, without_id=None):
         if 'tag' in self.d and 'tag' in self.d.tag and not isinstance(self.d.tag['tag'], str):
             self.d.tag['tag'] = dumps(self.d.tag['tag'])
-        d = {k: (copy.deepcopy(v) if do_copy else v) for k,v in self.d.items() if k not in ['children', 'methodCalls', 'methodCallsChanged'] and (not without_id or k != 'id')}
+        d = {k: (copy.deepcopy(v) if do_copy else v) for k,v in self.d.items() if k not in ['children', 'methodCalls', 'methodCallsDeleted'] and (not without_id or k != 'id')}
         if 'methodCalls' in self.d:
             d['methodCalls'] = list(copy.deepcopy(v) for v in self.d.methodCalls.values())
         d['children'] = [[c.dict(do_copy=do_copy, without_id=without_id) if isinstance(c, Element) else c for c in arr] for arr in self.children]
@@ -1233,7 +1235,7 @@ def flatten_elements(elements):
 
 class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
     def export(self, input, output, attrs):
-        collection_methods_changed = False
+        collection_methods_deleted = False
         if not output:
             out = None
         else:
@@ -1245,14 +1247,14 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
             for e in flatten_elements(output):
                 #filter duplicates
                 if e.d.id not in seen_ids:
-                    if e.d.methodCallsChanged and is_collection(e.d.type):
-                        collection_methods_changed = True
+                    if e.d.methodCallsDeleted and is_collection(e.d.type):
+                        collection_methods_deleted = True
                     out.append(e.dict(do_copy=True))
                 seen_ids.add(e.d.id)
 
             if input is not None and input == out:
                 out = None
-        return java.build_java_dict(dict(views=out, collectionMethodsChanged=collection_methods_changed, **attrs))
+        return java.build_java_dict(dict(views=out, collectionMethodsDeleted=collection_methods_deleted, **attrs))
 
     def import_(self, java_list):
         #make two copies
@@ -1523,10 +1525,17 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
         configs.sync(config_dict)
 
     @java.override
-    def dumpStacktrace(self, path):
+    def dumpStacktrace(self, path, header, trim_size):
         print('Dumping python stacktrace.')
-        fh = open(path, 'w')
+        try:
+            prev_data = open(path, 'r', encoding='latin-1').read(trim_size)
+        except OSError:
+            prev_data = ''
+        fh = open(path, 'w', encoding='latin-1')
+        fh.write(header)
         faulthandler.dump_traceback(fh)
+        fh.write('\n\n')
+        fh.write(prev_data)
         print('Dump python stacktrace done.')
 
     @java.override

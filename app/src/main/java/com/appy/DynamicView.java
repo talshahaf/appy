@@ -257,4 +257,16 @@ public class DynamicView
         }
         return null;
     }
+
+    public RemoteMethodCall findMethodCall(String identifier)
+    {
+        for (RemoteMethodCall method : methodCalls)
+        {
+            if (method.getIdentifierIgnorePrefix().equals(identifier))
+            {
+                return method;
+            }
+        }
+        return null;
+    }
 }

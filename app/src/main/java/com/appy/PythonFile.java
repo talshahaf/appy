@@ -1,6 +1,7 @@
 package com.appy;
 
 import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -51,7 +52,7 @@ public class PythonFile
         }
         if (lastErrorDate != null)
         {
-            obj.put("lastErrorDate", Constants.DATE_FORMAT.format(lastErrorDate));
+            obj.put("lastErrorDate", new SimpleDateFormat(Constants.DATE_FORMAT).format(lastErrorDate));
         }
         return obj;
     }
@@ -69,7 +70,7 @@ public class PythonFile
             String serializedDate = obj.getString("lastErrorDate");
             try
             {
-                lastErrorDate = Constants.DATE_FORMAT.parse(serializedDate);
+                lastErrorDate = new SimpleDateFormat(Constants.DATE_FORMAT).parse(serializedDate);
             }
             catch (ParseException e)
             {

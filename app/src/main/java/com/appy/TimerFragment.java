@@ -14,6 +14,7 @@ import android.widget.TextView;
 
 import androidx.appcompat.app.AlertDialog;
 
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 
@@ -167,7 +168,7 @@ public class TimerFragment extends FragmentParent
                     }
                     else
                     {
-                        subtext = "At " + Constants.DATE_FORMAT.format(new Date(timer.getLong("time", 0)));
+                        subtext = "At " + new SimpleDateFormat(Constants.DATE_FORMAT).format(new Date(timer.getLong("time", 0)));
                     }
                     adapterList.add(new ListFragmentAdapter.Item(((Long)timer.getLong("id", 0)).toString(), subtext, item -> (prefix + idFormat(item.key)), true));
                 }

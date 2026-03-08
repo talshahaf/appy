@@ -45,7 +45,7 @@ import java.util.List;
 
 public class Constants
 {
-    public static SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd HH:mm:ssZ");
+    public static String DATE_FORMAT = "yyyy-MM-dd HH:mm:ssZ";
     public static final String PYTHON_INIT_FLAGS_EXTRA = "PYTHON_INIT_FLAGS";
     public static final String ITEM_ID_EXTRA = "ITEM_ID";
     public static final String ITEM_TAG_EXTRA = "ITEM_TAG";

@@ -113,7 +113,7 @@ public class FileEditorActivity extends AppCompatActivity
 
         try
         {
-            Pair<String, String> result = Utils.readAndHashFileAsString(file, Constants.PYTHON_FILE_MAX_SIZE);
+            Pair<String, String> result = Utils.readAndHashFileAsString(file, Constants.PYTHON_FILE_MAX_SIZE, false);
             originalContent = result.first;
 
             toolbar.setTitle(file.getName());

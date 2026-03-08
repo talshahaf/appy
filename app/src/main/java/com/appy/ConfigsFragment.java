@@ -123,7 +123,7 @@ public class ConfigsFragment extends FragmentParent
 
         try
         {
-            String content = Utils.readAndHashFileAsString(new File(files[0]), Constants.CONFIG_IMPORT_MAX_SIZE).first;
+            String content = Utils.readAndHashFileAsString(new File(files[0]), Constants.CONFIG_IMPORT_MAX_SIZE, false).first;
 
             DictObj.Dict newConfig = null;
             try

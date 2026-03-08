@@ -1,4 +1,4 @@
-from appy.widgets import register_widget, ImageView, ListView, CheckBox, R, androidR
+from appy.widgets import register_widget, ImageView, ListView, TextView, CheckBox, R, androidR
 from appy.templates import background
 from appy import java
 
@@ -22,6 +22,14 @@ def on_check(widget, view, checked):
             w.invalidate()
  
 def update_list(widget, views):
+    views['title'].text = widget.config.title_nojson
+    if widget.config.title_nojson:
+        del views['title'].height
+        views['list'].top = views['title'].ibottom + 10
+    else:
+        views['title'].height = 0
+        views['list'].top = 0
+    
     children = []
     # Parse list configuration and make it CheckBoxes
     for item in widget.config.list_nojson.split('\n' if widget.config.newline_delimiter else widget.config.delimiter):
@@ -38,7 +46,12 @@ def update_list(widget, views):
     views['list'].children = children
 
 def create(widget):
-    lst = ListView(name='list', paddingTop=20, paddingBottom=50)
+    title = TextView(name='title', top=20, hcenter=widget.hcenter, textColor=0xb3ffffff, textSize=20, alignment='center', text=widget.config.title_nojson)
+    lst = ListView(name='list', top=title.ibottom + 10, paddingTop=20, paddingBottom=50)
+    if not widget.config.title_nojson:
+        title.height = 0
+        lst.top = 0
+    
     edit_btn = ImageView(adjustViewBounds=True,
                            colorFilter=0xffffffff, width=80, height=80,
                            right=10, bottom=10,
@@ -46,13 +59,13 @@ def create(widget):
                            imageResource=androidR.drawable.ic_menu_edit)
     
     widget.invalidate()
-    return [background(drawable=R.drawable.rect), lst, edit_btn]
+    return [background(drawable=R.drawable.rect), title, lst, edit_btn]
     
 register_widget('tasklist', create,
                     # Also refresh list every update so we can call invalidate from other tasklists
                     update_list,
                     # no json so it would be easier to read and to change
-                    config=dict(list_nojson='Task 1\nTask 2\nTask 3', newline_delimiter=True, delimiter=', ', main_list=False),
+                    config=dict(title_nojson='', list_nojson='Task 1\nTask 2\nTask 3', newline_delimiter=True, delimiter=', ', main_list=False),
                     config_description=dict(newline_delimiter='Use newlines to split the task list', delimiter='Use this delimiter, works only if newline_delimiter is False', main_list='request config update for all widgets'),
                     # Refresh list every config change
                     on_config=update_list)

@@ -63,7 +63,7 @@ interface WidgetUpdateListener
 
     void syncConfig(DictObj.Dict config);
 
-    void dumpStacktrace(String path);
+    void dumpStacktrace(String path, String header, int trimSize);
 
     String getVersion();
 }
