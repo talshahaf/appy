@@ -16,6 +16,9 @@ epoch = datetime.datetime.fromtimestamp(0, datetime.UTC)
 def gmt_epoch(t):
     return int((t - epoch).total_seconds())
     
+def epoch_gmt(t):
+    return epoch + datetime.timedelta(seconds=t)
+    
 async def request_data(symbol, start, end, interval, retries=5):
     starttime = gmt_epoch(start)
     endtime = gmt_epoch(end)
@@ -59,47 +62,51 @@ def gains(v, ref):
     return 100 * ((v / ref) - 1)
     
 async def symbol_data(symbol, adjusted):
-    # build datetimes to request
-    today = datetime.datetime.now(datetime.UTC)
-    weekago = today - relativedelta(days=7)
-    monthago = today - relativedelta(months=1)
-    threemonthsago = today - relativedelta(months=3)
-    jan1ago = today.replace(month=1, day=1)
-    yearago = today - relativedelta(years=1)
+    jitter = 12 * 3600
+    day_jitter = 4
     
-    # use a minimum number of requests (3) and do them concurrently
-    day_data, month_data, ytd_data, year_data = await asyncio.gather(request_data(symbol, today - relativedelta(days=7 + 4), today, '1d'), 
-                                                request_data(symbol, threemonthsago, today, '1wk'), 
-                                                request_data(symbol, jan1ago - relativedelta(days=4), jan1ago, '1d'),
-                                                request_data(symbol, yearago, today, '3mo'))
+    today = datetime.datetime.now(datetime.UTC)
+    
+    #request last few days first to get last trading day
+    day_data = await request_data(symbol, today - relativedelta(days=7 + day_jitter), today, '1d')
+    today_ind = find_closest_smaller(day_data['timestamp'], gmt_epoch(today) + jitter)
+    last_trading_day = epoch_gmt(day_data['timestamp'][today_ind])
+    # gains are calculated against the close of day before
+    day_before_last_trading_day = last_trading_day - relativedelta(days=1)
+    
+    # build datetimes to request
+    weekago = day_before_last_trading_day - relativedelta(days=7)
+    monthago = day_before_last_trading_day - relativedelta(months=1)
+    threemonthsago = day_before_last_trading_day - relativedelta(months=3)
+    jan1ago = today.replace(month=1, day=1)
+    yearago = day_before_last_trading_day - relativedelta(years=1)
+    
+    # use a minimum number of requests (4) and do them concurrently
+    month_data, three_months_data, ytd_data, year_data = await asyncio.gather(
+        request_data(symbol, monthago - relativedelta(days=day_jitter), monthago, '1d'),
+        request_data(symbol, threemonthsago - relativedelta(days=day_jitter), threemonthsago, '1d'),
+        request_data(symbol, jan1ago - relativedelta(days=day_jitter), jan1ago, '1d'),
+        request_data(symbol, yearago - relativedelta(days=day_jitter), yearago, '1d'),
+    )
 
     # find the best data point to use
-    jitter = 12 * 3600
-    today_ind = find_closest_smaller(day_data['timestamp'], gmt_epoch(today) + jitter)
     week_ind = find_closest_smaller(day_data['timestamp'], gmt_epoch(weekago) + jitter)
     month_ind = find_closest_smaller(month_data['timestamp'], gmt_epoch(monthago) + jitter)
-    three_month_ind = find_closest_smaller(month_data['timestamp'], gmt_epoch(threemonthsago) + jitter)
+    three_months_ind = find_closest_smaller(three_months_data['timestamp'], gmt_epoch(threemonthsago) + jitter)
     year_ind = find_closest_smaller(year_data['timestamp'], gmt_epoch(yearago) + jitter)
     
     selector = (lambda d: d['indicators']['adjclose'][0]['adjclose']) if adjusted else (lambda d: d['indicators']['quote'][0]['close'])
     
     current = day_data['meta']['regularMarketPrice']
     
-    day_open = current
-    if today_ind is not None:
-        opens = day_data['indicators']['quote'][0]['open']
-        value = opens[today_ind]
-        
-        #try to fall back to previous day open
-        if value == 0 and today_ind > 0:
-            value = opens[today_ind - 1]
-        if value != 0:
-            day_open = value
+    last_day_close = current
+    if today_ind is not None and today_ind > 0:
+        last_day_close = selector(day_data)[today_ind - 1]
     
-    week = selector(day_data)[week_ind] if week_ind is not None else day_open
+    week = selector(day_data)[week_ind] if week_ind is not None else last_day_close
     month = selector(month_data)[month_ind] if month_ind is not None else week
-    three_month = selector(month_data)[three_month_ind] if three_month_ind is not None else month
-    year = selector(year_data)[year_ind] if year_ind is not None else three_month
+    three_months = selector(three_months_data)[three_months_ind] if three_months_ind is not None else month
+    year = selector(year_data)[year_ind] if year_ind is not None else three_months
     ytd = [e for e in selector(ytd_data) if e][-1]
     
     currency = day_data['meta']['currency']
@@ -110,10 +117,10 @@ async def symbol_data(symbol, adjusted):
             'symbol': symbol,
             'currency': currency,
             'history': {
-                    'D': gains(current, day_open),
+                    'D': gains(current, last_day_close),
                     'W': gains(current, week),
                     'M': gains(current, month),
-                    '3M': gains(current, three_month),
+                    '3M': gains(current, three_months),
                     'YTD': gains(current, ytd),
                     'Y': gains(current, year),
                 }
