@@ -4076,20 +4076,30 @@ public class Widget extends RemoteViewsService
         errorText.attributes.attributes.put(Attributes.Type.TOP, attributeParse("5"));
         errorText.attributes.attributes.put(Attributes.Type.LEFT, attributeParse("w(p)*0.5+w(" + errorText.getId() + ")*-0.5"));
 
-        DynamicView openApp = new DynamicView("ImageView");
-        addMethodCall(openApp, "setImageResource", R.mipmap.ic_launcher_foreground);
-        openApp.attributes.attributes.put(Attributes.Type.BOTTOM, attributeParse("5"));
-        openApp.attributes.attributes.put(Attributes.Type.LEFT, attributeParse("5"));
-        openApp.attributes.attributes.put(Attributes.Type.WIDTH, attributeParse("140"));
-        openApp.attributes.attributes.put(Attributes.Type.HEIGHT, attributeParse("140"));
-        openApp.tag = Constants.SPECIAL_WIDGET_OPENAPP + "";
+        Attributes.AttributeValue afterText = attributeParse("h(" + errorText.getId() + ")+10");
+
+        DynamicView showError = new DynamicView("ImageView");
+        addMethodCall(showError, "setImageResource", R.drawable.ic_action_info);
+        showError.attributes.attributes.put(Attributes.Type.TOP, afterText);
+        showError.attributes.attributes.put(Attributes.Type.LEFT, attributeParse("5"));
+        showError.attributes.attributes.put(Attributes.Type.WIDTH, Attributes.AttributeValue.combine(Attributes.AttributeValue.Function.FunctionType.MIN, attributeParse("140"), attributeParse("w(p)*0.33")));
+        showError.attributes.attributes.put(Attributes.Type.HEIGHT, attributeParse("w(" + showError.getId() + ")"));
+        showError.tag = Constants.SPECIAL_WIDGET_SHOWERROR + "," + errorStr;
+
+        Attributes.AttributeValue bottomShow = attributeParse("b(" + showError.getId() + ")");
 
         views.add(errorText);
-        views.add(openApp);
+        views.add(showError);
 
         if (widgetId > 0)
         {
-            Attributes.AttributeValue afterText = attributeParse("h(" + errorText.getId() + ")+10");
+            DynamicView config = new DynamicView("ImageView");
+            addMethodCall(config, "setImageResource", R.drawable.ic_action_menu);
+            config.attributes.attributes.put(Attributes.Type.TOP, afterText);
+            config.attributes.attributes.put(Attributes.Type.BOTTOM, bottomShow);
+            config.attributes.attributes.put(Attributes.Type.RIGHT, attributeParse("5"));
+            config.attributes.attributes.put(Attributes.Type.WIDTH, attributeParse("h(" + config.getId() + ")"));
+            config.tag = Constants.SPECIAL_WIDGET_CONFIGURE + "," + widgetId;
 
             DynamicView reload = new DynamicView("Button");
             addMethodCall(reload, "setText", "Reload");
@@ -4097,32 +4107,13 @@ public class Widget extends RemoteViewsService
             addMethodCall(reload, "setTextColor", 0xffffffff);
             addMethodCall(reload, "setTextSize", "8sp");
             reload.methodCalls.add(new RemoteMethodCall("setViewPadding", false, "setViewPadding", "16sp", "12sp", "16sp", "12sp"));
-            reload.attributes.attributes.put(Attributes.Type.TOP, afterText);
-            reload.attributes.attributes.put(Attributes.Type.LEFT, attributeParse("0"));
+            reload.attributes.attributes.put(Attributes.Type.BOTTOM, attributeParse("5"));
+            reload.attributes.attributes.put(Attributes.Type.LEFT, attributeParse("w(p)*0.5+w(" + reload.getId() + ")*-0.5"));
             reload.tag = Constants.SPECIAL_WIDGET_UPDATE + "," + widgetId;
 
-            Attributes.AttributeValue bottomreload = attributeParse("b(" + reload.getId() + ")");
-
-            DynamicView config = new DynamicView("ImageView");
-            addMethodCall(config, "setImageResource", R.drawable.ic_action_menu);
-            config.attributes.attributes.put(Attributes.Type.TOP, afterText);
-            config.attributes.attributes.put(Attributes.Type.BOTTOM, bottomreload);
-            config.attributes.attributes.put(Attributes.Type.RIGHT, attributeParse("5"));
-            config.attributes.attributes.put(Attributes.Type.WIDTH, attributeParse("h(" + config.getId() + ")"));
-            config.tag = Constants.SPECIAL_WIDGET_CONFIGURE + "," + widgetId;
-
-            views.add(reload);
             views.add(config);
+            views.add(reload);
         }
-
-        DynamicView showError = new DynamicView("ImageView");
-        addMethodCall(showError, "setImageResource", R.drawable.ic_action_info);
-        showError.attributes.attributes.put(Attributes.Type.BOTTOM, attributeParse("5"));
-        showError.attributes.attributes.put(Attributes.Type.RIGHT, attributeParse("5"));
-        showError.attributes.attributes.put(Attributes.Type.WIDTH, attributeParse("140"));
-        showError.attributes.attributes.put(Attributes.Type.HEIGHT, attributeParse("140"));
-        showError.tag = Constants.SPECIAL_WIDGET_SHOWERROR + "," + errorStr;
-        views.add(showError);
 
         setWidget(androidWidgetId, Constants.SPECIAL_WIDGET_ID, views, false);
 

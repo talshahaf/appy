@@ -78,6 +78,13 @@ public class Attributes
             int numberOfArguments;
             int totalPosition;
 
+            public Function(FunctionType type, int numberOfArguments, int totalPosition)
+            {
+                this.type = type;
+                this.numberOfArguments = numberOfArguments;
+                this.totalPosition = totalPosition;
+            }
+
             public Function(String type, int numberOfArguments, int totalPosition)
             {
                 //optimization
@@ -214,6 +221,21 @@ public class Attributes
                 obj.put("debug_name", debugName);
             }
             return obj;
+        }
+
+        public static Attributes.AttributeValue combine(Attributes.AttributeValue.Function.FunctionType func, Attributes.AttributeValue ... args)
+        {
+            Attributes.AttributeValue value = new Attributes.AttributeValue();
+            for (Attributes.AttributeValue arg : args)
+            {
+                for (Attributes.AttributeValue.Function f : arg.functions)
+                {
+                    value.functions.add(new Attributes.AttributeValue.Function(f.type, f.numberOfArguments, value.arguments.size() + f.totalPosition));
+                }
+                value.arguments.addAll(arg.arguments);
+            }
+            value.functions.add(new Attributes.AttributeValue.Function(func, args.length, value.arguments.size()));
+            return value;
         }
     }
 
