@@ -1,5 +1,5 @@
 from . import bridge
-import time, inspect, dis
+import time, inspect, dis, pathlib
 
 # this function is called from a __getattr__ method. it determines whether the attribute being searched will be called right after getting it.
 # example:
@@ -76,9 +76,19 @@ def wrap(obj, *args, **kwargs):
 
     return Object(obj, *args, **kwargs), False
 
+type_conversions = {
+    pathlib.Path: str
+}
+type_conversions_keys = tuple(type_conversions.keys())
+
 def unwrap(obj):
     if hasattr(obj, '__java__'):
         return unwrap(obj.__java__())
+
+    if isinstance(obj, type_conversions_keys):
+        for k,v in type_conversions.items():
+            if isinstance(obj, k):
+                return unwrap(v(obj))
 
     if isinstance(obj, (Object, Class, Array)):
         return obj.__bridge__

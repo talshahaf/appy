@@ -3871,10 +3871,13 @@ int stdout_to_file(const char * path)
     return 0;
 }
 
+static std::vector<std::string> pythonargs;
+static const char ** python_argv = NULL;
+
 extern "C" JNIEXPORT void JNICALL
 Java_com_appy_Widget_pythonInit(JNIEnv * env, jclass clazz, jstring j_pythonhome,
                                 jstring j_cachepath, jstring j_pythonlib, jstring j_scriptpath,
-                                jstring j_nativepath, jobject j_arg, jint flags)
+                                jstring j_nativepath, jobject j_arg, jobjectArray j_pythonargs)
 {
     try
     {
@@ -3961,11 +3964,35 @@ Java_com_appy_Widget_pythonInit(JNIEnv * env, jclass clazz, jstring j_pythonhome
 
         preconfig.utf8_mode = 1;
 
-        char flagsstr[16] = {};
-        snprintf(flagsstr, sizeof(flagsstr) - 1, "%d", flags);
+        auto pythonargs_len = env->GetArrayLength(j_pythonargs);
+        CHECK_JAVA_EXC(env);
+        if (pythonargs_len < 0)
+        {
+            env->ThrowNew(python_exception_class, "GetArrayLength is negative?");
+            return;
+        }
+
+        pythonargs.clear();
+        for (jsize i = 0; i < pythonargs_len; i++)
+        {
+            pythonargs.push_back(jstring_to_stdstring(env, (jstring)env->GetObjectArrayElement(j_pythonargs, i)));
+            CHECK_JAVA_EXC(env);
+        }
+
+        if (python_argv != NULL)
+        {
+            delete[] python_argv;
+        }
+
         //TODO figure out why first is ignored
-        const char * const python_argv[] = {"", scriptpath.c_str(), flagsstr};
-        int argc = 3;
+        int argc = 2 + pythonargs.size();
+        python_argv = new const char *[argc];
+        python_argv[0] = "";
+        python_argv[1] = scriptpath.c_str();
+        for (unsigned int i = 0; i < pythonargs.size(); i++)
+        {
+            python_argv[i + 2] = pythonargs[i].c_str();
+        }
 
         pystatus = Py_PreInitializeFromBytesArgs(&preconfig, argc, (char **)python_argv); //TODO is this really not const?
         if (PyStatus_Exception(pystatus)) {

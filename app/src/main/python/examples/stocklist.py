@@ -99,9 +99,15 @@ async def symbol_data(symbol, adjusted):
     
     current = day_data['meta']['regularMarketPrice']
     
-    last_day_close = current
-    if today_ind is not None and today_ind > 0:
-        last_day_close = selector(day_data)[today_ind - 1]
+    last_day_close = None
+    if today_ind is not None:
+        prev_ind = today_ind
+        while last_day_close is None and prev_ind > 0:
+            prev_ind -= 1
+            last_day_close = selector(day_data)[prev_ind]
+            
+    if last_day_close is None:
+        last_day_close = current
     
     week = selector(day_data)[week_ind] if week_ind is not None else last_day_close
     month = selector(month_data)[month_ind] if month_ind is not None else week
@@ -153,7 +159,8 @@ def adapter(widget, view, value, index):
     # intialize all texts first, position them later
     texts = [TextView(text=f'{k}\n{v:.2f}', 
                         textColor=color('white') if abs(v) < epsilon else (color(r=255) if v < 0 else color(g=255)), 
-                        alignment='center') for k,v in values.items()]
+                        alignment='center',
+                        ) for k,v in values.items()]
     
     use_template = False
     

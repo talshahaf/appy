@@ -1,4 +1,5 @@
-import base64, pickle, inspect, shutil, functools, mimetypes, hashlib, os, time
+import base64, pickle, inspect, shutil, functools, mimetypes, hashlib, os, time, re
+from pathlib import Path
 from . import java
 
 def timeit(f):
@@ -161,7 +162,7 @@ RESOURCE_CACHE_DIR = os.path.join(os.environ['TMP'], 'resources')
 os.environ['MPLCONFIGDIR'] = RESOURCE_CACHE_DIR
 
 def cache_dir():
-    return RESOURCE_CACHE_DIR
+    return Path(RESOURCE_CACHE_DIR)
 
 saved_script_dir = None
 def preferred_script_dir():
@@ -173,7 +174,7 @@ def preferred_script_dir():
 def generate_filename(url):
     extension = url[url.rfind('.'):]
     extension = extension if '.' in extension and extension in mimetypes.types_map else ''
-    return os.path.join(cache_dir(), hashlib.sha256(url.encode()).hexdigest() + extension)
+    return cache_dir() / (hashlib.sha256(url.encode()).hexdigest() + extension)
 
 @functools.lru_cache(maxsize=128, typed=True)
 def download_resource(url):
@@ -186,6 +187,12 @@ def download_resource(url):
             if chunk:
                 f.write(chunk)
     return filename
+
+def download_resource_or_cached(url):
+    filename = generate_filename(url)
+    if filename.is_file():
+        return filename
+    return download_resource(url)
 
 @functools.lru_cache(maxsize=128, typed=True)
 def copy_resource(external_path):
@@ -203,3 +210,137 @@ def drawable_resource_to_bytes(resource_id, background_color=None, canvas_size_f
     if isinstance(canvas_size_factor, int):
         canvas_size_factor = float(canvas_size_factor)
     return utils.bitmapToBytes(utils.drawableToBitmap(utils.resolveDrawable(java.get_java_arg(), resource_id), background_color, canvas_size_factor)).value()
+
+def init_locale(init_args):
+    try:
+        global current_locale
+
+        namelists = {
+            'SHORTWEEK': ('short_week', 7),
+            'LONGWEEK': ('long_week', 7),
+            'SHORTMONTH': ('short_month', 12),
+            'LONGMONTH': ('long_month', 12),
+            'AMPM': ('ampm', 2),
+        }
+
+        formats = {
+            'DATEFORMAT': 'date_format',
+            'TIMEFORMAT': 'time_format',
+            'DATETIMEFORMAT': 'datetime_format',
+        }
+
+        new_locale = {}
+        for name, (k, n) in namelists.items():
+            if name in init_args:
+                new_locale[k] = init_args[name].split(',')
+                if len(new_locale[k]) != n:
+                    raise ValueError(f'wrong number of {k}: {len(new_locale[k])} != {n}')
+
+        for k, v in formats.items():
+            new_locale[v] = convert_java_date_format(init_args[k])
+
+        current_locale = new_locale
+    except Exception as e:
+        print(f'Cannot init locale, using default ({e})')
+
+def convert_java_date_format(java_format):
+    ordered_conv = {
+        'EEEE+': ('%25', '%A'),
+        'EEE':   ('%24', '%a'),
+        'EE':    ('%23', '%a'),
+        'E':     ('%22', '%a'),
+        'dd':    ('%21', '%d'),
+        'd':     ('%20', '%-d'),
+        'MMMM+': ('%19', '%B'),
+        'MMM':   ('%18', '%b'),
+        'MM':    ('%17', '%m'),
+        'M':     ('%16', '%-m'),
+        'yyy+':  ('%15', '%Y'),
+        'yy':    ('%14', '%y'),
+        'y':     ('%13', '%Y'),
+        'a+':    ('%12', '%p'),
+        'HH':    ('%11', '%H'),
+        'H':     ('%10', '%-H'),
+        'hh':    ('%9',  '%I'),
+        'h':     ('%8',  '%-I'),
+        'mm':    ('%7',  '%M'),
+        'm':     ('%6',  '%-M'),
+        'ss':    ('%5',  '%S'),
+        's':     ('%4',  '%-S'),
+        'S':     ('%3',  '%f'), #should be milliseconds
+        'z+':    ('%2',  '%Z'),
+        'Z+':    ('%1',  '%z'),
+        'X+':    ('%0',  '%:z'),
+    }
+
+    format = java_format
+    for r, (first_stage, _) in ordered_conv.items():
+        format = re.sub(r, first_stage, format)
+    for r, (first_stage, second_stage) in ordered_conv.items():
+        format = format.replace(first_stage, second_stage)
+    return format
+
+def list_get(l, i, default=None):
+    try:
+        return l[i]
+    except IndexError:
+        return default
+
+current_locale = None
+format_replacements = dict(
+    a=lambda tp: list_get(current_locale.get('short_week', []), tp.tm_wday),
+    A=lambda tp: list_get(current_locale.get('long_week', []), tp.tm_wday),
+    b=lambda tp: list_get(current_locale.get('short_month', []), tp.tm_mon - 1),
+    B=lambda tp: list_get(current_locale.get('long_month', []), tp.tm_mon - 1),
+    p=lambda tp: list_get(current_locale.get('ampm', []), int(tp.tm_hour >= 12)),
+    x=lambda tp: current_locale.get('date_format'),
+    X=lambda tp: current_locale.get('time_format'),
+    c=lambda tp: current_locale.get('datetime_format'),
+)
+
+def strftime_replace(format, time_tuple):
+    if current_locale:
+        replacements = {}
+        newformat = []
+        push = newformat.append
+        i, n = 0, len(format)
+        while i < n:
+            ch = format[i]
+            i += 1
+            if ch == '%':
+                if i < n:
+                    ch = format[i]
+                    mod = ''
+                    i += 1
+                    if ch in ['-', '#'] and i < n:
+                        mod = ch
+                        ch = format[i]
+                        i += 1
+                    if ch in format_replacements:
+                        if ch not in replacements:
+                            evaluated_format = format_replacements[ch](time_tuple)
+                            replacements[ch] = strftime_replace(evaluated_format, time_tuple) if evaluated_format and '%' in evaluated_format else evaluated_format
+                        if replacements[ch] is not None:
+                            newformat.extend(replacements[ch])
+                        else:
+                            push('%')
+                            push(mod)
+                            push(ch)
+                    else:
+                        push('%')
+                        push(mod)
+                        push(ch)
+                else:
+                    push('%')
+            else:
+                push(ch)
+        format = "".join(newformat)
+    return format
+
+orig_strftime = time.strftime
+@functools.wraps(orig_strftime)
+def strftime_wrap(format, time_tuple):
+    newformat = strftime_replace(format, time_tuple)
+    return orig_strftime(newformat, time_tuple)
+
+time.strftime = strftime_wrap

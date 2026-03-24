@@ -9,7 +9,13 @@ import java.io.InputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.time.DayOfWeek;
+import java.time.LocalTime;
+import java.time.Month;
+import java.time.format.DateTimeFormatter;
+import java.time.format.TextStyle;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -18,6 +24,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Random;
@@ -2791,6 +2798,16 @@ public class Widget extends RemoteViewsService
         return updateListener.getAllWidgetNames();
     }
 
+    public String getWidgetName(int widgetId)
+    {
+        DictObj.Dict names = getAllWidgetNames();
+        if (names == null)
+        {
+            return null;
+        }
+        return names.getString(widgetId+"");
+    }
+
     public int[] getAllWidgetsByName(String name)
     {
         if (updateListener == null)
@@ -4074,16 +4091,6 @@ public class Widget extends RemoteViewsService
         {
             Attributes.AttributeValue afterText = attributeParse("h(" + errorText.getId() + ")+10");
 
-            DynamicView recreate = new DynamicView("Button");
-            addMethodCall(recreate, "setText", "Recreate");
-            addMethodCall(recreate, "setBackgroundResource", R.drawable.drawable_dark_btn);
-            addMethodCall(recreate, "setTextColor", 0xffffffff);
-            addMethodCall(recreate, "setTextSize", "8sp");
-            recreate.methodCalls.add(new RemoteMethodCall("setViewPadding", false, "setViewPadding", "16sp", "12sp", "16sp", "12sp"));
-            recreate.attributes.attributes.put(Attributes.Type.TOP, afterText);
-            recreate.attributes.attributes.put(Attributes.Type.RIGHT, attributeParse("0"));
-            recreate.tag = Constants.SPECIAL_WIDGET_RECREATE + "," + widgetId;
-
             DynamicView reload = new DynamicView("Button");
             addMethodCall(reload, "setText", "Reload");
             addMethodCall(reload, "setBackgroundResource", R.drawable.drawable_info_btn);
@@ -4094,8 +4101,18 @@ public class Widget extends RemoteViewsService
             reload.attributes.attributes.put(Attributes.Type.LEFT, attributeParse("0"));
             reload.tag = Constants.SPECIAL_WIDGET_UPDATE + "," + widgetId;
 
-            views.add(recreate);
+            Attributes.AttributeValue bottomreload = attributeParse("b(" + reload.getId() + ")");
+
+            DynamicView config = new DynamicView("ImageView");
+            addMethodCall(config, "setImageResource", R.drawable.ic_action_menu);
+            config.attributes.attributes.put(Attributes.Type.TOP, afterText);
+            config.attributes.attributes.put(Attributes.Type.BOTTOM, bottomreload);
+            config.attributes.attributes.put(Attributes.Type.RIGHT, attributeParse("5"));
+            config.attributes.attributes.put(Attributes.Type.WIDTH, attributeParse("h(" + config.getId() + ")"));
+            config.tag = Constants.SPECIAL_WIDGET_CONFIGURE + "," + widgetId;
+
             views.add(reload);
+            views.add(config);
         }
 
         DynamicView showError = new DynamicView("ImageView");
@@ -4176,6 +4193,44 @@ public class Widget extends RemoteViewsService
         {
             int pythonFlags = param[0] != null ? param[0] : 0;
 
+            Locale locale = Locale.getDefault();
+
+            String weekshort = "";
+            String weeklong = "";
+            String monthshort = "";
+            String monthlong = "";
+            String ampm = "";
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+            {
+                String[] week_short = new String[7];
+                String[] week_long = new String[7];
+                String[] month_short = new String[12];
+                String[] month_long = new String[12];
+
+                for (int i = 1; i <= 7; i++)
+                {
+                    week_short[i - 1] = DayOfWeek.of(i).getDisplayName(TextStyle.SHORT, locale);
+                    week_long[i - 1] = DayOfWeek.of(i).getDisplayName(TextStyle.FULL, locale);
+                }
+                for (int i = 1; i <= 12; i++)
+                {
+                    month_short[i - 1] = Month.of(i).getDisplayName(TextStyle.SHORT, locale);
+                    month_long[i - 1] = Month.of(i).getDisplayName(TextStyle.FULL, locale);
+                }
+
+                weekshort = String.join(",", week_short);
+                weeklong = String.join(",", week_long);
+                monthshort = String.join(",", month_short);
+                monthlong = String.join(",", month_long);
+
+                DateTimeFormatter ampmFormatter = DateTimeFormatter.ofPattern("a", locale);
+                ampm = ampmFormatter.format(LocalTime.of(9, 0)) + "," + ampmFormatter.format(LocalTime.of(17, 0));
+            }
+
+            String datetimeformat = ((SimpleDateFormat)DateFormat.getDateTimeInstance(DateFormat.FULL, DateFormat.FULL, locale)).toPattern();
+            String dateformat = ((SimpleDateFormat)DateFormat.getDateInstance(DateFormat.SHORT, locale)).toPattern();
+            String timeformat = ((SimpleDateFormat)DateFormat.getTimeInstance(DateFormat.MEDIUM, locale)).toPattern();
+
             state = Constants.StartupState.RUNNING;
             String pythonHome = new File(getFilesDir(), "python").getAbsolutePath();
             String pythonLib = new File(pythonHome, "/lib/libpython3.12.so").getAbsolutePath(); //must be without
@@ -4205,7 +4260,7 @@ public class Widget extends RemoteViewsService
                 System.loadLibrary("prehelpers");
                 System.load(pythonLib);
                 System.loadLibrary("native");
-                pythonInit(pythonHome, cacheDir, pythonLib, new File(cacheDir, "main.py").getAbsolutePath(), getApplicationInfo().nativeLibraryDir, Widget.this, pythonFlags);
+                pythonInit(pythonHome, cacheDir, pythonLib, new File(cacheDir, "main.py").getAbsolutePath(), getApplicationInfo().nativeLibraryDir, Widget.this, new String[] { "FLAGS=" + pythonFlags, "AMPM=" + ampm, "SHORTWEEK=" + weekshort, "LONGWEEK=" + weeklong, "SHORTMONTH=" + monthshort, "LONGMONTH=" + monthlong, "DATEFORMAT=" + dateformat, "TIMEFORMAT=" + timeformat, "DATETIMEFORMAT=" + datetimeformat });
 
                 initAllPythonFiles();
 
@@ -4765,8 +4820,7 @@ public class Widget extends RemoteViewsService
 
     public void onWidgetConfigure(int widgetId)
     {
-        DictObj.Dict names = getAllWidgetNames();
-        String widgetName = names.getString(widgetId+"");
+        String widgetName = getWidgetName(widgetId);
         if (widgetName == null)
         {
             //ignore widget managers
@@ -4784,7 +4838,7 @@ public class Widget extends RemoteViewsService
         String displayName = "widget #" + widgetId + " (" + widgetName + ")";
 
         String[] texts = new String[]{ "Open Config", "Recreate", "Reload", "Set Scale Factor", "Edit", "Show Last Error", "Clear"};
-        String[] actions = new String[] {Constants.SPECIAL_WIDGET_CONFIG + "," + widgetId + "," + widgetName,
+        String[] actions = new String[] {Constants.SPECIAL_WIDGET_OPEN_CONFIGURATION + "," + widgetId + "," + widgetName,
                                          Constants.SPECIAL_WIDGET_RECREATE + "," + widgetId,
                                          widgetPath == null ? null : (Constants.SPECIAL_WIDGET_RELOAD + "," + widgetPath),
                                          Constants.SPECIAL_WIDGET_SCALE_FACTOR + "," + widgetId,
@@ -5089,6 +5143,7 @@ public class Widget extends RemoteViewsService
                                     case Constants.SPECIAL_WIDGET_RECREATE:
                                     case Constants.SPECIAL_WIDGET_UPDATE:
                                     case Constants.SPECIAL_WIDGET_SCALE_FACTOR:
+                                    case Constants.SPECIAL_WIDGET_CONFIGURE:
                                         if (arg != null)
                                         {
                                             try
@@ -5113,6 +5168,10 @@ public class Widget extends RemoteViewsService
                                                         Log.d("APPY", "scale factor of " + widgetId);
                                                         startSizeFactorActivity(this, handler, widgetId);
                                                         break;
+                                                    case Constants.SPECIAL_WIDGET_CONFIGURE:
+                                                        Log.d("APPY", "widget configure of " + widgetId);
+                                                        onWidgetConfigure(widgetId);
+                                                        break;
                                                 }
                                             }
                                             catch (NumberFormatException ignored)
@@ -5127,7 +5186,7 @@ public class Widget extends RemoteViewsService
                                     case Constants.SPECIAL_WIDGET_OPENAPP:
                                         startMainActivity("Files", null);
                                         break;
-                                    case Constants.SPECIAL_WIDGET_CONFIG:
+                                    case Constants.SPECIAL_WIDGET_OPEN_CONFIGURATION:
                                         if (arg != null)
                                         {
                                             String[] parts = arg.split(",", 2);
@@ -5321,7 +5380,7 @@ public class Widget extends RemoteViewsService
         }
     }
 
-    protected static native void pythonInit(String pythonHome, String tmpPath, String pythonLibPath, String script, String nativepath, Object arg, int flags);
+    protected static native void pythonInit(String pythonHome, String tmpPath, String pythonLibPath, String script, String nativepath, Object arg, String[] pythonArgs);
 
     protected static native Object pythonCall(Object... args) throws Throwable;
 }

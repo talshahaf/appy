@@ -12,7 +12,6 @@ import android.graphics.drawable.Icon;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
-import android.util.Pair;
 import android.util.Size;
 import android.widget.AdapterViewFlipper;
 import android.widget.AnalogClock;
@@ -36,7 +35,6 @@ import android.widget.ViewFlipper;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -79,9 +77,10 @@ public class Constants
     public static final int SPECIAL_WIDGET_OPENAPP = 5;
     public static final int SPECIAL_WIDGET_RECREATE = 6;
     public static final int SPECIAL_WIDGET_SCALE_FACTOR = 7;
-    public static final int SPECIAL_WIDGET_CONFIG = 8;
+    public static final int SPECIAL_WIDGET_OPEN_CONFIGURATION = 8;
     public static final int SPECIAL_WIDGET_EDIT_FILE = 9;
     public static final int SPECIAL_WIDGET_RELOAD = 10;
+    public static final int SPECIAL_WIDGET_CONFIGURE = 11;
     public static final int TIMER_RELATIVE = 1;
     public static final int TIMER_ABSOLUTE = 2;
     public static final int TIMER_REPEATING = 3;
