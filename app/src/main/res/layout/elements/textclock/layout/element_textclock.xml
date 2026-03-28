@@ -7,8 +7,6 @@
 
     <TextClock
         android:id="@+id/e0"
-
-
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:saveEnabled="false" />

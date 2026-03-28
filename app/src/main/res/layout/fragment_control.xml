@@ -58,6 +58,16 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/restart"
         style="@style/secondary_btn"/>
+    <Button
+        android:id="@+id/clear_cache"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp"
+        android:text="Clear Cache Dir"
+        app:layout_constraintEnd_toEndOf="@+id/reinstall"
+        app:layout_constraintStart_toStartOf="@+id/reinstall"
+        app:layout_constraintTop_toBottomOf="@+id/reinstall"
+        style="@style/secondary_btn"/>
     <ProgressBar
         android:id="@+id/startup_progress"
         style="?android:attr/progressBarStyle"

@@ -107,7 +107,7 @@ public class DynamicView
         {
             for(DictObj.Entry entry : obj.getDict("selectors").entries())
             {
-                view.selectors.put(entry.key, (String)entry.value);
+                view.selectors.put(entry.key, entry.value.toString());
             }
         }
 

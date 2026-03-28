@@ -1,9 +1,14 @@
 package com.appy;
 
+import android.app.ProgressDialog;
 import android.content.Intent;
+import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.Handler;
 
+import android.util.Log;
+import android.util.Pair;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -11,6 +16,10 @@ import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.Toast;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.function.BiConsumer;
 
 /**
  * Created by Tal on 19/03/2018.
@@ -25,6 +34,8 @@ public class ControlFragment extends MyFragment
     Button dumpStacktrace;
     Button restart;
     Button reinstall;
+    Button clearCache;
+    String clearCacheText;
 
     Handler handler;
 
@@ -41,6 +52,9 @@ public class ControlFragment extends MyFragment
         dumpStacktrace = layout.findViewById(R.id.dump_stacktrace);
         restart = layout.findViewById(R.id.restart);
         reinstall = layout.findViewById(R.id.reinstall);
+        clearCache = layout.findViewById(R.id.clear_cache);
+
+        clearCacheText = clearCache.getText().toString();
 
         handler = new Handler();
 
@@ -70,6 +84,54 @@ public class ControlFragment extends MyFragment
                     debounce(v);
                 }
         ));
+
+        clearCache.setOnClickListener(v -> {
+            Utils.RunnableArgs<String, Pair<Integer, Long>> action = (String cachedir, Pair<Integer, Long> dirSummary) -> {
+                String message = dirSummary == null ? "Unable to summerize cache directory content" :
+                        "This would remove " + dirSummary.first + " files (" + Utils.formatSize(dirSummary.second) + ")";
+
+                Utils.showConfirmationDialog(getActivity(),
+                        "Clear cache", message, android.R.drawable.ic_dialog_alert,
+                        null, null, () -> {
+                            File[] files = new File(cachedir).listFiles();
+                            if (files != null)
+                            {
+                                for (File f : files)
+                                {
+                                    f.delete();
+                                }
+                            }
+                            debounce(v);
+                        }
+                );
+            };
+
+            String cachedir = Utils.getResourcesCacheDir(getActivity());
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O)
+            {
+                action.run(cachedir, null);
+                return;
+            }
+
+            new Thread(() -> {
+                try
+                {
+                    handler.post(() -> clearCache.setText("Calculating size..."));
+                    Pair<Integer, Long> dirSummary = Utils.dirSummary(cachedir);
+                    handler.post(() -> {
+                        clearCache.setText(clearCacheText);
+                        action.run(cachedir, dirSummary);
+                    });
+                    return;
+                }
+                catch (IOException e)
+                {
+                    Log.e("APPY", "Failed to calculate cache dir size", e);
+                }
+                handler.post(() -> action.run(cachedir, null));
+            }).start();
+
+        });
 
         return layout;
     }

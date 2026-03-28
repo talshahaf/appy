@@ -58,6 +58,15 @@ def find_closest_smaller(lst, needle):
         return None
     return max(smaller, key=lambda x: x[1])[0]
     
+def find_previous_nonnull(lst, ind):
+    if ind is None:
+        return None
+    while lst[ind] is None:
+        if ind == 0:
+            return None
+        ind -= 1
+    return ind
+
 def gains(v, ref):
     return 100 * ((v / ref) - 1)
     
@@ -97,17 +106,18 @@ async def symbol_data(symbol, adjusted):
     
     selector = (lambda d: d['indicators']['adjclose'][0]['adjclose']) if adjusted else (lambda d: d['indicators']['quote'][0]['close'])
     
-    current = day_data['meta']['regularMarketPrice']
+    week_ind = find_previous_nonnull(selector(day_data), week_ind)
+    month_ind = find_previous_nonnull(selector(month_data), month_ind)
+    three_months_ind = find_previous_nonnull(selector(three_months_data), three_months_ind)
+    year_ind = find_previous_nonnull(selector(year_data), year_ind)
     
-    last_day_close = None
-    if today_ind is not None:
-        prev_ind = today_ind
-        while last_day_close is None and prev_ind > 0:
-            prev_ind -= 1
-            last_day_close = selector(day_data)[prev_ind]
-            
-    if last_day_close is None:
-        last_day_close = current
+    current = day_data['meta']['regularMarketPrice']
+    last_day_close = current
+    
+    if today_ind is not None and today_ind > 0:
+        prev_day_ind = find_previous_nonnull(selector(day_data), today_ind - 1)
+        if prev_day_ind is not None:
+            last_day_close = selector(day_data)[prev_day_ind]
     
     week = selector(day_data)[week_ind] if week_ind is not None else last_day_close
     month = selector(month_data)[month_ind] if month_ind is not None else week
@@ -160,6 +170,7 @@ def adapter(widget, view, value, index):
     texts = [TextView(text=f'{k}\n{v:.2f}', 
                         textColor=color('white') if abs(v) < epsilon else (color(r=255) if v < 0 else color(g=255)), 
                         alignment='center',
+                        shadowRadius='medium',
                         ) for k,v in values.items()]
     
     use_template = False

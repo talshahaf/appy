@@ -6,7 +6,7 @@ apply plugin: 'com.android.application'
 apply plugin: 'org.jetbrains.kotlin.android'
 
 android {
-    compileSdkVersion 35
+    compileSdk 35
     packagingOptions {
         resources {
             excludes += ['META-INF/DEPENDENCIES', 'META-INF/LICENSE', 'META-INF/LICENSE.txt', 'META-INF/license.txt', 'META-INF/NOTICE', 'META-INF/NOTICE.txt', 'META-INF/notice.txt', 'META-INF/ASL2.0', 'META-INF/INDEX.LIST']
@@ -105,7 +105,9 @@ android {
         main {
             jniLibs.srcDir 'src/main/cpp/exe'
             res.srcDirs = [
+                    'src/main/res/layout/elements/button',
                     'src/main/res/layout/elements/chronometer',
+                    'src/main/res/layout/elements/switch',
                     'src/main/res/layout/elements/textclock',
                     'src/main/res/layout/elements/textview',
                     'src/main/res/layout/elements',

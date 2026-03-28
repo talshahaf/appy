@@ -2,6 +2,7 @@ package com.appy;
 
 import android.os.Parcel;
 import android.util.Base64;
+import android.util.Log;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -18,7 +19,15 @@ public class DictObj
     public static String makeJson(DictObj obj, boolean readable)
     {
         DictObj copy = obj.copy(true);
-        return new String(DictObjtojson(copy, readable), StandardCharsets.UTF_8);
+        try
+        {
+            return new String(DictObjtojson(copy, readable), StandardCharsets.UTF_8);
+        }
+        catch (UnsatisfiedLinkError e)
+        {
+            Log.e("APPY", "Cannot use native implementation", e);
+        }
+        return "";
     }
 
     public static DictObj fromJson(String json)

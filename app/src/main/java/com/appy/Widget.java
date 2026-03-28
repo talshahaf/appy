@@ -69,6 +69,7 @@ import android.system.Os;
 import android.util.Log;
 import android.util.Pair;
 import android.util.TypedValue;
+import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Chronometer;
@@ -3225,7 +3226,7 @@ public class Widget extends RemoteViewsService
             return false;
         }
 
-        Pair<Integer, String[]> pair = showAndWaitForDialog(null, "Add Python File", "Allow widget to add the python file \"" + new File(path).getName() + "\"?", new String[]{"OK", "CANCEL"}, new String[0], new String[0], new String[0][],-1);
+        Pair<Integer, String[]> pair = showAndWaitForDialog(null, "Add Python File", "Allow widget to add the python file \"" + new File(path).getName() + "\"?", new String[]{"OK", "CANCEL"}, new String[0], new String[0], new String[0][], 0, -1);
         if (pair.first == 0)
         {
             return addPythonFileByPath(path);
@@ -3827,7 +3828,7 @@ public class Widget extends RemoteViewsService
         return (Pair<String[], int[]>) waitForAsyncReportTwice(requestCode, timeoutMilli);
     }
 
-    public int showDialogNoWait(Integer icon, String title, String text, String[] buttons, String[] editText, String[] editHints, String[][] editOptions)
+    public int showDialogNoWait(Integer icon, String title, String text, String[] buttons, String[] editText, String[] editHints, String[][] editOptions, int flags)
     {
         int requestCode = generateRequestCode();
         Intent intent = new Intent(this, DialogActivity.class);
@@ -3839,6 +3840,7 @@ public class Widget extends RemoteViewsService
         intent.putExtra(DialogActivity.EXTRA_EDITTEXT_TEXT, editText);
         intent.putExtra(DialogActivity.EXTRA_EDITTEXT_HINT, editHints);
         intent.putExtra(DialogActivity.EXTRA_EDITTEXT_OPTIONS, editOptions);
+        intent.putExtra(DialogActivity.EXTRA_FLAGS, flags);
         if (icon != null)
         {
             intent.putExtra(DialogActivity.EXTRA_ICON, icon.intValue());
@@ -3847,14 +3849,14 @@ public class Widget extends RemoteViewsService
         return requestCode;
     }
 
-    public Pair<Integer, String[]> showAndWaitForDialog(Integer icon, String title, String text, String[] buttons, String[] editTexts, String[] editHints, String[][] editOptions, int timeoutMilli)
+    public Pair<Integer, String[]> showAndWaitForDialog(Integer icon, String title, String text, String[] buttons, String[] editTexts, String[] editHints, String[][] editOptions, int flags, int timeoutMilli)
     {
         if (Looper.myLooper() != null)
         {
             throw new IllegalStateException("showAndWaitForDialog must be called on a Task thread");
         }
 
-        int requestCode = showDialogNoWait(icon, title, text, buttons, editTexts, editHints, editOptions);
+        int requestCode = showDialogNoWait(icon, title, text, buttons, editTexts, editHints, editOptions, flags);
 
         return (Pair<Integer, String[]>) waitForAsyncReportTwice(requestCode, timeoutMilli);
     }
@@ -4009,12 +4011,19 @@ public class Widget extends RemoteViewsService
         ArrayList<DynamicView> views = new ArrayList<>();
 
         DynamicView loadingText = new DynamicView("TextView");
+        loadingText.selectors.put("shadowPosition", "center");
+        loadingText.selectors.put("shadowColor", "black");
+        loadingText.selectors.put("shadowRadius", "large");
+        loadingText.selectors.put("autoTextSize", "true");
         addMethodCall(loadingText, "setText", "Loading...");
         addMethodCall(loadingText, "setTextColor", Constants.TEXT_COLOR);
-        addMethodCall(loadingText, "setTextSize", "12sp");
+        addMethodCall(loadingText, "setGravity", Gravity.CENTER);
+        addMethodCall(loadingText, "setMaxLines", 1);
 
-        loadingText.attributes.attributes.put(Attributes.Type.TOP, attributeParse("h(p)*0.5+h(" + loadingText.getId() + ")*-0.5"));
-        loadingText.attributes.attributes.put(Attributes.Type.LEFT, attributeParse("w(p)*0.5+w(" + loadingText.getId() + ")*-0.5"));
+        loadingText.attributes.attributes.put(Attributes.Type.TOP, attributeParse("w(p)*0.2"));
+        loadingText.attributes.attributes.put(Attributes.Type.LEFT, attributeParse("h(p)*0.2"));
+        loadingText.attributes.attributes.put(Attributes.Type.RIGHT, attributeParse("w(p)*0.2"));
+        loadingText.attributes.attributes.put(Attributes.Type.BOTTOM, attributeParse("h(p)*0.2"));
 
         DynamicView openApp = new DynamicView("ImageView");
         addMethodCall(openApp, "setImageResource", R.mipmap.ic_launcher_foreground);
@@ -4070,11 +4079,15 @@ public class Widget extends RemoteViewsService
         ArrayList<DynamicView> views = new ArrayList<>();
 
         DynamicView errorText = new DynamicView("TextView");
+        errorText.selectors.put("autoTextSize", "true");
         addMethodCall(errorText, "setText", "Error occurred.");
         addMethodCall(errorText, "setTextColor", Constants.TEXT_COLOR);
-        addMethodCall(errorText, "setTextSize", "8sp");
+        addMethodCall(errorText, "setMaxLines", 1);
+        addMethodCall(errorText, "setGravity", Gravity.CENTER);
         errorText.attributes.attributes.put(Attributes.Type.TOP, attributeParse("5"));
-        errorText.attributes.attributes.put(Attributes.Type.LEFT, attributeParse("w(p)*0.5+w(" + errorText.getId() + ")*-0.5"));
+        errorText.attributes.attributes.put(Attributes.Type.HEIGHT, attributeParse("h(p)*0.2"));
+        errorText.attributes.attributes.put(Attributes.Type.LEFT, attributeParse("w(p)*0.2"));
+        errorText.attributes.attributes.put(Attributes.Type.RIGHT, attributeParse("w(p)*0.2"));
 
         Attributes.AttributeValue afterText = attributeParse("h(" + errorText.getId() + ")+10");
 
@@ -4102,13 +4115,17 @@ public class Widget extends RemoteViewsService
             config.tag = Constants.SPECIAL_WIDGET_CONFIGURE + "," + widgetId;
 
             DynamicView reload = new DynamicView("Button");
+            reload.selectors.put("autoTextSize", "true");
             addMethodCall(reload, "setText", "Reload");
             addMethodCall(reload, "setBackgroundResource", R.drawable.drawable_info_btn);
             addMethodCall(reload, "setTextColor", 0xffffffff);
-            addMethodCall(reload, "setTextSize", "8sp");
+            addMethodCall(reload, "setGravity", Gravity.CENTER);
+            addMethodCall(reload, "setMaxLines", 1);
             reload.methodCalls.add(new RemoteMethodCall("setViewPadding", false, "setViewPadding", "16sp", "12sp", "16sp", "12sp"));
             reload.attributes.attributes.put(Attributes.Type.BOTTOM, attributeParse("5"));
-            reload.attributes.attributes.put(Attributes.Type.LEFT, attributeParse("w(p)*0.5+w(" + reload.getId() + ")*-0.5"));
+            reload.attributes.attributes.put(Attributes.Type.TOP, attributeParse("h(p)*0.66"));
+            reload.attributes.attributes.put(Attributes.Type.LEFT, attributeParse("w(p)*0.2"));
+            reload.attributes.attributes.put(Attributes.Type.RIGHT, attributeParse("w(p)*0.2"));
             reload.tag = Constants.SPECIAL_WIDGET_UPDATE + "," + widgetId;
 
             views.add(config);
@@ -5225,7 +5242,7 @@ public class Widget extends RemoteViewsService
 
                                         Log.d("APPY", "showing error");
 
-                                        showDialogNoWait(null, title, error, new String[]{"Close"}, new String[0], new String[0], new String[0][]);
+                                        showDialogNoWait(null, title, error, new String[]{"Close"}, new String[0], new String[0], new String[0][], DialogActivity.DIALOG_FLAG_SCROLL_BOTTOM);
                                         break;
                                 }
                             }

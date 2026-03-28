@@ -33,6 +33,7 @@ def get_args(f):
 
 def settermethod(use_key=True):
     def dec(f):
+        @functools.wraps(f)
         def wrapper(self, *args, **kwargs):
             if use_key and len(args) > 0 and args[0] in self.reserved:
                 raise AttributeError(f'The following keys are reserved: {", ".join(self.reserved)}')

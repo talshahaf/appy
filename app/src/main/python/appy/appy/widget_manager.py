@@ -424,7 +424,22 @@ def style_attr_parse(type, style):
 element_attr_aliases = dict(checked='compoundButtonChecked',
                             compoundDrawables='textViewCompoundDrawables',
                             compoundDrawablesRelative='textViewCompoundDrawablesRelative',
-                            padding='viewPadding')
+                            padding='viewPadding',
+                            alignment='gravity')
+
+Gravity = java.clazz.android.view.Gravity()
+element_attr_value_aliases = dict(alignment=dict(
+    center=Gravity.CENTER, center_horizontal=Gravity.CENTER_HORIZONTAL, center_vertical=Gravity.CENTER_VERTICAL, center_left=Gravity.CENTER_VERTICAL | Gravity.LEFT, center_start=Gravity.CENTER_VERTICAL | Gravity.START, center_right=Gravity.CENTER_VERTICAL | Gravity.RIGHT, center_end=Gravity.CENTER_VERTICAL | Gravity.END,
+    bottom=Gravity.BOTTOM, bottom_left=Gravity.BOTTOM | Gravity.LEFT, bottom_center=Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL, bottom_right=Gravity.BOTTOM | Gravity.RIGHT, bottom_start=Gravity.BOTTOM | Gravity.START, bottom_end=Gravity.BOTTOM | Gravity.END,
+    top=Gravity.TOP, top_left=Gravity.TOP | Gravity.LEFT, top_center=Gravity.TOP | Gravity.CENTER_HORIZONTAL, top_right=Gravity.TOP | Gravity.RIGHT, top_start=Gravity.TOP | Gravity.START, top_end=Gravity.TOP | Gravity.END,
+    left=Gravity.LEFT, start=Gravity.START, right=Gravity.RIGHT, end=Gravity.END,
+))
+
+selector_attrs = dict(shadowPosition=['center', 'left', 'right'],
+                      shadowColor=['black', 'white'],
+                      shadowRadius=['small', 'medium', 'large'],
+                      autoTextSize=[True, False])
+
 element_event_hooks = {} # global for all
 class Element:
     __slots__ = ('d',)
@@ -438,7 +453,7 @@ class Element:
         if 'methodCalls' in self.d:
             self.d.methodCalls = collections.OrderedDict((c.identifier, c) for c in self.d.methodCalls)
         if 'tag' not in self.d:
-            self.d.tag = {}
+            self.d.tag = AttrDict()
 
         if 'children' in self.d:
             self.d.children = ChildrenList([c if isinstance(c, Element) else Element(c) for c in arr] for arr in self.d.children)
@@ -471,31 +486,34 @@ class Element:
 
     def __delattr__(self, key):
         if key in attrs:
-            del self.d.attributes[attrs[key]]
+             delattr(self.d.attributes, attrs[key])
         elif key in write_attrs:
             write_attrs[key](self, None)
-        elif 'selectors' in self.d and key == 'alignment':
-            del self.d.selectors['alignment']
+        elif 'selectors' in self.d and key in self.d.selectors:
+            delattr(self.d.selectors, key)
         elif key == 'children':
             self.d[key].clear()
         elif key in ('paddingLeft', 'paddingTop', 'paddingRight', 'paddingBottom'):
-            del self.d[key]
+            delattr(self.d, key)
         elif key in element_attr_aliases:
             delattr(self, element_attr_aliases[key])
         elif key == 'tag':
             self.tag.clear()
         elif key == 'style':
-            del self.d.tag['style']
+            delattr(self.d.tag, style)
             style_attrs = [k for k in self.d.methodCalls.keys() if k.startswith('style*')]
             for attr in style_attrs:
                 del self.d.methodCalls[attr]
                 self.d.methodCallsDeleted.add(attr)
         elif key in ('name', 'click', 'itemclick'):
-            del self.d.tag[key]
+            delattr(self.d.tag, key)
         else:
-            # might throw
-            del self.d.methodCalls[key]
-            self.d.methodCallsDeleted.add(key)
+            try:
+                # might throw
+                del self.d.methodCalls[key]
+                self.d.methodCallsDeleted.add(key)
+            except KeyError as e:
+                raise AttributeError(e)
 
     def __getattr__(self, item):
         if item in attrs:
@@ -504,10 +522,19 @@ class Element:
             return composite_attrs[item](self)
         if item in ('type', 'id', 'children'):
             return getattr(self.d, item)
-        if item == 'alignment':
+        if item in selector_attrs:
+            if 'selectors' not in self.d:
+                raise AttributeError(item)
             return getattr(self.d.selectors, item)
         if item in element_attr_aliases:
-            return getattr(self, element_attr_aliases[key])
+            value = getattr(self, element_attr_aliases[key])
+            if item in element_attr_value_aliases:
+                #convert back
+                backs = [k for k,v in element_attr_value_aliases[item].items() if v == value]
+                #take first option if available, default to actual value
+                if backs:
+                    value = backs[0]
+            return value
         if item in ('paddingLeft', 'paddingTop', 'paddingRight', 'paddingBottom'):
             return getattr(self.d, item, 0)
         if self.d.type == 'Chronometer' and item in ('base', 'format', 'started'):
@@ -564,7 +591,7 @@ class Element:
                 if not isinstance(value, AttributeValue):
                     value = AttributeValue(None, value)
                 if 'attributes' not in self.d:
-                    self.d.attributes = {}
+                    self.d.attributes = AttrDict()
                 self.d.attributes[attrs[key]] = value.compile()
         elif key in write_attrs:
             write_attrs[key](self, value)
@@ -576,9 +603,11 @@ class Element:
             # goes to self.d.tag['tag'] through getattr
             self.tag.clear()
             self.tag.update(value)
-        elif key in ('alignment', 'mode'):
+        elif key in selector_attrs:
             if 'selectors' not in self.d:
-                self.d.selectors = {}
+                self.d.selectors = AttrDict()
+            if selector_attrs[key] and value not in selector_attrs[key]:
+                raise AttributeError(f'{key} must be one of: {', '.join(selector_attrs[key])}')
             self.d.selectors[key] = value
         elif key == 'style':
             style_attrs = style_attr_parse(self.d.type, value)
@@ -595,18 +624,15 @@ class Element:
             self.d[key].set(value)
         elif key in ('tint', 'backgroundTint'):
             background = key == 'backgroundTint'
-
             attr = 'backgroundTintList' if background else 'foregroundTintList'
             mode_attr = 'backgroundTintBlendMode' if background else 'foregroundTintBlendMode'
             param_setter, method = get_param_setter(self.d.type, attr)
             if param_setter is not None:
                  # android 9+
                  setattr(self, attr, value)
-
                  if get_param_setter(self.d.type, mode_attr)[0] is not None:
                     # android 10+
                     setattr(self, mode_attr, java.clazz.android.graphics.BlendMode().SRC)
-
             elif validate_remoteviews_method('setDrawableParameters'):
                 # android 8-
                 self.drawableParameters = (background, (value >> 24) & 0xff, value & 0xffffff, java.clazz.android.graphics.PorterDuff.Mode().SRC_ATOP, -1)
@@ -614,6 +640,8 @@ class Element:
                 # android 9+
                 self.drawableTint = (background, value, java.clazz.android.graphics.PorterDuff.Mode().SRC)
         elif key in element_attr_aliases:
+            if key in element_attr_value_aliases:
+                value = element_attr_value_aliases[key].get(value, value)
             setattr(self, element_attr_aliases[key], value)
         elif key in ('paddingLeft', 'paddingTop', 'paddingRight', 'paddingBottom'):
             self.d[key] = value

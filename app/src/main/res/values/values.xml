@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="shadow_small">2</dimen>
+    <dimen name="shadow_medium">3</dimen>
+    <dimen name="shadow_large">5</dimen>
+    <dimen name="shadow_center_dx">0</dimen>
+    <dimen name="shadow_center_dy">0</dimen>
+    <dimen name="shadow_left_dx">1</dimen>
+    <dimen name="shadow_left_dy">1</dimen>
+    <dimen name="shadow_right_dx">-1</dimen>
+    <dimen name="shadow_right_dy">1</dimen>
+</resources>

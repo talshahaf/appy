@@ -9,6 +9,7 @@ import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.provider.OpenableColumns;
 import android.util.DisplayMetrics;
@@ -17,6 +18,7 @@ import android.util.Pair;
 import android.util.Size;
 import android.util.TypedValue;
 
+import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AlertDialog;
 import androidx.core.content.res.ResourcesCompat;
 
@@ -36,10 +38,14 @@ import java.net.URL;
 import java.net.URLConnection;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.text.CharacterIterator;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
+import java.text.StringCharacterIterator;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
@@ -48,6 +54,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.LongStream;
+import java.util.stream.Stream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -55,16 +63,13 @@ import kotlin.Triple;
 
 public class Utils
 {
-
     public static abstract class ArgRunnable implements Runnable
     {
         Object[] args;
-
         ArgRunnable(Object... args)
         {
             this.args = args;
         }
-
         public abstract void run();
     }
 
@@ -73,9 +78,18 @@ public class Utils
         float map(T t);
     }
 
+    public interface RunnableArg<T>
+    {
+        void run(T t);
+    }
+
+    public interface RunnableArgs<T, U>
+    {
+        void run(T t, U u);
+    }
+
     public static ArrayList<String> bundleDiff(Bundle a, Bundle b)
     {
-
         Set<String> aKeys = a == null ? new HashSet<>() : a.keySet();
         Set<String> bKeys = b == null ? new HashSet<>() : b.keySet();
 
@@ -414,6 +428,38 @@ public class Utils
         return format.format(f);
     }
 
+    public static String formatSize(long bytes)
+    {
+        if (-1000 < bytes && bytes < 1000) {
+            return bytes + " B";
+        }
+        CharacterIterator ci = new StringCharacterIterator("kMGTPE");
+        while (bytes <= -999_950 || bytes >= 999_950) {
+            bytes /= 1000;
+            ci.next();
+        }
+        return String.format("%.1f %cB", bytes / 1000.0, ci.current());
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.O)
+    public static Pair<Integer, Long> dirSummary(String path) throws IOException
+    {
+        try (Stream<Path> stream = Files.walk(new File(path).toPath()))
+        {
+            LongStream files = stream.mapToLong(p -> p.toFile().isDirectory() ? -1 : p.toFile().length());
+            int[] count = new int[]{0};
+            long[] size = new long[]{0};
+            files.forEach(l -> {
+                if (l >= 0)
+                {
+                    count[0]++;
+                    size[0] += l;
+                }
+            });
+            return new Pair<>(count[0], size[0]);
+        }
+    }
+
     public static double widgetScaleValue(int[] widgetSize)
     {
         return ((double)Math.min(widgetSize[0], widgetSize[1])) / 500;
@@ -640,6 +686,11 @@ public class Utils
     public static String getCrashPath(Context context, Constants.CrashIndex index)
     {
         return new File(context.getCacheDir(), Constants.CRASHES_FILENAMES[index.ordinal()]).getAbsolutePath();
+    }
+
+    public static String getResourcesCacheDir(Context context)
+    {
+        return new File(context.getCacheDir(), "resources").getAbsolutePath();
     }
 
     public static void zipWithoutPath(String[] files, String zipFile, boolean ignoreNonExistent) throws IOException

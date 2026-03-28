@@ -336,8 +336,6 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
             return;
         }
 
-        Log.d("APPY", "history: "+history.size());
-
         history.removeFirst(); //pop current
         if (history.isEmpty())
         {

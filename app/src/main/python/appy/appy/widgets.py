@@ -206,6 +206,7 @@ def show_dialog(title, text, buttons=('Yes', 'No'), edittexts: tuple[DialogEditT
                                                                 java.new.java.lang.String[()](edittext.initial_text for edittext in edittexts),
                                                                 java.new.java.lang.String[()](edittext.hint for edittext in edittexts),
                                                                 java.new.java.lang.String[()][()]((java.new.java.lang.String[()](edittext.options) if edittext.options else None) for edittext in edittexts),
+                                                                0,
                                                                 int(timeout * 1000) if timeout is not None else -1)
     if result == java.Null:
         raise RuntimeError('timeout')

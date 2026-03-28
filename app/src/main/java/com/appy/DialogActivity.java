@@ -7,6 +7,7 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.os.Bundle;
+import android.os.Handler;
 import android.os.IBinder;
 import android.util.Pair;
 import android.util.TypedValue;
@@ -17,6 +18,7 @@ import android.widget.ArrayAdapter;
 import android.widget.AutoCompleteTextView;
 import android.widget.EditText;
 import android.widget.LinearLayout;
+import android.widget.ScrollView;
 import android.widget.TextView;
 
 import androidx.appcompat.app.AlertDialog;
@@ -36,6 +38,11 @@ public class DialogActivity extends Activity
     public static final String EXTRA_EDITTEXT_TEXT = "EXTRA_EDITTEXT_TEXT";
     public static final String EXTRA_EDITTEXT_HINT = "EXTRA_EDITTEXT_HINT";
     public static final String EXTRA_EDITTEXT_OPTIONS = "EXTRA_EDITTEXT_OPTIONS";
+    public static final String EXTRA_FLAGS = "EXTRA_FLAGS";
+
+    public static final int DIALOG_FLAG_SCROLL_BOTTOM = 1;
+
+    Handler handler = new Handler();
 
     private Widget widgetService;
     private int doneRequestCode = -1;
@@ -62,7 +69,8 @@ public class DialogActivity extends Activity
                     getIntent().getStringArrayExtra(EXTRA_BUTTONS),
                     getIntent().getStringArrayExtra(EXTRA_EDITTEXT_TEXT),
                     getIntent().getStringArrayExtra(EXTRA_EDITTEXT_HINT),
-                    options);
+                    options,
+                    getIntent().getIntExtra(EXTRA_FLAGS, 0));
         }
 
         public void onServiceDisconnected(ComponentName className)
@@ -158,7 +166,7 @@ public class DialogActivity extends Activity
         return layout;
     }
 
-    public void makeDialog(int icon, String title, String text, String[] buttons, String[] editTexts, String[] editHints, String[][] editOptions)
+    public void makeDialog(int icon, String title, String text, String[] buttons, String[] editTexts, String[] editHints, String[][] editOptions, int flags)
     {
         if (title == null || text == null || buttons == null || buttons.length == 0 || editTexts == null || editHints == null)
         {
@@ -166,15 +174,48 @@ public class DialogActivity extends Activity
         }
 
         AlertDialog.Builder builder = new AlertDialog.Builder(this)
-                .setTitle(title)
-                .setMessage(text);
+                .setTitle(title);
         if (icon != -1)
         {
             builder.setIcon(icon);
         }
+
+        double margin = Utils.convertUnit(this, 20, TypedValue.COMPLEX_UNIT_DIP, TypedValue.COMPLEX_UNIT_PX);
         final View[] editTextViews = new View[editTexts.length];
         LinearLayout container = new LinearLayout(this);
         container.setOrientation(LinearLayout.VERTICAL);
+
+        final ScrollView[] messageScrollRef = new ScrollView[] {null};
+        if (editTextViews.length == 0)
+        {
+            ScrollView messageScroll = new ScrollView(this);
+            messageScrollRef[0] = messageScroll;
+            TextView messageText = new TextView(this);
+            messageText.setText(text);
+            messageText.setLayoutParams(new ScrollView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+            messageScroll.addView(messageText);
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
+            params.leftMargin = (int) margin;
+            params.topMargin = (int) margin;
+            params.rightMargin = (int) margin;
+            params.bottomMargin = (int) margin;
+            messageScroll.setLayoutParams(params);
+            container.addView(messageScroll);
+        }
+        else
+        {
+            TextView messageText = new TextView(this);
+            messageText.setText(text);
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            params.leftMargin = (int) margin;
+            params.topMargin = (int) margin;
+            params.rightMargin = (int) margin;
+            params.bottomMargin = (int) margin;
+            messageText.setLayoutParams(params);
+
+            container.addView(messageText);
+        }
+
         for (int i = 0; i < editTextViews.length; i++)
         {
             if (editOptions != null && i < editOptions.length && editOptions[i] != null)
@@ -187,7 +228,7 @@ public class DialogActivity extends Activity
             }
 
             LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-            double margin = Utils.convertUnit(this, 20, TypedValue.COMPLEX_UNIT_DIP, TypedValue.COMPLEX_UNIT_PX);
+
             params.leftMargin = (int) margin;
             params.rightMargin = (int) margin;
 
@@ -231,6 +272,12 @@ public class DialogActivity extends Activity
                 builder.setPositiveButton(buttons[0], dialogClick);
         }
 
+        if (messageScrollRef[0] != null && (flags & DIALOG_FLAG_SCROLL_BOTTOM) != 0)
+        {
+            handler.post(() -> {
+                messageScrollRef[0].fullScroll(View.FOCUS_DOWN);
+            });
+        }
         builder.show();
     }
 
