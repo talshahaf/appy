@@ -212,13 +212,6 @@ def adapter(widget, view, value, index):
                 text.top = (texts[0].top + (line_height * (i // max_in_line)))
     
     view.extend(texts)
-        
-def on_create(widget, views):
-    # switch refresh button and last update text places
-    del views['refresh_button'].left
-    views['refresh_button'].right = 0
-    del views['last_update'].right
-    views['last_update'].left = 20
 
 templates.updating_list('stocklist',
                 config=dict(symbols=['SPY', 'QQQ', 'EUR=X'], adjusted=True),
@@ -231,6 +224,4 @@ templates.updating_list('stocklist',
                 # has background
                 background=True,
                 # refresh every 4 hours
-                interval=24 * 3600,
-                # for rearranging the layout
-                create_hook=on_create)
+                interval=24 * 3600)

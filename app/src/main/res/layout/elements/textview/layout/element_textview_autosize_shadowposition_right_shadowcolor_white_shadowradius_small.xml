@@ -8,6 +8,8 @@
     <TextView
         android:id="@+id/e0"
         android:autoSizeTextType="uniform"
+        android:autoSizeMinTextSize="1px"
+        android:autoSizeMaxTextSize="10000px"
         android:shadowDx="@dimen/shadow_right_dx"
         android:shadowDy="@dimen/shadow_right_dy"
         android:shadowRadius="@dimen/shadow_small"

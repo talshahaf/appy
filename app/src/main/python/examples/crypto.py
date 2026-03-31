@@ -65,14 +65,6 @@ def adapter(widget, view, value, index):
     view[0].vcenter = widget.vcenter
     view[0].textSize=15
 
-def on_create(widget, views):
-    # moving refresh button to the right
-    del views['refresh_button'].left
-    views['refresh_button'].right = 0
-    # moving last update to the right
-    del views['last_update'].right
-    views['last_update'].left = 20
-    
 templates.updating_list('crypto',
                 config=dict(coins=['BTC', 'ETH'], currency='USD'),
                 on_refresh=refresh, 
@@ -82,6 +74,4 @@ templates.updating_list('crypto',
                 # has background
                 background=True,
                 # refresh every 4 hours
-                interval=4 * 3600,
-                # for rearranging the layout
-                create_hook=on_create)
+                interval=4 * 3600)

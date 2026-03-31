@@ -63,14 +63,11 @@ def on_config(widget, views):
     
 def create(widget):
     bg = background()
-    refresh = RefreshButton(on_refresh, widget=widget, initial_refresh=True, interval=4*3600)
-    # moving refresh button
-    del refresh.left
-    refresh.right = 0
+    refresh = RefreshButton(on_refresh, widget=widget, initial_refresh=True, interval=4*3600, right=0, bottom=0)
     #                               width and height are 60% of the widget's height but no more than 200 pixels 
     img = ImageView(name='img', width=AttributeValue.min(200, widget.height * 0.6), height=AttributeValue.min(200, widget.height * 0.5), adjustViewBounds=True, hcenter=widget.hcenter, top=10)
-    temp_text = TextView(name='temp', top=img.ibottom, hcenter=widget.hcenter, textColor=0xb3ffffff, textSize=30)
-    location_text = TextView(name='location', top=temp_text.ibottom, hcenter=widget.hcenter, textColor=0xb3ffffff, textSize=20)
+    temp_text = TextView(name='temp', alignment='center', maxLines=1, top=img.ibottom, height=widget.height*0.25, left=widget.width * 0.4, right=widget.width * 0.4, textColor=0xb3ffffff, autoTextSize=True)
+    location_text = TextView(name='location', alignment='center', maxLines=1, top=temp_text.ibottom, height=widget.height*0.2, left=widget.width * 0.3, right=widget.width * 0.3, textColor=0xb3ffffff, autoTextSize=True)
     # bg is first
     return [bg, img, temp_text, location_text, refresh]
     

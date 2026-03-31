@@ -70,8 +70,8 @@ def update(widget, views):
             # using the element's tag
             img.tag.url = item['image']['url']
         title = TextView(text=item['title'], textColor=0xb3ffffff, textSize=15, lines=3, top=img.top if img is not None else 10, left=(img.iright + 20) if img is not None else 10, right=20)
-        desc  = TextView(text=item['description'], textColor=0xb3ffffff, textSize=14, lines=30, top=title.ibottom + 10, left=title.left, right=20)
         date  = TextView(text=item['date'], textColor=0xb3ffffff, textSize=14, right=20, bottom=0)
+        desc  = TextView(text=item['description'], textColor=0xb3ffffff, textSize=14, lines=30, top=title.ibottom + 10, left=title.left, right=20, bottom=date.itop + 10)
 
         # bg is the first child
         children = [title, desc, date]
@@ -87,12 +87,7 @@ def update(widget, views):
     
 def create(widget):
     # using only RefreshButton
-    refresh = RefreshButton(update, widget=widget, initial_refresh=True, interval=4*3600)
-    # moving it to the top right
-    del refresh.left
-    del refresh.bottom
-    refresh.right = 0
-    refresh.top = 0
+    refresh = RefreshButton(update, widget=widget, initial_refresh=True, interval=4*3600, right=0, top=0)
     #                 using button styles                                   using captures instead of defining two functions
     prev_btn = Button(style='secondary_sml', text='<', left=0, right=widget.hcenter, bottom=0, click=(flip, dict(amount=-1)))
     #                                                   using inverted right + pad

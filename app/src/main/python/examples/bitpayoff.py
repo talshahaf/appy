@@ -29,6 +29,7 @@ def bit_adapter(widget, view, value):
     # further customizations depending on value (int)
     view.textColor = color(g=255) if value >= 0 else color(r=255)
     view.text = f'{value:.2f}'
+    view.maxLines = view.text.strip().count('\n') + 1
 
 updating_text('bit payoff', 
     config=dict(currency='USD', btc_amount=1, currency_amount=1000),

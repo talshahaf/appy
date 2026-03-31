@@ -41,17 +41,17 @@ def refresh_button_click(widget, views, on_click, id, timer_id=None):
         btn.visibility = java.clazz.android.view.View().INVISIBLE
     widget.post(refresh_button_action, on_click=on_click, id=id, timer=timer_id is not None)
     
-def RefreshButton(click, name=None, size=None, initial_refresh=None, widget=None, timeout=None, interval=None):
-    try:
+def RefreshButton(click, name=None, size=None, initial_refresh=None, widget=None, timeout=None, interval=None, **button_attributes):
+    if not size:
+        w, h = 80, 80
+    elif not isinstance(size, list) and not isinstance(size, tuple):
+        w, h = size, size
+    elif len(size) != 2:
+        raise ValueError('size must be None, single value or a pair')
+    else:
         w, h = size
-        w, h = int(w), int(h)
-    except:
-        try:
-            w, h = int(size), int(size)
-        except:
-            w, h = (80, 80)
 
-    btn = ImageButton(style='dark_oval_sml', padding=(10, 10, 10, 10), adjustViewBounds=True, colorFilter=0xffffffff, width=w, height=h, left=0, bottom=0, imageResource=R.drawable.ic_action_refresh)
+    btn = ImageButton(style='dark_oval_sml', padding=(10, 10, 10, 10), adjustViewBounds=True, colorFilter=0xffffffff, width=w, height=h, imageResource=R.drawable.ic_action_refresh, **button_attributes)
     btn.click = (refresh_button_click, dict(on_click=click, id=btn.id))
     if name is not None:
         btn.name = name
@@ -126,24 +126,63 @@ def updating_list_refresh_action(widget, views, timer, on_refresh, adapter, upda
     if update_hook is not None:
         call_general_function(update_hook, widget=widget, views=views)
 
-def updating_list_create(widget, initial_values, on_refresh, background_params, adapter, initial_refresh, timeout, interval, last_update, create_hook, update_hook):
-    btn = RefreshButton((updating_list_refresh_action, dict(on_refresh=on_refresh, adapter=adapter, update_hook=update_hook)), initial_refresh=initial_refresh, widget=widget, timeout=timeout, interval=interval, name='refresh_button')
-    lst = ListView(name='list', top=0, bottom=0, left=0, right=0, children=None if not initial_values else [call_list_adapter(widget, adapter, value=v, index=i) for i, v in enumerate(initial_values)])
-    
+def call_text_adapter(widget, adapter, value, view, **kwargs):
+    if adapter is not None:
+        call_general_function(adapter, widget=widget, view=view, value=value, **kwargs)
+    else:
+        view.text = str(value)
+        view.maxLines = view.text.strip().count('\n') + 1
+
+def updating_text_refresh_action(widget, views, timer, on_refresh, adapter, update_hook):
+    value = call_general_function(on_refresh, widget=widget, views=views, timer=timer)
+    if value is not None:
+        call_text_adapter(widget, adapter, value=value, view=views['content'])
+        try:
+            views['last_update'].text = datetime.datetime.now().strftime('%x %X')
+        except KeyError:
+            pass
+
+    if update_hook is not None:
+        call_general_function(update_hook, widget=widget, views=views)
+
+def updating_template_create(is_list, widget, initial_values, on_refresh, background_params, adapter, initial_refresh, timeout, interval, last_update, direction, create_hook, update_hook):
+    if direction not in ('left', 'right'):
+        raise ValueError('direction must be either left or right')
+
+    if is_list:
+        content = ListView(name='list', top=0, bottom=0, left=0, right=0, children=None if not initial_values else [call_list_adapter(widget, adapter, value=v, index=i) for i, v in enumerate(initial_values)])
+    else:
+        content = TextView(name='content', text='', alignment='center', autoTextSize=True, textColor=0xb3ffffff, top=widget.height/3, bottom=widget.height/3, left=widget.width/6, right=widget.width/6)
+        if initial_values is not None:
+            call_text_adapter(widget, adapter, value=initial_values, view=content)
+    btn = RefreshButton((updating_list_refresh_action if is_list else updating_text_refresh_action, dict(on_refresh=on_refresh, adapter=adapter, update_hook=update_hook)), initial_refresh=initial_refresh, widget=widget, timeout=timeout, interval=interval, size=widget.width/5, name='refresh_button')
+
+    btn.bottom = 0
+    if direction == 'left':
+        btn.left = 0
+    else:
+        btn.right = 0
+
     views = elist()
     if background_params is True:
         views.append(background())
     elif isinstance(background_params, dict):
         views.append(background(**background_params))
 
-    views.append(lst)
+    views.append(content)
     if last_update:
-        last = TextView(name='last_update', textSize=14, textColor=0xb3ffffff, bottom=0, right=20)
-        lst.bottom = AttributeValue.max(last.itop.if_(last.itop < 100).else_(0), btn.itop.if_(btn.itop < 100).else_(0))
+        last = TextView(name='last_update', autoTextSize=True, maxLines=1, textColor=0xb3ffffff, alignment='bottom_center', bottom=0, height=btn.height/2)
+        if direction == 'left':
+            last.right = 20
+            last.left = widget.width / 3
+        else:
+            last.left = 20
+            last.right = widget.width / 3
         views.append(last)
-    else:
-        lst.bottom = btn.itop.if_(btn.itop < 100).else_(0)
     views.append(btn)
+
+    if is_list:
+        content.bottom = last.itop if last_update else 20
     
     if create_hook is not None:
         call_general_function(create_hook, widget=widget, views=views)
@@ -154,55 +193,11 @@ def on_config_change(widget, views):
     if 'refresh_button' in views:
         widget.invoke_click(views['refresh_button'])
 
-def updating_list(name, initial_values=None, on_refresh=None, background=True, adapter=None, initial_refresh=None, timeout=None, interval=None, last_update=True, config=None, config_description=None, create_hook=None, update_hook=None, debug=None):
-    register_widget(name, (updating_list_create, dict(initial_values=initial_values, on_refresh=on_refresh, background_params=background, adapter=adapter, initial_refresh=initial_refresh, timeout=timeout, interval=interval, last_update=last_update, create_hook=create_hook, update_hook=update_hook)), update=refresh_button_update_func, config=config, config_description=config_description, on_config=on_config_change, debug=debug)
+def updating_list(name, initial_values=None, on_refresh=None, background=True, adapter=None, initial_refresh=None, timeout=None, interval=None, last_update=True, direction='right', config=None, config_description=None, create_hook=None, update_hook=None, debug=None):
+    register_widget(name, (updating_template_create, dict(is_list=True, initial_values=initial_values, on_refresh=on_refresh, background_params=background, adapter=adapter, initial_refresh=initial_refresh, timeout=timeout, interval=interval, last_update=last_update, direction=direction, create_hook=create_hook, update_hook=update_hook)), update=refresh_button_update_func, config=config, config_description=config_description, on_config=on_config_change, debug=debug)
 
-##############text template############################
-def call_text_adapter(widget, adapter, value, view, **kwargs):
-    if adapter is not None:
-        call_general_function(adapter, widget=widget, view=view, value=value, **kwargs)
-    else:
-        view.text = str(value)
-
-def updating_text_refresh_action(widget, views, timer, on_refresh, adapter, update_hook):
-    value = call_general_function(on_refresh, widget=widget, views=views, timer=timer)
-    if value is not None:
-        call_text_adapter(widget, adapter, value=value, view=views['content'])
-        try:
-            views['last_update'].text = datetime.datetime.now().strftime('%x %X')
-        except KeyError:
-            pass
-        
-    if update_hook is not None:
-        call_general_function(update_hook, widget=widget, views=views)
-
-def updating_text_create(widget, initial_value, on_refresh, background_params, adapter, initial_refresh, timeout, interval, last_update, create_hook, update_hook):
-    text = TextView(name='content', text='', textSize=30, textColor=0xb3ffffff)
-    text.hcenter = widget.hcenter
-    text.vcenter  = widget.vcenter
-    if initial_value is not None:
-        call_text_adapter(widget, adapter, value=initial_value, view=text)
-
-    btn = RefreshButton((updating_text_refresh_action, dict(on_refresh=on_refresh, adapter=adapter, update_hook=update_hook)), initial_refresh=initial_refresh, widget=widget, timeout=timeout, interval=interval, name='refresh_button')
-
-    views = elist()
-    if background_params is True:
-        views.append(background())
-    elif isinstance(background_params, dict):
-        views.append(background(**background_params))
-
-    views.append(text)
-    if last_update:
-        views.append(TextView(name='last_update', textSize=14, textColor=0xb3ffffff, bottom=0, right=20))
-    views.append(btn)
-    
-    if create_hook is not None:
-        call_general_function(create_hook, widget=widget, views=views)
-        
-    return views
-
-def updating_text(name, initial_value=None, on_refresh=None, background=True, adapter=None, initial_refresh=None, timeout=None, interval=None, last_update=True, config=None, config_description=None, create_hook=None, update_hook=None, debug=None):
-    register_widget(name, (updating_text_create, dict(initial_value=initial_value, on_refresh=on_refresh, background_params=background, adapter=adapter, initial_refresh=initial_refresh, timeout=timeout, interval=interval, last_update=last_update, create_hook=create_hook, update_hook=update_hook)), refresh_button_update_func, config=config, config_description=config_description, on_config=on_config_change, debug=debug)
+def updating_text(name, initial_value=None, on_refresh=None, background=True, adapter=None, initial_refresh=None, timeout=None, interval=None, last_update=True, direction='left', config=None, config_description=None, create_hook=None, update_hook=None, debug=None):
+    register_widget(name, (updating_template_create, dict(is_list=False, initial_values=initial_value, on_refresh=on_refresh, background_params=background, adapter=adapter, initial_refresh=initial_refresh, timeout=timeout, interval=interval, direction=direction, last_update=last_update, create_hook=create_hook, update_hook=update_hook)), refresh_button_update_func, config=config, config_description=config_description, on_config=on_config_change, debug=debug)
 
 def grid_of(elements, orientation='horizontal', alignment='center', padding_top=0, padding_left=0, padding_right=0, padding_bottom=0, min_element_width=None, max_element_width=None, min_element_height=None, max_element_height=None, **grid_attributes):
     allowed = set(['top', 'bottom', 'left', 'right', 'width', 'height', 'hcenter', 'vcenter', 'center'])
