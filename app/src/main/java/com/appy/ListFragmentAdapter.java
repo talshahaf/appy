@@ -126,7 +126,7 @@ public class ListFragmentAdapter extends BaseAdapter
         }
 
         Item item = items.get(position);
-        
+
         TextView text1 = twoLineListItem.findViewById(R.id.text1);
         TextView text2 = twoLineListItem.findViewById(R.id.text2);
 

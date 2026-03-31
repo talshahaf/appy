@@ -155,10 +155,10 @@ class Widget:
             self._request_config_change(configs.global_widget_config_name, self.widget_id, config, all_widgets, timeout)
         else:
             #staticmethod
-            if args:
+            if arg:
                 raise TypeError("expected 'config' arg")
             config = self_or_config
-            Widget._request_config_change(configs.global_widget_config_name, None, config, all_widgets, timeout)
+            Widget._request_config_change(configs.global_widget_config_name, None, config, True, timeout)
 
     @staticmethod
     def _request_config_change(name, widget_id, config, all_widgets, timeout):
