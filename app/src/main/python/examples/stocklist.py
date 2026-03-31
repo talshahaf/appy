@@ -71,76 +71,82 @@ def gains(v, ref):
     return 100 * ((v / ref) - 1)
     
 async def symbol_data(symbol, adjusted):
-    jitter = 12 * 3600
-    day_jitter = 4
-    
-    today = datetime.datetime.now(datetime.UTC)
-    
-    #request last few days first to get last trading day
-    day_data = await request_data(symbol, today - relativedelta(days=7 + day_jitter), today, '1d')
-    today_ind = find_closest_smaller(day_data['timestamp'], gmt_epoch(today) + jitter)
-    last_trading_day = epoch_gmt(day_data['timestamp'][today_ind])
-    # gains are calculated against the close of day before
-    day_before_last_trading_day = last_trading_day - relativedelta(days=1)
-    
-    # build datetimes to request
-    weekago = day_before_last_trading_day - relativedelta(days=7)
-    monthago = day_before_last_trading_day - relativedelta(months=1)
-    threemonthsago = day_before_last_trading_day - relativedelta(months=3)
-    jan1ago = today.replace(month=1, day=1)
-    yearago = day_before_last_trading_day - relativedelta(years=1)
-    
-    # use a minimum number of requests (4) and do them concurrently
-    month_data, three_months_data, ytd_data, year_data = await asyncio.gather(
-        request_data(symbol, monthago - relativedelta(days=day_jitter), monthago, '1d'),
-        request_data(symbol, threemonthsago - relativedelta(days=day_jitter), threemonthsago, '1d'),
-        request_data(symbol, jan1ago - relativedelta(days=day_jitter), jan1ago, '1d'),
-        request_data(symbol, yearago - relativedelta(days=day_jitter), yearago, '1d'),
-    )
+    try:
+        jitter = 12 * 3600
+        day_jitter = 4
+        
+        today = datetime.datetime.now(datetime.UTC)
+        
+        #request last few days first to get last trading day
+        day_data = await request_data(symbol, today - relativedelta(days=7 + day_jitter), today, '1d')
+        today_ind = find_closest_smaller(day_data.get('timestamp', []), gmt_epoch(today) + jitter)
+        if today_ind is not None:
+            last_trading_day = epoch_gmt(day_data['timestamp'][today_ind])
+        else:
+            last_trading_day = today
+        # gains are calculated against the close of day before
+        day_before_last_trading_day = last_trading_day - relativedelta(days=1)
+        
+        # build datetimes to request
+        weekago = day_before_last_trading_day - relativedelta(days=7)
+        monthago = day_before_last_trading_day - relativedelta(months=1)
+        threemonthsago = day_before_last_trading_day - relativedelta(months=3)
+        jan1ago = today.replace(month=1, day=1)
+        yearago = day_before_last_trading_day - relativedelta(years=1)
+        
+        # use a minimum number of requests (4) and do them concurrently
+        month_data, three_months_data, ytd_data, year_data = await asyncio.gather(
+            request_data(symbol, monthago - relativedelta(days=day_jitter), monthago, '1d'),
+            request_data(symbol, threemonthsago - relativedelta(days=day_jitter), threemonthsago, '1d'),
+            request_data(symbol, jan1ago - relativedelta(days=day_jitter), jan1ago, '1d'),
+            request_data(symbol, yearago - relativedelta(days=day_jitter), yearago, '1d'),
+        )
 
-    # find the best data point to use
-    week_ind = find_closest_smaller(day_data['timestamp'], gmt_epoch(weekago) + jitter)
-    month_ind = find_closest_smaller(month_data['timestamp'], gmt_epoch(monthago) + jitter)
-    three_months_ind = find_closest_smaller(three_months_data['timestamp'], gmt_epoch(threemonthsago) + jitter)
-    year_ind = find_closest_smaller(year_data['timestamp'], gmt_epoch(yearago) + jitter)
-    
-    selector = (lambda d: d['indicators']['adjclose'][0]['adjclose']) if adjusted else (lambda d: d['indicators']['quote'][0]['close'])
-    
-    week_ind = find_previous_nonnull(selector(day_data), week_ind)
-    month_ind = find_previous_nonnull(selector(month_data), month_ind)
-    three_months_ind = find_previous_nonnull(selector(three_months_data), three_months_ind)
-    year_ind = find_previous_nonnull(selector(year_data), year_ind)
-    
-    current = day_data['meta']['regularMarketPrice']
-    last_day_close = current
-    
-    if today_ind is not None and today_ind > 0:
-        prev_day_ind = find_previous_nonnull(selector(day_data), today_ind - 1)
-        if prev_day_ind is not None:
-            last_day_close = selector(day_data)[prev_day_ind]
-    
-    week = selector(day_data)[week_ind] if week_ind is not None else last_day_close
-    month = selector(month_data)[month_ind] if month_ind is not None else week
-    three_months = selector(three_months_data)[three_months_ind] if three_months_ind is not None else month
-    year = selector(year_data)[year_ind] if year_ind is not None else three_months
-    ytd = [e for e in selector(ytd_data) if e][-1]
-    
-    currency = day_data['meta']['currency']
+        # find the best data point to use
+        week_ind = find_closest_smaller(day_data.get('timestamp', []), gmt_epoch(weekago) + jitter)
+        month_ind = find_closest_smaller(month_data.get('timestamp', []), gmt_epoch(monthago) + jitter)
+        three_months_ind = find_closest_smaller(three_months_data.get('timestamp', []), gmt_epoch(threemonthsago) + jitter)
+        year_ind = find_closest_smaller(year_data.get('timestamp', []), gmt_epoch(yearago) + jitter)
+        
+        selector = (lambda d: d['indicators']['adjclose'][0].get('adjclose', [])) if adjusted else (lambda d: d['indicators']['quote'][0].get('close', []))
+        
+        week_ind = find_previous_nonnull(selector(day_data), week_ind)
+        month_ind = find_previous_nonnull(selector(month_data), month_ind)
+        three_months_ind = find_previous_nonnull(selector(three_months_data), three_months_ind)
+        year_ind = find_previous_nonnull(selector(year_data), year_ind)
+        
+        current = day_data['meta']['regularMarketPrice']
+        last_day_close = current
+        
+        if today_ind is not None and today_ind > 0:
+            prev_day_ind = find_previous_nonnull(selector(day_data), today_ind - 1)
+            if prev_day_ind is not None:
+                last_day_close = selector(day_data)[prev_day_ind]
+        
+        week = selector(day_data)[week_ind] if week_ind is not None else last_day_close
+        month = selector(month_data)[month_ind] if month_ind is not None else week
+        three_months = selector(three_months_data)[three_months_ind] if three_months_ind is not None else month
+        year = selector(year_data)[year_ind] if year_ind is not None else three_months
+        ytd = [e for e in selector(ytd_data) if e][-1]
+        
+        currency = day_data['meta']['currency']
 
-    # return parsed data as a dict
-    return {
-            'now': current,
-            'symbol': symbol,
-            'currency': currency,
-            'history': {
-                    'D': gains(current, last_day_close),
-                    'W': gains(current, week),
-                    'M': gains(current, month),
-                    '3M': gains(current, three_months),
-                    'YTD': gains(current, ytd),
-                    'Y': gains(current, year),
+        # return parsed data as a dict
+        return {
+                'now': current,
+                'symbol': symbol,
+                'currency': currency,
+                'history': {
+                        'D': gains(current, last_day_close),
+                        'W': gains(current, week),
+                        'M': gains(current, month),
+                        '3M': gains(current, three_months),
+                        'YTD': gains(current, ytd),
+                        'Y': gains(current, year),
+                    }
                 }
-            }
+    except ValueError:
+        return dict(symbol=symbol, error=True)
 
 async def refresh(widget):
     try:
@@ -152,23 +158,32 @@ def adapter(widget, view, value, index):
     # refresh should return a list of values, adapter is called on each one of them.
     # in our case `value` is the dict returned from symbol_data()
     
-    # use the original textview to display the current value and maybe the currency as well
-    view[0].text = f'{value['now']:.2f}{f' {value['currency']}' if value['currency'] != main_currency else ''}'
+    has_error = value.get('error')
+    if not has_error:
+        # use the original textview to display the current value and maybe the currency as well
+        view[0].text = f'{value['now']:.2f}{f' {value['currency']}' if value['currency'] != main_currency else ''}'
+    else:
+        view[0].text = 'Error'
+        
     view[0].hcenter = widget.hcenter
     view[0].vcenter = widget.vcenter
-    view[0].textSize = 15
+    view[0].textSize = 17
     view[0].textColor = color('white')
     
     # add the symbol name to the left
-    view.append(TextView(text=value['symbol'], left=10, textSize=15, vcenter=view[0].vcenter, textColor=color('white')))
+    view.append(TextView(text=value['symbol'], left=10, textSize=17, vcenter=view[0].vcenter, textColor=color('white')))
     
+    if has_error:
+        return
+        
     # ignore small changes
     epsilon = 1e-4
     values = {k: v if abs(v) > epsilon else 0.0 for k,v in value['history'].items()}
     
     # intialize all texts first, position them later
     texts = [TextView(text=f'{k}\n{v:.2f}', 
-                        textColor=color('white') if abs(v) < epsilon else (color(r=255) if v < 0 else color(g=255)), 
+                        textColor=color('white') if abs(v) < epsilon else (color(r=255) if v < 0 else color(g=255)),
+                        textSize=17,
                         alignment='center',
                         shadowRadius='medium',
                         ) for k,v in values.items()]
