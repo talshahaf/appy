@@ -8,6 +8,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
@@ -21,12 +22,14 @@ public class Configurations
     private DictObj.Dict configurations = new DictObj.Dict();
 
     public static final int NONLOCAL_ID = -1;
+    public static final String GLOBAL_CONFIG_NAME = "global";
 
     private final Context context;
 
     interface ChangeListener
     {
-        void onChange(String widget, String key, int widgetid);
+        //String widget, String key, int widgetid
+        void onChange(Collection<Triple<String, String, Integer>> changes);
     }
 
     private final ChangeListener listener;
@@ -148,7 +151,7 @@ public class Configurations
 
         if (changed)
         {
-            notifyConfigurationUpdate(widget, key, widgetId);
+            notifyConfigurationUpdate(Collections.singleton(new Triple<>(widget, key, widgetId)));
         }
     }
 
@@ -183,7 +186,7 @@ public class Configurations
         }
         if (!changed.isEmpty())
         {
-            notifyConfigurationUpdate(widget, null, widgetId);
+            notifyConfigurationUpdate(Collections.singleton(new Triple<>(widget, null, widgetId)));
         }
     }
 
@@ -230,7 +233,7 @@ public class Configurations
 
         if (!changed.isEmpty())
         {
-            notifyConfigurationUpdate(widget, null, NONLOCAL_ID);
+            notifyConfigurationUpdate(Collections.singleton(new Triple<>(widget, null, NONLOCAL_ID)));
         }
     }
 
@@ -257,7 +260,7 @@ public class Configurations
 
         if (changed)
         {
-            notifyConfigurationUpdate(widget, key, NONLOCAL_ID);
+            notifyConfigurationUpdate(Collections.singleton(new Triple<>(widget, key, NONLOCAL_ID)));
         }
     }
 
@@ -279,7 +282,7 @@ public class Configurations
 
         if (!changed.isEmpty())
         {
-            notifyConfigurationUpdate(widget, null, NONLOCAL_ID);
+            notifyConfigurationUpdate(Collections.singleton(new Triple<>(widget, null, NONLOCAL_ID)));
         }
     }
 
@@ -302,6 +305,7 @@ public class Configurations
             {
                 saveChanges(configurations, changed);
             }
+            notifyConfigurationUpdate(changed);
         }
     }
 
@@ -322,7 +326,7 @@ public class Configurations
             {
                 saveChanges(configurations, Collections.singleton(new Triple<>(widget, key, widgetId)));
             }
-            notifyConfigurationUpdate(widget, key, widgetId);
+            notifyConfigurationUpdate(Collections.singleton(new Triple<>(widget, key, widgetId)));
         }
     }
 
@@ -518,17 +522,19 @@ public class Configurations
             saveChanges(configurations, changedExplicit);
         }
 
+        ArrayList<Triple<String, String, Integer>> changed_ = new ArrayList<>();
         for (Triple<String, String, Integer> change : changed)
         {
-            notifyConfigurationUpdate(change.component1(), change.component2(), change.component3() != null ? change.component3() : NONLOCAL_ID);
+            changed_.add(new Triple<>(change.component1(), change.component2(), change.component3() != null ? change.component3() : NONLOCAL_ID));
         }
+        notifyConfigurationUpdate(changed_);
     }
 
-    private void notifyConfigurationUpdate(String widget, String key, int widgetId)
+    private void notifyConfigurationUpdate(Collection<Triple<String, String, Integer>> changes)
     {
         if (listener != null)
         {
-            listener.onChange(widget, key, widgetId);
+            listener.onChange(changes);
         }
     }
 
@@ -652,7 +658,7 @@ public class Configurations
             configurations = newconfig;
         }
 
-        notifyConfigurationUpdate(null, null, NONLOCAL_ID);
+        notifyConfigurationUpdate(Collections.singleton(new Triple<>(null, null, NONLOCAL_ID)));
     }
 
     private void saveChanges(DictObj.Dict configDict, Collection<Triple<String, String, Integer>> changes)

@@ -1,6 +1,7 @@
 package com.appy;
 
 import android.content.Context;
+import android.graphics.Typeface;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -22,6 +23,7 @@ public class ListFragmentAdapter extends BaseAdapter
         KeyFormat keyFormat;
         Object arg;
         boolean enabled;
+        boolean important;
 
         @Override
         public String toString()
@@ -36,6 +38,7 @@ public class ListFragmentAdapter extends BaseAdapter
             this.keyFormat = keyFormat;
             this.arg = arg;
             this.enabled = true;
+            this.important = false;
         }
 
         public Item(String key, String value)
@@ -51,6 +54,11 @@ public class ListFragmentAdapter extends BaseAdapter
         public void setEnabled(boolean enabled)
         {
             this.enabled = enabled;
+        }
+
+        public void setImportant(boolean important)
+        {
+            this.important = important;
         }
     }
     public static int MAX_VALUE_LENGTH = 100;
@@ -118,9 +126,18 @@ public class ListFragmentAdapter extends BaseAdapter
         }
 
         Item item = items.get(position);
-
+        
         TextView text1 = twoLineListItem.findViewById(R.id.text1);
         TextView text2 = twoLineListItem.findViewById(R.id.text2);
+
+        if (item.important)
+        {
+            text1.setTypeface(null, Typeface.BOLD_ITALIC);
+        }
+        else
+        {
+            text1.setTypeface(null, Typeface.NORMAL);
+        }
 
         text1.setText(trimValue(item.keyFormat.format(item)));
 

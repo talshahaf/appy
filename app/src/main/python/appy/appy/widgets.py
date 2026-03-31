@@ -54,10 +54,10 @@ class Widget:
         self.__init__(state['widget_id'], state['name'])
 
     def __getattr__(self, item):
-        if item == 'config':
-            return configs.get_dict(self.name, self.widget_id, False)
-        if item == 'raw_config':
-            return configs.get_dict(self.name, self.widget_id, True)
+        if item in ('config', 'raw_config'):
+            return configs.get_dict(self.name, self.widget_id, item == 'raw_config')
+        if item in ('global_config', 'raw_global_config'):
+            return self.get_global_config_dict(self.widget_id, item == 'raw_global_config')
         return getattr(self.widget_dims, item)
         
     def __eq__(self, other):
@@ -143,11 +143,40 @@ class Widget:
         f(self.name) if all_widgets else f(self.name, self.widget_id)
 
     def request_config_change(self, config, all_widgets=False, timeout=None):
+        self._request_config_change(self.name, self.widget_id, config, all_widgets, timeout)
+
+    # both staticmethod and instancemethod
+    def request_global_config_change(self_or_config, *arg, all_widgets=False, timeout=None):
+        if isinstance(self_or_config, Widget):
+            #instancemethod
+            if len(arg) != 1:
+                raise TypeError("expected 'config' arg")
+            self, config = self_or_config, arg[0]
+            self._request_config_change(configs.global_widget_config_name, self.widget_id, config, all_widgets, timeout)
+        else:
+            #staticmethod
+            if args:
+                raise TypeError("expected 'config' arg")
+            config = self_or_config
+            Widget._request_config_change(configs.global_widget_config_name, None, config, all_widgets, timeout)
+
+    @staticmethod
+    def _request_config_change(name, widget_id, config, all_widgets, timeout):
+        if not all_widgets and widget_id is None:
+            raise ValueError('cannot use all_widgets=False without widget_id')
         f = widget_manager.java_context().requestConfigChange
         t = int(timeout * 1000) if timeout is not None else -1
-        completed = f(self.name, config, t) if all_widgets else f(self.name, self.widget_id, config, t)
+        completed = f(name, config, t) if all_widgets else f(name, widget_id, config, t)
         if not completed:
             raise RuntimeError('timeout')
+
+    @staticmethod
+    def get_global_config_dict(widget_id, raw=False):
+        return configs.get_dict(configs.global_widget_config_name, widget_id, raw)
+
+    @staticmethod
+    def declare_global_config(key, default_value, description=None):
+        configs.set_defaults(configs.global_widget_config_name, {key: default_value}, None if description is None else {key: description})
 
     @staticmethod
     def click_invoker(element_id, views, **kwargs):
@@ -240,10 +269,12 @@ def restart():
 def toast(text, long=False):
     widget_manager.java_context().toast(str(text), long)
 
-def color_(**kwargs):
-    return color(**kwargs)
+def color_(*args, **kwargs):
+    return color(*args, **kwargs)
     
-def background(name=None, color=None, drawable=None):
+def background(*, widget=None, name=None, color=None, drawable=None):
+    Widget.declare_global_config('background_color', dict(r=0, g=0, b=0, a=100), 'Sets the default background color for the background() function')
+
     if isinstance(color, dict):
         color = color_(**color)
     elif isinstance(color, (list, tuple)):
@@ -251,7 +282,8 @@ def background(name=None, color=None, drawable=None):
     elif isinstance(color, int):
         color = color
     else:
-        color = color_(r=0, g=0, b=0, a=100)
+        background_config = Widget.get_global_config_dict(widget.widget_id if widget else None).get('background_color')
+        color = color_(**background_config)
 
     if drawable is None:
         drawable = R.drawable.rounded_rect

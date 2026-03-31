@@ -10,8 +10,10 @@ class ConfigDict(AttrDict):
 global_configs = {}
 previous_dict_config = ''
 
+global_widget_config_name = 'global'
+
 def get_value(config, widget_id, raw):
-    if widget_id in config['raw_instance_values']:
+    if widget_id is not None and widget_id in config['raw_instance_values']:
         #instance override
         if raw or 'instance_values' not in config:
             return config['raw_instance_values'][widget_id]
@@ -22,7 +24,7 @@ def get_value(config, widget_id, raw):
     return config['value']
 
 def get_dict(widget, widget_id, raw):
-    return ConfigDict({k: get_value(config, widget_id, raw) for k, config in global_configs[widget].items()})
+    return ConfigDict({k: get_value(config, widget_id, raw) for k, config in global_configs.get(widget, {}).items()})
 
 def set_defaults(widget, dic, descriptions):
     jsoned = {k : {'default': (json.dumps(v, indent=2) if not k.endswith('_nojson') else v), 'description': descriptions.get(k) if descriptions else None} for k,v in dic.items()}

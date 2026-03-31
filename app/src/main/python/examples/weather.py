@@ -62,7 +62,7 @@ def on_config(widget, views):
     on_refresh(widget, views)
     
 def create(widget):
-    bg = background()
+    bg = background(widget=widget)
     refresh = RefreshButton(on_refresh, widget=widget, initial_refresh=True, interval=4*3600, right=0, bottom=0)
     #                               width and height are 60% of the widget's height but no more than 200 pixels 
     img = ImageView(name='img', width=AttributeValue.min(200, widget.height * 0.6), height=AttributeValue.min(200, widget.height * 0.5), adjustViewBounds=True, hcenter=widget.hcenter, top=10)

@@ -93,7 +93,7 @@ def create(widget):
     #                                                   using inverted right + pad
     next_btn = Button(style='secondary_sml', text='>', left=widget.hcenter, right=0, bottom=0, click=(flip, dict(amount=1)))
     #              naming the flipper to access it later
-    return [background(), AdapterViewFlipper(name='flipper', left=0, top=0, bottom=prev_btn.itop, right=refresh.ileft), prev_btn, next_btn, refresh]
+    return [background(widget=widget), AdapterViewFlipper(name='flipper', left=0, top=0, bottom=prev_btn.itop, right=refresh.ileft), prev_btn, next_btn, refresh]
         
 #                             recover refresh_button visibility on error
 register_widget('rss', create, refresh_button_update_func)

@@ -1595,12 +1595,14 @@ def reload_python_file(path):
 def add_python_file(path):
     return java_context().addPythonFileByPathWithDialog(path)
 
+reserved_names = [configs.global_widget_config_name]
 def register_widget(name, create, update=None, config=None, config_description=None, on_config=None, on_share=None, on_app=None, debug=False):
     if not name or type(name) != str:
         raise ValueError('name must be str')
-
     if len(name) > 256:
         raise ValueError('name length > 256')
+    if name in reserved_names:
+        raise ValueError(f'{name} is reserved')
 
     path = getattr(__importing_module, 'path', None)
     if path is None:

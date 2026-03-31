@@ -59,7 +59,7 @@ def create(widget):
                            imageResource=androidR.drawable.ic_menu_edit)
     
     widget.invalidate()
-    return [background(drawable=R.drawable.rect), title, lst, edit_btn]
+    return [background(widget=widget, drawable=R.drawable.rect), title, lst, edit_btn]
     
 register_widget('tasklist', create,
                     # Also refresh list every update so we can call invalidate from other tasklists

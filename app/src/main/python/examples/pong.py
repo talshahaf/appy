@@ -174,7 +174,7 @@ def create(widget):
     
     widget.state.counter = 0
     widget.post(update_counter)
-    return [background(), counter, ping]
+    return [background(widget=widget), counter, ping]
     
 register_widget(widget_name, create, config=dict(method='notification'), config_description=dict(method="Can be either 'html' or 'notification'"))
 register_receiver()

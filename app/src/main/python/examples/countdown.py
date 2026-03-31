@@ -36,7 +36,7 @@ def create(widget):
                            imageResource=androidR.drawable.ic_menu_edit)
     
     # Set up a semi-transparent black rectangle as background
-    return [background(drawable=R.drawable.rect), timer, edit_btn]
+    return [background(widget=widget, drawable=R.drawable.rect), timer, edit_btn]
 
 register_widget('countdown',
                 create,

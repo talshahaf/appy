@@ -160,6 +160,6 @@ def create(widget):
     # start the timer handler to reschedule itself
     # this is done via widget.post so that it will be called with the `widget` and `views` parameters
     widget.post(timer_action)
-    return [background(), mark_btn, streak, config]
+    return [background(widget=widget), mark_btn, streak, config]
 
 register_widget('recurrent', create)

@@ -3,6 +3,7 @@ package com.appy;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.graphics.Color;
 import android.os.Bundle;
 
 import androidx.appcompat.app.AlertDialog;
@@ -247,11 +248,15 @@ public class ConfigsFragment extends FragmentParent
             int widgetId;
             DictObj.Dict props;
             boolean deleted;
-            public WidgetListElement(int widgetId, boolean deleted, DictObj.Dict props)
+            boolean displayName;
+            boolean hasInstanceConfigs;
+            public WidgetListElement(int widgetId, DictObj.Dict props, boolean deleted, boolean displayName, boolean hasInstanceConfigs)
             {
                 this.widgetId = widgetId;
                 this.props = props;
                 this.deleted = deleted;
+                this.displayName = displayName;
+                this.hasInstanceConfigs = hasInstanceConfigs;
             }
 
             @Override
@@ -261,7 +266,7 @@ public class ConfigsFragment extends FragmentParent
                 {
                     return "All widgets";
                 }
-                return ((props != null && props.getBoolean("app", false)) ? "app #" : "widget #") + widgetId + (deleted ? " (deleted)" : "");
+                return (hasInstanceConfigs ? "*" : "") + ((props != null && props.getBoolean("app", false)) ? "app #" : "widget #") + widgetId + (deleted ? " (deleted)" : "") + (displayName && props != null && props.getString("display_name") != null ? " (" + props.getString("display_name") + ")" : "");
             }
 
             @Override
@@ -320,8 +325,22 @@ public class ConfigsFragment extends FragmentParent
                 }
 
                 HashMap<String, Integer> widgets = getWidgetService().getConfigurations().listWidgets();
+                if (widgets.containsKey(Configurations.GLOBAL_CONFIG_NAME))
+                {
+                    // add global first
+                    ListFragmentAdapter.Item item = new ListFragmentAdapter.Item(Configurations.GLOBAL_CONFIG_NAME,
+                                                                                 Utils.enumerableFormat(widgets.get(Configurations.GLOBAL_CONFIG_NAME), "configuration", " configurations"),
+                                                                                 i -> Utils.capitalize(i.key),
+                                                                                 null);
+                    item.setImportant(true);
+                    adapterList.add(item);
+                }
                 for (Map.Entry<String, Integer> item : widgets.entrySet())
                 {
+                    if (item.getKey().equals(Configurations.GLOBAL_CONFIG_NAME))
+                    {
+                        continue;
+                    }
                     adapterList.add(new ListFragmentAdapter.Item(item.getKey(), Utils.enumerableFormat(item.getValue(), "configuration", " configurations")));
                 }
             }
@@ -329,18 +348,21 @@ public class ConfigsFragment extends FragmentParent
             {
                 if (getActivity() != null)
                 {
-                    getActivity().setTitle("Configurations of " + widget);
+                    boolean isGlobal = widget.equals(Configurations.GLOBAL_CONFIG_NAME);
+                    getActivity().setTitle(isGlobal ? "Global configurations" : "Configurations of " + widget);
                     widgetPicker.setVisibility(View.VISIBLE);
                     widgetPicker.requestLayout();
 
-                    DictObj.Dict widgetInstances = getWidgetService().getAllWidgetAppProps(widget, false, false);
+                    DictObj.Dict widgetInstances = getWidgetService().getAllWidgetAppProps(isGlobal ? null : widget, false, false);
                     HashMap<String, Set<Integer>> widgetConfigInstances = getWidgetService().getConfigurations().getInstanceValues(widget);
 
+                    HashSet<Integer> haveInstanceConfigurations = new HashSet<>();
                     HashSet<Integer> deletedInstances = new HashSet<>();
                     for (Set<Integer> widgetIds : widgetConfigInstances.values())
                     {
                         for (int widgetId : widgetIds)
                         {
+                            haveInstanceConfigurations.add(widgetId);
                             if (!widgetInstances.hasKey(widgetId+""))
                             {
                                 deletedInstances.add(widgetId);
@@ -349,16 +371,17 @@ public class ConfigsFragment extends FragmentParent
                     }
 
                     WidgetListElement[] elements = new WidgetListElement[widgetInstances.size() + deletedInstances.size() + 1];
-                    elements[0] = new WidgetListElement(Configurations.NONLOCAL_ID, false,null);
+                    elements[0] = new WidgetListElement(Configurations.NONLOCAL_ID, null, false, false, false);
                     int i = 1;
                     for (DictObj.Entry entry : widgetInstances.entries())
                     {
-                        elements[i] = new WidgetListElement(Integer.parseInt(entry.key), false, (DictObj.Dict) entry.value);
+                        int widgetId = Integer.parseInt(entry.key);
+                        elements[i] = new WidgetListElement(widgetId, (DictObj.Dict) entry.value, false, isGlobal, haveInstanceConfigurations.contains(widgetId));
                         i++;
                     }
                     for (int deletedInstance : deletedInstances)
                     {
-                        elements[i] = new WidgetListElement(deletedInstance, true, null);
+                        elements[i] = new WidgetListElement(deletedInstance, null, true, false, true);
                         i++;
                     }
                     Arrays.sort(elements);

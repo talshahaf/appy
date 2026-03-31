@@ -165,9 +165,9 @@ def updating_template_create(is_list, widget, initial_values, on_refresh, backgr
 
     views = elist()
     if background_params is True:
-        views.append(background())
+        views.append(background(widget=widget))
     elif isinstance(background_params, dict):
-        views.append(background(**background_params))
+        views.append(background(widget=widget, **background_params))
 
     views.append(content)
     if last_update:

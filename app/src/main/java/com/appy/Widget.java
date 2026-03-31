@@ -2753,7 +2753,7 @@ public class Widget extends RemoteViewsService
         addTask(widgetId, new Task<>(new CallPostTask(), widgetId, data), false);
     }
 
-    public void configurationUpdate(String widget, String key, int widgetId)
+    public void configurationUpdate(Collection<Triple<String, String, Integer>> changes)
     {
         if (updateListener != null)
         {
@@ -2766,19 +2766,25 @@ public class Widget extends RemoteViewsService
                 Log.e("APPY", "Exception in python", e);
             }
 
-            if (widget != null)
+            for (Triple<String, String, Integer> change : changes)
             {
-                if (widgetId == Configurations.NONLOCAL_ID)
+                String widget = change.component1();
+                String key = change.component2();
+                int widgetId = change.component3();
+                if (widget != null)
                 {
-                    int[] widgetIds = getAllWidgetsByName(widget);
-                    for (int id : widgetIds)
+                    if (widgetId == Configurations.NONLOCAL_ID)
                     {
-                        addTask(id, new Task<>(new CallConfigTask(), id, key), false);
+                        int[] widgetIds = getAllWidgetsByName(widget);
+                        for (int id : widgetIds)
+                        {
+                            addTask(id, new Task<>(new CallConfigTask(), id, key), false);
+                        }
                     }
-                }
-                else
-                {
-                    addTask(widgetId, new Task<>(new CallConfigTask(), widgetId, key), false);
+                    else
+                    {
+                        addTask(widgetId, new Task<>(new CallConfigTask(), widgetId, key), false);
+                    }
                 }
             }
         }
