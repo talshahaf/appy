@@ -99,3 +99,66 @@ gradlew.bat assembleRelease -Pandroid.injected.signing.store.file=$KEYFILE \
  -Pandroid.injected.signing.key.alias=$KEY_ALIAS \
  -Pandroid.injected.signing.key.password=$KEY_PASSWORD
 ```
+
+## Additional Info  
+
+### Requirements  
+Android 12+ with an arm64 processor.  
+
+### AI  
+No AI was used to develop Appy.  
+But it doesn't have any problem creating widgets as well: (tested on Claude Sonnet 4.6)  
+```
+Hi, read the docs of this framework:
+https://github.com/talshahaf/appy/wiki
+And build me a widget with a textview that changes text color each time you click it using that framework
+```
+
+<br/>  
+<br/>  
+
+```
+Here's your Appy widget! Here's how it works:
+
+A TextView labeled "Tap me!" is centered on the widget. The click callback is set directly on it, so tapping the text itself cycles through 6 colors (red → orange → green → blue → purple → white → back to red).
+widget.state.color_index persists the current color index between taps.
+The color list uses widgets.color(r, g, b) as shown in the Appy docs.
+
+To use it: transfer color_text_widget.py to your Android device (e.g. into Android/media/com.appy.widgets/), import it via the Appy Files tab, add an Appy widget to your homescreen, and select color_text.
+```
+
+```py
+from appy import widgets
+from appy import register_widget
+ 
+COLORS = [
+    widgets.color(r=255, g=80,  b=80),   # red
+    widgets.color(r=255, g=180, b=0),    # orange
+    widgets.color(r=80,  g=220, b=80),   # green
+    widgets.color(r=80,  g=180, b=255),  # blue
+    widgets.color(r=200, b=255, g=80),   # purple
+    widgets.color(r=255, g=255, b=255),  # white
+]
+ 
+def click(widget, views):
+    widget.state.color_index = (widget.state.color_index + 1) % len(COLORS)
+    views['label'].textColor = COLORS[widget.state.color_index]
+ 
+def create(widget):
+    widget.state.color_index = 0
+ 
+    label = widgets.TextView(
+        name='label',
+        text='Tap me!',
+        textSize=36,
+        textColor=COLORS[0],
+        click=click,
+        hcenter=widget.hcenter,
+        vcenter=widget.vcenter,
+    )
+ 
+    return [label]
+ 
+register_widget('color_text', create)
+ 
+```
