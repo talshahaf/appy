@@ -3,7 +3,6 @@ package com.appy;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.graphics.Color;
 import android.os.Bundle;
 
 import androidx.appcompat.app.AlertDialog;
@@ -371,20 +370,40 @@ public class ConfigsFragment extends FragmentParent
                     }
 
                     WidgetListElement[] elements = new WidgetListElement[widgetInstances.size() + deletedInstances.size() + 1];
-                    elements[0] = new WidgetListElement(Configurations.NONLOCAL_ID, null, false, false, false);
-                    int i = 1;
+                    int starti = 0;
+                    //set selected first and NONLOCAL after
+                    if (widgetId != Configurations.NONLOCAL_ID)
+                    {
+                        if (widgetInstances.hasKey(widgetId+""))
+                        {
+                            elements[starti++] = new WidgetListElement(widgetId, (DictObj.Dict) widgetInstances.get(widgetId+""), false, isGlobal, haveInstanceConfigurations.contains(widgetId));
+                        }
+                        else if (deletedInstances.contains(widgetId))
+                        {
+                            elements[starti++] = new WidgetListElement(widgetId, null, true, false, true);
+                        }
+                    }
+                    elements[starti++] = new WidgetListElement(Configurations.NONLOCAL_ID, null, false, false, false);
+
+                    int i = starti;
                     for (DictObj.Entry entry : widgetInstances.entries())
                     {
-                        int widgetId = Integer.parseInt(entry.key);
-                        elements[i] = new WidgetListElement(widgetId, (DictObj.Dict) entry.value, false, isGlobal, haveInstanceConfigurations.contains(widgetId));
-                        i++;
+                        int id = Integer.parseInt(entry.key);
+                        if (id == widgetId)
+                        {
+                            continue;
+                        }
+                        elements[i++] = new WidgetListElement(id, (DictObj.Dict) entry.value, false, isGlobal, haveInstanceConfigurations.contains(id));
                     }
                     for (int deletedInstance : deletedInstances)
                     {
-                        elements[i] = new WidgetListElement(deletedInstance, null, true, false, true);
-                        i++;
+                        if (deletedInstance == widgetId)
+                        {
+                            continue;
+                        }
+                        elements[i++] = new WidgetListElement(deletedInstance, null, true, false, true);
                     }
-                    Arrays.sort(elements);
+                    Arrays.sort(elements, starti, elements.length);
                     int current_position = -1;
                     for (i = 0; i < elements.length; i++)
                     {

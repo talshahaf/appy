@@ -4851,15 +4851,16 @@ public class Widget extends RemoteViewsService
 
         String displayName = "widget #" + widgetId + " (" + widgetName + ")";
 
-        String[] texts = new String[]{ "Open Config", "Recreate", "Reload", "Set Scale Factor", "Edit", "Show Last Error", "Clear"};
+        String[] texts = new String[]{ "Open Config", "Recreate", "Reload", "Set Scale Factor", "Edit", "Show Last Error", "Open Global Config", "Clear"};
         String[] actions = new String[] {Constants.SPECIAL_WIDGET_OPEN_CONFIGURATION + "," + widgetId + "," + widgetName,
                                          Constants.SPECIAL_WIDGET_RECREATE + "," + widgetId,
                                          widgetPath == null ? null : (Constants.SPECIAL_WIDGET_RELOAD + "," + widgetPath),
                                          Constants.SPECIAL_WIDGET_SCALE_FACTOR + "," + widgetId,
                                          widgetPath == null ? null : (Constants.SPECIAL_WIDGET_EDIT_FILE + "," + widgetPath),
                                          Constants.SPECIAL_WIDGET_SHOWERROR + "," + lastError,
+                                         Constants.SPECIAL_WIDGET_OPEN_CONFIGURATION + "," + widgetId + "," + Configurations.GLOBAL_CONFIG_NAME,
                                          Constants.SPECIAL_WIDGET_CLEAR + "," + widgetId};
-        String[] confirm = new String[] {null, null, null, null, null, null, "Clear " + displayName + "?"};
+        String[] confirm = new String[] {null, null, null, null, null, null, null, "Clear " + displayName + "?"};
 
         Parcelable[] intents = new Parcelable[actions.length];
         for (int i = 0; i < actions.length; i++)
@@ -4902,7 +4903,7 @@ public class Widget extends RemoteViewsService
     private boolean pythonSetup(int pythonFlags)
     {
         Log.d("APPY", "dir: " + getApplicationInfo().nativeLibraryDir);
-        if (!startedAfterSetup && pythonSetupTask.getState() == Constants.StartupState.IDLE)
+        if (pythonSetupTask.getState() == Constants.StartupState.IDLE)
         {
             startupState = Constants.StartupState.IDLE;
             handler = new Handler();
@@ -4960,26 +4961,33 @@ public class Widget extends RemoteViewsService
         return true;
     }
 
+    final Object startedAfterSetupLock = new Object();
     boolean startedAfterSetup = false;
     final PythonSetupTask pythonSetupTask = new PythonSetupTask();
 
     public void handleStartCommand(Intent intent)
     {
-        Utils.setCrashHandlerIfNeeded(Utils.getCrashPath(this, Constants.CrashIndex.JAVA_CRASH_INDEX));
+        if (!startedAfterSetup)
+        {
+            Utils.setCrashHandlerIfNeeded(Utils.getCrashPath(this, Constants.CrashIndex.JAVA_CRASH_INDEX));
+        }
 
         loadForeground();
 
-        int flags = getAndClearNextStartupFlags();
-        if (!pythonSetup(flags))
-        {
-            return;
-        }
-
         boolean firstStart = false;
-        if (!startedAfterSetup)
+        synchronized (startedAfterSetupLock)
         {
-            firstStart = true;
-            startedAfterSetup = true;
+            if (!startedAfterSetup)
+            {
+                int flags = getAndClearNextStartupFlags();
+                if (!pythonSetup(flags))
+                {
+                    return;
+                }
+
+                firstStart = true;
+                startedAfterSetup = true;
+            }
         }
 
         Log.d("APPY", "startCommand");

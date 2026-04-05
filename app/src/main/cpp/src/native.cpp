@@ -3902,6 +3902,11 @@ Java_com_appy_Widget_pythonInit(JNIEnv * env, jclass clazz, jstring j_pythonhome
         });
 
         LOG("python init");
+        if (python_initialized || Py_IsInitialized())
+        {
+            env->ThrowNew(python_exception_class, "Python already initialized");
+            return;
+        }
 
         populate_common_java_objects(env);
 
