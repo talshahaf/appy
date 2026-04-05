@@ -10,9 +10,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ListView;
-import android.widget.TextView;
-
-import androidx.appcompat.app.AlertDialog;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -217,25 +214,6 @@ public class TimerFragment extends FragmentParent
                 fragment.setWidget(item.key);
                 parent.switchTo(fragment, false);
             }
-        }
-
-        public void showViewer(String title, String text)
-        {
-            AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
-
-            builder.setTitle(title);
-
-            builder.setNeutralButton("OK", null);
-
-            View layout = LayoutInflater.from(getActivity()).inflate(R.layout.alert_error_view_vertical, null);
-
-            TextView message = layout.findViewById(R.id.message);
-            message.setText(text + "\n\n");
-
-            builder.setView(layout);
-
-            AlertDialog alert = builder.create();
-            alert.show();
         }
 
         @Override

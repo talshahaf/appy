@@ -34,11 +34,6 @@ public class DynamicView
         return id;
     }
 
-    public DynamicView()
-    {
-
-    }
-
     public DynamicView(String type)
     {
         this(genId(), type);

@@ -118,6 +118,10 @@ public class CrashFragment extends FragmentParent
         public void onResume()
         {
             super.onResume();
+            if (getActivity() != null)
+            {
+                getActivity().setTitle("Crashes");
+            }
             refresh();
         }
 
@@ -170,6 +174,10 @@ public class CrashFragment extends FragmentParent
         public void onResume()
         {
             super.onResume();
+            if (getActivity() != null)
+            {
+                getActivity().setTitle(title);
+            }
             refresh();
         }
 

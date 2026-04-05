@@ -32,7 +32,8 @@ add_library( # Specifies the name of the library.
              SHARED
 
              # Provides a relative path to your source file(s).
-             src/main/cpp/src/native.cpp)
+             src/main/cpp/src/native.cpp
+             src/main/cpp/src/crashhandler.cpp)
 
 add_library(pythonlib SHARED IMPORTED)
 set_target_properties(pythonlib PROPERTIES IMPORTED_LOCATION

@@ -1,5 +1,7 @@
 package com.appy;
 
+import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.res.Resources;
@@ -17,6 +19,7 @@ import android.util.Log;
 import android.util.Pair;
 import android.util.Size;
 import android.util.TypedValue;
+import android.widget.Toast;
 
 import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AlertDialog;
@@ -609,12 +612,30 @@ public class Utils
         return new Pair<>(intersection, xor);
     }
 
-    public static void showConfirmationDialog(Context context, String title, String message, int icon, String yes, String no, Runnable yesAction)
+    public static void copyToClipboard(Context context, String label, String data, String toastMesasge)
     {
-        showConfirmationDialog(context, title, message, icon, yes, no, yesAction, null);
+        ClipboardManager clipboard = (ClipboardManager) context.getSystemService(Context.CLIPBOARD_SERVICE);
+        ClipData clip = ClipData.newPlainText(label, data);
+        clipboard.setPrimaryClip(clip);
+        if (toastMesasge != null && !toastMesasge.isEmpty())
+        {
+            Toast.makeText(context, toastMesasge, Toast.LENGTH_SHORT).show();
+        }
     }
 
+    public static void showConfirmationDialog(Context context, String title, String message, int icon, String yes, String no, Runnable yesAction)
+    {
+        showConfirmationDialog(context, title, message, icon, yes, no, yesAction, null, null, null);
+    }
     public static void showConfirmationDialog(Context context, String title, String message, int icon, String yes, String no, Runnable yesAction, Runnable otherAction)
+    {
+        showConfirmationDialog(context, title, message, icon, yes, no, yesAction, otherAction, null, null);
+    }
+    public static void showConfirmationDialog(Context context, String title, String message, int icon, String yes, String no, Runnable yesAction, Runnable otherAction, Runnable dismissAction)
+    {
+        showConfirmationDialog(context, title, message, icon, yes, no, yesAction, otherAction, dismissAction, null);
+    }
+    public static void showConfirmationDialog(Context context, String title, String message, int icon, String yes, String no, Runnable yesAction, Runnable otherAction, Runnable dismissAction, RunnableArg<AlertDialog.Builder> builderHook)
     {
         AlertDialog.Builder builder = new AlertDialog.Builder(context)
                 .setTitle(title)
@@ -624,9 +645,7 @@ public class Utils
         {
             builder.setIcon(icon);
         }
-
         DialogInterface.OnClickListener yesClick = (dialog, whichButton) -> yesAction.run();
-
         DialogInterface.OnClickListener noClick = otherAction == null ? null : (dialog, which) -> otherAction.run();
 
         if (yes == null)
@@ -648,6 +667,12 @@ public class Utils
         }
 
         builder.setOnCancelListener(otherAction == null ? null : dialog -> otherAction.run());
+        builder.setOnDismissListener(dismissAction == null ? null : dialog -> dismissAction.run());
+
+        if (builderHook != null)
+        {
+            builderHook.run(builder);
+        }
 
         builder.show();
     }

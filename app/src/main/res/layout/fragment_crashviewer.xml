@@ -37,7 +37,8 @@
                 android:text=""
                 android:textColor="@android:color/white"
                 android:scrollHorizontally="true"
-                android:textIsSelectable="true"/>
+                android:textIsSelectable="true"
+                android:typeface="monospace"/>
         </ScrollView>
     </HorizontalScrollView>
 

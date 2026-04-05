@@ -6,6 +6,8 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.ref.Reference;
+import java.lang.ref.WeakReference;
 import java.lang.reflect.InvocationTargetException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -640,7 +642,7 @@ public class Widget extends RemoteViewsService
             }
         }
 
-        public static RemoteViews inflateChild(Widget service, int widgetId, DynamicView collectionview, int position, int[] widgetDimensions, Object[] collectionLock) throws InvocationTargetException, IllegalAccessException
+        public static RemoteViews inflateChild(Widget service, int widgetId, DynamicView collectionview, int position, int[] widgetDimensions, Reference<Object> collectionLock) throws InvocationTargetException, IllegalAccessException
         {
             ArrayList<DynamicView> child;
             String type;
@@ -648,7 +650,7 @@ public class Widget extends RemoteViewsService
             int actualWidth;
             int actualHeight;
 
-            synchronized (collectionLock[0])
+            synchronized (collectionLock.get())
             {
                 if (position >= collectionview.children.size())
                 {
@@ -705,7 +707,7 @@ public class Widget extends RemoteViewsService
             RemoteViews ret = null;
             try
             {
-                ret = inflateChild(service, widgetId, collectionview, position, widgetDimensions, new Object[] {lock});
+                ret = inflateChild(service, widgetId, collectionview, position, widgetDimensions, new WeakReference<>(lock));
             }
             catch (Exception e)
             {
@@ -1038,11 +1040,11 @@ public class Widget extends RemoteViewsService
                     {
                         // This enables proper onclick handing to children as well
                         int[] widgetDimensions = service.getWidgetDimensions(widgetId);
-                        Object[] lock = new Object[] {new Object()};
+                        Object lock = new Object();
                         RemoteViews.RemoteCollectionItems.Builder collection = new RemoteViews.RemoteCollectionItems.Builder();
                         for (int i = 0; i < layout.children.size(); i++)
                         {
-                            RemoteViews child = CollectionFactory.inflateChild(service, widgetId, layout, i, widgetDimensions, lock);
+                            RemoteViews child = CollectionFactory.inflateChild(service, widgetId, layout, i, widgetDimensions, new WeakReference<>(lock));
                             if (child == null)
                             {
                                 throw new RuntimeException("inflate child returned null");
@@ -2197,7 +2199,7 @@ public class Widget extends RemoteViewsService
     }
 
     //pass lock by ref through array of size 1
-    public void saveProps(ConcurrentHashMap<Integer, DictObj.Dict> map, Object[] mapLock, String domain, int widgetId, boolean flush)
+    public void saveProps(ConcurrentHashMap<Integer, DictObj.Dict> map, Reference<Object> mapLock, String domain, int widgetId, boolean flush)
     {
         StoreData store = StoreData.Factory.create(this, domain);
         DictObj.Dict props = map.get(widgetId);
@@ -2207,7 +2209,7 @@ public class Widget extends RemoteViewsService
             return;
         }
 
-        synchronized (mapLock[0])
+        synchronized (mapLock.get())
         {
             props = (DictObj.Dict)props.copy(false);
         }
@@ -2222,7 +2224,7 @@ public class Widget extends RemoteViewsService
 
     public void saveWidgetProps(int widgetId, boolean flush)
     {
-        saveProps(widgetProps, new Object[]{widgetPropsLock}, "widget_props", widgetId, flush);
+        saveProps(widgetProps, new WeakReference<>(widgetPropsLock), "widget_props", widgetId, flush);
     }
 
     public void setWidgetSizeFactor(int widgetId, Float sizeFactor)
@@ -2462,7 +2464,7 @@ public class Widget extends RemoteViewsService
             widgetAppIcons.remove(widgetId);
         }
 
-        saveProps(widgetAppIcons, new Object[] {widgetAppIconsLock}, "widget_app_icons", widgetId, true);
+        saveProps(widgetAppIcons, new WeakReference<>(widgetAppIconsLock), "widget_app_icons", widgetId, true);
     }
 
     public float[] getCorrectionFactors()
@@ -4274,7 +4276,7 @@ public class Widget extends RemoteViewsService
                 System.loadLibrary("prehelpers");
                 System.load(pythonLib);
                 System.loadLibrary("native");
-                pythonInit(pythonHome, cacheDir, pythonLib, new File(cacheDir, "main.py").getAbsolutePath(), getApplicationInfo().nativeLibraryDir, Widget.this, new String[] { "FLAGS=" + pythonFlags, "AMPM=" + ampm, "SHORTWEEK=" + weekshort, "LONGWEEK=" + weeklong, "SHORTMONTH=" + monthshort, "LONGMONTH=" + monthlong, "DATEFORMAT=" + dateformat, "TIMEFORMAT=" + timeformat, "DATETIMEFORMAT=" + datetimeformat });
+                pythonInit(Utils.getCrashPath(Widget.this, Constants.CrashIndex.NATIVE_CRASH_INDEX), pythonHome, cacheDir, pythonLib, new File(cacheDir, "main.py").getAbsolutePath(), getApplicationInfo().nativeLibraryDir, Widget.this, new String[] { "FLAGS=" + pythonFlags, "AMPM=" + ampm, "SHORTWEEK=" + weekshort, "LONGWEEK=" + weeklong, "SHORTMONTH=" + monthshort, "LONGMONTH=" + monthlong, "DATEFORMAT=" + dateformat, "TIMEFORMAT=" + timeformat, "DATETIMEFORMAT=" + datetimeformat });
 
                 initAllPythonFiles();
 
@@ -5253,10 +5255,14 @@ public class Widget extends RemoteViewsService
                                             title = parts[0];
                                             error = parts[1];
                                         }
+                                        if (!error.isEmpty())
+                                        {
+                                            error = error + "\n\n";
+                                        }
 
                                         Log.d("APPY", "showing error");
 
-                                        showDialogNoWait(null, title, error, new String[]{"Close"}, new String[0], new String[0], new String[0][], DialogActivity.DIALOG_FLAG_SCROLL_BOTTOM);
+                                        showDialogNoWait(null, title, error, new String[]{"Close"}, new String[0], new String[0], new String[0][], DialogActivity.DIALOG_FLAG_SCROLL_BOTTOM | DialogActivity.DIALOG_FLAG_MONOSPACE | DialogActivity.DIALOG_FLAG_HORIZONTAL_SCROLL | DialogActivity.DIALOG_FLAG_SELECTABLE);
                                         break;
                                 }
                             }
@@ -5402,7 +5408,7 @@ public class Widget extends RemoteViewsService
         }
     }
 
-    protected static native void pythonInit(String pythonHome, String tmpPath, String pythonLibPath, String script, String nativepath, Object arg, String[] pythonArgs);
+    protected static native void pythonInit(String nativeCrashPath, String pythonHome, String tmpPath, String pythonLibPath, String script, String nativepath, Object arg, String[] pythonArgs);
 
     protected static native Object pythonCall(Object... args) throws Throwable;
 }

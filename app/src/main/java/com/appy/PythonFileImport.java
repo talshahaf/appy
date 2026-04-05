@@ -1,7 +1,6 @@
 package com.appy;
 
 import android.content.Context;
-import android.content.DialogInterface;
 import android.net.Uri;
 import android.util.Log;
 import android.util.Pair;
@@ -52,12 +51,9 @@ public class PythonFileImport
         container.addView(extview);
         container.addView(textView);
 
-        DialogInterface.OnClickListener yesClick = (dialog, whichButton) -> yesAction.run(context, editText.getText().toString().strip() + ext);
-
-
         AlertDialog.Builder builder = new AlertDialog.Builder(context)
                 .setTitle("Import File?")
-                .setPositiveButton("Import", yesClick)
+                .setPositiveButton("Import", (dialog, whichButton) -> yesAction.run(context, editText.getText().toString().strip() + ext))
                 .setNegativeButton("Cancel", otherAction == null ? null : (dialog, which) -> otherAction.run())
                 .setOnCancelListener(otherAction == null ? null : dialog -> otherAction.run())
                 .setView(container);

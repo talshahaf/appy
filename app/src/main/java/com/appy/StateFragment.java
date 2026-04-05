@@ -1,5 +1,6 @@
 package com.appy;
 
+import android.content.Context;
 import android.os.Bundle;
 import androidx.appcompat.app.AlertDialog;
 
@@ -13,7 +14,6 @@ import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ListView;
 import android.widget.TextView;
-
 import java.util.ArrayList;
 import java.util.List;
 
@@ -87,20 +87,6 @@ public class StateFragment extends FragmentParent
     {
         ListView list;
         ArrayList<String> keyPath;
-
-        public DictObj.Dict traverse(DictObj.Dict stateSnapshot)
-        {
-            DictObj.Dict current = stateSnapshot;
-            for (String key : keyPath)
-            {
-                if (current == null)
-                {
-                    return null;
-                }
-                current = current.getDict(key);
-            }
-            return current;
-        }
 
         public void refresh()
         {
@@ -250,21 +236,28 @@ public class StateFragment extends FragmentParent
 
         public void showViewer(String title, String text)
         {
-            AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
-
+            Context context = getActivity();
+            AlertDialog.Builder builder = new AlertDialog.Builder(context);
             builder.setTitle(title);
+            builder.setPositiveButton("OK", null);
+            builder.setNeutralButton("Copy", null);
 
-            builder.setNeutralButton("OK", null);
-
-            View layout = LayoutInflater.from(getActivity()).inflate(R.layout.alert_error_view_vertical, null);
-
+            View layout = LayoutInflater.from(getActivity()).inflate(R.layout.alert_error_view, null);
             TextView message = layout.findViewById(R.id.message);
-            message.setText(text + "\n\n");
+
+            if (text.length() > 10240)
+            {
+                //Too slow
+                message.setTextIsSelectable(false);
+            }
+
+            message.setText("Loading...");
+            message.post(() -> message.setText(text + "\n\n"));
 
             builder.setView(layout);
-
-            AlertDialog alert = builder.create();
-            alert.show();
+            AlertDialog dialog = builder.create();
+            dialog.setOnShowListener(d -> ((AlertDialog)d).getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener(v -> Utils.copyToClipboard(context, title, text, "State copied to clipboard")));
+            dialog.show();
         }
 
         @Override

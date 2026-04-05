@@ -12,7 +12,6 @@ import android.os.Handler;
 import android.os.IBinder;
 
 import androidx.activity.OnBackPressedCallback;
-import androidx.appcompat.app.AlertDialog;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.core.view.GravityCompat;
@@ -410,17 +409,15 @@ public class MainActivity extends AppCompatActivity implements StatusListener, A
             if (!permissionDialogShown && !permission_ask_message.isEmpty() && getShowPermissionDialog())
             {
                 permissionDialogShown = true;
-                AlertDialog.Builder builder = new AlertDialog.Builder(this);
-                builder.setTitle(permission_ask_title);
-                builder.setMessage(permission_ask_message);
-                builder.setCancelable(false);
-                builder.setPositiveButton("OK", (dialog, which) -> ActivityCompat.requestPermissions(MainActivity.this, permissionsSteps[neededStep], REQUEST_PERMISSION_STEPS[neededStep]));
-                builder.setNeutralButton("Don't show again", (dialog, which) -> {
-                    setShowPermissionDialog(false);
-                    permissionsResult(false);
-                });
 
-                builder.show();
+                Utils.showConfirmationDialog(this, permission_ask_title, permission_ask_message, 0, "OK", "Don't show again",
+                        () -> ActivityCompat.requestPermissions(this, permissionsSteps[neededStep], REQUEST_PERMISSION_STEPS[neededStep]),
+                        () -> {
+                            setShowPermissionDialog(false);
+                            permissionsResult(false);
+                        },
+                        null,
+                        (builder) -> builder.setCancelable(false));
             }
             else
             {

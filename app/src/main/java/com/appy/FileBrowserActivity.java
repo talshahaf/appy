@@ -445,22 +445,24 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
             {
                 final String[] files = getSelectedFiles();
 
-                //TODO are you sure
-                new AlertDialog.Builder(this)
-                        .setTitle("Delete")
-                        .setMessage(files.length == 1 ? "Delete " + new File(files[0]).getName() + "?" : "Delete " + files.length + " files?")
-                        .setIcon(android.R.drawable.ic_dialog_alert)
-                        .setPositiveButton(android.R.string.yes, (dialog, whichButton) -> {
-                            for (String path : files)
-                            {
-                                Widget.deleteDir(new File(path));
-                            }
-                            selected.clear();
-                            updateMenu();
-                            getDirFromRoot(currentDir(), true);
-                        })
-                        .setNegativeButton(android.R.string.no, null)
-                        .setOnDismissListener(dialog -> tutorial.onFileBrowserDialogDone()).show();
+                Utils.showConfirmationDialog(
+                    this,
+                    "Delete",
+                    files.length == 1 ? "Delete " + new File(files[0]).getName() + "?" : "Delete " + files.length + " files?",
+                    android.R.drawable.ic_dialog_alert,
+                    "Yes", "No",
+                    () -> {
+                        for (String path : files)
+                        {
+                            Widget.deleteDir(new File(path));
+                        }
+                        selected.clear();
+                        updateMenu();
+                        getDirFromRoot(currentDir(), true);
+                    },
+                    null,
+                    () -> tutorial.onFileBrowserDialogDone()
+                );
                 return true;
             }
             else if (item.getItemId() == R.id.action_copy)

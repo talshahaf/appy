@@ -11,6 +11,7 @@
             android:layout_height="wrap_content"
             android:layout_margin="5dp"
             android:scrollHorizontally="true"
-            android:textIsSelectable="true"/>
+            android:textIsSelectable="true"
+            android:typeface="monospace"/>
     </ScrollView>
 </HorizontalScrollView>

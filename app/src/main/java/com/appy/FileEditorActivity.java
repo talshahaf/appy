@@ -1,7 +1,6 @@
 package com.appy;
 
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
 import android.text.Editable;
@@ -15,7 +14,6 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.activity.OnBackPressedCallback;
-import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 
@@ -179,16 +177,11 @@ public class FileEditorActivity extends AppCompatActivity
             return;
         }
 
-        new AlertDialog.Builder(this)
-                .setTitle("Unsaved changes")
-                .setMessage("Discard unsaved changes?")
-                .setPositiveButton("Yes", (dialog, id) -> {
-                    callback.setEnabled(false);
-                    getOnBackPressedDispatcher().onBackPressed();
-                    callback.setEnabled(true);
-                })
-                .setNegativeButton("Cancel", null)
-                .show();
+        Utils.showConfirmationDialog(this, "Unsaved changes", "Discard unsaved changes?", 0, "Yes", "Cancel", () -> {
+            callback.setEnabled(false);
+            getOnBackPressedDispatcher().onBackPressed();
+            callback.setEnabled(true);
+        });
     }
 
     public static void launch(Context context, String path)

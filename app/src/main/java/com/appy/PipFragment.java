@@ -21,6 +21,7 @@ public class PipFragment extends MyFragment implements RunnerListener
 {
     EditText command;
     Switch useShell;
+    Switch runpip;
     Button run;
     Button stop;
     TextView output;
@@ -34,6 +35,50 @@ public class PipFragment extends MyFragment implements RunnerListener
     File cwd = null;
     File lib = null;
 
+    public static final String PIP_COMMAND = "python -m pip install ";
+    public static final String EVAL_COMMAND = "python -c \"";
+
+    public void applyCommand(boolean pip)
+    {
+        int posStart = command.getSelectionStart();
+        int posEnd = command.getSelectionEnd();
+
+        String text = command.getText().toString();
+        boolean empty = text.isEmpty();
+        int off = 0;
+        if (!pip && (text.startsWith(PIP_COMMAND) || empty))
+        {
+            text = EVAL_COMMAND + (empty ? "" : text.substring(PIP_COMMAND.length())) + "\"";
+            off = EVAL_COMMAND.length() - (empty ? 0 : PIP_COMMAND.length());
+        }
+        if (pip && (text.startsWith(EVAL_COMMAND) || empty))
+        {
+            if (text.endsWith("\""))
+            {
+                text = text.substring(0, text.length() - 1);
+            }
+            text = PIP_COMMAND + (empty ? "" : text.substring(EVAL_COMMAND.length()));
+            off = PIP_COMMAND.length() - (empty ? 0 : EVAL_COMMAND.length());
+        }
+
+        posStart = posStart == -1 ? -1 : (posStart + off);
+        posEnd = posEnd == -1 ? -1 : (posEnd + off);
+        if (posStart < 0 || posStart > text.length() || posEnd < 0 || posEnd > text.length())
+        {
+            posStart = -1;
+            posEnd = -1;
+        }
+        command.setText(text);
+        if (posStart == -1 && posEnd == -1)
+        {
+            command.setSelected(false);
+        }
+        else
+        {
+            command.setSelection(posStart, posEnd);
+        }
+    }
+
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState)
@@ -42,13 +87,13 @@ public class PipFragment extends MyFragment implements RunnerListener
 
         command = layout.findViewById(R.id.command);
         useShell = layout.findViewById(R.id.useshell);
+        runpip = layout.findViewById(R.id.runpip);
         run = layout.findViewById(R.id.run);
         stop = layout.findViewById(R.id.stop);
         output = layout.findViewById(R.id.output);
         scroller = layout.findViewById(R.id.scroller);
 
-        command.setText("");
-        command.append("python -m pip install ");
+        applyCommand(runpip.isChecked());
 
         handler = new Handler();
 
@@ -85,6 +130,8 @@ public class PipFragment extends MyFragment implements RunnerListener
                 runner.stop();
             }
         });
+
+        runpip.setOnCheckedChangeListener((buttonView, isChecked) -> applyCommand(isChecked));
 
         return layout;
     }

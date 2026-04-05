@@ -4,13 +4,9 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
-
 import androidx.appcompat.app.AlertDialog;
-
-import android.text.InputType;
 import android.util.Log;
 import android.view.ContextMenu;
-import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -19,15 +15,13 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
-import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.Spinner;
+import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
-
-import com.google.android.material.switchmaterial.SwitchMaterial;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -536,60 +530,10 @@ public class ConfigsFragment extends FragmentParent
             }
 
             AlertDialog.Builder builder = new AlertDialog.Builder(context);
-            builder.setTitle(widget + "." + item.key);
-
-            LinearLayout container = new LinearLayout(context);
-            container.setOrientation(LinearLayout.VERTICAL);
-
-            EditText input = new EditText(context);
-            LinearLayout switchContainer = new LinearLayout(context);
-            switchContainer.setOrientation(LinearLayout.HORIZONTAL);
-
-            SwitchMaterial check = new SwitchMaterial(context);
-            TextView checkText = new TextView(context);
-            String textOn = "Set for widget instance";
-            String textOff = "Set for all widgets";
-
-            checkText.setText(textOn);
-            check.setChecked(true);
-            check.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
-            checkText.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
-            check.setOnCheckedChangeListener((buttonView, isChecked) -> checkText.setText(isChecked ? textOn : textOff));
-            switchContainer.addView(check);
-            switchContainer.addView(checkText);
-            switchContainer.setVisibility(View.GONE);
-
-            container.addView(input);
-            container.addView(switchContainer);
-
-            if (item.arg != null)
-            {
-                Triple<String, String, Boolean> arg = (Triple<String, String, Boolean>) item.arg;
-                try
-                {
-                    input.setText(new JSONObject(arg.component2()).toString(2));
-                }
-                catch (JSONException e)
-                {
-                    input.setText(arg.component2());
-                }
-
-                if (dieAfter && widgetId != Configurations.NONLOCAL_ID)
-                {
-                    //add switch to choose where to set
-                    switchContainer.setVisibility(View.VISIBLE);
-                }
-            }
-            else
-            {
-                input.setText("");
-            }
-
-            input.setInputType(InputType.TYPE_TEXT_FLAG_MULTI_LINE);
-            input.setSingleLine(false);
-            input.setGravity(Gravity.START | Gravity.TOP);
-
-            builder.setView(container);
+            String title = widget + "." + item.key;
+            builder.setTitle(title);
+            View layout = LayoutInflater.from(getActivity()).inflate(R.layout.config_edit_view, null);
+            builder.setView(layout);
 
             builder.setPositiveButton("Ok", null);
 
@@ -604,14 +548,48 @@ public class ConfigsFragment extends FragmentParent
                 }
             };
             builder.setNegativeButton("Cancel", onDismiss);
+            builder.setNeutralButton("Copy", null);
             builder.setOnCancelListener(dialog -> onDismiss.onClick(dialog, 0));
 
-            final AlertDialog alert = builder.create();
+            final EditText input = layout.findViewById(R.id.edit);
+            final LinearLayout checkLayout = layout.findViewById(R.id.checklayout);
+            final Switch check = layout.findViewById(R.id.check);
+            final TextView checkText = layout.findViewById(R.id.checktext);
+            check.setOnCheckedChangeListener((buttonView, isChecked) -> checkText.setText(isChecked ? "Set for widget instance" : "Set for all widgets"));
+            check.setChecked(true);
+            checkLayout.setVisibility(View.GONE);
 
+            String value = "";
+            if (item.arg != null)
+            {
+                Triple<String, String, Boolean> arg = (Triple<String, String, Boolean>) item.arg;
+                value = arg.component2();
+                if (!item.key.endsWith("_nojson"))
+                {
+                    try
+                    {
+                        value = new JSONObject(arg.component2()).toString(2);
+                    }
+                    catch (JSONException e)
+                    {
+
+                    }
+                }
+
+                if (dieAfter && widgetId != Configurations.NONLOCAL_ID)
+                {
+                    //add switch to choose where to set
+                    checkLayout.setVisibility(View.VISIBLE);
+                }
+            }
+
+            final String finalValue = value;
+            input.setText(finalValue);
+
+            final AlertDialog alert = builder.create();
             alert.setOnShowListener(dialogInterface -> {
 
-                Button button = alert.getButton(AlertDialog.BUTTON_POSITIVE);
-                button.setOnClickListener(view -> {
+                alert.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
                     String newValue = input.getText().toString();
                     if (item.key.endsWith("_nojson") || isValidJSON(newValue))
                     {
@@ -631,6 +609,9 @@ public class ConfigsFragment extends FragmentParent
                         // dont dismiss
                         input.setBackgroundColor(0x50FF0000);
                     }
+                });
+                alert.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener(v -> {
+                    Utils.copyToClipboard(context, title, finalValue, "Value copied to clipboard");
                 });
             });
 

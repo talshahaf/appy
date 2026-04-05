@@ -19,6 +19,7 @@
 #include <exception>
 #include <cxxabi.h>
 #include "native.h"
+#include "crashhandler.h"
 
 #define LOG(fmt, ...) __android_log_print(ANDROID_LOG_DEBUG, "APPY", fmt, ##__VA_ARGS__)
 
@@ -3875,7 +3876,7 @@ static std::vector<std::string> pythonargs;
 static const char ** python_argv = NULL;
 
 extern "C" JNIEXPORT void JNICALL
-Java_com_appy_Widget_pythonInit(JNIEnv * env, jclass clazz, jstring j_pythonhome,
+Java_com_appy_Widget_pythonInit(JNIEnv * env, jclass clazz, jstring j_nativecrashpath, jstring j_pythonhome,
                                 jstring j_cachepath, jstring j_pythonlib, jstring j_scriptpath,
                                 jstring j_nativepath, jobject j_arg, jobjectArray j_pythonargs)
 {
@@ -3900,6 +3901,9 @@ Java_com_appy_Widget_pythonInit(JNIEnv * env, jclass clazz, jstring j_pythonhome
             }
             abort();
         });
+
+        auto nativecrashpath = jstring_to_stdstring(env, j_nativecrashpath);
+        install_handler(nativecrashpath.c_str());
 
         LOG("python init");
         if (python_initialized || Py_IsInitialized())

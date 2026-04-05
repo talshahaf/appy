@@ -2,7 +2,6 @@ package com.appy;
 
 import android.content.Context;
 import android.content.Intent;
-import android.os.Message;
 
 /**
  * Created by Tal on 30/12/2017.

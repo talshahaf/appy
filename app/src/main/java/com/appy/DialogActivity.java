@@ -6,8 +6,8 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.graphics.Typeface;
 import android.os.Bundle;
-import android.os.Handler;
 import android.os.IBinder;
 import android.util.Pair;
 import android.util.TypedValue;
@@ -17,15 +17,13 @@ import android.view.inputmethod.EditorInfo;
 import android.widget.ArrayAdapter;
 import android.widget.AutoCompleteTextView;
 import android.widget.EditText;
+import android.widget.HorizontalScrollView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
-
 import androidx.appcompat.app.AlertDialog;
-
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
-
 import java.io.Serializable;
 
 public class DialogActivity extends Activity
@@ -41,8 +39,9 @@ public class DialogActivity extends Activity
     public static final String EXTRA_FLAGS = "EXTRA_FLAGS";
 
     public static final int DIALOG_FLAG_SCROLL_BOTTOM = 1;
-
-    Handler handler = new Handler();
+    public static final int DIALOG_FLAG_MONOSPACE = 2;
+    public static final int DIALOG_FLAG_HORIZONTAL_SCROLL = 4;
+    public static final int DIALOG_FLAG_SELECTABLE = 8;
 
     private Widget widgetService;
     private int doneRequestCode = -1;
@@ -185,27 +184,58 @@ public class DialogActivity extends Activity
         LinearLayout container = new LinearLayout(this);
         container.setOrientation(LinearLayout.VERTICAL);
 
-        final ScrollView[] messageScrollRef = new ScrollView[] {null};
+        final ScrollView[] messageScrollRef = new ScrollView[] { null };
         if (editTextViews.length == 0)
         {
             ScrollView messageScroll = new ScrollView(this);
             messageScrollRef[0] = messageScroll;
             TextView messageText = new TextView(this);
             messageText.setText(text);
-            messageText.setLayoutParams(new ScrollView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-            messageScroll.addView(messageText);
+
             LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
             params.leftMargin = (int) margin;
             params.topMargin = (int) margin;
             params.rightMargin = (int) margin;
             params.bottomMargin = (int) margin;
-            messageScroll.setLayoutParams(params);
-            container.addView(messageScroll);
+
+            if ((flags & DIALOG_FLAG_MONOSPACE) != 0)
+            {
+                messageText.setTypeface(Typeface.MONOSPACE);
+            }
+            if ((flags & DIALOG_FLAG_SELECTABLE) != 0)
+            {
+                messageText.setTextIsSelectable(true);
+            }
+
+            messageText.setLayoutParams(new ScrollView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+            messageScroll.addView(messageText);
+
+            if ((flags & DIALOG_FLAG_HORIZONTAL_SCROLL) != 0)
+            {
+                HorizontalScrollView horizontalScrollView = new HorizontalScrollView(this);
+                horizontalScrollView.setLayoutParams(params);
+                messageText.setHorizontallyScrolling(true);
+                horizontalScrollView.addView(messageScroll);
+                container.addView(horizontalScrollView);
+            }
+            else
+            {
+                messageScroll.setLayoutParams(params);
+                container.addView(messageScroll);
+            }
         }
         else
         {
             TextView messageText = new TextView(this);
             messageText.setText(text);
+            if ((flags & DIALOG_FLAG_MONOSPACE) != 0)
+            {
+                messageText.setTypeface(Typeface.MONOSPACE);
+            }
+            if ((flags & DIALOG_FLAG_SELECTABLE) != 0)
+            {
+                messageText.setTextIsSelectable(true);
+            }
             LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
             params.leftMargin = (int) margin;
             params.topMargin = (int) margin;
@@ -272,13 +302,14 @@ public class DialogActivity extends Activity
                 builder.setPositiveButton(buttons[0], dialogClick);
         }
 
+        AlertDialog dialog = builder.create();
         if (messageScrollRef[0] != null && (flags & DIALOG_FLAG_SCROLL_BOTTOM) != 0)
         {
-            handler.post(() -> {
+            dialog.setOnShowListener(d -> {
                 messageScrollRef[0].fullScroll(View.FOCUS_DOWN);
             });
         }
-        builder.show();
+        dialog.show();
     }
 
     @Override

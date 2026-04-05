@@ -1,13 +1,8 @@
 package com.appy;
 
-import android.content.ClipData;
-import android.content.ClipboardManager;
-import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
-import android.widget.Toast;
-
 import androidx.preference.Preference;
 
 /**
@@ -60,10 +55,7 @@ public class SettingsFragment extends MySettingsFragment implements SharedPrefer
         externalDirPreference.setSummary(getContext() != null ? Widget.getPreferredScriptDirStatic(getContext()) : "No available directory");
 
         externalDirPreference.setOnPreferenceClickListener(preference -> {
-            ClipboardManager clipboard = (ClipboardManager) getContext().getSystemService(Context.CLIPBOARD_SERVICE);
-            ClipData clip = ClipData.newPlainText(preference.getTitle(), preference.getSummary());
-            clipboard.setPrimaryClip(clip);
-            Toast.makeText(getContext(), "Path copied to clipboard", Toast.LENGTH_SHORT).show();
+            Utils.copyToClipboard(getContext(), preference.getTitle().toString(), preference.getSummary().toString(), "Path copied to clipboard");
             return true;
         });
 

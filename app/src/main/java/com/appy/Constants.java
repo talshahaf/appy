@@ -44,13 +44,11 @@ import java.util.List;
 public class Constants
 {
     public static String DATE_FORMAT = "yyyy-MM-dd HH:mm:ssZ";
-    public static final String PYTHON_INIT_FLAGS_EXTRA = "PYTHON_INIT_FLAGS";
     public static final String ITEM_ID_EXTRA = "ITEM_ID";
     public static final String ITEM_TAG_EXTRA = "ITEM_TAG";
     public static final String WIDGET_INTENT = "WIDGET_INTENT";
     public static final String COLLECTION_ID_EXTRA = "COLLECTION_ITEM_ID_EXTRA";
     public static final String COLLECTION_POSITION_EXTRA = "COLLECTION_POSITION_EXTRA";
-    public static final String LIST_SERIALIZED_EXTRA = "LIST_SERIALIZED_EXTRA";
     public static final String XML_ID_EXTRA = "XML_ID_EXTRA";
     public static final String VIEW_ID_EXTRA = "VIEW_ID_EXTRA";
     public static final String WIDGET_ID_EXTRA = "WIDGET_ID_EXTRA";
@@ -101,6 +99,7 @@ public class Constants
             "pythoncrash.txt",
             "javatrace.txt",
             "pythontrace.txt",
+            "nativecrash.txt",
     };
     public static final String CRASH_ZIP_PATH = "crash.zip";
     public static final Size[] APP_ICON_SIZES = {new Size(128, 128), new Size(48, 48)};
@@ -112,6 +111,7 @@ public class Constants
         PYTHON_CRASH_INDEX,
         JAVA_TRACE_INDEX,
         PYTHON_TRACE_INDEX,
+        NATIVE_CRASH_INDEX,
     }
 
     public enum StartupState

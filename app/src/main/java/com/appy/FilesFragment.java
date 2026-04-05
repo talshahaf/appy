@@ -139,7 +139,6 @@ public class FilesFragment extends MyFragment implements FileGridAdapter.ItemAct
         }
 
         message.setText(file.path + "\n\n" + error);
-
         builder.setView(layout);
 
         AlertDialog alert = builder.create();

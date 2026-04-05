@@ -1,10 +1,8 @@
 package com.appy;
 
-import android.app.ProgressDialog;
 import android.content.Intent;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.Environment;
 import android.os.Handler;
 
 import android.util.Log;
@@ -19,7 +17,6 @@ import android.widget.Toast;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.function.BiConsumer;
 
 /**
  * Created by Tal on 19/03/2018.
