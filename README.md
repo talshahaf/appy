@@ -104,6 +104,7 @@ gradlew.bat assembleRelease -Pandroid.injected.signing.store.file=$KEYFILE \
 
 ### Requirements  
 Android 12+ with an arm64 processor.  
+Can also run on Android 8+ but with limited support.  
 
 ### AI  
 No AI was used to develop Appy.  
