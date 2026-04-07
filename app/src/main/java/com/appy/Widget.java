@@ -100,8 +100,7 @@ public class Widget extends RemoteViewsService
     StatusListener statusListener = null;
     AppPropsListener appPropsListener = null;
     WidgetChosenListener widgetChosenListener = null;
-    Handler handler;
-    Constants.StartupState startupState = Constants.StartupState.IDLE;
+    Handler handler = new Handler();
 
     final ConcurrentHashMap<Integer, TaskQueue> widgetsTasks = new ConcurrentHashMap<>();
 
@@ -634,7 +633,7 @@ public class Widget extends RemoteViewsService
         {
             synchronized (lock)
             {
-                if (collectionview == null || service.startupState != Constants.StartupState.COMPLETED)
+                if (collectionview == null || service.getStartupState() != Constants.StartupState.COMPLETED)
                 {
                     return 0;
                 }
@@ -698,7 +697,7 @@ public class Widget extends RemoteViewsService
         @Override
         public RemoteViews getViewAt(int position)
         {
-            if (collectionview == null || service.startupState != Constants.StartupState.COMPLETED)
+            if (collectionview == null || service.getStartupState() != Constants.StartupState.COMPLETED)
             {
                 return null;
             }
@@ -4195,7 +4194,7 @@ public class Widget extends RemoteViewsService
         }
     }
 
-    private class PythonSetupTask implements Runner<Integer>
+    private class SetupTask implements Runnable
     {
         private Constants.StartupState state = Constants.StartupState.IDLE;
 
@@ -4204,11 +4203,8 @@ public class Widget extends RemoteViewsService
             return state;
         }
 
-        @Override
-        public void run(Integer... param)
+        public void pythonSetup(int pythonFlags) throws IOException
         {
-            int pythonFlags = param[0] != null ? param[0] : 0;
-
             Locale locale = Locale.getDefault();
 
             String weekshort = "";
@@ -4247,49 +4243,88 @@ public class Widget extends RemoteViewsService
             String dateformat = ((SimpleDateFormat)DateFormat.getDateInstance(DateFormat.SHORT, locale)).toPattern();
             String timeformat = ((SimpleDateFormat)DateFormat.getTimeInstance(DateFormat.MEDIUM, locale)).toPattern();
 
-            state = Constants.StartupState.RUNNING;
             String pythonHome = new File(getFilesDir(), "python").getAbsolutePath();
             String pythonLib = new File(pythonHome, "/lib/libpython3.12.so").getAbsolutePath(); //must be without
             String cacheDir = getPreferredCacheDir();
 
-            try
+            if (getPythonUnpacked() != PYTHON_VERSION)
             {
-                if (getPythonUnpacked() != PYTHON_VERSION)
-                {
-                    Log.d("APPY", "python version mismatch: " + getPythonUnpacked() + ", " + PYTHON_VERSION);
-                    deleteDir(new File(pythonHome));
-                    Log.d("APPY", "unpacking python");
-                    untar(getAssets().open("python.targz"), pythonHome);
-                    Log.d("APPY", "done unpacking python");
-                    setPythonUnpacked(PYTHON_VERSION);
-                }
-                else
-                {
-                    Log.d("APPY", "python already unpacked");
-                }
-
-                unpackExamples(false);
-
-                copyAsset(getAssets().open("main.py"), new File(cacheDir, "main.py"));
-                copyAsset(getAssets().open("logcat.py"), new File(cacheDir, "logcat.py"));
-                copyAsset(getAssets().open("appy.targz"), new File(cacheDir, "appy.tar.gz"));
-                System.loadLibrary("prehelpers");
-                System.load(pythonLib);
-                System.loadLibrary("native");
-                pythonInit(Utils.getCrashPath(Widget.this, Constants.CrashIndex.NATIVE_CRASH_INDEX), pythonHome, cacheDir, pythonLib, new File(cacheDir, "main.py").getAbsolutePath(), getApplicationInfo().nativeLibraryDir, Widget.this, new String[] { "FLAGS=" + pythonFlags, "AMPM=" + ampm, "SHORTWEEK=" + weekshort, "LONGWEEK=" + weeklong, "SHORTMONTH=" + monthshort, "LONGMONTH=" + monthlong, "DATEFORMAT=" + dateformat, "TIMEFORMAT=" + timeformat, "DATETIMEFORMAT=" + datetimeformat });
-
-                initAllPythonFiles();
-
-                state = Constants.StartupState.COMPLETED;
+                Log.d("APPY", "python version mismatch: " + getPythonUnpacked() + ", " + PYTHON_VERSION);
+                deleteDir(new File(pythonHome));
+                Log.d("APPY", "unpacking python");
+                untar(getAssets().open("python.targz"), pythonHome);
+                Log.d("APPY", "done unpacking python");
+                setPythonUnpacked(PYTHON_VERSION);
             }
-            catch (Exception e)
+            else
             {
-                Log.e("APPY", "Exception on pythonSetup", e);
-                state = Constants.StartupState.ERROR;
+                Log.d("APPY", "python already unpacked");
             }
-            finally
+
+            unpackExamples(false);
+
+            copyAsset(getAssets().open("main.py"), new File(cacheDir, "main.py"));
+            copyAsset(getAssets().open("logcat.py"), new File(cacheDir, "logcat.py"));
+            copyAsset(getAssets().open("appy.targz"), new File(cacheDir, "appy.tar.gz"));
+            System.loadLibrary("prehelpers");
+            System.load(pythonLib);
+            System.loadLibrary("native");
+            pythonInit(Utils.getCrashPath(Widget.this, Constants.CrashIndex.NATIVE_CRASH_INDEX), pythonHome, cacheDir, pythonLib, new File(cacheDir, "main.py").getAbsolutePath(), getApplicationInfo().nativeLibraryDir, Widget.this, new String[] { "FLAGS=" + pythonFlags, "AMPM=" + ampm, "SHORTWEEK=" + weekshort, "LONGWEEK=" + weeklong, "SHORTMONTH=" + monthshort, "LONGMONTH=" + monthlong, "DATEFORMAT=" + dateformat, "TIMEFORMAT=" + timeformat, "DATETIMEFORMAT=" + datetimeformat });
+
+            initAllPythonFiles();
+        }
+
+        @Override
+        public void run()
+        {
+            boolean shouldRun = false;
+            synchronized (this)
             {
-                handler.post(() -> Widget.startService(Widget.this, new Intent(Widget.this, Widget.class)));
+                if (state == Constants.StartupState.IDLE)
+                {
+                    state = Constants.StartupState.RUNNING;
+                    shouldRun = true;
+                }
+            }
+            if (shouldRun)
+            {
+                callStatusChange(true);
+
+                int pythonFlags = getAndClearNextStartupFlags();
+
+                Log.d("APPY", "dir: " + getApplicationInfo().nativeLibraryDir);
+
+                try
+                {
+                    //Force android to create dirs for us
+                    getExternalFilesDir(null);
+                    getExternalMediaDirs();
+
+                    loadPythonFiles();
+                    loadCorrectionFactors(true);
+                    loadWidgets();
+                    loadTimers();
+                    loadWidgetProps();
+                    loadWidgetAppIcons();
+                    configurations.load();
+
+                    setAllWidgets(false);
+
+                    pythonSetup(pythonFlags);
+                    state = Constants.StartupState.COMPLETED;
+                    callStatusChange(true);
+                }
+                catch (Exception e)
+                {
+                    Log.e("APPY", "Exception in setup:", e);
+                    state = Constants.StartupState.ERROR;
+                    handler.post(() -> setAllWidgets(true));
+                    callStatusChange(true);
+                }
+                finally
+                {
+                    handler.post(() -> Widget.startService(Widget.this, new Intent(Widget.this, Widget.class)));
+                }
             }
         }
     }
@@ -4772,7 +4807,7 @@ public class Widget extends RemoteViewsService
 
     public Constants.StartupState getStartupState()
     {
-        return startupState;
+        return setupTask.getState();
     }
 
     public void callStatusChange(final boolean startup)
@@ -4902,70 +4937,9 @@ public class Widget extends RemoteViewsService
         }
     }
 
-    private boolean pythonSetup(int pythonFlags)
-    {
-        Log.d("APPY", "dir: " + getApplicationInfo().nativeLibraryDir);
-        if (pythonSetupTask.getState() == Constants.StartupState.IDLE)
-        {
-            startupState = Constants.StartupState.IDLE;
-            handler = new Handler();
-
-            try
-            {
-                //Force android to create dirs for us
-                getExternalFilesDir(null);
-                getExternalMediaDirs();
-
-                loadPythonFiles();
-                loadCorrectionFactors(true);
-                loadWidgets();
-                loadTimers();
-                loadWidgetProps();
-                loadWidgetAppIcons();
-                configurations.load();
-
-                setAllWidgets(false);
-                callStatusChange(true);
-
-                startupState = Constants.StartupState.RUNNING;
-                callStatusChange(true);
-
-                pythonSetupTask.run(pythonFlags);
-
-                return false;
-            }
-            catch (Exception e)
-            {
-                Log.e("APPY", "Exception in setup:", e);
-                startupState = Constants.StartupState.ERROR;
-                handler.post(() -> setAllWidgets(true));
-                callStatusChange(true);
-                return false;
-            }
-        }
-
-        if (pythonSetupTask.getState() == Constants.StartupState.RUNNING)
-        {
-            setAllWidgets(false);
-            return false;
-        }
-
-        if (pythonSetupTask.getState() == Constants.StartupState.ERROR)
-        {
-            startupState = Constants.StartupState.ERROR;
-            handler.post(() -> setAllWidgets(true));
-            callStatusChange(true);
-            return false;
-        }
-
-        startupState = Constants.StartupState.COMPLETED;
-        callStatusChange(true);
-        return true;
-    }
-
     final Object startedAfterSetupLock = new Object();
     boolean startedAfterSetup = false;
-    final PythonSetupTask pythonSetupTask = new PythonSetupTask();
+    final SetupTask setupTask = new SetupTask();
 
     public void handleStartCommand(Intent intent)
     {
@@ -4977,16 +4951,21 @@ public class Widget extends RemoteViewsService
         loadForeground();
 
         boolean firstStart = false;
+
+        if (getStartupState() == Constants.StartupState.IDLE)
+        {
+            new Thread(setupTask).start();
+            return;
+        }
+        if (getStartupState() != Constants.StartupState.COMPLETED)
+        {
+            return;
+        }
+
         synchronized (startedAfterSetupLock)
         {
             if (!startedAfterSetup)
             {
-                int flags = getAndClearNextStartupFlags();
-                if (!pythonSetup(flags))
-                {
-                    return;
-                }
-
                 firstStart = true;
                 startedAfterSetup = true;
             }

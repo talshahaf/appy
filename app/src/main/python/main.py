@@ -72,10 +72,10 @@ def execute(command):
 
 def install_optional_packages(exe, do_upgrade):
     try:
-        needed_packages = ['pip', 'setuptools', 'wheel', 'requests', 'requests-futures', 'packaging', 'pyparsing', 'python-dateutil', 'cycler']
+        needed_packages = ['pip', 'wheel', 'requests', 'requests-futures', 'packaging', 'pyparsing', 'python-dateutil', 'cycler']
         try:
             #TODO maybe import all?
-            import requests, setuptools, cycler
+            import requests, cycler
         except ImportError:
             print(f'installing {" ".join(needed_packages)}')
             execute([exe, '-m', 'pip', 'install', *(['--upgrade'] if do_upgrade else [])] + needed_packages)

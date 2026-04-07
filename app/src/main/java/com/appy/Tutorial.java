@@ -49,7 +49,7 @@ public class Tutorial implements OverlayHoleView.OnHoleClick, TutorialStepListen
 
     public static final int circleHolePad = 30;
     public static final int rectHolePadW = 30;
-    public static final int rectHolePadH = 15;
+    public static final int rectHolePadH = 20;
 
     public static final int waitMilli = 100;
     public static final int waitMaxRetries = 10;
