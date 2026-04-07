@@ -1,5 +1,5 @@
 plugins {
-    id("org.jetbrains.kotlin.plugin.compose") version "2.1.0"
+    id("org.jetbrains.kotlin.plugin.compose") version '2.2.10'
 }
 
 apply plugin: 'com.android.application'
@@ -13,6 +13,9 @@ android {
         }
     }
 
+    buildFeatures {
+        buildConfig = true
+    }
 
     defaultConfig {
         applicationId "com.appy.widgets"
@@ -45,18 +48,18 @@ android {
         }
         release {
             minifyEnabled true
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
 
-    task pythonPackage(description: 'Pack the appy package') {
+    tasks.register('pythonPackage') {
         doLast {
             delete fileTree('/src/main/python/appy/dist') {
             }
-            exec {
-                workingDir = '/src/main/python/appy'
+            providers.exec {
+                workingDir = '/app/src/main/python/appy'
                 commandLine = ['python', 'setup.py', 'sdist', '--formats=gztar']
-            }
+            }.result.get()
             copy {
                 from '/src/main/python/appy/dist'
                 into 'src/main/assets'
@@ -73,19 +76,19 @@ android {
         }
     }
 
-    task pythonExamples(type: Tar, description: 'Pack the appy examples') {
+    tasks.register('pythonExamples', Tar) {
         from '/src/main/python/examples'
         archiveFileName = 'examples.targz'
         destinationDirectory = file('src/main/assets')
         compression = Compression.GZIP
     }
 
-    task pythonTask {
+    tasks.register('pythonTask') {
         dependsOn 'pythonPackage'
         dependsOn 'pythonExamples'
     }
 
-    tasks.withType(JavaCompile) {
+    tasks.withType(JavaCompile).configureEach {
         compileTask -> compileTask.dependsOn pythonTask
     }
 
