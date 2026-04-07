@@ -153,7 +153,7 @@ def update_counter(widget, views):
 def ping_click(widget):
     widget.nonlocals('notification_id')
     # Choose whether to open an html page or to display a notification according to config
-    if widget.config.method == 'html':
+    if widget.raw_config.method == 'html':
         display_page(widget.widget_id, str(widget.state.counter + 1))
     else:
         try:
