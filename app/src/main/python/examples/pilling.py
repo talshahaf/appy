@@ -55,12 +55,14 @@ def create(widget):
     # Start with a reasonable amount of rays
     widget.state.rays = 6
     
-    btn_less = Button(text='-', style='dark_sml', click=(change_rays, dict(amount=-1)), bottom=10, left=10)
-    btn_more = Button(text='+', style='dark_sml', click=(change_rays, dict(amount=1)), bottom=10, right=10)
+    btn_less = Button(text='-', style='dark_sml', padding=(1, 1, 1, 1), autoTextSize=True, click=(change_rays, dict(amount=-1)), bottom=10, left=10)
+    btn_more = Button(text='+', style='dark_sml', padding=(1, 1, 1, 1), autoTextSize=True, click=(change_rays, dict(amount=1)), bottom=10, right=10)
     
-    # have the buttons grow until they are 40 pixels from the horizontal center, but only up to a maximum width of 100 pixels.
-    btn_less.width = AttributeValue.min(80, widget.hcenter - 40 - btn_less.left)
-    btn_more.width = AttributeValue.min(80, widget.hcenter - 40 - btn_more.right)
+    # have the buttons grow until they are eighth of the total width, but only up to a maximum width of 80dp.
+    btn_less.width = AttributeValue.min('80dp', widget.width / 4)
+    btn_more.width = btn_less.width
+    btn_less.height = btn_less.width
+    btn_more.height = btn_more.width
     
     return [ImageView(name='image', imageURI=make_image(widget.state.rays), adjustViewBounds=True, left=0, top=0, width=widget.width, height=widget.height),
             # Ray buttons anchored to the hcenter

@@ -40,7 +40,7 @@
     <Button
         android:id="@+id/run"
         style="@style/secondary_btn"
-        android:layout_width="89dp"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Run"
         app:layout_constraintEnd_toStartOf="@+id/stop"
@@ -61,10 +61,12 @@
                           android:layout_height="0dp"
                           android:layout_marginBottom="8dp"
                           android:layout_marginEnd="8dp" android:layout_marginStart="8dp"
-                          android:layout_marginTop="150dp" android:background="@color/terminal_bg"
-                          app:layout_constraintBottom_toBottomOf="parent" app:layout_constraintEnd_toEndOf="parent"
+                          android:layout_marginTop="20dp" android:background="@color/terminal_bg"
+                          app:layout_constraintBottom_toBottomOf="parent"
+                          app:layout_constraintEnd_toEndOf="parent"
                           app:layout_constraintHorizontal_bias="0.0"
-                          app:layout_constraintStart_toStartOf="parent" app:layout_constraintTop_toTopOf="@+id/command"
+                          app:layout_constraintStart_toStartOf="parent"
+                          app:layout_constraintTop_toBottomOf="@+id/run"
                           app:layout_constraintVertical_bias="0.0">
         <ScrollView
             android:id="@+id/scroller"
