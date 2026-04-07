@@ -66,7 +66,8 @@ public class Constants
     public static final String APP_PACKAGE_NOCOM = "appy";
     public static final String APP_PACKAGE_NAME = "com." + APP_PACKAGE_NOCOM;
     public static final String DEEP_LINK_BROADCAST = APP_PACKAGE_NAME + ".DeepLink";
-    public static final int PYTHON_INIT_FLAGS_REINSTALL = 1;
+    public static final int PYTHON_INIT_FLAGS_REINSTALL_PACKAGE = 1;
+    public static final int PYTHON_INIT_FLAGS_REINSTALL_PYTHON = 2;
     public static final int SPECIAL_WIDGET_ID = 10000;
     public static final int SPECIAL_WIDGET_RESTART = 1;
     public static final int SPECIAL_WIDGET_CLEAR = 2;

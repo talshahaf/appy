@@ -3570,7 +3570,7 @@ public class Widget extends RemoteViewsService
         return d.getInt("flags", 0);
     }
 
-    public void restart(boolean forcePythonReinstall)
+    public void restart(int flags)
     {
         new Thread(() -> {
             saveTimers();
@@ -3579,10 +3579,7 @@ public class Widget extends RemoteViewsService
             savePythonFiles();
             new Task<>(new SaveStateTask()).run();
 
-            if (forcePythonReinstall)
-            {
-                setNextStartupFlags(Constants.PYTHON_INIT_FLAGS_REINSTALL);
-            }
+            setNextStartupFlags(flags);
 
             StoreData.Factory.commitAll();
 
@@ -4247,9 +4244,16 @@ public class Widget extends RemoteViewsService
             String pythonLib = new File(pythonHome, "/lib/libpython3.12.so").getAbsolutePath(); //must be without
             String cacheDir = getPreferredCacheDir();
 
-            if (getPythonUnpacked() != PYTHON_VERSION)
+            if (getPythonUnpacked() != PYTHON_VERSION || (pythonFlags & Constants.PYTHON_INIT_FLAGS_REINSTALL_PYTHON) != 0)
             {
-                Log.d("APPY", "python version mismatch: " + getPythonUnpacked() + ", " + PYTHON_VERSION);
+                if (getPythonUnpacked() != PYTHON_VERSION)
+                {
+                    Log.d("APPY", "python version mismatch: " + getPythonUnpacked() + ", " + PYTHON_VERSION);
+                }
+                else
+                {
+                    Log.d("APPY", "requested python reinstall");
+                }
                 deleteDir(new File(pythonHome));
                 Log.d("APPY", "unpacking python");
                 untar(getAssets().open("python.targz"), pythonHome);
@@ -5184,7 +5188,7 @@ public class Widget extends RemoteViewsService
                                         }
                                         break;
                                     case Constants.SPECIAL_WIDGET_RESTART:
-                                        restart(false);
+                                        restart(0);
                                         break;
                                     case Constants.SPECIAL_WIDGET_OPENAPP:
                                         startMainActivity("Files", null);

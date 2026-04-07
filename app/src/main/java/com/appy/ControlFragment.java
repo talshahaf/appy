@@ -30,9 +30,10 @@ public class ControlFragment extends MyFragment
     Button resetExamples;
     Button dumpStacktrace;
     Button restart;
-    Button reinstall;
     Button clearCache;
     String clearCacheText;
+    Button reinstallPackage;
+    Button reinstallPython;
 
     Handler handler;
 
@@ -48,7 +49,8 @@ public class ControlFragment extends MyFragment
         resetExamples = layout.findViewById(R.id.reset_examples);
         dumpStacktrace = layout.findViewById(R.id.dump_stacktrace);
         restart = layout.findViewById(R.id.restart);
-        reinstall = layout.findViewById(R.id.reinstall);
+        reinstallPackage = layout.findViewById(R.id.reinstall_package);
+        reinstallPython = layout.findViewById(R.id.reinstall_python);
         clearCache = layout.findViewById(R.id.clear_cache);
 
         clearCacheText = clearCache.getText().toString();
@@ -70,17 +72,9 @@ public class ControlFragment extends MyFragment
         });
 
         restart.setOnClickListener(v -> {
-            getWidgetService().restart(false);
+            getWidgetService().restart(0);
             debounce(v);
         });
-
-        reinstall.setOnClickListener(v -> Utils.showConfirmationDialog(getActivity(),
-                "Reinstall package", "This would also restart the app", android.R.drawable.ic_dialog_alert,
-                null, null, () -> {
-                    getWidgetService().restart(true);
-                    debounce(v);
-                }
-        ));
 
         clearCache.setOnClickListener(v -> {
             Utils.RunnableArgs<String, Pair<Integer, Long>> action = (String cachedir, Pair<Integer, Long> dirSummary) -> {
@@ -129,6 +123,22 @@ public class ControlFragment extends MyFragment
             }).start();
 
         });
+
+        reinstallPackage.setOnClickListener(v -> Utils.showConfirmationDialog(getActivity(),
+                "Reinstall package", "This would also restart the app", android.R.drawable.ic_dialog_alert,
+                null, null, () -> {
+                    getWidgetService().restart(Constants.PYTHON_INIT_FLAGS_REINSTALL_PACKAGE);
+                    debounce(v);
+                }
+        ));
+
+        reinstallPython.setOnClickListener(v -> Utils.showConfirmationDialog(getActivity(),
+                "Reinstall python", "Clear the entire python installation?", android.R.drawable.ic_dialog_alert,
+                null, null, () -> {
+                    getWidgetService().restart(Constants.PYTHON_INIT_FLAGS_REINSTALL_PYTHON);
+                    debounce(v);
+                }
+        ));
 
         return layout;
     }
