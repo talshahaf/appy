@@ -28,18 +28,7 @@ public class SettingsFragment extends MySettingsFragment implements SharedPrefer
         heightCorrectionPreference = getPreferenceScreen().findPreference("global_height_correction_factor");
         globalSizeFactorPreference = getPreferenceScreen().findPreference("global_size_factor");
 
-        Preference.OnPreferenceChangeListener validateFloat = (preference, newValue) -> {
-            try
-            {
-                Float.parseFloat((String)newValue);
-                return true;
-            }
-            catch (NumberFormatException ignored)
-            {
-
-            }
-            return false;
-        };
+        Preference.OnPreferenceChangeListener validateFloat = (preference, newValue) -> Utils.parseFloatOrNull((String)newValue) != null;
 
         widthCorrectionPreference.setOnPreferenceChangeListener(validateFloat);
         heightCorrectionPreference.setOnPreferenceChangeListener(validateFloat);

@@ -95,6 +95,7 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
         specificExtensionConfirmation = getIntent().getStringExtra(REQUEST_SPECIFIC_EXTENSION_CONFIRMATION);
 
         list = findViewById(R.id.filelist);
+        list.setEmptyView(findViewById(R.id.empty_view));
         toolbar = findViewById(R.id.toolbar);
         bottomtext = findViewById(R.id.bottomtext);
         bottomtext.setVisibility(View.INVISIBLE);

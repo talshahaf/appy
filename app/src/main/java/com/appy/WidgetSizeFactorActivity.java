@@ -1,17 +1,54 @@
 package com.appy;
 
+import android.content.Context;
+import android.os.Build;
 import android.text.InputType;
 import android.view.Gravity;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.widget.EditText;
+import android.view.ViewGroup;
+import android.widget.Button;
 import android.widget.LinearLayout;
+import android.widget.TextView;
 
 import androidx.appcompat.app.AlertDialog;
 
 public class WidgetSizeFactorActivity extends WidgetSelectActivity
 {
+    public static View makeRow(Context context, String text, String hint, int inputType, Utils.RunnableArg<TextView> onSet, Utils.RunnableArg<TextView> onUnset)
+    {
+        LinearLayout container = new LinearLayout(context);
+        container.setOrientation(LinearLayout.HORIZONTAL);
+        container.setGravity(Gravity.CENTER);
+
+        LinearLayout.LayoutParams editParams = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 4);
+        LinearLayout.LayoutParams setParams = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1);
+        LinearLayout.LayoutParams unsetParams = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1);
+
+        View editText = DialogActivity.makeEditText(context, text, hint, inputType);
+        editText.setLayoutParams(editParams);
+        Button setButton = new Button(context);
+        setButton.setText("Apply");
+        setButton.setLayoutParams(setParams);
+        Button unsetButton = new Button(context);
+        unsetButton.setText("Clear");
+        unsetButton.setLayoutParams(unsetParams);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+        {
+            setButton.setAutoSizeTextTypeWithDefaults(TextView.AUTO_SIZE_TEXT_TYPE_UNIFORM);
+            unsetButton.setAutoSizeTextTypeWithDefaults(TextView.AUTO_SIZE_TEXT_TYPE_UNIFORM);
+        }
+
+        setButton.setOnClickListener(v -> onSet.run(DialogActivity.getEditTexts(new View[] {editText})[0]));
+        unsetButton.setOnClickListener(v -> onUnset.run(DialogActivity.getEditTexts(new View[] {editText})[0]));
+
+        container.addView(editText);
+        container.addView(setButton);
+        container.addView(unsetButton);
+        return container;
+    }
     @Override
     public void onWidgetSelected(View view, int widgetId, String widgetName)
     {
@@ -21,48 +58,66 @@ public class WidgetSizeFactorActivity extends WidgetSelectActivity
         }
 
         Float[] factors = widgetService.getWidgetSizeAndCorrectionFactors(widgetId);
-        String sizeFactorText = factors[0] != null ? Utils.formatFloat(factors[0]) : "1";
-        String widthCorrectionFactorText = factors[1] != null ? Utils.formatFloat(factors[1]) : "1";
-        String heightCorrectionFactorText = factors[2] != null ? Utils.formatFloat(factors[2]) : "1";
-
-        View sizeEditText = DialogActivity.makeEditText(this, sizeFactorText, "Size factor", InputType.TYPE_NUMBER_FLAG_DECIMAL);
-        View widthEditText = DialogActivity.makeEditText(this, widthCorrectionFactorText, "Width correction factor", InputType.TYPE_NUMBER_FLAG_DECIMAL);
-        View heightEditText = DialogActivity.makeEditText(this, heightCorrectionFactorText, "Height correction factor", InputType.TYPE_NUMBER_FLAG_DECIMAL);
+        String sizeFactorText = factors[0] != null ? Utils.formatFloat(factors[0]) : "";
+        String widthCorrectionFactorText = factors[1] != null ? Utils.formatFloat(factors[1]) : "";
+        String heightCorrectionFactorText = factors[2] != null ? Utils.formatFloat(factors[2]) : "";
 
         LinearLayout container = new LinearLayout(this);
         container.setOrientation(LinearLayout.VERTICAL);
         container.setGravity(Gravity.CENTER);
-        container.addView(sizeEditText);
-        container.addView(widthEditText);
-        container.addView(heightEditText);
+
+        container.addView(makeRow(this, sizeFactorText, "Size factor", InputType.TYPE_NUMBER_FLAG_DECIMAL,
+                editText -> {
+                    Float v = Utils.parseFloatOrNull(editText.getText().toString());
+                    if (v != null)
+                    {
+                        widgetService.setWidgetSizeFactorAndCorrections(widgetId, true, false, false, v, null, null);
+                        updateWidgetList();
+                    }
+                },
+                (editText) -> {
+                    widgetService.setWidgetSizeFactorAndCorrections(widgetId, true, false, false, null, null, null);
+                    editText.setText("");
+                    updateWidgetList();
+                }
+        ));
+
+        container.addView(makeRow(this, widthCorrectionFactorText, "Width correction factor", InputType.TYPE_NUMBER_FLAG_DECIMAL,
+                editText -> {
+                    Float v = Utils.parseFloatOrNull(editText.getText().toString());
+                    if (v != null)
+                    {
+                        widgetService.setWidgetSizeFactorAndCorrections(widgetId, false, true, false, null, v, null);
+                        updateWidgetList();
+                    }
+                },
+                (editText) -> {
+                    widgetService.setWidgetSizeFactorAndCorrections(widgetId, false, true, false, null, null, null);
+                    editText.setText("");
+                    updateWidgetList();
+                }
+        ));
+
+        container.addView(makeRow(this, heightCorrectionFactorText, "Height correction factor", InputType.TYPE_NUMBER_FLAG_DECIMAL,
+                editText -> {
+                    Float v = Utils.parseFloatOrNull(editText.getText().toString());
+                    if (v != null)
+                    {
+                        widgetService.setWidgetSizeFactorAndCorrections(widgetId, false, false, true, null, null, v);
+                        updateWidgetList();
+                    }
+                },
+                (editText) -> {
+                    widgetService.setWidgetSizeFactorAndCorrections(widgetId, false, false, true, null, null, null);
+                    editText.setText("");
+                    updateWidgetList();
+                }));
 
         AlertDialog.Builder builder = new AlertDialog.Builder(this)
                 .setTitle("Widget size and correction factors")
                 .setMessage("Set size and correction factors for widget #" + widgetId + " (" + widgetName + ")")
                 .setView(container)
-                .setPositiveButton("Set", (dialog, which) -> {
-                    try
-                    {
-                        String[] texts = DialogActivity.getEditTexts(new View[] { sizeEditText, widthEditText, heightEditText });
-                        String sizeText = texts[0];
-                        String widthText = texts[1];
-                        String heightText = texts[2];
-                        Float newSizeFactor = sizeText.isEmpty() ? null : Float.parseFloat(sizeText);
-                        Float newWidthFactor = widthText.isEmpty() ? null : Float.parseFloat(widthText);
-                        Float newHeightFactor = heightText.isEmpty() ? null : Float.parseFloat(heightText);
-                        widgetService.setWidgetSizeFactorAndCorrections(widgetId, newSizeFactor, newWidthFactor, newHeightFactor);
-                        updateWidgetList();
-                    }
-                    catch (NumberFormatException ignored)
-                    {
-
-                    }
-                })
-                .setNeutralButton("Unset", (dialog, which) -> {
-                    widgetService.setWidgetSizeFactorAndCorrections(widgetId, null, null, null);
-                    updateWidgetList();
-                })
-                .setNegativeButton("Cancel", null)
+                .setNeutralButton("Close", null)
                 .setOnDismissListener(dialog -> {
                     if (view == null)
                     {

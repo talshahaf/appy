@@ -2230,11 +2230,20 @@ public class Widget extends RemoteViewsService
         saveProps(widgetProps, new WeakReference<>(widgetPropsLock), "widget_props", widgetId, flush);
     }
 
-    public void setWidgetSizeFactorAndCorrections(int widgetId, Float sizeFactor, Float widthCorrectionFactor, Float heightCorrectionFactor)
+    public void setWidgetSizeFactorAndCorrections(int widgetId, boolean setSizeFactor, boolean setWidthCorrectionFactor, boolean setHeightCorrectionFactor, Float sizeFactor, Float widthCorrectionFactor, Float heightCorrectionFactor)
     {
-        setProps(widgetProps, new WeakReference<>(widgetPropsLock), widgetId, "size_factor", sizeFactor, (DictObj.Dict dict) -> dict.put("size_factor", sizeFactor));
-        setProps(widgetProps, new WeakReference<>(widgetPropsLock), widgetId, "width_correction_factor", widthCorrectionFactor, (DictObj.Dict dict) -> dict.put("width_correction_factor", widthCorrectionFactor));
-        setProps(widgetProps, new WeakReference<>(widgetPropsLock), widgetId, "height_correction_factor", heightCorrectionFactor, (DictObj.Dict dict) -> dict.put("height_correction_factor", heightCorrectionFactor));
+        if (setSizeFactor)
+        {
+            setProps(widgetProps, new WeakReference<>(widgetPropsLock), widgetId, "size_factor", sizeFactor, (DictObj.Dict dict) -> dict.put("size_factor", sizeFactor));
+        }
+        if (setWidthCorrectionFactor)
+        {
+            setProps(widgetProps, new WeakReference<>(widgetPropsLock), widgetId, "width_correction_factor", widthCorrectionFactor, (DictObj.Dict dict) -> dict.put("width_correction_factor", widthCorrectionFactor));
+        }
+        if (setHeightCorrectionFactor)
+        {
+            setProps(widgetProps, new WeakReference<>(widgetPropsLock), widgetId, "height_correction_factor", heightCorrectionFactor, (DictObj.Dict dict) -> dict.put("height_correction_factor", heightCorrectionFactor));
+        }
         saveWidgetProps(widgetId, true);
         update(widgetId);
     }
@@ -2366,12 +2375,22 @@ public class Widget extends RemoteViewsService
                     continue;
                 }
 
-                result.getDict(key).put("size_factor", props.getValue().getFloat("size_factor", 1.0f));
-                result.getDict(key).put("width_correction_factor", props.getValue().getFloat("width_correction_factor", 1.0f));
-                result.getDict(key).put("height_correction_factor", props.getValue().getFloat("height_correction_factor", 1.0f));
-                if (props.getValue().hasKey("app_title"))
+                DictObj.Dict d = props.getValue();
+                if (d.hasKey("size_factor"))
                 {
-                    result.getDict(key).put("title", props.getValue().getString("app_title"));
+                    result.getDict(key).put("size_factor", d.getFloat("size_factor", 1.0f));
+                }
+                if (d.hasKey("width_correction_factor"))
+                {
+                    result.getDict(key).put("width_correction_factor", d.getFloat("width_correction_factor", 1.0f));
+                }
+                if (d.hasKey("height_correction_factor"))
+                {
+                    result.getDict(key).put("height_correction_factor", d.getFloat("height_correction_factor", 1.0f));
+                }
+                if (d.hasKey("app_title"))
+                {
+                    result.getDict(key).put("title", d.getString("app_title"));
                     result.getDict(key).put("display_name", result.getDict(key).getString("title") + " (" + result.getDict(key).getString("name") + ")");
                 }
                 else
@@ -2512,37 +2531,11 @@ public class Widget extends RemoteViewsService
 
     public void loadSizeAndCorrectionFactors(boolean initing)
     {
-        float widthCorrectionFactor = 1.0f;
-        float heightCorrectionFactor = 1.0f;
-        float sizeFactor = 1.0f;
-
         SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
-        try
-        {
-            widthCorrectionFactor = Float.parseFloat(sharedPref.getString("global_width_correction_factor", "1"));
-        }
-        catch (NumberFormatException e)
-        {
-            Log.w("APPY", "wrong number format for width");
-        }
 
-        try
-        {
-            heightCorrectionFactor = Float.parseFloat(sharedPref.getString("global_height_correction_factor", "1"));
-        }
-        catch (NumberFormatException e)
-        {
-            Log.w("APPY", "wrong number format for width");
-        }
-
-        try
-        {
-            sizeFactor = Float.parseFloat(sharedPref.getString("global_size_factor", "1"));
-        }
-        catch (NumberFormatException e)
-        {
-            Log.w("APPY", "wrong number for global size factor");
-        }
+        float widthCorrectionFactor = Utils.orDefault(Utils.parseFloatOrNull(sharedPref.getString("global_width_correction_factor", "1")), 1.0f);
+        float heightCorrectionFactor = Utils.orDefault(Utils.parseFloatOrNull(sharedPref.getString("global_height_correction_factor", "1")), 1.0f);
+        float sizeFactor = Utils.orDefault(Utils.parseFloatOrNull(sharedPref.getString("global_size_factor", "1")), 1.0f);
 
         if (widthCorrectionFactor <= 0 || widthCorrectionFactor > 3)
         {
@@ -3449,7 +3442,7 @@ public class Widget extends RemoteViewsService
         {
             updateListener.onDelete(widgetId);
         }
-        setWidgetSizeFactorAndCorrections(widgetId, null, null, null);
+        setWidgetSizeFactorAndCorrections(widgetId, true, true, true, null, null, null);
         callWidgetClearedListener(widgetId);
         update(widgetId);
     }
@@ -5147,24 +5140,8 @@ public class Widget extends RemoteViewsService
                         if (tag != null)
                         {
                             int index = tag.indexOf(",");
-                            int command = -1;
-                            String arg = null;
-                            try
-                            {
-                                if (index == -1)
-                                {
-                                    command = Integer.parseInt(tag);
-                                }
-                                else
-                                {
-                                    command = Integer.parseInt(tag.substring(0, index));
-                                    arg = tag.substring(index + 1);
-                                }
-                            }
-                            catch (NumberFormatException ignored)
-                            {
-
-                            }
+                            int command = Utils.orDefault(Utils.parseIntOrNull(index == -1 ? tag : tag.substring(0, index)), -1);
+                            String arg = index == -1 ? null : tag.substring(index + 1);
 
                             if (command != -1)
                             {
@@ -5177,10 +5154,9 @@ public class Widget extends RemoteViewsService
                                     case Constants.SPECIAL_WIDGET_CONFIGURE:
                                         if (arg != null)
                                         {
-                                            try
+                                            Integer widgetId = Utils.parseIntOrNull(arg);
+                                            if (widgetId != null)
                                             {
-                                                int widgetId = Integer.parseInt(arg);
-
                                                 switch (command)
                                                 {
                                                     case Constants.SPECIAL_WIDGET_CLEAR:
@@ -5204,10 +5180,6 @@ public class Widget extends RemoteViewsService
                                                         onWidgetConfigure(widgetId);
                                                         break;
                                                 }
-                                            }
-                                            catch (NumberFormatException ignored)
-                                            {
-
                                             }
                                         }
                                         break;

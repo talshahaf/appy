@@ -101,10 +101,10 @@ public class DialogActivity extends Activity
         resultReported = true;
     }
 
-    public static String[] getEditTexts(View[] editTextViews)
+    public static TextView[] getEditTexts(View[] editTextViews)
     {
-        String[] texts = new String[editTextViews.length];
-        for (int i = 0; i < texts.length; i++)
+        TextView[] textViews = new TextView[editTextViews.length];
+        for (int i = 0; i < textViews.length; i++)
         {
             TextView textView = null;
             if (editTextViews[i] instanceof EditText)
@@ -120,7 +120,21 @@ public class DialogActivity extends Activity
 
             if (textView != null)
             {
-                texts[i] = textView.getText().toString();
+                textViews[i] = textView;
+            }
+        }
+        return textViews;
+    }
+
+    public static String[] getEditTextTexts(View[] editTextViews)
+    {
+        TextView[] textViews = getEditTexts(editTextViews);
+        String[] texts = new String[textViews.length];
+        for (int i = 0; i < texts.length; i++)
+        {
+            if (textViews[i] != null)
+            {
+                texts[i] = textViews[i].getText().toString();
             }
         }
         return texts;
@@ -273,7 +287,7 @@ public class DialogActivity extends Activity
         builder.setView(container);
 
         builder.setOnCancelListener(dialog -> {
-            dialogActivityResult(-1, getEditTexts(editTextViews));
+            dialogActivityResult(-1, getEditTextTexts(editTextViews));
             finish();
         });
 
@@ -291,7 +305,7 @@ public class DialogActivity extends Activity
                     which = 0;
                     break;
             }
-            dialogActivityResult(which, getEditTexts(editTextViews));
+            dialogActivityResult(which, getEditTextTexts(editTextViews));
             finish();
         };
 

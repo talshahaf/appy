@@ -100,6 +100,7 @@ public class CrashFragment extends FragmentParent
             View layout = inflater.inflate(R.layout.fragment_list, container, false);
             list = layout.findViewById(R.id.list_view);
             list.setOnItemClickListener(this);
+            list.setEmptyView(layout.findViewById(R.id.empty_view));
             refresh();
             return layout;
         }

@@ -91,6 +91,11 @@ public class Utils
         void run(T t, U u);
     }
 
+    public static <T> T orDefault(T val, T def)
+    {
+        return val != null ? val : def;
+    }
+
     public static ArrayList<String> bundleDiff(Bundle a, Bundle b)
     {
         Set<String> aKeys = a == null ? new HashSet<>() : a.keySet();
@@ -538,7 +543,7 @@ public class Utils
             }
             catch (NumberFormatException e)
             {
-                throw new RuntimeException("Cannot parse unit: " + s);
+                throw new RuntimeException("Cannot parse unit: " + s, e);
             }
         }
 
@@ -675,6 +680,29 @@ public class Utils
         }
 
         builder.show();
+    }
+
+    public static Integer parseIntOrNull(String s)
+    {
+        try
+        {
+            return Integer.parseInt(s);
+        }
+        catch (NumberFormatException ignored)
+        {
+            return null;
+        }
+    }
+    public static Float parseFloatOrNull(String s)
+    {
+        try
+        {
+            return Float.parseFloat(s);
+        }
+        catch (NumberFormatException ignored)
+        {
+            return null;
+        }
     }
 
     public static String collapseSpaces(String s)

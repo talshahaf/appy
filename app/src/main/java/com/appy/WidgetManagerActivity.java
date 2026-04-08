@@ -71,7 +71,7 @@ public class WidgetManagerActivity extends WidgetSelectActivity
     {
         menu.add(0, CONTEXT_MENU_CLEAR, 0, "Clear");
         menu.add(0, CONTEXT_MENU_RECREATE, 0, "Recreate");
-        menu.add(0, CONTEXT_MENU_SIZE_FACTOR, 0, "Change Size Factor");
+        menu.add(0, CONTEXT_MENU_SIZE_FACTOR, 0, "Change Size and Correction Factors");
     }
 
     @Override

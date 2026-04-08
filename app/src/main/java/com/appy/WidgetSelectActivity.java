@@ -49,6 +49,7 @@ public abstract class WidgetSelectActivity extends AppCompatActivity implements 
 
         listview = findViewById(R.id.list);
         listview.setOnItemClickListener(this);
+        listview.setEmptyView(findViewById(R.id.empty_view));
 
         setSupportActionBar(toolbar);
 
@@ -76,22 +77,25 @@ public abstract class WidgetSelectActivity extends AppCompatActivity implements 
         int w = widgetProps.getInt("width_dp", -1);
         int h = widgetProps.getInt("height_dp", -1);
         String sizeStr = w != -1 && h != -1 ? (" (" + w + "x" + h + ")") : "";
-        float size_factor = widgetProps.getFloat("size_factor", 1.0f);
-        float width_factor = widgetProps.getFloat("width_correction_factor", 1.0f);
-        float height_factor = widgetProps.getFloat("height_correction_factor", 1.0f);
-        String sizeFactorStr = size_factor == 1.0f ? "" : ("size factor: " + size_factor);
-        String correctionFactorStr = width_factor == 1.0f && height_factor == 1.0f ? "" : ("correction factors: " + width_factor + "x" + height_factor);
+        String factorsStr = "";
+        if (widgetProps.hasKey("size_factor"))
+        {
+            factorsStr += ", size: " + widgetProps.getFloat("size_factor", 1.0f);
+        }
+        if (widgetProps.hasKey("width_correction_factor"))
+        {
+            factorsStr += ", width: " + widgetProps.getFloat("width_correction_factor", 1.0f);
+        }
+        if (widgetProps.hasKey("height_correction_factor"))
+        {
+            factorsStr += ", height: " + widgetProps.getFloat("height_correction_factor", 1.0f);
+        }
 
-        String text = widgetProps.getString("display_name") + sizeStr;
-        if (!sizeFactorStr.isEmpty() && !correctionFactorStr.isEmpty())
+        if (!factorsStr.isEmpty())
         {
-            text += "\n" + Utils.capitalize(sizeFactorStr + ", " + correctionFactorStr);
+            factorsStr = "\nFactors:" + factorsStr.substring(1);
         }
-        else if (!sizeFactorStr.isEmpty() || !correctionFactorStr.isEmpty())
-        {
-            text += "\n" + Utils.capitalize(sizeFactorStr + correctionFactorStr);
-        }
-        return text;
+        return widgetProps.getString("display_name") + sizeStr + factorsStr;
     }
 
     public void updateWidgetList()
