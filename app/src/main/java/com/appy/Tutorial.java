@@ -84,7 +84,7 @@ public class Tutorial implements OverlayHoleView.OnHoleClick, TutorialStepListen
             //starting from 1
             new StepProps("", 0, false, StepProps.Anchor.ABSOLUTE, null),
             //status change
-            new StepProps(welcomeMessage + "\n\nAppy is now installing python and downloads some helpful libraries (pip, requests, setuptools and more).\nIt shouldn't take more than 20 seconds, and once it's done you can add your first widget.", 20, false, StepProps.Anchor.BELOW_HOLE, null),
+            new StepProps(welcomeMessage + "\n\nAppy is now installing python and downloads some helpful libraries (pip, requests and more).\nIt shouldn't take more than 20 seconds, and once it's done you can add your first widget.", 20, false, StepProps.Anchor.BELOW_HOLE, null),
             //click on menu
             new StepProps(welcomeMessage + "\n\nAppy is ready. Next, we'll import your first widget.\nClick on the menu icon.", 20, false, StepProps.Anchor.BELOW_HOLE, null),
             //click on files
