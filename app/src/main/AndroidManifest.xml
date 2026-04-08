@@ -142,7 +142,7 @@
             android:label="Manage Widgets"
             android:configChanges="orientation|screenSize|keyboardHidden|smallestScreenSize|screenLayout"/>
         <activity android:name="com.appy.WidgetSizeFactorActivity"
-            android:label="Widget Size Factors"
+            android:label="Widget Size And Correction Factors"
             android:configChanges="orientation|screenSize|keyboardHidden|smallestScreenSize|screenLayout"/>
         <activity android:name="com.appy.ShareActivity"
             android:label="Share with"

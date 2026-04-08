@@ -10,24 +10,24 @@
         android:key="global_size_factor"
         android:selectAllOnFocus="true" android:singleLine="true"
         android:title="Global size factor"/>
-    <Preference
-        android:key="size_factors"
-        android:title="Setup size factors per widget"
-        android:summary=""/>
-
     <EditTextPreference
         android:defaultValue="1"
         android:inputType="numberDecimal"
-        android:key="width_correction"
+        android:key="global_width_correction_factor"
         android:selectAllOnFocus="true" android:singleLine="true"
-        android:title="Width correction"/>
+        android:title="global width correction factor"/>
     <EditTextPreference
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:defaultValue="1"
-        android:inputType="numberDecimal" android:key="height_correction"
+        android:inputType="numberDecimal"
+        android:key="global_height_correction_factor"
         android:selectAllOnFocus="true" android:singleLine="true"
-        android:title="Height correction"/>
+        android:title="Global height correction factor"/>
+    <Preference
+        android:key="size_factors"
+        android:title="Setup size and correction factors per widget"
+        android:summary=""/>
     <CheckBoxPreference
         android:defaultValue="true"
         android:key="refresh_on_modify"

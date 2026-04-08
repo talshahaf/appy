@@ -136,8 +136,8 @@ public class Widget extends RemoteViewsService
 
     final HashSet<Integer> needUpdateWidgets = new HashSet<>();
 
-    float widthCorrectionFactor = 1.0f;
-    float heightCorrectionFactor = 1.0f;
+    float globalWidthCorrectionFactor = 1.0f;
+    float globalHeightCorrectionFactor = 1.0f;
     float globalSizeFactor = 1.0f;
     final Configurations configurations = new Configurations(this, this::configurationUpdate);
     MultipleFileObserverBase pythonFilesObserver = null;
@@ -755,10 +755,10 @@ public class Widget extends RemoteViewsService
 
     public int[] getWidgetDimensions(int widgetId)
     {
-        return getWidgetDimensions(AppWidgetManager.getInstance(this), getAndroidWidget(widgetId));
+        return getWidgetDimensions(AppWidgetManager.getInstance(this), widgetId, getAndroidWidget(widgetId));
     }
 
-    public int[] getWidgetDimensions(AppWidgetManager appWidgetManager, int androidWidgetId)
+    public int[] getWidgetDimensions(AppWidgetManager appWidgetManager, int widgetId, int androidWidgetId)
     {
         Bundle bundle = appWidgetManager.getAppWidgetOptions(androidWidgetId);
 
@@ -767,6 +767,10 @@ public class Widget extends RemoteViewsService
 
         double widthPx = convertUnit(widthDp, TypedValue.COMPLEX_UNIT_DIP, TypedValue.COMPLEX_UNIT_PX);
         double heightPx = convertUnit(heightDp, TypedValue.COMPLEX_UNIT_DIP, TypedValue.COMPLEX_UNIT_PX);
+
+        Float[] correctionFactors = getWidgetSizeAndCorrectionFactors(widgetId);
+        float widthCorrectionFactor = correctionFactors[1] != null ? correctionFactors[1] : getGlobalSizeAndCorrectionFactors()[1];
+        float heightCorrectionFactor = correctionFactors[2] != null ? correctionFactors[2] : getGlobalSizeAndCorrectionFactors()[2];
 
         //only works on portrait
         return new int[]{
@@ -1625,8 +1629,8 @@ public class Widget extends RemoteViewsService
         // we must copy as we're changing the views
         dynamicList = DynamicView.copyArray(dynamicList);
 
-        Float widgetSizeFactor = getWidgetSizeFactor(widgetId);
-        float sizeFactor = widgetSizeFactor == null ? globalSizeFactor : widgetSizeFactor;
+        Float[] widgetFactors = getWidgetSizeAndCorrectionFactors(widgetId);
+        float sizeFactor = widgetFactors[0] != null ? widgetFactors[0] : getGlobalSizeAndCorrectionFactors()[0];
 
         RemoteViews remote = generate(service, widgetId, dynamicList, true, collectionLayout, collectionExtras, sizeFactor, widgetSize).first;
         RelativeLayout layout = new RelativeLayout(this);
@@ -2226,26 +2230,28 @@ public class Widget extends RemoteViewsService
         saveProps(widgetProps, new WeakReference<>(widgetPropsLock), "widget_props", widgetId, flush);
     }
 
-    public void setWidgetSizeFactor(int widgetId, Float sizeFactor)
+    public void setWidgetSizeFactorAndCorrections(int widgetId, Float sizeFactor, Float widthCorrectionFactor, Float heightCorrectionFactor)
     {
-        setProps(widgetProps, new Object[]{widgetPropsLock}, widgetId, "size_factor", sizeFactor, (DictObj.Dict dict) -> dict.put("size_factor", sizeFactor));
+        setProps(widgetProps, new WeakReference<>(widgetPropsLock), widgetId, "size_factor", sizeFactor, (DictObj.Dict dict) -> dict.put("size_factor", sizeFactor));
+        setProps(widgetProps, new WeakReference<>(widgetPropsLock), widgetId, "width_correction_factor", widthCorrectionFactor, (DictObj.Dict dict) -> dict.put("width_correction_factor", widthCorrectionFactor));
+        setProps(widgetProps, new WeakReference<>(widgetPropsLock), widgetId, "height_correction_factor", heightCorrectionFactor, (DictObj.Dict dict) -> dict.put("height_correction_factor", heightCorrectionFactor));
         saveWidgetProps(widgetId, true);
         update(widgetId);
     }
 
     public void setWidgetAppTitle(int widgetId, String title)
     {
-        setProps(widgetProps, new Object[]{widgetPropsLock}, widgetId, "app_title", title, (DictObj.Dict dict) -> dict.put("app_title", title));
+        setProps(widgetProps, new WeakReference<>(widgetPropsLock), widgetId, "app_title", title, (DictObj.Dict dict) -> dict.put("app_title", title));
         saveWidgetProps(widgetId, true);
     }
 
     public void setWidgetLastError(int widgetId, String lastError)
     {
-        setProps(widgetProps, new Object[]{widgetPropsLock}, widgetId, "last_error", lastError, (DictObj.Dict dict) -> dict.put("last_error", lastError));
+        setProps(widgetProps, new WeakReference<>(widgetPropsLock), widgetId, "last_error", lastError, (DictObj.Dict dict) -> dict.put("last_error", lastError));
         saveWidgetProps(widgetId, true);
     }
 
-    public void setProps(ConcurrentHashMap<Integer, DictObj.Dict> map, Object[] mapLock, int widgetId, String key, Object data, PropSetter setter)
+    public void setProps(ConcurrentHashMap<Integer, DictObj.Dict> map, Reference<Object> mapLock, int widgetId, String key, Object data, PropSetter setter)
     {
         if (map.get(widgetId) == null)
         {
@@ -2258,7 +2264,7 @@ public class Widget extends RemoteViewsService
 
         DictObj.Dict props = map.get(widgetId);
 
-        synchronized (mapLock[0])
+        synchronized (mapLock.get())
         {
             if (data == null)
             {
@@ -2274,7 +2280,7 @@ public class Widget extends RemoteViewsService
         }
     }
 
-    public Float getWidgetSizeFactor(int widgetId)
+    public Float[] getWidgetSizeAndCorrectionFactors(int widgetId)
     {
         DictObj.Dict props = widgetProps.get(widgetId);
         if (props == null)
@@ -2282,14 +2288,23 @@ public class Widget extends RemoteViewsService
             return null;
         }
 
+        Float[] result = new Float[] { null, null, null };
         synchronized (widgetPropsLock)
         {
-            if (!props.hasKey("size_factor"))
+            if (props.hasKey("size_factor"))
             {
-                return null;
+                result[0] = props.getFloat("size_factor", 1.0f);
             }
-            return props.getFloat("size_factor", 1.0f);
+            if (props.hasKey("width_correction_factor"))
+            {
+                result[1] = props.getFloat("width_correction_factor", 1.0f);
+            }
+            if (props.hasKey("height_correction_factor"))
+            {
+                result[2] = props.getFloat("height_correction_factor", 1.0f);
+            }
         }
+        return result;
     }
 
     public String getWidgetLastError(int widgetId)
@@ -2352,6 +2367,8 @@ public class Widget extends RemoteViewsService
                 }
 
                 result.getDict(key).put("size_factor", props.getValue().getFloat("size_factor", 1.0f));
+                result.getDict(key).put("width_correction_factor", props.getValue().getFloat("width_correction_factor", 1.0f));
+                result.getDict(key).put("height_correction_factor", props.getValue().getFloat("height_correction_factor", 1.0f));
                 if (props.getValue().hasKey("app_title"))
                 {
                     result.getDict(key).put("title", props.getValue().getString("app_title"));
@@ -2385,10 +2402,11 @@ public class Widget extends RemoteViewsService
             DictObj.Dict androidResult = new DictObj.Dict();
             for (String key : result.keys())
             {
-                Integer androidWidgetId = widgetToAndroid.get(Integer.parseInt(key));
+                int widgetId = Integer.parseInt(key);
+                Integer androidWidgetId = widgetToAndroid.get(widgetId);
                 if (androidWidgetId != null)
                 {
-                    int[] dimensions = getWidgetDimensions(manager, androidWidgetId);
+                    int[] dimensions = getWidgetDimensions(manager, widgetId, androidWidgetId);
                     result.getDict(key).put("app", getWidgetIsApp(manager, androidWidgetId));
                     result.getDict(key).put("width", dimensions[0]);
                     result.getDict(key).put("height", dimensions[1]);
@@ -2404,10 +2422,11 @@ public class Widget extends RemoteViewsService
         {
             for (String key : result.keys())
             {
-                Integer androidWidgetId = widgetToAndroid.get(Integer.parseInt(key));
+                int widgetId = Integer.parseInt(key);
+                Integer androidWidgetId = widgetToAndroid.get(widgetId);
                 if (androidWidgetId != null)
                 {
-                    int[] dimensions = getWidgetDimensions(manager, androidWidgetId);
+                    int[] dimensions = getWidgetDimensions(manager, widgetId, androidWidgetId);
                     result.getDict(key).put("androidWidgetId", androidWidgetId);
                     result.getDict(key).put("app", getWidgetIsApp(manager, androidWidgetId));
                     result.getDict(key).put("width", dimensions[0]);
@@ -2421,7 +2440,7 @@ public class Widget extends RemoteViewsService
         return result;
     }
 
-    public void resetWidgetSizeFactors()
+    public void resetWidgetSizeAndCorrectionFactors()
     {
         HashSet<Integer> widgetIds = new HashSet<>(widgets.keySet());
         for (int widgetId : widgetIds)
@@ -2432,6 +2451,8 @@ public class Widget extends RemoteViewsService
                 synchronized (widgetPropsLock)
                 {
                     props.remove("size_factor");
+                    props.remove("width_correction_factor");
+                    props.remove("height_correction_factor");
                     saveWidgetProps(widgetId, false);
                 }
             }
@@ -2466,36 +2487,39 @@ public class Widget extends RemoteViewsService
         saveProps(widgetAppIcons, new WeakReference<>(widgetAppIconsLock), "widget_app_icons", widgetId, true);
     }
 
-    public float[] getCorrectionFactors()
+    public float[] getGlobalSizeAndCorrectionFactors()
     {
-        return new float[]{widthCorrectionFactor, heightCorrectionFactor};
+        return new float[]{globalSizeFactor, globalWidthCorrectionFactor, globalHeightCorrectionFactor};
     }
 
-    public float getGlobalSizeFactor()
-    {
-        return globalSizeFactor;
-    }
-
-    public void setCorrectionFactors(float widthCorrection, float heightCorrection)
+    public void setGlobalSizeFactor(float sizeFactor)
     {
         SharedPreferences.Editor editor = PreferenceManager.getDefaultSharedPreferences(getApplicationContext()).edit();
-        editor.putString("width_correction", widthCorrection + "");
-        editor.putString("height_correction", heightCorrection + "");
+        editor.putString("global_size_factor", sizeFactor + "");
         editor.apply();
 
-        loadCorrectionFactors(false);
+        loadSizeAndCorrectionFactors(false);
+    }
+    public void setGlobalCorrectionFactors(float widthCorrection, float heightCorrection)
+    {
+        SharedPreferences.Editor editor = PreferenceManager.getDefaultSharedPreferences(getApplicationContext()).edit();
+        editor.putString("global_width_correction_factor", widthCorrection + "");
+        editor.putString("global_height_correction_factor", heightCorrection + "");
+        editor.apply();
+
+        loadSizeAndCorrectionFactors(false);
     }
 
-    public void loadCorrectionFactors(boolean initing)
+    public void loadSizeAndCorrectionFactors(boolean initing)
     {
-        float widthCorrection = 1.0f;
-        float heightCorrection = 1.0f;
+        float widthCorrectionFactor = 1.0f;
+        float heightCorrectionFactor = 1.0f;
         float sizeFactor = 1.0f;
 
         SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
         try
         {
-            widthCorrection = Float.parseFloat(sharedPref.getString("width_correction", "1"));
+            widthCorrectionFactor = Float.parseFloat(sharedPref.getString("global_width_correction_factor", "1"));
         }
         catch (NumberFormatException e)
         {
@@ -2504,7 +2528,7 @@ public class Widget extends RemoteViewsService
 
         try
         {
-            heightCorrection = Float.parseFloat(sharedPref.getString("height_correction", "1"));
+            heightCorrectionFactor = Float.parseFloat(sharedPref.getString("global_height_correction_factor", "1"));
         }
         catch (NumberFormatException e)
         {
@@ -2520,13 +2544,13 @@ public class Widget extends RemoteViewsService
             Log.w("APPY", "wrong number for global size factor");
         }
 
-        if (widthCorrection <= 0 || widthCorrection > 3)
+        if (widthCorrectionFactor <= 0 || widthCorrectionFactor > 3)
         {
-            widthCorrection = 1;
+            widthCorrectionFactor = 1;
         }
-        if (heightCorrection <= 0 || heightCorrection > 3)
+        if (heightCorrectionFactor <= 0 || heightCorrectionFactor > 3)
         {
-            heightCorrection = 1;
+            heightCorrectionFactor = 1;
         }
 
         if (sizeFactor <= 0 || sizeFactor > 3)
@@ -2535,12 +2559,12 @@ public class Widget extends RemoteViewsService
         }
 
         boolean shouldUpdate = false;
-        if (widthCorrectionFactor != widthCorrection ||
-            heightCorrectionFactor != heightCorrection ||
+        if (globalWidthCorrectionFactor != widthCorrectionFactor ||
+            globalHeightCorrectionFactor != heightCorrectionFactor ||
             globalSizeFactor != sizeFactor)
         {
-            widthCorrectionFactor = widthCorrection;
-            heightCorrectionFactor = heightCorrection;
+            globalWidthCorrectionFactor = widthCorrectionFactor;
+            globalHeightCorrectionFactor = heightCorrectionFactor;
             globalSizeFactor = sizeFactor;
             shouldUpdate = true;
 
@@ -3425,7 +3449,7 @@ public class Widget extends RemoteViewsService
         {
             updateListener.onDelete(widgetId);
         }
-        setWidgetSizeFactor(widgetId, null);
+        setWidgetSizeFactorAndCorrections(widgetId, null, null, null);
         callWidgetClearedListener(widgetId);
         update(widgetId);
     }
@@ -3983,7 +4007,7 @@ public class Widget extends RemoteViewsService
         try
         {
             AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(Widget.this);
-            int[] widgetDimensions = getWidgetDimensions(appWidgetManager, androidWidgetId);
+            int[] widgetDimensions = getWidgetDimensions(appWidgetManager, widgetId, androidWidgetId);
             int widthLimit = widgetDimensions[0];
             int heightLimit = widgetDimensions[1];
 
@@ -4305,7 +4329,7 @@ public class Widget extends RemoteViewsService
                     getExternalMediaDirs();
 
                     loadPythonFiles();
-                    loadCorrectionFactors(true);
+                    loadSizeAndCorrectionFactors(true);
                     loadWidgets();
                     loadTimers();
                     loadWidgetProps();
@@ -4892,7 +4916,7 @@ public class Widget extends RemoteViewsService
 
         String displayName = "widget #" + widgetId + " (" + widgetName + ")";
 
-        String[] texts = new String[]{ "Open Config", "Recreate", "Reload", "Set Scale Factor", "Edit", "Show Last Error", "Open Global Config", "Clear"};
+        String[] texts = new String[]{ "Open Config", "Recreate", "Reload", "Set Scale And Correction Factors", "Edit", "Show Last Error", "Open Global Config", "Clear"};
         String[] actions = new String[] {Constants.SPECIAL_WIDGET_OPEN_CONFIGURATION + "," + widgetId + "," + widgetName,
                                          Constants.SPECIAL_WIDGET_RECREATE + "," + widgetId,
                                          widgetPath == null ? null : (Constants.SPECIAL_WIDGET_RELOAD + "," + widgetPath),

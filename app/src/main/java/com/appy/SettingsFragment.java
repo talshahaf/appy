@@ -24,8 +24,8 @@ public class SettingsFragment extends MySettingsFragment implements SharedPrefer
     {
         addPreferencesFromResource(R.xml.pref);
 
-        widthCorrectionPreference = getPreferenceScreen().findPreference("width_correction");
-        heightCorrectionPreference = getPreferenceScreen().findPreference("height_correction");
+        widthCorrectionPreference = getPreferenceScreen().findPreference("global_width_correction_factor");
+        heightCorrectionPreference = getPreferenceScreen().findPreference("global_height_correction_factor");
         globalSizeFactorPreference = getPreferenceScreen().findPreference("global_size_factor");
 
         Preference.OnPreferenceChangeListener validateFloat = (preference, newValue) -> {
@@ -68,6 +68,7 @@ public class SettingsFragment extends MySettingsFragment implements SharedPrefer
         super.onResume();
         // Set up a listener whenever a key changes
         getPreferenceScreen().getSharedPreferences().registerOnSharedPreferenceChangeListener(this);
+        updateConfig();
     }
 
     @Override
@@ -96,13 +97,13 @@ public class SettingsFragment extends MySettingsFragment implements SharedPrefer
             return;
         }
 
-        getWidgetService().loadCorrectionFactors(false);
+        getWidgetService().loadSizeAndCorrectionFactors(false);
         getWidgetService().loadForeground();
 
-        float[] correctionFactors = getWidgetService().getCorrectionFactors();
-        widthCorrectionPreference.setSummary(Utils.formatFloat(correctionFactors[0]));
-        heightCorrectionPreference.setSummary(Utils.formatFloat(correctionFactors[1]));
-        globalSizeFactorPreference.setSummary(Utils.formatFloat(getWidgetService().getGlobalSizeFactor()));
+        float[] sizeAndCorrectionFactors = getWidgetService().getGlobalSizeAndCorrectionFactors();
+        globalSizeFactorPreference.setSummary(Utils.formatFloat(sizeAndCorrectionFactors[0]));
+        widthCorrectionPreference.setSummary(Utils.formatFloat(sizeAndCorrectionFactors[1]));
+        heightCorrectionPreference.setSummary(Utils.formatFloat(sizeAndCorrectionFactors[2]));
         pythonVersionPreference.setSummary(getWidgetService().pythonVersion());
     }
 }

@@ -9,6 +9,7 @@ import android.content.ServiceConnection;
 import android.graphics.Typeface;
 import android.os.Bundle;
 import android.os.IBinder;
+import android.text.InputType;
 import android.util.Pair;
 import android.util.TypedValue;
 import android.view.View;
@@ -148,7 +149,7 @@ public class DialogActivity extends Activity
         return layout;
     }
 
-    public static View makeEditText(Context context, String text, String hint)
+    public static View makeEditText(Context context, String text, String hint, Integer inputType)
     {
         TextInputLayout layout = new TextInputLayout(context);
         TextInputEditText textview = new TextInputEditText(context);
@@ -159,6 +160,10 @@ public class DialogActivity extends Activity
         if (hint != null)
         {
             layout.setHint(hint);
+        }
+        if (inputType != null)
+        {
+            textview.setInputType(inputType);
         }
         textview.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.MATCH_PARENT));
         layout.addView(textview);
@@ -254,7 +259,7 @@ public class DialogActivity extends Activity
             }
             else
             {
-                editTextViews[i] = makeEditText(this, editTexts[i], i < editHints.length ? editHints[i] : null);
+                editTextViews[i] = makeEditText(this, editTexts[i], i < editHints.length ? editHints[i] : null, null);
             }
 
             LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);

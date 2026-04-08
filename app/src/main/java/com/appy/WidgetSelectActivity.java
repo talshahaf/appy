@@ -76,9 +76,22 @@ public abstract class WidgetSelectActivity extends AppCompatActivity implements 
         int w = widgetProps.getInt("width_dp", -1);
         int h = widgetProps.getInt("height_dp", -1);
         String sizeStr = w != -1 && h != -1 ? (" (" + w + "x" + h + ")") : "";
-        float factor = widgetProps.getFloat("size_factor", 1.0f);
-        String sizeFactorStr = factor == 1.0f ? "" : (" size factor: " + factor);
-        return widgetProps.getString("display_name") + sizeStr + sizeFactorStr;
+        float size_factor = widgetProps.getFloat("size_factor", 1.0f);
+        float width_factor = widgetProps.getFloat("width_correction_factor", 1.0f);
+        float height_factor = widgetProps.getFloat("height_correction_factor", 1.0f);
+        String sizeFactorStr = size_factor == 1.0f ? "" : ("size factor: " + size_factor);
+        String correctionFactorStr = width_factor == 1.0f && height_factor == 1.0f ? "" : ("correction factors: " + width_factor + "x" + height_factor);
+
+        String text = widgetProps.getString("display_name") + sizeStr;
+        if (!sizeFactorStr.isEmpty() && !correctionFactorStr.isEmpty())
+        {
+            text += "\n" + Utils.capitalize(sizeFactorStr + ", " + correctionFactorStr);
+        }
+        else if (!sizeFactorStr.isEmpty() || !correctionFactorStr.isEmpty())
+        {
+            text += "\n" + Utils.capitalize(sizeFactorStr + correctionFactorStr);
+        }
+        return text;
     }
 
     public void updateWidgetList()
@@ -156,7 +169,7 @@ public abstract class WidgetSelectActivity extends AppCompatActivity implements 
         }
 
         ListFragmentAdapter.Item item = (ListFragmentAdapter.Item) adapter.getItemAtPosition(position);
-        onWidgetSelected(view, Integer.parseInt(item.key), item.value);
+        onWidgetSelected(view, Integer.parseInt(item.key), (String)item.arg);
     }
 
     @Override
