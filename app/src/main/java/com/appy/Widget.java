@@ -93,7 +93,7 @@ public class Widget extends RemoteViewsService
     private final IBinder mBinder = new LocalBinder();
     private static boolean mIsRunning = false;
 
-    public static final int PYTHON_VERSION = 31212;
+    public static final int PYTHON_VERSION = 31404;
     public static final int NOTIFICATION_ID = 100;
 
     WidgetUpdateListener updateListener = null;
@@ -4258,7 +4258,7 @@ public class Widget extends RemoteViewsService
             String timeformat = ((SimpleDateFormat)DateFormat.getTimeInstance(DateFormat.MEDIUM, locale)).toPattern();
 
             String pythonHome = new File(getFilesDir(), "python").getAbsolutePath();
-            String pythonLib = new File(pythonHome, "/lib/libpython3.12.so").getAbsolutePath(); //must be without
+            String pythonLib = new File(pythonHome, "/lib/libpython3.14.so").getAbsolutePath(); //must be without
             String cacheDir = getPreferredCacheDir();
 
             if (getPythonUnpacked() != PYTHON_VERSION || (pythonFlags & Constants.PYTHON_INIT_FLAGS_REINSTALL_PYTHON) != 0)

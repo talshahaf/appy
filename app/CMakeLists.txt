@@ -37,12 +37,13 @@ add_library( # Specifies the name of the library.
 
 add_library(pythonlib SHARED IMPORTED)
 set_target_properties(pythonlib PROPERTIES IMPORTED_LOCATION
-    ${CMAKE_SOURCE_DIR}/src/main/cpp/lib/${ANDROID_ABI}/libpython3.12.so.1.0)
+    ${CMAKE_SOURCE_DIR}/src/main/cpp/lib/${ANDROID_ABI}/libpython3.14.so)
 
 include_directories(src/main/cpp/inc/)
-include_directories(src/main/cpp/inc/${ANDROID_ABI}/python3.12)
+include_directories(src/main/cpp/inc/${ANDROID_ABI}/python3.14)
 
-set_target_properties(prehelpers PROPERTIES LINK_FLAGS "-Wl,-zglobal")
+set_target_properties(prehelpers PROPERTIES LINK_FLAGS "-Wl,-zglobal -Wl,-z,max-page-size=16384")
+set_target_properties(native PROPERTIES LINK_FLAGS "-Wl,-z,max-page-size=16384")
 
 target_link_libraries( # Specifies the target library.
                        native

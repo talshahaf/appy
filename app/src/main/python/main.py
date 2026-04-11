@@ -72,7 +72,7 @@ def execute(command):
 
 def install_optional_packages(exe, do_upgrade):
     try:
-        needed_packages = ['pip', 'wheel', 'requests', 'requests-futures', 'packaging', 'pyparsing', 'python-dateutil', 'cycler']
+        needed_packages = ['pip', 'requests', 'requests-futures', 'packaging', 'pyparsing', 'python-dateutil', 'cycler']
         try:
             #TODO maybe import all?
             import requests, cycler
@@ -132,7 +132,7 @@ def do_init():
         os.environ['LD_PRELOAD'] = os.path.join(exe_dir, 'libprehelpers.so')
         os.chdir(bin_dir)
 
-        python_links = ['python', 'python3', 'python3.12']
+        python_links = ['python', 'python3']
         for link in python_links:
             try:
                 full = os.path.join(bin_dir, link)
