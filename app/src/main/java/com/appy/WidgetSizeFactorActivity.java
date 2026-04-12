@@ -22,7 +22,7 @@ public class WidgetSizeFactorActivity extends WidgetSelectActivity
         container.setOrientation(LinearLayout.HORIZONTAL);
         container.setGravity(Gravity.CENTER);
 
-        LinearLayout.LayoutParams editParams = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 4);
+        LinearLayout.LayoutParams editParams = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 2);
         LinearLayout.LayoutParams setParams = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1);
         LinearLayout.LayoutParams unsetParams = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1);
 

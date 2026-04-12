@@ -1166,8 +1166,16 @@ static PyObject * find_class(PyObject * self, PyObject * args)
         jclass local_clazz = NULL;
         WITHOUTGIL(
             local_clazz = env->FindClass(clazz);
-            CHECK_JAVA_EXC(env);
+            if (env->ExceptionCheck() == JNI_TRUE)
+            {
+                env->ExceptionClear();
+                local_clazz = NULL;
+            }
         );
+        if (local_clazz == NULL)
+        {
+            return Py_None;
+        }
         return PyLong_FromUnsignedLong(
                 (unsigned long) make_global_java_ref(env, (jobject) local_clazz));
     }

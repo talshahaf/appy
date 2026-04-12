@@ -148,7 +148,10 @@ def find_class(path):
         if path.startswith(f'{key}.'):
             path = f'{value}.{path[len(key) + 1:]}'
             break
-    return know_class(jclass(jref(native_appy.find_class(path.replace('.', '/')))))
+    ptr = native_appy.find_class(path.replace('.', '/'))
+    if ptr is None:
+        raise AttributeError(f'No such class: {path}')
+    return know_class(jclass(jref(ptr)))
 
 def array_of_class(clazz):
     return know_class(jclass(jref(native_appy.jclass_to_array_of_jclass(clazz.ref.handle))))
