@@ -41,6 +41,6 @@ def create(widget):
 register_widget('countdown',
                 create,
                 # Allowing the user to configure the timepoint
-                config=dict(timepoint_nojson=datetime.datetime.now().strftime(datetime_format)),
+                config=dict(timepoint_nojson=(datetime.datetime.now() + datetime.timedelta(days=1)).strftime(datetime_format)),
                 # Listen for timepoint updates
                 on_config=on_config)
