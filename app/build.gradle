@@ -1,12 +1,13 @@
+import org.jetbrains.kotlin.gradle.dsl.KotlinVersion
+
 plugins {
-    id("org.jetbrains.kotlin.plugin.compose") version '2.2.10'
+    id("org.jetbrains.kotlin.plugin.compose") version '2.3.20'
 }
 
 apply plugin: 'com.android.application'
-apply plugin: 'org.jetbrains.kotlin.android'
 
 android {
-    compileSdk 37
+    compileSdk = 36
     packagingOptions {
         resources {
             excludes += ['META-INF/DEPENDENCIES', 'META-INF/LICENSE', 'META-INF/LICENSE.txt', 'META-INF/license.txt', 'META-INF/NOTICE', 'META-INF/NOTICE.txt', 'META-INF/notice.txt', 'META-INF/ASL2.0', 'META-INF/INDEX.LIST']
@@ -23,7 +24,7 @@ android {
     defaultConfig {
         applicationId "com.appy.widgets"
         minSdkVersion 26
-        targetSdkVersion 37
+        targetSdkVersion 36
         versionCode 16
         versionName "1.16"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
@@ -134,17 +135,19 @@ android {
             }
         }
     }
-    ndkVersion '21.0.6113669'
+    ndkVersion '29.0.14206865'
     namespace 'com.appy'
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
+        sourceCompatibility JavaVersion.VERSION_21
+        targetCompatibility JavaVersion.VERSION_21
     }
 
     buildFeatures.compose = true
 
-    kotlinOptions {
-        jvmTarget = '1.8'
+    kotlin {
+        compilerOptions {
+            languageVersion = KotlinVersion.KOTLIN_2_2
+        }
     }
 }
 

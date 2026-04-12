@@ -3,7 +3,7 @@
 buildscript {
     
     ext {
-        kotlin_version = '2.2.10'
+        kotlin_version = '2.3.20'
     }
     repositories {
         google()
@@ -26,6 +26,6 @@ allprojects {
     }
 }
 
-task clean(type: Delete) {
-    delete rootProject.buildDir
+tasks.register('clean', Delete) {
+    delete rootProject.getLayout().getBuildDirectory()
 }

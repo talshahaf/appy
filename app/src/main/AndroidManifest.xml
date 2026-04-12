@@ -68,7 +68,6 @@
         android:supportsRtl="false"
         android:theme="@style/AppTheme"
         android:hasFragileUserData="true"
-        tools:targetApi="q"
         android:name="com.appy.Application"
         android:enableOnBackInvokedCallback="true">
         <activity android:name="com.appy.MainActivity"
