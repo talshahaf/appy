@@ -20,7 +20,12 @@
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
 
+-keepclasseswithmembernames class ** {
+  <init>(...);
+  *;
+}
+
 -keep class com.appy.** {
   <init>(...);
-  *; 
+  *;
 }

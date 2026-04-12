@@ -40,10 +40,7 @@ def _init():
     try:
         exported_flag = context.RECEIVER_EXPORTED
     except AttributeError:
-        try:
-            exported_flag = java.clazz.androidx.core.content.ContextCompat().RECEIVER_EXPORTED
-        except AttributeError:
-            exported_flag = 0
+        exported_flag = 2 #RECEIVER_EXPORTED
     context.registerReceiver(bridge, java.new.android.content.IntentFilter(notification_intent_filter), exported_flag)
 
 def _deinit():
@@ -116,9 +113,10 @@ def simple(title, content, channel_name, channel_description, icon=None, click=N
 
     notification = builder.build()
 
-    notification_permission = 'POST_NOTIFICATIONS'
-    if notification_permission not in request_permissions(notification_permission)[0]:
-        raise PermissionError('Notification permission not granted')
+    if java.clazz.android.os.Build.VERSION().SDK_INT >= 33:
+        notification_permission = 'POST_NOTIFICATIONS'
+        if notification_permission not in request_permissions(notification_permission)[0]:
+            raise PermissionError('Notification permission not granted')
 
     if click is not None:
         #validate

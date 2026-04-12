@@ -137,7 +137,7 @@ public class TimerFragment extends FragmentParent
             else
             {
                 DictObj.Dict widgetTimers = allTimers.getDict(widget);
-                boolean isApp = widgetTimers.getBoolean("app", false);
+                boolean isApp = widgetTimers != null && widgetTimers.getBoolean("app", false);
                 String entity = (isApp ? "app #" : "widget #") + widget;
 
                 if (getActivity() != null)
@@ -152,22 +152,25 @@ public class TimerFragment extends FragmentParent
                             refresh();
                         });
 
-                DictObj.List timers = widgetTimers.getList("timers");
-                for (int i = 0; i < timers.size(); i++)
+                if (widgetTimers != null)
                 {
-                    DictObj.Dict timer = timers.getDict(i);
-                    boolean isInterval = timer.hasKey("interval");
-                    final String prefix = isInterval ? "Interval timer #" : "Absolute timer #";
-                    String subtext;
-                    if (isInterval)
+                    DictObj.List timers = widgetTimers.getList("timers");
+                    for (int i = 0; i < timers.size(); i++)
                     {
-                        subtext = floatFormat(((float)timer.getLong("interval", 0)) / 1000) + " seconds\nNext: " + floatFormat(((float)timer.getLong("to_next", 0)) / 1000) + " seconds";
+                        DictObj.Dict timer = timers.getDict(i);
+                        boolean isInterval = timer.hasKey("interval");
+                        final String prefix = isInterval ? "Interval timer #" : "Absolute timer #";
+                        String subtext;
+                        if (isInterval)
+                        {
+                            subtext = floatFormat(((float) timer.getLong("interval", 0)) / 1000) + " seconds\nNext: " + floatFormat(((float) timer.getLong("to_next", 0)) / 1000) + " seconds";
+                        }
+                        else
+                        {
+                            subtext = "At " + new SimpleDateFormat(Constants.DATE_FORMAT).format(new Date(timer.getLong("time", 0)));
+                        }
+                        adapterList.add(new ListFragmentAdapter.Item(((Long) timer.getLong("id", 0)).toString(), subtext, item -> (prefix + idFormat(item.key)), true));
                     }
-                    else
-                    {
-                        subtext = "At " + new SimpleDateFormat(Constants.DATE_FORMAT).format(new Date(timer.getLong("time", 0)));
-                    }
-                    adapterList.add(new ListFragmentAdapter.Item(((Long)timer.getLong("id", 0)).toString(), subtext, item -> (prefix + idFormat(item.key)), true));
                 }
             }
             list.setAdapter(new ListFragmentAdapter(getActivity(), adapterList));
@@ -260,6 +263,7 @@ public class TimerFragment extends FragmentParent
                 {
                     getWidgetService().cancelWidgetTimers(Integer.parseInt(item.key));
                 }
+                refresh();
             });
             return true;
         }

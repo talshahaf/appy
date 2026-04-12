@@ -140,7 +140,7 @@ def register_receiver():
     try:
         exported_flag = java_context().RECEIVER_EXPORTED
     except AttributeError:
-        exported_flag = 0
+        exported_flag = 2 #RECEIVER_EXPORTED
     
     # Using java_context() to obtain a valid Android context object
     java_context().registerReceiver(pongReceiverBridge, deeplinkIntentFilter, exported_flag)
@@ -153,7 +153,7 @@ def update_counter(widget, views):
 def ping_click(widget):
     widget.nonlocals('notification_id')
     # Choose whether to open an html page or to display a notification according to config
-    if widget.raw_config.method == 'html':
+    if widget.config.method_nojson.strip() == 'html':
         display_page(widget.widget_id, str(widget.state.counter + 1))
     else:
         try:
@@ -176,5 +176,5 @@ def create(widget):
     widget.post(update_counter)
     return [background(widget=widget), counter, ping]
     
-register_widget(widget_name, create, config=dict(method='notification'), config_description=dict(method="Can be either 'html' or 'notification'"))
+register_widget(widget_name, create, config=dict(method_nojson='notification'), config_description=dict(method_nojson="Can be either 'html' or 'notification'"))
 register_receiver()

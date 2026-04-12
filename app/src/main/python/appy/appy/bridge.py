@@ -143,6 +143,9 @@ class jstring(jobjectbase):
         js._value = s
         return js
 
+class ClassNotFoundException(AttributeError):
+    pass
+
 def find_class(path):
     for key, value in SPECIAL_CLASSES.items():
         if path.startswith(f'{key}.'):
@@ -150,7 +153,7 @@ def find_class(path):
             break
     ptr = native_appy.find_class(path.replace('.', '/'))
     if ptr is None:
-        raise AttributeError(f'No such class: {path}')
+        raise ClassNotFoundException(f'No such class: {path}')
     return know_class(jclass(jref(ptr)))
 
 def array_of_class(clazz):

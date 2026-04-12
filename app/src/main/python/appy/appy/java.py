@@ -1,5 +1,6 @@
 from . import bridge
 import time, inspect, dis, pathlib
+from .bridge import ClassNotFoundException
 
 # this function is called from a __getattr__ method. it determines whether the attribute being searched will be called right after getting it.
 # example:
@@ -108,7 +109,7 @@ def find_class_with_inner(path):
     while True:
         try:
             return bridge.find_class(path)
-        except RuntimeError:
+        except ClassNotFoundException:
             if '.' not in path:
                 raise
             start, sep, end = path.rpartition('.')

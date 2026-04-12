@@ -64,14 +64,16 @@ def update(widget, views):
     
     for item in items[:20]:
         img = None
+
+        date = TextView(text=item['date'], textColor=0xb3ffffff, textSize=14, alignment='center', left=10, width=widget.width * 3 / 4, top=0)
+
         if 'image' in item:
-            img = ImageView(name='img', width=widget.width / 3, height=widget.width / 3, adjustViewBounds=True, left=10, top=10)
+            img = ImageView(name='img', width=widget.width / 3, height=widget.width / 3, adjustViewBounds=True, left=10, top=date.ibottom + 10)
             # used later when downloading
             # using the element's tag
             img.tag.url = item['image']['url']
-        title = TextView(text=item['title'], textColor=0xb3ffffff, textSize=15, lines=3, top=img.top if img is not None else 10, left=(img.iright + 20) if img is not None else 10, right=20)
-        date  = TextView(text=item['date'], textColor=0xb3ffffff, textSize=14, right=20, bottom=0)
-        desc  = TextView(text=item['description'], textColor=0xb3ffffff, textSize=14, lines=30, top=title.ibottom + 10, left=title.left, right=20, bottom=date.itop + 10)
+        title = TextView(text=item['title'], textColor=0xb3ffffff, textSize=15, lines=3, top=date.ibottom + 10, left=(img.iright + 20) if img is not None else 10, right=20)
+        desc  = TextView(text=item['description'], textColor=0xb3ffffff, autoTextSize=True, lines=30, top=title.ibottom + 10, left=title.left, right=20, bottom=0)
 
         # bg is the first child
         children = [title, desc, date]
@@ -87,13 +89,13 @@ def update(widget, views):
     
 def create(widget):
     # using only RefreshButton
-    refresh = RefreshButton(update, widget=widget, initial_refresh=True, interval=4*3600, right=0, top=0)
+    refresh = RefreshButton(update, name='refresh', widget=widget, initial_refresh=True, interval=4*3600, right=0, top=0)
     #                 using button styles                                   using captures instead of defining two functions
     prev_btn = Button(style='secondary_sml', text='<', left=0, right=widget.hcenter, bottom=0, click=(flip, dict(amount=-1)))
     #                                                   using inverted right + pad
     next_btn = Button(style='secondary_sml', text='>', left=widget.hcenter, right=0, bottom=0, click=(flip, dict(amount=1)))
     #              naming the flipper to access it later
-    return [background(widget=widget), AdapterViewFlipper(name='flipper', left=0, top=0, bottom=prev_btn.itop, right=refresh.ileft), prev_btn, next_btn, refresh]
+    return [background(widget=widget), AdapterViewFlipper(name='flipper', left=0, top=0, right=0, bottom=prev_btn.itop + 10), prev_btn, next_btn, refresh]
         
 #                             recover refresh_button visibility on error
 register_widget('rss', create, refresh_button_update_func)

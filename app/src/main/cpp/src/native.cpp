@@ -79,6 +79,9 @@ jmethodID longValueMethod = NULL;
 jmethodID floatValueMethod = NULL;
 jmethodID doubleValueMethod = NULL;
 
+static std::atomic<bool> populate_common_java_objects_done = false;
+static std::mutex populate_common_java_objects_mutex;
+
 enum ReturnType
 {
     OBJECT = -1,
@@ -420,6 +423,11 @@ call_jni_object_functions_impl(JNIEnv * env, jobject self, void * id, jvalue * v
 
 static void populate_common_java_objects(JNIEnv * env)
 {
+    if (populate_common_java_objects_done.load())
+    {
+        return;
+    }
+    std::unique_lock<std::mutex> lock(populate_common_java_objects_mutex);
     if (class_class == NULL)
     {
         jclass local_class_class = env->FindClass("java/lang/Class");
@@ -652,6 +660,7 @@ static void populate_common_java_objects(JNIEnv * env)
     }
     populate_common_java_objects_stage = 15;
     //------------------------------------------------------
+    populate_common_java_objects_done = true;
 }
 
 jfieldID

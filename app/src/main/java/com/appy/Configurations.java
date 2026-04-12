@@ -70,7 +70,10 @@ public class Configurations
                         {
                             widgetIds.add(Integer.parseInt(entry.key));
                         }
-                        result.put(config.key, widgetIds);
+                        if (!widgetIds.isEmpty())
+                        {
+                            result.put(config.key, widgetIds);
+                        }
                     }
                 }
             }
@@ -248,6 +251,10 @@ public class Configurations
                 {
                     configs.remove(key);
                     changed = true;
+                    if (configs.size() == 0)
+                    {
+                        configurations.remove(widget);
+                    }
                 }
             }
 
