@@ -184,10 +184,7 @@ public class Constants
         parameterToSetter.put(Bitmap.class, "setBitmap");
         parameterToSetter.put(Bundle.class, "setBundle");
         parameterToSetter.put(Intent.class, "setIntent");
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M)
-        {
-            parameterToSetter.put(Icon.class, "setIcon");
-        }
+        parameterToSetter.put(Icon.class, "setIcon");
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P)
         {

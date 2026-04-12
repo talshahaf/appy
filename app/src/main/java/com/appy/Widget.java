@@ -70,6 +70,7 @@ import android.system.ErrnoException;
 import android.system.Os;
 import android.util.Log;
 import android.util.Pair;
+import android.util.SizeF;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
@@ -762,8 +763,19 @@ public class Widget extends RemoteViewsService
     {
         Bundle bundle = appWidgetManager.getAppWidgetOptions(androidWidgetId);
 
+
         float widthDp = bundle.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH);
         float heightDp = bundle.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
+        {
+            ArrayList<SizeF> sizes = bundle.getParcelableArrayList(AppWidgetManager.OPTION_APPWIDGET_SIZES);
+            if (sizes != null && !sizes.isEmpty())
+            {
+                widthDp = sizes.get(0).getWidth();
+                heightDp = sizes.get(0).getHeight();
+            }
+        }
 
         double widthPx = convertUnit(widthDp, TypedValue.COMPLEX_UNIT_DIP, TypedValue.COMPLEX_UNIT_PX);
         double heightPx = convertUnit(heightDp, TypedValue.COMPLEX_UNIT_DIP, TypedValue.COMPLEX_UNIT_PX);
@@ -2291,26 +2303,24 @@ public class Widget extends RemoteViewsService
 
     public Float[] getWidgetSizeAndCorrectionFactors(int widgetId)
     {
-        DictObj.Dict props = widgetProps.get(widgetId);
-        if (props == null)
-        {
-            return null;
-        }
-
         Float[] result = new Float[] { null, null, null };
-        synchronized (widgetPropsLock)
+        DictObj.Dict props = widgetProps.get(widgetId);
+        if (props != null)
         {
-            if (props.hasKey("size_factor"))
+            synchronized (widgetPropsLock)
             {
-                result[0] = props.getFloat("size_factor", 1.0f);
-            }
-            if (props.hasKey("width_correction_factor"))
-            {
-                result[1] = props.getFloat("width_correction_factor", 1.0f);
-            }
-            if (props.hasKey("height_correction_factor"))
-            {
-                result[2] = props.getFloat("height_correction_factor", 1.0f);
+                if (props.hasKey("size_factor"))
+                {
+                    result[0] = props.getFloat("size_factor", 1.0f);
+                }
+                if (props.hasKey("width_correction_factor"))
+                {
+                    result[1] = props.getFloat("width_correction_factor", 1.0f);
+                }
+                if (props.hasKey("height_correction_factor"))
+                {
+                    result[2] = props.getFloat("height_correction_factor", 1.0f);
+                }
             }
         }
         return result;
@@ -2570,35 +2580,22 @@ public class Widget extends RemoteViewsService
         }
     }
 
-    public static boolean needForeground()
-    {
-        return Build.VERSION.SDK_INT >= Build.VERSION_CODES.O;
-    }
-
     public static void startService(Context context, Intent intent)
     {
-        // this has nothing to do with the actual foregroundness of the service, but startService will fail if needForeground().
-        if (needForeground())
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
         {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
-            {
-                try
-                {
-                    context.startForegroundService(intent);
-                }
-                catch (ForegroundServiceStartNotAllowedException e)
-                {
-                    Log.e("APPY", "startForeground not allowed", e);
-                }
-            }
-            else
+            try
             {
                 context.startForegroundService(intent);
+            }
+            catch (ForegroundServiceStartNotAllowedException e)
+            {
+                Log.e("APPY", "startForeground not allowed", e);
             }
         }
         else
         {
-            context.startService(intent);
+            context.startForegroundService(intent);
         }
     }
 
@@ -2608,22 +2605,14 @@ public class Widget extends RemoteViewsService
     {
         Log.d("APPY", "foreground is on");
 
-        Notification.Builder builder;
-        if (needForeground())
-        {
-            final String CHANNEL = "Service notification";
-            NotificationChannel channel_none = new NotificationChannel(CHANNEL, CHANNEL, NotificationManager.IMPORTANCE_NONE);
-            channel_none.setSound(null, null);
-            channel_none.enableVibration(false);
-            channel_none.setShowBadge(false);
-            ((NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE)).createNotificationChannel(channel_none);
-            builder = new Notification.Builder(this, CHANNEL);
-            builder.setChannelId(CHANNEL);
-        }
-        else
-        {
-            builder = new Notification.Builder(this);
-        }
+        final String CHANNEL = "Service notification";
+        NotificationChannel channel_none = new NotificationChannel(CHANNEL, CHANNEL, NotificationManager.IMPORTANCE_NONE);
+        channel_none.setSound(null, null);
+        channel_none.enableVibration(false);
+        channel_none.setShowBadge(false);
+        ((NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE)).createNotificationChannel(channel_none);
+        Notification.Builder builder = new Notification.Builder(this, CHANNEL);
+        builder.setChannelId(CHANNEL);
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
         {
@@ -2930,14 +2919,7 @@ public class Widget extends RemoteViewsService
         else
         {
             AlarmManager mgr = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
-            if (needForeground())
-            {
-                pendingIntent[0] = PendingIntent.getForegroundService(getApplicationContext(), 1, timerIntent, PendingIntent.FLAG_CANCEL_CURRENT | PendingIntent.FLAG_MUTABLE);
-            }
-            else
-            {
-                pendingIntent[0] = PendingIntent.getService(getApplicationContext(), 1, timerIntent, PendingIntent.FLAG_CANCEL_CURRENT | PendingIntent.FLAG_MUTABLE);
-            }
+            pendingIntent[0] = PendingIntent.getForegroundService(getApplicationContext(), 1, timerIntent, PendingIntent.FLAG_CANCEL_CURRENT | PendingIntent.FLAG_MUTABLE);
             //clear previous alarm (if we crashed but no reboot)
             mgr.cancel(pendingIntent[0]);
 

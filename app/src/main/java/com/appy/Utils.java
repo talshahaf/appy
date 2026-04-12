@@ -449,7 +449,6 @@ public class Utils
         return String.format("%.1f %cB", bytes / 1000.0, ci.current());
     }
 
-    @RequiresApi(api = Build.VERSION_CODES.O)
     public static Pair<Integer, Long> dirSummary(String path) throws IOException
     {
         try (Stream<Path> stream = Files.walk(new File(path).toPath()))

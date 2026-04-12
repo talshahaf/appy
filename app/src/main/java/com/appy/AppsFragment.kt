@@ -327,10 +327,8 @@ class AppsFragment : MyFragment() {
 
     private fun clearWidgets()
     {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            for (widgetId in widgetHost!!.appWidgetIds) {
-                widgetHost!!.deleteAppWidgetId(widgetId)
-            }
+        for (widgetId in widgetHost!!.appWidgetIds) {
+            widgetHost!!.deleteAppWidgetId(widgetId)
         }
 
         _widgetGridList.clear()
@@ -557,11 +555,6 @@ class AppsFragment : MyFragment() {
     }
 
     fun makeShortcut(widgetItem : WidgetItem) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
-            Toast.makeText(requireActivity(), "Shortcuts are not supported", Toast.LENGTH_SHORT).show()
-            return
-        }
-
         val applicationContext = requireActivity().applicationContext
         val shortcutManager = getSystemService(applicationContext, ShortcutManager::class.java)
 

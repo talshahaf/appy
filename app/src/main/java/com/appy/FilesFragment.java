@@ -64,10 +64,7 @@ public class FilesFragment extends MyFragment implements FileGridAdapter.ItemAct
     private ArrayList<PythonFile> getPythonFiles()
     {
         ArrayList<PythonFile> files = getWidgetService().getPythonFiles();
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N)
-        {
-            files.sort(Comparator.comparing(o -> new File(o.path).getName()));
-        }
+        files.sort(Comparator.comparing(o -> new File(o.path).getName()));
         return files;
     }
 

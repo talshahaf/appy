@@ -77,12 +77,7 @@ public class PermissionActivity extends Activity
     {
         if (Manifest.permission.ACCESS_NOTIFICATION_POLICY.equals(permission))
         {
-            boolean granted = true;
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M)
-            {
-                granted = ((NotificationManager)context.getSystemService(NOTIFICATION_SERVICE)).isNotificationPolicyAccessGranted();
-            }
-            return granted ? PackageManager.PERMISSION_GRANTED : PackageManager.PERMISSION_DENIED;
+            return ((NotificationManager) context.getSystemService(NOTIFICATION_SERVICE)).isNotificationPolicyAccessGranted() ? PackageManager.PERMISSION_GRANTED : PackageManager.PERMISSION_DENIED;
         }
         //...
         return PackageManager.PERMISSION_DENIED;

@@ -683,8 +683,7 @@ public class FileProvider extends ContentProvider
                         target = externalCacheDirs[0];
                     }
                 }
-                else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP
-                        && TAG_EXTERNAL_MEDIA.equals(tag))
+                else if (TAG_EXTERNAL_MEDIA.equals(tag))
                 {
                     File[] externalMediaDirs = context.getExternalMediaDirs();
                     if (externalMediaDirs.length > 0)

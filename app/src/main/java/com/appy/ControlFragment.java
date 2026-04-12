@@ -98,12 +98,6 @@ public class ControlFragment extends MyFragment
             };
 
             String cachedir = Utils.getResourcesCacheDir(getActivity());
-            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O)
-            {
-                action.run(cachedir, null);
-                return;
-            }
-
             new Thread(() -> {
                 try
                 {

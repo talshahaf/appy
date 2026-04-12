@@ -300,7 +300,7 @@ public class MainActivity extends AppCompatActivity implements StatusListener, A
         String startingFragment = getIntent().getStringExtra(Constants.FRAGMENT_NAME_EXTRA);
         Bundle fragmentArg = getIntent().getBundleExtra(Constants.FRAGMENT_ARG_EXTRA);
 
-        if (getIntent().getExtras() != null && fragmentArg == null && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O)
+        if (getIntent().getExtras() != null && fragmentArg == null)
         {
             //try to pull from base level
             Bundle args = getIntent().getExtras().deepCopy();

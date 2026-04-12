@@ -26,14 +26,7 @@ public class WidgetManagerActivity extends WidgetSelectActivity
             return;
         }
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N)
-        {
-            listview.showContextMenuForChild(view, !Float.isNaN(lastTouchX) ? lastTouchX - view.getX() : 0, !Float.isNaN(lastTouchY) ? lastTouchY - view.getY() : 0);
-        }
-        else
-        {
-            listview.showContextMenuForChild(view);
-        }
+        listview.showContextMenuForChild(view, !Float.isNaN(lastTouchX) ? lastTouchX - view.getX() : 0, !Float.isNaN(lastTouchY) ? lastTouchY - view.getY() : 0);
     }
 
     @Override

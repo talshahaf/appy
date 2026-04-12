@@ -80,13 +80,11 @@ def simple(title, content, channel_name, channel_description, icon=None, click=N
     context = java.get_java_arg()
     notificationManager = context.getSystemService(java.clazz.android.content.Context().NOTIFICATION_SERVICE)
 
-    need_channels = java.clazz.android.os.Build.VERSION().SDK_INT >= 26
-    if need_channels:
-        channel = java.new.android.app.NotificationChannel(channel_name,
-                                                            channel_name,
-                                                            java.clazz.android.app.NotificationManager().IMPORTANCE_DEFAULT)
-        channel.setDescription(channel_description)
-        notificationManager.createNotificationChannel(channel)
+    channel = java.new.android.app.NotificationChannel(channel_name,
+                                                        channel_name,
+                                                        java.clazz.android.app.NotificationManager().IMPORTANCE_DEFAULT)
+    channel.setDescription(channel_description)
+    notificationManager.createNotificationChannel(channel)
 
     notificationIntent = java.new.android.content.Intent(notification_intent_filter)
     notificationIntent.putExtra(notification_intent_callable_extra, str(int(notification_id)))
@@ -96,10 +94,7 @@ def simple(title, content, channel_name, channel_description, icon=None, click=N
                                                     notification_id, notificationIntent,
                                                     PendingIntent.FLAG_CANCEL_CURRENT | PendingIntent.FLAG_IMMUTABLE)
 
-    if need_channels:
-        builder = java.new.android.app.Notification.Builder(context, channel_name)
-    else:
-        builder = java.new.android.app.Notification.Builder(context)
+    builder = java.new.android.app.Notification.Builder(context, channel_name)
 
     if icon is None:
         #default icon

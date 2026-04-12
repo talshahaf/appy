@@ -554,8 +554,6 @@ public class Reflection
         return new Object[]{clazz.getCanonicalName(), unboxedEnumType, isArray, component, componentEnumType, unboxedComponentEnumType};
     }
 
-
-    @RequiresApi(api = Build.VERSION_CODES.N)
     public static Object[] inspectClassContent(Class<?> clazz, boolean withargs, boolean onearray)
     {
         Object[] outMethods = Arrays.stream(getMethods(clazz)).map(method -> {
