@@ -438,7 +438,8 @@ element_attr_value_aliases = dict(alignment=dict(
 selector_attrs = dict(shadowPosition=['center', 'left', 'right'],
                       shadowColor=['black', 'white'],
                       shadowRadius=['small', 'medium', 'large'],
-                      autoTextSize=[True, False])
+                      autoTextSize=[True, False],
+                      mode=['determinate'])
 
 element_event_hooks = {} # global for all
 class Element:
@@ -1026,7 +1027,7 @@ def unchoose_widget(widget_id):
 
 def recreate_widget(widget_id):
     manager_state = obtain_manager_state()
-    if widget_id in manager_state.chosen:
+    if widget_id in manager_state.chosen and manager_state.chosen[widget_id] is not None:
         chosen = manager_state.chosen[widget_id]
         chosen.inited = False
         widget = widgets.Widget(widget_id, None)
