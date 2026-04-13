@@ -3,6 +3,7 @@ package com.appy;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.os.Handler;
 import androidx.preference.Preference;
 
 /**
@@ -18,6 +19,8 @@ public class SettingsFragment extends MySettingsFragment implements SharedPrefer
     Preference widthCorrectionPreference;
     Preference heightCorrectionPreference;
     Preference globalSizeFactorPreference;
+    Preference disableGilPreference;
+    Handler handler = new Handler();
 
     @Override
     public void onCreatePreferences(Bundle savedInstanceState, String rootKey)
@@ -27,12 +30,23 @@ public class SettingsFragment extends MySettingsFragment implements SharedPrefer
         widthCorrectionPreference = getPreferenceScreen().findPreference("global_width_correction_factor");
         heightCorrectionPreference = getPreferenceScreen().findPreference("global_height_correction_factor");
         globalSizeFactorPreference = getPreferenceScreen().findPreference("global_size_factor");
+        disableGilPreference = getPreferenceScreen().findPreference("disable_gil");
 
         Preference.OnPreferenceChangeListener validateFloat = (preference, newValue) -> Utils.parseFloatOrNull((String)newValue) != null;
 
         widthCorrectionPreference.setOnPreferenceChangeListener(validateFloat);
         heightCorrectionPreference.setOnPreferenceChangeListener(validateFloat);
         globalSizeFactorPreference.setOnPreferenceChangeListener(validateFloat);
+        disableGilPreference.setOnPreferenceChangeListener((preference, newValue) -> {
+            handler.post(() -> Utils.showConfirmationDialog(getContext(), "Restart required", "Restart is required for GIL setting to take place. Restart now?", android.R.drawable.ic_dialog_alert, "Restart", "No", () -> {
+                Widget service = getWidgetService();
+                if (service != null)
+                {
+                    service.restart(0);
+                }
+            }));
+            return true;
+        });
 
         sizeFactorsPreference = getPreferenceScreen().findPreference("size_factors");
         sizeFactorsPreference.setOnPreferenceClickListener(preference -> {

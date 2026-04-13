@@ -3895,7 +3895,7 @@ static const char ** python_argv = NULL;
 extern "C" JNIEXPORT void JNICALL
 Java_com_appy_Widget_pythonInit(JNIEnv * env, jclass clazz, jstring j_nativecrashpath, jstring j_pythonhome,
                                 jstring j_cachepath, jstring j_pythonlib, jstring j_scriptpath,
-                                jstring j_nativepath, jobject j_arg, jobjectArray j_pythonargs)
+                                jstring j_nativepath, jboolean j_disable_gil, jobject j_arg, jobjectArray j_pythonargs)
 {
     try
     {
@@ -3922,7 +3922,9 @@ Java_com_appy_Widget_pythonInit(JNIEnv * env, jclass clazz, jstring j_nativecras
         auto nativecrashpath = jstring_to_stdstring(env, j_nativecrashpath);
         install_handler(nativecrashpath.c_str());
 
-        LOG("python init");
+        LOG("python init, gil disabled: %d", j_disable_gil);
+        setenv("PYTHON_GIL", j_disable_gil ? "0" : "1", 1);
+
         if (python_initialized || Py_IsInitialized())
         {
             env->ThrowNew(python_exception_class, "Python already initialized");

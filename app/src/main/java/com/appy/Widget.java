@@ -94,7 +94,7 @@ public class Widget extends RemoteViewsService
     private final IBinder mBinder = new LocalBinder();
     private static boolean mIsRunning = false;
 
-    public static final int PYTHON_VERSION = 31404;
+    public static final int PYTHON_VERSION = 314041;
     public static final int NOTIFICATION_ID = 100;
 
     WidgetUpdateListener updateListener = null;
@@ -2580,6 +2580,12 @@ public class Widget extends RemoteViewsService
         }
     }
 
+    public boolean loadDisableGIL()
+    {
+        SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
+        return sharedPref.getBoolean("disable_gil", true);
+    }
+
     public static void startService(Context context, Intent intent)
     {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
@@ -4240,8 +4246,9 @@ public class Widget extends RemoteViewsService
             String timeformat = ((SimpleDateFormat)DateFormat.getTimeInstance(DateFormat.MEDIUM, locale)).toPattern();
 
             String pythonHome = new File(getFilesDir(), "python").getAbsolutePath();
-            String pythonLib = new File(pythonHome, "/lib/libpython3.14.so").getAbsolutePath(); //must be without
+            String pythonLib = new File(pythonHome, "/lib/libpython3.14t.so").getAbsolutePath(); //must be without
             String cacheDir = getPreferredCacheDir();
+            boolean disableGil = loadDisableGIL();
 
             if (getPythonUnpacked() != PYTHON_VERSION || (pythonFlags & Constants.PYTHON_INIT_FLAGS_REINSTALL_PYTHON) != 0)
             {
@@ -4272,7 +4279,7 @@ public class Widget extends RemoteViewsService
             System.loadLibrary("prehelpers");
             System.load(pythonLib);
             System.loadLibrary("native");
-            pythonInit(Utils.getCrashPath(Widget.this, Constants.CrashIndex.NATIVE_CRASH_INDEX), pythonHome, cacheDir, pythonLib, new File(cacheDir, "main.py").getAbsolutePath(), getApplicationInfo().nativeLibraryDir, Widget.this, new String[] { "FLAGS=" + pythonFlags, "AMPM=" + ampm, "SHORTWEEK=" + weekshort, "LONGWEEK=" + weeklong, "SHORTMONTH=" + monthshort, "LONGMONTH=" + monthlong, "DATEFORMAT=" + dateformat, "TIMEFORMAT=" + timeformat, "DATETIMEFORMAT=" + datetimeformat });
+            pythonInit(Utils.getCrashPath(Widget.this, Constants.CrashIndex.NATIVE_CRASH_INDEX), pythonHome, cacheDir, pythonLib, new File(cacheDir, "main.py").getAbsolutePath(), getApplicationInfo().nativeLibraryDir, disableGil, Widget.this, new String[] { "FLAGS=" + pythonFlags, "AMPM=" + ampm, "SHORTWEEK=" + weekshort, "LONGWEEK=" + weeklong, "SHORTMONTH=" + monthshort, "LONGMONTH=" + monthlong, "DATEFORMAT=" + dateformat, "TIMEFORMAT=" + timeformat, "DATETIMEFORMAT=" + datetimeformat });
 
             initAllPythonFiles();
         }
@@ -5369,7 +5376,7 @@ public class Widget extends RemoteViewsService
         }
     }
 
-    protected static native void pythonInit(String nativeCrashPath, String pythonHome, String tmpPath, String pythonLibPath, String script, String nativepath, Object arg, String[] pythonArgs);
+    protected static native void pythonInit(String nativeCrashPath, String pythonHome, String tmpPath, String pythonLibPath, String script, String nativepath, boolean enablegil, Object arg, String[] pythonArgs);
 
     protected static native Object pythonCall(Object... args) throws Throwable;
 }

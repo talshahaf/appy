@@ -32,6 +32,10 @@
         android:defaultValue="true"
         android:key="refresh_on_modify"
         android:title="Auto reload python files" />
+    <CheckBoxPreference
+        android:defaultValue="true"
+        android:key="disable_gil"
+        android:title="Run python without GIL (requires restart)" />
     <Preference
         android:key="external_dir"
         android:title="Preferred directory to put scripts into"
