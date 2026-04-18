@@ -1,4 +1,4 @@
-import datetime
+import datetime, traceback
 from dataclasses import dataclass
 from . import java, state, widget_manager, utils, configs, colors
 
@@ -120,6 +120,12 @@ class Widget:
 
     def set_loading(self):
         widget_manager.java_context().setLoadingWidget(self.widget_id)
+
+    def set_last_error(self, error):
+        if isinstance(error, BaseException):
+            error = '\n'.join(traceback.format_exception(error))
+        widget_manager.java_context().setWidgetLastError(self.widget_id, error)
+        widget_manager.set_error_to_widget_id(self.widget_id, error)
 
     def cancel_all_timers(self):
         return widget_manager.java_context().cancelWidgetTimers(self.widget_id)
