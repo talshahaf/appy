@@ -11,51 +11,22 @@ import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ListView;
 
+import androidx.core.view.MenuProvider;
+import androidx.lifecycle.Lifecycle;
+
+import org.jspecify.annotations.NonNull;
+
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 
 public class TimerFragment extends FragmentParent
 {
-    String clearAllTitle = "";
-    String clearAllMessage = "";
-    Runnable clearAllAction = null;
-
-    public void setClearAll(String title, String message, Runnable action)
-    {
-        clearAllTitle = title;
-        clearAllMessage = message;
-        clearAllAction = action;
-    }
-
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState)
     {
-        setHasOptionsMenu(true);
         return inflater.inflate(R.layout.fragment_parent, container, false);
-    }
-
-    @Override
-    public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
-        inflater.inflate(R.menu.clearall_toolbar_action, menu);
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item)
-    {
-        if (item.getItemId() == R.id.action_clearall)
-        {
-            if (clearAllAction != null)
-            {
-                Utils.showConfirmationDialog(getActivity(),
-                        clearAllTitle, clearAllMessage, android.R.drawable.ic_dialog_alert,
-                        null, null, clearAllAction);
-            }
-            return true;
-        }
-
-        return super.onOptionsItemSelected(item);
     }
 
     @Override
@@ -81,10 +52,11 @@ public class TimerFragment extends FragmentParent
         switchTo(fragment, true);
     }
 
-    public static class TimerSelectFragment extends ChildFragment implements AdapterView.OnItemClickListener
+    public static class TimerSelectFragment extends ChildFragment implements AdapterView.OnItemClickListener, MenuProvider
     {
         ListView list;
         String widget = null;
+        boolean isApp = false;
 
         public static String floatFormat(float f)
         {
@@ -118,13 +90,6 @@ public class TimerFragment extends FragmentParent
                     getActivity().setTitle("Timers");
                 }
 
-                ((TimerFragment)parent).setClearAll("Clear all timers",
-                        "Clear timers for all widgets?",
-                        () -> {
-                            getWidgetService().cancelAllTimers();
-                            refresh();
-                        });
-
                 for (String key : allTimers.keys())
                 {
                     DictObj.Dict val = allTimers.getDict(key);
@@ -137,20 +102,13 @@ public class TimerFragment extends FragmentParent
             else
             {
                 DictObj.Dict widgetTimers = allTimers.getDict(widget);
-                boolean isApp = widgetTimers != null && widgetTimers.getBoolean("app", false);
+                isApp = widgetTimers != null && widgetTimers.getBoolean("app", false);
                 String entity = (isApp ? "app #" : "widget #") + widget;
 
                 if (getActivity() != null)
                 {
                     getActivity().setTitle("Timers of " + entity);
                 }
-
-                ((TimerFragment)parent).setClearAll("Clear " + (isApp ? "app" : "widget") + " timers",
-                        "Clear all timers for " + entity + "?",
-                        () -> {
-                            getWidgetService().cancelWidgetTimers(Integer.parseInt(widget));
-                            refresh();
-                        });
 
                 if (widgetTimers != null)
                 {
@@ -179,6 +137,7 @@ public class TimerFragment extends FragmentParent
         public void setWidget(String widget)
         {
             this.widget = widget;
+            this.isApp = false;
         }
 
         @Override
@@ -266,6 +225,42 @@ public class TimerFragment extends FragmentParent
                 refresh();
             });
             return true;
+        }
+
+        @Override
+        public void onViewCreated(@NonNull View view, Bundle savedInstanceState)
+        {
+            requireActivity().addMenuProvider(this, getViewLifecycleOwner(), Lifecycle.State.RESUMED);
+        }
+
+        @Override
+        public void onCreateMenu(@NonNull Menu menu, @NonNull MenuInflater inflater)
+        {
+            inflater.inflate(R.menu.clearall_toolbar_action, menu);
+        }
+
+        @Override
+        public boolean onMenuItemSelected(@NonNull MenuItem item)
+        {
+            if (item.getItemId() == R.id.action_clearall)
+            {
+                Utils.showConfirmationDialog(getActivity(),
+                        widget == null ? "Clear all timers" : "Clear " + (isApp ? "app" : "widget") + " timers",
+                        widget == null ? "Clear timers for all widgets?" : "Clear all timers for " + (isApp ? "app #" : "widget #") + widget + "?",
+                        android.R.drawable.ic_dialog_alert, null, null, () -> {
+                            if (widget == null)
+                            {
+                                getWidgetService().cancelAllTimers();
+                            }
+                            else
+                            {
+                                getWidgetService().cancelWidgetTimers(Integer.parseInt(widget));
+                            }
+                            refresh();
+                        });
+                return true;
+            }
+            return false;
         }
     }
 }

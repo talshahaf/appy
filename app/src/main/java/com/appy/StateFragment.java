@@ -3,6 +3,8 @@ package com.appy;
 import android.content.Context;
 import android.os.Bundle;
 import androidx.appcompat.app.AlertDialog;
+import androidx.core.view.MenuProvider;
+import androidx.lifecycle.Lifecycle;
 
 import android.view.ContextMenu;
 import android.view.LayoutInflater;
@@ -14,50 +16,19 @@ import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ListView;
 import android.widget.TextView;
+
+import org.jspecify.annotations.NonNull;
+
 import java.util.ArrayList;
 import java.util.List;
 
 public class StateFragment extends FragmentParent
 {
-    String clearAllTitle = "";
-    String clearAllMessage = "";
-    Runnable clearAllAction = null;
-
-    public void setClearAll(String title, String message, Runnable action)
-    {
-        clearAllTitle = title;
-        clearAllMessage = message;
-        clearAllAction = action;
-    }
-
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState)
     {
-        setHasOptionsMenu(true);
         return inflater.inflate(R.layout.fragment_parent, container, false);
-    }
-
-    @Override
-    public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
-        inflater.inflate(R.menu.clearall_toolbar_action, menu);
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item)
-    {
-        if (item.getItemId() == R.id.action_clearall)
-        {
-            if (clearAllAction != null)
-            {
-                Utils.showConfirmationDialog(getActivity(),
-                        clearAllTitle, clearAllMessage, android.R.drawable.ic_dialog_alert,
-                        null, null, clearAllAction);
-            }
-            return true;
-        }
-
-        return super.onOptionsItemSelected(item);
     }
 
     @Override
@@ -83,7 +54,7 @@ public class StateFragment extends FragmentParent
         switchTo(fragment, true);
     }
 
-    public static class StateSelectFragment extends ChildFragment implements AdapterView.OnItemClickListener
+    public static class StateSelectFragment extends ChildFragment implements AdapterView.OnItemClickListener, MenuProvider
     {
         ListView list;
         ArrayList<String> keyPath;
@@ -100,13 +71,6 @@ public class StateFragment extends FragmentParent
                 {
                     getActivity().setTitle("State");
                 }
-
-                ((StateFragment)parent).setClearAll("Clear all state",
-                        "Clear state for all widgets?",
-                        () -> {
-                            getWidgetService().resetState();
-                            refresh();
-                        });
 
                 for (String scope : scopes)
                 {
@@ -125,22 +89,6 @@ public class StateFragment extends FragmentParent
                 boolean areLeaves = depth == keyPath.size();
                 boolean containStates = depth - 1 == keyPath.size();
                 boolean inLocalScopeView = containStates && depth == 3;
-
-                ((StateFragment)parent).setClearAll("Clear states",
-                        "Clear all states in " + String.join(".", keyPath) + "?",
-                        () -> {
-                            int widgetIndex = depth == 3 ? 2 : 1;
-                            if (depth == 3 && keyPath.size() == 2)
-                            {
-                                //special handling if in locals/widget/
-                                getWidgetService().cleanLocalStateByName(keyPath.get(1));
-                            }
-                            else
-                            {
-                                getWidgetService().cleanState(keyPath.get(0), keyPath.size() > widgetIndex ? keyPath.get(widgetIndex) : null, null);
-                            }
-                            refresh();
-                        });
 
                 DictObj.Dict stateSnapshot = getWidgetService().getStateLayoutSnapshot(keyPath.get(0), areLeaves ? keyPath.get(keyPath.size() - 1) : null);
                 for (String key : stateSnapshot.keys())
@@ -344,6 +292,54 @@ public class StateFragment extends FragmentParent
             }
 
             throw new IllegalArgumentException("unknown scope");
+        }
+
+        @Override
+        public void onViewCreated(@NonNull View view, Bundle savedInstanceState)
+        {
+            requireActivity().addMenuProvider(this, getViewLifecycleOwner(), Lifecycle.State.RESUMED);
+        }
+
+        @Override
+        public void onCreateMenu(@NonNull Menu menu, @NonNull MenuInflater inflater)
+        {
+            inflater.inflate(R.menu.clearall_toolbar_action, menu);
+        }
+
+        @Override
+        public boolean onMenuItemSelected(@NonNull MenuItem item)
+        {
+            if (item.getItemId() == R.id.action_clearall)
+            {
+                String title = keyPath.isEmpty() ? "Clear all state" : "Clear states";
+                String message = keyPath.isEmpty() ? "Clear state for all widgets?" : "Clear all states in " + String.join(".", keyPath) + "?";
+
+                Utils.showConfirmationDialog(getActivity(),
+                        title, message, android.R.drawable.ic_dialog_alert,
+                        null, null, () -> {
+                            if (keyPath.isEmpty())
+                            {
+                                getWidgetService().resetState();
+                            }
+                            else
+                            {
+                                int depth = getScopeDepth(keyPath.get(0));
+                                int widgetIndex = depth == 3 ? 2 : 1;
+                                if (depth == 3 && keyPath.size() == 2)
+                                {
+                                    //special handling if in locals/widget/
+                                    getWidgetService().cleanLocalStateByName(keyPath.get(1));
+                                }
+                                else
+                                {
+                                    getWidgetService().cleanState(keyPath.get(0), keyPath.size() > widgetIndex ? keyPath.get(widgetIndex) : null, null);
+                                }
+                            }
+                            refresh();
+                        });
+                return true;
+            }
+            return false;
         }
     }
 }

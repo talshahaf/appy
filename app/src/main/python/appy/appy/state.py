@@ -39,7 +39,7 @@ def load_state():
             if not value:
                 print(f'state {key} is null?')
                 continue
-            global_state[value['scope_name']].setdefault(value['scope_key'], AttrDict())[value['key']] = loads(value['value'])
+            global_state[value['scope_name']].setdefault(value['scope_key'], AttrDict())[value['key']] = AttrDict.make(loads(value['value']))
 
     AttrDict.__recursive_resetmodified__(global_state)
 

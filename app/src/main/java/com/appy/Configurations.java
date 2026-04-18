@@ -81,6 +81,7 @@ public class Configurations
         return result;
     }
 
+    // Triple of <description, value, is instance value>
     public HashMap<String, Triple<String, String, Boolean>> getValues(String widget, int widgetId)
     {
         synchronized (lock)

@@ -15,6 +15,11 @@ import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.core.view.MenuProvider;
+import androidx.lifecycle.Lifecycle;
+
+import org.jspecify.annotations.NonNull;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -31,7 +36,6 @@ public class CrashFragment extends FragmentParent
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState)
     {
-        setHasOptionsMenu(true);
         return inflater.inflate(R.layout.fragment_parent, container, false);
     }
 
@@ -42,55 +46,7 @@ public class CrashFragment extends FragmentParent
         switchTo(new CrashListFragment(), true);
     }
 
-    @Override
-    public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
-        inflater.inflate(R.menu.crash_toolbar_actions, menu);
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item)
-    {
-        if (item.getItemId() == R.id.action_export)
-        {
-            if (getActivity() == null)
-            {
-                return false;
-            }
-
-            String zipPath = new File(Widget.getPreferredScriptDirStatic(getActivity()), Constants.CRASH_ZIP_PATH).getAbsolutePath();
-            String[] crashFiles = new String[Constants.CrashIndex.values().length];
-            for (Constants.CrashIndex i : Constants.CrashIndex.values())
-            {
-                crashFiles[i.ordinal()] = Utils.getCrashPath(getActivity(), i);
-            }
-
-            Runnable doZip = () -> {
-                try
-                {
-
-                    Utils.zipWithoutPath(crashFiles, zipPath, true);
-                    Toast.makeText(getActivity(), "Crashes saved to "+zipPath, Toast.LENGTH_LONG).show();
-                }
-                catch (IOException e)
-                {
-                    Log.e("APPY", "Failed to write crash zip", e);
-                }
-            };
-
-            if (new File(zipPath).exists())
-            {
-                Utils.showConfirmationDialog(getActivity(), "Crash Exists", "Previous crash zip already exists, replace?", android.R.drawable.ic_dialog_alert, "Overwrite", "Cancel", doZip);
-            }
-            else
-            {
-                doZip.run();
-            }
-            return true;
-        }
-        return super.onOptionsItemSelected(item);
-    }
-
-    public static class CrashListFragment extends ChildFragment implements AdapterView.OnItemClickListener
+    public static class CrashListFragment extends ChildFragment implements AdapterView.OnItemClickListener, MenuProvider
     {
         ListView list;
         @Override
@@ -142,6 +98,61 @@ public class CrashFragment extends FragmentParent
                 adapterList.add(new ListFragmentAdapter.Item(Constants.CRASHES_FILENAMES[index.ordinal()], value, file));
             }
             list.setAdapter(new ListFragmentAdapter(getActivity(), adapterList));
+        }
+
+        @Override
+        public void onViewCreated(@NonNull View view, Bundle savedInstanceState)
+        {
+            requireActivity().addMenuProvider(this, getViewLifecycleOwner(), Lifecycle.State.RESUMED);
+        }
+
+        @Override
+        public void onCreateMenu(@NonNull Menu menu, @NonNull MenuInflater inflater)
+        {
+            inflater.inflate(R.menu.crash_toolbar_actions, menu);
+        }
+
+        @Override
+        public boolean onMenuItemSelected(@NonNull MenuItem item)
+        {
+            if (item.getItemId() == R.id.action_export)
+            {
+                if (getActivity() == null)
+                {
+                    return false;
+                }
+
+                String zipPath = new File(Widget.getPreferredScriptDirStatic(getActivity()), Constants.CRASH_ZIP_PATH).getAbsolutePath();
+                String[] crashFiles = new String[Constants.CrashIndex.values().length];
+                for (Constants.CrashIndex i : Constants.CrashIndex.values())
+                {
+                    crashFiles[i.ordinal()] = Utils.getCrashPath(getActivity(), i);
+                }
+
+                Runnable doZip = () -> {
+                    try
+                    {
+
+                        Utils.zipWithoutPath(crashFiles, zipPath, true);
+                        Toast.makeText(getActivity(), "Crashes saved to "+zipPath, Toast.LENGTH_LONG).show();
+                    }
+                    catch (IOException e)
+                    {
+                        Log.e("APPY", "Failed to write crash zip", e);
+                    }
+                };
+
+                if (new File(zipPath).exists())
+                {
+                    Utils.showConfirmationDialog(getActivity(), "Crash Exists", "Previous crash zip already exists, replace?", android.R.drawable.ic_dialog_alert, "Overwrite", "Cancel", doZip);
+                }
+                else
+                {
+                    doZip.run();
+                }
+                return true;
+            }
+            return false;
         }
     }
 

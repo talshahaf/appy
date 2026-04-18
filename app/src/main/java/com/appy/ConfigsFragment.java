@@ -5,6 +5,9 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
 import androidx.appcompat.app.AlertDialog;
+import androidx.core.view.MenuProvider;
+import androidx.lifecycle.Lifecycle;
+
 import android.util.Log;
 import android.view.ContextMenu;
 import android.view.LayoutInflater;
@@ -26,6 +29,7 @@ import android.widget.Toast;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.jspecify.annotations.NonNull;
 
 import java.io.File;
 import java.io.IOException;
@@ -45,55 +49,7 @@ public class ConfigsFragment extends FragmentParent
                              Bundle savedInstanceState)
     {
         super.onCreateView(inflater, container, savedInstanceState);
-
-        setHasOptionsMenu(true);
         return inflater.inflate(R.layout.fragment_parent, container, false);
-    }
-
-    @Override
-    public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
-        inflater.inflate(R.menu.config_toolbar_actions, menu);
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item)
-    {
-        if (item.getItemId() == R.id.action_export)
-        {
-            Log.d("APPY", "Export click");
-
-            if (getWidgetService() != null)
-            {
-                Configurations configurations = getWidgetService().getConfigurations();
-                if (configurations != null)
-                {
-                    File exportFile = exportFilePath();
-                    try
-                    {
-                        Utils.writeFile(exportFile, DictObj.makeJson(configurations.getDict(), true));
-                        Toast.makeText(getActivity(), "Configurations exported to " + exportFile.getAbsolutePath(), Toast.LENGTH_LONG).show();
-                    }
-                    catch (IOException e)
-                    {
-                        Log.e("APPY", "export config failed", e);
-                    }
-
-                }
-            }
-
-            return true;
-        }
-        else if (item.getItemId() == R.id.action_import)
-        {
-            Log.d("APPY", "Import click");
-            Intent intent = new Intent(getActivity(), FileBrowserActivity.class);
-            intent.putExtra(FileBrowserActivity.REQUEST_ALLOW_RETURN_MULTIPLE, false);
-            intent.putExtra(FileBrowserActivity.REQUEST_SPECIFIC_EXTENSION_CONFIRMATION, ".json");
-            requestActivityResult(intent);
-            return true;
-        }
-
-        return super.onOptionsItemSelected(item);
     }
 
     @Override
@@ -126,18 +82,18 @@ public class ConfigsFragment extends FragmentParent
             }
             catch (Exception e)
             {
-                Toast.makeText(getActivity(), "File is not in a valid/expected JSON format", Toast.LENGTH_SHORT).show();
+                Toast.makeText(requireActivity(), "File is not in a valid/expected JSON format", Toast.LENGTH_SHORT).show();
                 Log.e("APPY", "deserialize failed", e);
             }
 
             if (newConfig != null)
             {
                 final DictObj.Dict finalConfig = newConfig;
-                Utils.showConfirmationDialog(getActivity(),
+                Utils.showConfirmationDialog(requireActivity(),
                         "Import Configuration", "This will overwrite all existing configurations", android.R.drawable.ic_dialog_alert,
                         null, null, () -> {
                             configurations.replaceConfiguration(finalConfig);
-                                Toast.makeText(getActivity(), "Configurations imported from " + files[0], Toast.LENGTH_LONG).show();
+                                Toast.makeText(requireActivity(), "Configurations imported from " + files[0], Toast.LENGTH_LONG).show();
                                 start();
                             });
                 }
@@ -213,11 +169,6 @@ public class ConfigsFragment extends FragmentParent
         switchTo(fragment, true);
     }
 
-    public File exportFilePath()
-    {
-        return new File(getWidgetService().getPreferredScriptDir(), "exported_configurations.json");
-    }
-
     @Override
     public void onPause()
     {
@@ -225,7 +176,7 @@ public class ConfigsFragment extends FragmentParent
         super.onPause();
     }
 
-    public static class ConfigSelectFragment extends ChildFragment implements AdapterView.OnItemClickListener
+    public static class ConfigSelectFragment extends ChildFragment implements AdapterView.OnItemClickListener, MenuProvider
     {
         ListView list;
         Spinner widgetPicker;
@@ -233,8 +184,86 @@ public class ConfigsFragment extends FragmentParent
         int widgetId = Configurations.NONLOCAL_ID;
         String config = null;
         int requestCode_ = 0;
+        WidgetListElement[] widgetPickerElements = null;
 
         String asyncResultAndDie = null;
+
+        @Override
+        public void onCreateMenu(@NonNull Menu menu, @NonNull MenuInflater inflater)
+        {
+            inflater.inflate(R.menu.config_toolbar_actions, menu);
+            if (widget == null)
+            {
+                menu.removeItem(R.id.action_copy);
+            }
+            if (widget == null || widgetId == Configurations.NONLOCAL_ID)
+            {
+                menu.removeItem(R.id.action_resetall);
+            }
+        }
+
+        public File exportFilePath()
+        {
+            return new File(getWidgetService().getPreferredScriptDir(), "exported_configurations.json");
+        }
+
+        @Override
+        public boolean onMenuItemSelected(@NonNull MenuItem item)
+        {
+            if (item.getItemId() == R.id.action_export)
+            {
+                Log.d("APPY", "Export click");
+
+                if (getWidgetService() != null)
+                {
+                    Configurations configurations = getWidgetService().getConfigurations();
+                    if (configurations != null)
+                    {
+                        File exportFile = exportFilePath();
+                        try
+                        {
+                            Utils.writeFile(exportFile, DictObj.makeJson(configurations.getDict(), true));
+                            Toast.makeText(requireActivity(), "Configurations exported to " + exportFile.getAbsolutePath(), Toast.LENGTH_LONG).show();
+                        }
+                        catch (IOException e)
+                        {
+                            Log.e("APPY", "export config failed", e);
+                        }
+
+                    }
+                }
+                return true;
+            }
+            else if (item.getItemId() == R.id.action_import)
+            {
+                Log.d("APPY", "Import click");
+                Intent intent = new Intent(requireActivity(), FileBrowserActivity.class);
+                intent.putExtra(FileBrowserActivity.REQUEST_ALLOW_RETURN_MULTIPLE, false);
+                intent.putExtra(FileBrowserActivity.REQUEST_SPECIFIC_EXTENSION_CONFIRMATION, ".json");
+                requestActivityResult(intent);
+                return true;
+            }
+            else if (item.getItemId() == R.id.action_copy)
+            {
+                HashMap<String, Triple<String, String, Boolean>> values = getWidgetService().getConfigurations().getValues(widget, widgetId);
+                if (widgetId != Configurations.NONLOCAL_ID)
+                {
+                    //filter out non instance values
+                    values.entrySet().removeIf(e -> !e.getValue().component3());
+                }
+                copyToInstance(values);
+            }
+            else if (item.getItemId() == R.id.action_resetall)
+            {
+                Utils.showConfirmationDialog(requireContext(),
+                                             "Reset configurations", "Reset all configurations of instance?",
+                                                    android.R.drawable.ic_dialog_alert, null, null, () -> {
+                    getWidgetService().getConfigurations().resetWidgetInstance(widget, widgetId);
+                    refresh();
+                });
+            }
+            return false;
+        }
 
         static class WidgetListElement implements Comparable<WidgetListElement>
         {
@@ -311,6 +340,7 @@ public class ConfigsFragment extends FragmentParent
             {
                 widgetPicker.setVisibility(View.GONE);
                 widgetPicker.requestLayout();
+                widgetPickerElements = null;
 
                 if (getActivity() != null)
                 {
@@ -407,7 +437,8 @@ public class ConfigsFragment extends FragmentParent
                             break;
                         }
                     }
-                    widgetPicker.setAdapter(new ArrayAdapter<>(getActivity(), R.layout.dropdown_text_item, elements));
+                    widgetPickerElements = elements;
+                    widgetPicker.setAdapter(new ArrayAdapter<>(getActivity(), R.layout.dropdown_text_item, widgetPickerElements));
                     widgetPicker.setSelection(current_position);
                 }
 
@@ -425,7 +456,11 @@ public class ConfigsFragment extends FragmentParent
                     adapterList.add(listitem);
                 }
             }
-            list.setAdapter(new ListFragmentAdapter(getActivity(), adapterList));
+            if (getActivity() != null)
+            {
+                getActivity().invalidateMenu();
+                list.setAdapter(new ListFragmentAdapter(getActivity(), adapterList));
+            }
             if (selectedConfigItem != null)
             {
                 asyncResultAndDie = ((Triple<String, String, Boolean>)selectedConfigItem.arg).component2();
@@ -438,9 +473,17 @@ public class ConfigsFragment extends FragmentParent
         }
 
         @Override
+        public void onViewCreated(@NonNull View view, Bundle savedInstanceState)
+        {
+            requireActivity().addMenuProvider(this, getViewLifecycleOwner(), Lifecycle.State.RESUMED);
+        }
+
+        @Override
         public View onCreateView(LayoutInflater inflater, ViewGroup container,
                                  Bundle savedInstanceState)
         {
+            super.onCreateView(inflater, container, savedInstanceState);
+
             View layout = inflater.inflate(R.layout.fragment_config_list, container, false);
             list = layout.findViewById(R.id.config_list);
             list.setOnItemClickListener(this);
@@ -532,7 +575,7 @@ public class ConfigsFragment extends FragmentParent
             AlertDialog.Builder builder = new AlertDialog.Builder(context);
             String title = widget + "." + item.key;
             builder.setTitle(title);
-            View layout = LayoutInflater.from(getActivity()).inflate(R.layout.config_edit_view, null);
+            View layout = LayoutInflater.from(context).inflate(R.layout.config_edit_view, null);
             builder.setView(layout);
 
             builder.setPositiveButton("Ok", null);
@@ -635,8 +678,12 @@ public class ConfigsFragment extends FragmentParent
                     return;
                 }
 
-                getActivity().getMenuInflater().inflate(R.menu.config_actions, menu);
+                requireActivity().getMenuInflater().inflate(R.menu.config_actions, menu);
 
+                if (widget == null)
+                {
+                    menu.removeItem(R.id.action_copy);
+                }
                 if (widgetId != Configurations.NONLOCAL_ID)
                 {
                     menu.removeItem(R.id.action_delete);
@@ -652,91 +699,124 @@ public class ConfigsFragment extends FragmentParent
         @Override
         public boolean onContextItemSelected(MenuItem menuItem)
         {
-            boolean delete_;
-            if (menuItem.getItemId() == R.id.action_reset)
-            {
-                delete_ = false;
-            }
-            else if (menuItem.getItemId() == R.id.action_delete)
-            {
-                delete_ = true;
-            }
-            else
-            {
-                return super.onContextItemSelected(menuItem);
-            }
-
-            final boolean delete = delete_;
-
             AdapterView.AdapterContextMenuInfo info = (AdapterView.AdapterContextMenuInfo) menuItem.getMenuInfo();
-            final ListFragmentAdapter.Item item = (ListFragmentAdapter.Item) list.getItemAtPosition(info.position);
-
-            String title;
-            String message;
-
-            if (widget == null)
+            if (info != null)
             {
-                if (delete)
+                final ListFragmentAdapter.Item item = (ListFragmentAdapter.Item) list.getItemAtPosition(info.position);
+
+                if (menuItem.getItemId() == R.id.action_reset || menuItem.getItemId() == R.id.action_delete)
                 {
-                    title = "Delete all";
-                    message = "Delete all " + item.key + " configurations?";
-                }
-                else
-                {
-                    title = "Reset all";
-                    message = "Reset all " + item.key + " configurations?";
-                }
-            }
-            else
-            {
-                if (widgetId == Configurations.NONLOCAL_ID)
-                {
-                    if (delete)
+                    boolean delete = menuItem.getItemId() == R.id.action_delete;
+
+                    String title;
+                    String message;
+
+                    if (widget == null)
                     {
-                        title = "Delete configuration";
-                        message = "Delete " + item.key + "?";
+                        if (delete)
+                        {
+                            title = "Delete all";
+                            message = "Delete all " + item.key + " configurations?";
+                        }
+                        else
+                        {
+                            title = "Reset all";
+                            message = "Reset all " + item.key + " configurations?";
+                        }
                     }
                     else
                     {
-                        title = "Reset configuration";
-                        message = "Reset " + item.key + "?";
-                    }
-                }
-                else
-                {
-                    title = "Reset configuration";
-                    message = "Reset " + item.key + " for widget?";
-                }
-            }
-
-            Utils.showConfirmationDialog(getActivity(),
-                    title, message, android.R.drawable.ic_dialog_alert,
-                    null, null, () -> {
-                        if (widget == null)
+                        if (widgetId == Configurations.NONLOCAL_ID)
                         {
                             if (delete)
                             {
-                                getWidgetService().getConfigurations().deleteWidget(item.key);
+                                title = "Delete configuration";
+                                message = "Delete " + item.key + "?";
                             }
                             else
                             {
-                                getWidgetService().getConfigurations().resetWidget(item.key);
+                                title = "Reset configuration";
+                                message = "Reset " + item.key + "?";
                             }
                         }
                         else
                         {
-                            if (delete && widgetId == Configurations.NONLOCAL_ID)
-                            {
-                                getWidgetService().getConfigurations().deleteKey(widget, item.key);
-                            }
-                            else
-                            {
-                                getWidgetService().getConfigurations().resetKey(widget, item.key, widgetId);
-                            }
+                            title = "Reset configuration";
+                            message = "Reset " + item.key + " for instance?";
                         }
-                        refresh();
-                    });
-            return true;
+                    }
+
+                    Utils.showConfirmationDialog(requireActivity(),
+                            title, message, android.R.drawable.ic_dialog_alert,
+                            null, null, () -> {
+                                if (widget == null)
+                                {
+                                    if (delete)
+                                    {
+                                        getWidgetService().getConfigurations().deleteWidget(item.key);
+                                    }
+                                    else
+                                    {
+                                        getWidgetService().getConfigurations().resetWidget(item.key);
+                                    }
+                                }
+                                else
+                                {
+                                    if (delete && widgetId == Configurations.NONLOCAL_ID)
+                                    {
+                                        getWidgetService().getConfigurations().deleteKey(widget, item.key);
+                                    }
+                                    else
+                                    {
+                                        getWidgetService().getConfigurations().resetKey(widget, item.key, widgetId);
+                                    }
+                                }
+                                refresh();
+                            });
+                    return true;
+                }
+                else if (menuItem.getItemId() == R.id.action_copy && widgetPickerElements != null)
+                {
+                    if (item.arg != null)
+                    {
+                        HashMap<String, Triple<String, String, Boolean>> values = new HashMap<>();
+                        values.put(item.key, (Triple<String, String, Boolean>) item.arg);
+                        copyToInstance(values);
+                    }
+                }
+            }
+            return super.onContextItemSelected(menuItem);
+        }
+
+        public void copyToInstance(HashMap<String, Triple<String, String, Boolean>> values)
+        {
+            WidgetListElement[] elementsExceptThis = new WidgetListElement[widgetPickerElements.length - 1];
+            int c = 0;
+            for (WidgetListElement e : widgetPickerElements)
+            {
+                if (e.widgetId != widgetId)
+                {
+                    elementsExceptThis[c++] = e;
+                }
+            }
+            String[] widgets = new String[elementsExceptThis.length];
+            for (int i = 0; i < widgets.length; i++)
+            {
+                widgets[i] = elementsExceptThis[i].toString();
+            }
+            AlertDialog.Builder builder = new AlertDialog.Builder(requireActivity());
+            builder.setTitle(values.size() != 1 ? "Select instance to copy " + values.size() + " keys to:" : "Select an instance to copy " + values.keySet().iterator().next() + " to:");
+            builder.setItems(widgets, (dialog, which) -> {
+                int toInstance = elementsExceptThis[which].widgetId;
+                for(Map.Entry<String, Triple<String, String, Boolean>> e : values.entrySet())
+                {
+                    String key = e.getKey();
+                    String value = e.getValue().component2();
+                    getWidgetService().getConfigurations().setConfig(widget, toInstance, key, value);
+                }
+                refresh();
+            });
+            builder.show();
         }
 
         public void setWidget(String widget, int widgetId)

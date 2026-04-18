@@ -3,10 +3,18 @@
       xmlns:app="http://schemas.android.com/apk/res-auto">
     <item
         android:id="@+id/action_import"
-        android:title="Import"
-        app:showAsAction="always|withText" />
+        android:title="Import All"
+        app:showAsAction="never|withText" />
     <item
         android:id="@+id/action_export"
-        android:title="Export"
-        app:showAsAction="always|withText" />
+        android:title="Export All"
+        app:showAsAction="never|withText" />
+    <item
+        android:id="@+id/action_copy"
+        android:title="Copy to Instance"
+        app:showAsAction="never|withText" />
+    <item
+        android:id="@+id/action_resetall"
+        android:title="Reset Instance"
+        app:showAsAction="never|withText" />
 </menu>

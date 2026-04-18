@@ -56,6 +56,9 @@ class AttrDict(dict):
         if any(res in self for res in self.reserved):
             raise KeyError(f'The following keys are reserved: {", ".join(self.reserved)}')
 
+    def __reduce__(self):
+        return (dict, (dict(self),))
+
     def __resetmodified__(self):
         object.__setattr__(self, '__modified__', set())
 
@@ -170,7 +173,7 @@ def preferred_script_dir():
     global saved_script_dir
     if saved_script_dir is None:
         saved_script_dir = java.get_java_arg().getPreferredScriptDir()
-    return saved_script_dir
+    return Path(saved_script_dir)
 
 def generate_filename(url):
     extension = url[url.rfind('.'):]

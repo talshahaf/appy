@@ -114,19 +114,19 @@ def on_refresh(widget, views):
         if local == None:
             # try to infer local from url filename and preferred_script_dir
             local_name = url[url.rfind('/') + 1:]
-            local = os.path.join(preferred_script_dir(), local_name)
-            if not local.lower().endswith('.py'):
+            if not local_name.lower().endswith('.py'):
                 print(f"Inferred local '{local_name}' does not end with '.py', skipping.")
                 continue
+            local = preferred_script_dir() / local_name
                 
         if '/' not in local:
             # local can be just filename
-            local = os.path.join(preferred_script_dir(), local)
+            local = preferred_script_dir() / local
             
-        if os.path.exists(local) and local not in widget.state.known_locals:
+        if local.exists() and local not in widget.state.known_locals:
             # don't blindly overwrite existing files
-            if show_dialog('File exists', f"File '{os.path.basename(local)}' exists and was not created by me. Overwrite?", buttons=('Yes', 'No')) != 0:
-                print(f"Not overwriting '{os.path.basename(local)}'.")
+            if show_dialog('File exists', f"File '{local.name}' exists and was not created by me. Overwrite?", buttons=('Yes', 'No')) != 0:
+                print(f"Not overwriting '{local.name}'.")
                 continue
         
         if download(url, local, widget.state.known_locals.get(local, 0)):

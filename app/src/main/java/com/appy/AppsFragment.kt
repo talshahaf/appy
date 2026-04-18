@@ -26,7 +26,6 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
-import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibilityScope
@@ -86,8 +85,10 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.zIndex
 import androidx.core.content.ContextCompat.getSystemService
 import androidx.core.view.HapticFeedbackConstantsCompat
+import androidx.core.view.MenuProvider
 import androidx.core.view.ViewCompat
 import androidx.core.view.children
+import androidx.lifecycle.Lifecycle
 import com.appy.DictObj.Dict
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyGridState
@@ -99,7 +100,7 @@ import kotlin.random.Random
 const val APPWIDGET_HOST_ID = 1433
 const val OPTION_APPWIDGET_APPY_APP = "appWidgetAppyApp"
 
-class AppsFragment : MyFragment() {
+class AppsFragment : MyFragment(), MenuProvider {
     class WidgetHost(context: Context?) : AppWidgetHost(context, APPWIDGET_HOST_ID)
 
     class ScaleLayout(context : Context) : FrameLayout(context)
@@ -178,6 +179,7 @@ class AppsFragment : MyFragment() {
     private var widgetHost: WidgetHost? = null
     private var appyInfo: AppWidgetProviderInfo? = null
     private var attachedAndBound = false
+    private var showMenu = false
 
     private val _widgetGridList = mutableStateListOf<WidgetItem>()
     private val selectedState = mutableIntStateOf (-1)
@@ -497,17 +499,20 @@ class AppsFragment : MyFragment() {
                 Content(composeView)
             }
         }
-
-        setHasOptionsMenu(true)
-        setMenuVisibility(false)
         return view
     }
 
-    override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
-        inflater.inflate(R.menu.apps_toolbar_actions, menu)
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        requireActivity().addMenuProvider(this, getViewLifecycleOwner(), Lifecycle.State.RESUMED)
     }
 
-    override fun onOptionsItemSelected(item : MenuItem) : Boolean {
+    override fun onCreateMenu(menu: Menu, inflater: MenuInflater) {
+        if (showMenu) {
+            inflater.inflate(R.menu.apps_toolbar_actions, menu)
+        }
+    }
+
+    override fun onMenuItemSelected(item: MenuItem): Boolean {
         if (item.itemId == R.id.action_minimize) {
             selectWidget(-1)
             return true
@@ -541,7 +546,7 @@ class AppsFragment : MyFragment() {
                 }
             }
         }
-        return super.onOptionsItemSelected(item)
+        return false
     }
 
     fun configureWidget(widgetId : Int) {
@@ -617,7 +622,8 @@ class AppsFragment : MyFragment() {
     {
         if (selectedState == -1 && lastSelectedState != -1) {
             setTitle("Apps")
-            setMenuVisibility(false)
+            showMenu = false
+            activity?.invalidateMenu()
         }
 
         val reorderableLazyGridState = rememberReorderableLazyGridState(lazyGridState) { from, to ->
@@ -841,7 +847,8 @@ class AppsFragment : MyFragment() {
 
             if (selectedState != -1 && lastSelectedState == -1) {
                 setTitle(title)
-                setMenuVisibility(true)
+                showMenu = true
+                activity?.invalidateMenu()
             }
 
             AndroidView (

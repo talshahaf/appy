@@ -3802,11 +3802,16 @@ public class Widget extends RemoteViewsService
 
     public Object waitForAsyncReportTwice(int requestCode, int timeoutMilli)
     {
-        Integer doneRequestCode = (Integer)waitForAsyncReport(requestCode, Constants.REQUEST_SETUP_TIMEOUT_MILLI);
-        if (doneRequestCode == null) {
+        Object doneRequestCode = waitForAsyncReport(requestCode, Constants.REQUEST_SETUP_TIMEOUT_MILLI);
+        if (doneRequestCode == null)
+        {
             throw new RuntimeException("Failed to launch activity");
         }
-        return waitForAsyncReport(doneRequestCode, timeoutMilli);
+        if (!(doneRequestCode instanceof Integer))
+        {
+            throw new RuntimeException("Returned object is not an Integer, it is " + doneRequestCode.getClass().getSimpleName());
+        }
+        return waitForAsyncReport((Integer)doneRequestCode, timeoutMilli);
     }
 
     public Pair<String[], int[]> requestPermissions(String[] permissions, boolean request, int timeoutMilli)
