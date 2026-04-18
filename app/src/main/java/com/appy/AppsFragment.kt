@@ -12,7 +12,9 @@ import android.content.pm.ShortcutInfo
 import android.content.pm.ShortcutManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Canvas
 import android.graphics.Matrix
+import android.graphics.drawable.Icon
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
@@ -26,6 +28,7 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
+import androidx.activity.OnBackPressedCallback
 import androidx.annotation.RequiresApi
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibilityScope
@@ -96,7 +99,6 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.random.Random
 
-
 const val APPWIDGET_HOST_ID = 1433
 const val OPTION_APPWIDGET_APPY_APP = "appWidgetAppyApp"
 
@@ -143,7 +145,7 @@ class AppsFragment : MyFragment(), MenuProvider {
             }
         }
 
-        override fun dispatchDraw(canvas : android.graphics.Canvas) {
+        override fun dispatchDraw(canvas : Canvas) {
             canvas.save()
             canvas.scale(if (innerWidth == 0) 1f else width.toFloat() / innerWidth.toFloat(), if (innerHeight == 0) 1f else height.toFloat() / innerHeight.toFloat())
             super.dispatchDraw(canvas)
@@ -187,6 +189,12 @@ class AppsFragment : MyFragment(), MenuProvider {
     private val doStateAnimation = mutableStateOf(true)
     private val updateTitle = mutableStateOf(false)
     private val prevUpdateTitle = mutableStateOf(false)
+    private var minimizeBackAction = object :
+        OnBackPressedCallback(true) {
+        override fun handleOnBackPressed() {
+            selectWidget(-1)
+        }
+    }
 
     private val setListenerMethod = Reflection.getMethods(AppWidgetHost::class.java).find { it.name == "setListener"}
 
@@ -369,6 +377,7 @@ class AppsFragment : MyFragment(), MenuProvider {
         val prevId = lastSelectedState.intValue
 
         if (widgetId == -1) {
+            minimizeBackAction.isEnabled = false
             val item = _widgetGridList.find {prevId == it.widgetId }
             if (item != null && item.name == null) {
                 removeWidget(prevId)
@@ -572,9 +581,9 @@ class AppsFragment : MyFragment(), MenuProvider {
                             .putExtra(Constants.FRAGMENT_ARG_WIDGET_UNIQUE, widgetItem.widgetUnique)
 
             val icon = if (widgetItem.shortcutIcon != null)
-                            android.graphics.drawable.Icon.createWithAdaptiveBitmap(widgetItem.shortcutIcon!!)
+                            Icon.createWithAdaptiveBitmap(widgetItem.shortcutIcon!!)
                         else
-                            android.graphics.drawable.Icon.createWithResource(applicationContext, R.drawable.app_default_shortcut)
+                            Icon.createWithResource(applicationContext, R.drawable.app_default_shortcut)
 
             val pinShortcutInfo = ShortcutInfo.Builder(applicationContext, "appy_app_${widgetItem.widgetId}_${widgetItem.widgetUnique}_${Random.nextInt(0, Int.MAX_VALUE)}")
                                     .setIntent(intent)
@@ -923,6 +932,12 @@ class AppsFragment : MyFragment(), MenuProvider {
                             fullSize,
                             onWidgetClick = {
                                 selectWidget(it.widgetId)
+                                if (activity != null) {
+                                    requireActivity().onBackPressedDispatcher.addCallback(
+                                        owner = viewLifecycleOwner,
+                                        onBackPressedCallback = minimizeBackAction)
+                                    minimizeBackAction.isEnabled = true
+                                }
                             },
                             containerView,
                             lazyGridState,
