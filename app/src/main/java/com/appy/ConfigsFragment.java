@@ -149,12 +149,9 @@ public class ConfigsFragment extends FragmentParent
 
         ConfigSelectFragment fragment = new ConfigSelectFragment();
         fragment.setWidget(widget, widgetId);
-        String config = fragmentArg.getString(Constants.FRAGMENT_ARG_CONFIG);
-        if (configs.containsKey(config))
+        int requestCode = fragmentArg.getInt(Constants.FRAGMENT_ARG_REQUESTCODE, -1);
+        if (fragmentArg.containsKey(Constants.FRAGMENT_ARG_CONFIG))
         {
-            fragment.setConfig(config);
-
-            int requestCode = fragmentArg.getInt(Constants.FRAGMENT_ARG_REQUESTCODE, -1);
             if (requestCode != -1)
             {
                 int doneRequestCode = getWidgetService().generateRequestCode();
@@ -164,6 +161,19 @@ public class ConfigsFragment extends FragmentParent
             else
             {
                 fragment.setRequestCode(-1);
+            }
+
+            String config = fragmentArg.getString(Constants.FRAGMENT_ARG_CONFIG);
+            if (configs.containsKey(config))
+            {
+                fragment.setConfig(config);
+            }
+            else
+            {
+                // die immediately if config is bad
+                Toast.makeText(getActivity(), "Config not found: '" + config + "'", Toast.LENGTH_SHORT).show();
+                fragment.setParent(this);
+                fragment.handleAsyncRequestAndDie("");
             }
         }
         switchTo(fragment, true);
@@ -558,7 +568,7 @@ public class ConfigsFragment extends FragmentParent
         {
             if (getRequestCode() != -1)
             {
-                getWidgetService().asyncReport(getRequestCode(), value);
+                parent.getWidgetService().asyncReport(getRequestCode(), value);
                 setRequestCode(-1);
             }
             parent.finishActivity();

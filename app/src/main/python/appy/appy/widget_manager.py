@@ -547,7 +547,8 @@ class Element:
             if 'tag' not in self.d.tag:
                 self.d.tag['tag'] = AttrDict()
             if isinstance(self.d.tag['tag'], str):
-                self.d.tag['tag'] = loads(self.d.tag['tag'])
+                tag = loads(self.d.tag['tag'])
+                self.d.tag['tag'] = AttrDict.make(tag) if isinstance(tag, dict) else tag
             return self.d.tag['tag']
 
         if item in self.d.tag:

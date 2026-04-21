@@ -3878,6 +3878,10 @@ public class Widget extends RemoteViewsService
     //result must be immutable
     public void asyncReport(int requestCode, @NonNull Object result)
     {
+        if (result == null)
+        {
+            throw new NullPointerException("result cannot be null");
+        }
         synchronized (notifier)
         {
             if (activeRequests.containsKey(requestCode))
@@ -3942,6 +3946,7 @@ public class Widget extends RemoteViewsService
 
         startMainActivity("Configurations", bundle,
                 Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_MULTIPLE_TASK | Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS);
+
 
         return waitForAsyncReportTwice(requestCode, timeoutMilli) != null;
     }

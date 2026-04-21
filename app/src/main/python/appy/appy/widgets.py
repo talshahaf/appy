@@ -145,26 +145,47 @@ class Widget:
         widget_manager.java_context().startMainActivity(screen, None)
 
     def start_config_activity(self, all_widgets=False):
+        self._start_config_activity(self.name, self.widget_id, all_widgets)
+
+    # can be:
+    # widget.start_global_config_activity(**kwargs) # opens global config respecting `all_widgets`
+    # Widget.start_global_config_activity(**kwargs) # opens global config for all widgets
+    def start_global_config_activity(*maybe_self, all_widgets=False):
+        if not maybe_self:
+            widget_id = None
+        elif len(maybe_self) == 1 and isinstance(maybe_self[0], Widget):
+            widget_id = maybe_self[0].widget_id
+        else:
+            raise TypeError('Too many arguments (expected 0)')
+        Widget._start_config_activity(configs.global_widget_config_name, widget_id, all_widgets if widget_id is not None else True)
+
+    @staticmethod
+    def _start_config_activity(name, widget_id, all_widgets):
         f = widget_manager.java_context().startConfigFragment
-        f(self.name) if all_widgets else f(self.name, self.widget_id)
+        f(name) if all_widgets else f(name, widget_id)
 
     def request_config_change(self, config, all_widgets=False, timeout=None):
         self._request_config_change(self.name, self.widget_id, config, all_widgets, timeout)
 
-    # both staticmethod and instancemethod
-    def request_global_config_change(self_or_config, *arg, all_widgets=False, timeout=None):
+    # can be:
+    # widget.request_global_config_change(config, **kwargs) # opens global config named `config` respecting `all_widgets`
+    # Widget.request_global_config_change(config, **kwargs) # opens global config named `config` for all widgets
+    def request_global_config_change(self_or_config, *args, all_widgets=False, timeout=None):
+        widget_id = None
+        config = None
         if isinstance(self_or_config, Widget):
-            #instancemethod
-            if len(arg) != 1:
-                raise TypeError("expected 'config' arg")
-            self, config = self_or_config, arg[0]
-            self._request_config_change(configs.global_widget_config_name, self.widget_id, config, all_widgets, timeout)
+            widget_id = self_or_config.widget_id
+            if len(args) > 1:
+                raise TypeError(f'Too many arguments (expected 1-2, got {1 + len(args)})')
+            config = args[0]
         else:
-            #staticmethod
-            if arg:
-                raise TypeError("expected 'config' arg")
             config = self_or_config
-            Widget._request_config_change(configs.global_widget_config_name, None, config, True, timeout)
+            if args:
+                raise TypeError(f'Too many arguments (expected 1, got {1 + len(args)})')
+        if not isinstance(config, str):
+            raise TypeError(f'`config` arg must be str, not {type(config)}')
+
+        Widget._request_config_change(configs.global_widget_config_name, widget_id, config, all_widgets if widget_id is not None else True, timeout)
 
     @staticmethod
     def _request_config_change(name, widget_id, config, all_widgets, timeout):

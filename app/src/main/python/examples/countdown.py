@@ -1,6 +1,6 @@
 import time, datetime
 import dateutil
-from appy.widgets import register_widget, Chronometer, ImageView, R, androidR
+from appy.widgets import register_widget, Chronometer, ImageView, R, androidR, TextView
 from appy.templates import background
 from appy import java
 
@@ -8,8 +8,9 @@ datetime_format = '%Y/%m/%d %H:%M:%S'
     
 # Called when changing timepoint
 def on_config(widget, views):
-    # Update chronometer time reference
+    # Update title and time reference
     views['timer'].base = convert_time(widget.config.timepoint_nojson)
+    views['title'].text = widget.config.title_nojson
 
 # Chronometer works with SystemClock.elapsedRealtime() which is milliseconds since boot
 # t is a datetime string, using dateutil to parse
@@ -23,12 +24,12 @@ def edit_btn_click(widget):
     widget.request_config_change('timepoint_nojson')
     
 def create(widget):
-    timer = Chronometer(name="timer",
+    timer = Chronometer(name='timer',
                         countDown=True, base=convert_time(widget.config.timepoint_nojson), started=True,
                         textColor=0xb3ffffff, textSize=30,
                         # align view center with widget center
                         vcenter=widget.vcenter, hcenter=widget.hcenter, alignment='center')
-                        
+    title = TextView(name='title', text=widget.config.title_nojson, textColor=0xb3ffffff, textSize=20, bottom=timer.itop, hcenter=widget.hcenter, alignment='center')                    
     edit_btn = ImageView(adjustViewBounds=True,
                            colorFilter=0xffffffff, width=80, height=80,
                            right=10, bottom=10,
@@ -36,11 +37,11 @@ def create(widget):
                            imageResource=androidR.drawable.ic_menu_edit)
     
     # Set up a semi-transparent black rectangle as background
-    return [background(widget=widget, drawable=R.drawable.rect), timer, edit_btn]
+    return [background(widget=widget, drawable=R.drawable.rect), timer, title, edit_btn]
 
 register_widget('countdown',
                 create,
-                # Allowing the user to configure the timepoint
-                config=dict(timepoint_nojson=(datetime.datetime.now() + datetime.timedelta(days=1)).strftime(datetime_format)),
+                # Allowing the user to configure the title and the timepoint
+                config=dict(title_nojson='', timepoint_nojson=(datetime.datetime.now() + datetime.timedelta(days=1)).strftime(datetime_format)),
                 # Listen for timepoint updates
                 on_config=on_config)
