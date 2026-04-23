@@ -120,29 +120,15 @@ public class FilesFragment extends MyFragment implements FileGridAdapter.ItemAct
     @Override
     public void onInfo(PythonFile file)
     {
-        AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
-
-        builder.setTitle(new File(file.path).getName() + (file.lastErrorDate != null ? " from " + file.lastErrorDate : ""));
-        builder.setNeutralButton("OK", null);
-        builder.setNegativeButton("Clear", (dialog, which) -> getWidgetService().clearFileError(file));
-
-        View layout = LayoutInflater.from(getActivity()).inflate(R.layout.alert_error_view, null);
-        TextView message = layout.findViewById(R.id.message);
+        String title = new File(file.path).getName() + (file.lastErrorDate != null ? " from " + file.lastErrorDate : "");
         String error = "No errors\n\n";
         if (!file.lastError.isEmpty())
         {
             error = file.lastError + "\n\n";
         }
+        String text = file.path + "\n\n" + error;
 
-        message.setText(file.path + "\n\n" + error);
-        builder.setView(layout);
-
-        AlertDialog alert = builder.create();
-        alert.setOnShowListener(dialog -> {
-            ScrollView vertical = layout.findViewById(R.id.verticalscroll);
-            vertical.fullScroll(View.FOCUS_DOWN);
-        });
-        alert.show();
+        Utils.showTextDialog(getActivity(), title, text, "Close", "Clear", () -> getWidgetService().clearFileError(file), null, true);
     }
 
     private boolean resumedAndBound = false;

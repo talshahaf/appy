@@ -269,6 +269,28 @@ def show_dialog(title, text, buttons=('Yes', 'No'), edittexts: tuple[DialogEditT
 
     return result.first, *result.second
 
+def show_option_dialog(title, options, timeout=None):
+    if not options:
+        raise ValueError('no options given')
+    option_with_confirms = []
+    for option in options:
+        if hasattr(option, '__len__') and len(option) == 2 and all(isinstance(opt, str) for opt in option):
+            option_with_confirms.append((option[0], option[1]))
+        elif isinstance(option, str):
+            option_with_confirms.append((option, None))
+        else:
+            raise ValueError(f'options must be a collection of str or (str, bool), not {type(option)}.')
+
+    texts, confirms = list(zip(*option_with_confirms))
+    result = widget_manager.java_context().showAndWaitForOptionDialog(title,
+                                                                      java.new.java.lang.String[()](texts),
+                                                                      java.new.java.lang.String[()](confirms),
+                                                                      int(timeout * 1000) if timeout is not None else -1)
+    if result == java.Null:
+        raise RuntimeError('timeout')
+    return int(result)
+
+
 def color(*args, **kwargs):
     lst_get = lambda l, i, d: l[i] if len(l) > i else d
     float_handler = lambda f: int(f * 0xff) if isinstance(f, float) else f

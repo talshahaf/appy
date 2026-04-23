@@ -80,6 +80,7 @@ public class Constants
     public static final int SPECIAL_WIDGET_EDIT_FILE = 9;
     public static final int SPECIAL_WIDGET_RELOAD = 10;
     public static final int SPECIAL_WIDGET_CONFIGURE = 11;
+    public static final int SPECIAL_WIDGET_FILESERROR = 12;
     public static final int TIMER_RELATIVE = 1;
     public static final int TIMER_ABSOLUTE = 2;
     public static final int TIMER_REPEATING = 3;

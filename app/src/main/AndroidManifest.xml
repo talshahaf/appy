@@ -132,7 +132,7 @@
             android:excludeFromRecents="true"
             android:theme="@style/Theme.AppCompat.Dialog"
             android:configChanges="orientation|screenSize|keyboardHidden|smallestScreenSize|screenLayout"/>
-        <activity android:name="com.appy.ButtonDialogActivity"
+        <activity android:name="com.appy.OptionDialogActivity"
             android:noHistory="true"
             android:excludeFromRecents="true"
             android:theme="@style/Theme.AppCompat.Dialog"

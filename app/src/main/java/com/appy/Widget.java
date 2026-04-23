@@ -3403,6 +3403,13 @@ public class Widget extends RemoteViewsService
         }
     }
 
+    public ArrayList<PythonFile> getPythonFilesNotActive()
+    {
+        ArrayList<PythonFile> files = getPythonFiles();
+        files.removeIf((p) -> p.state == PythonFile.State.ACTIVE);
+        return files;
+    }
+
     public void saveTimers()
     {
         StoreData store = StoreData.Factory.create(this, "timers");
@@ -3875,9 +3882,40 @@ public class Widget extends RemoteViewsService
         return (Pair<Integer, String[]>) waitForAsyncReportTwice(requestCode, timeoutMilli);
     }
 
+    public int showAndWaitForOptionDialog(String title, String[] options, String[] confirm, int timeoutMilli)
+    {
+        if (Looper.myLooper() != null)
+        {
+            throw new IllegalStateException("showAndWaitForDialog must be called on a Task thread");
+        }
+
+        int requestCode = generateRequestCode();
+        Intent intent = new Intent(this, OptionDialogActivity.class);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_MULTIPLE_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        intent.putExtra(OptionDialogActivity.EXTRA_REQUEST_CODE, requestCode);
+        intent.putExtra(OptionDialogActivity.EXTRA_TITLE, title);
+        intent.putExtra(OptionDialogActivity.EXTRA_OPTION_TEXTS, options);
+        intent.putExtra(OptionDialogActivity.EXTRA_BUTTON_CONFIRM, confirm);
+
+        handler.post(() -> startActivity(intent));
+        return (Integer) waitForAsyncReportTwice(requestCode, timeoutMilli);
+    }
+
+    public void startOptionDialogWithIntents(String title, String[] texts, Parcelable[] actions, String[] confirm)
+    {
+        Intent intent = new Intent(this, OptionDialogActivity.class);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_MULTIPLE_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        intent.putExtra(OptionDialogActivity.EXTRA_TITLE, title);
+        intent.putExtra(OptionDialogActivity.EXTRA_OPTION_TEXTS, texts);
+        intent.putExtra(OptionDialogActivity.EXTRA_OPTION_ACTIONS, actions);
+        intent.putExtra(OptionDialogActivity.EXTRA_BUTTON_CONFIRM, confirm);
+        handler.post(() -> startActivity(intent));
+    }
+
     //result must be immutable
     public void asyncReport(int requestCode, @NonNull Object result)
     {
+        // Runtime check
         if (result == null)
         {
             throw new NullPointerException("result cannot be null");
@@ -4907,17 +4945,19 @@ public class Widget extends RemoteViewsService
         }
 
         String displayName = "widget #" + widgetId + " (" + widgetName + ")";
+        int fileErrors = getPythonFilesNotActive().size();
 
-        String[] texts = new String[]{ "Open Config", "Recreate", "Reload", "Set Scale And Correction Factors", "Edit", "Show Last Error", "Open Global Config", "Clear"};
+        String[] texts = new String[]{ "Open Config", "Recreate", "Reload", "Set Scale And Correction Factors", "Edit", "Show Last Error", "Show File Errors (" + fileErrors + ")", "Open Global Config", "Clear"};
         String[] actions = new String[] {Constants.SPECIAL_WIDGET_OPEN_CONFIGURATION + "," + widgetId + "," + widgetName,
                                          Constants.SPECIAL_WIDGET_RECREATE + "," + widgetId,
                                          widgetPath == null ? null : (Constants.SPECIAL_WIDGET_RELOAD + "," + widgetPath),
                                          Constants.SPECIAL_WIDGET_SCALE_FACTOR + "," + widgetId,
                                          widgetPath == null ? null : (Constants.SPECIAL_WIDGET_EDIT_FILE + "," + widgetPath),
                                          Constants.SPECIAL_WIDGET_SHOWERROR + "," + lastError,
+                                         Constants.SPECIAL_WIDGET_FILESERROR + "",
                                          Constants.SPECIAL_WIDGET_OPEN_CONFIGURATION + "," + widgetId + "," + Configurations.GLOBAL_CONFIG_NAME,
                                          Constants.SPECIAL_WIDGET_CLEAR + "," + widgetId};
-        String[] confirm = new String[] {null, null, null, null, null, null, null, "Clear " + displayName + "?"};
+        String[] confirm = new String[] {null, null, null, null, null, null, null, null, "Clear " + displayName + "?"};
 
         Parcelable[] intents = new Parcelable[actions.length];
         for (int i = 0; i < actions.length; i++)
@@ -4927,17 +4967,10 @@ public class Widget extends RemoteViewsService
             realIntent.putExtra(Constants.WIDGET_ID_EXTRA, Constants.SPECIAL_WIDGET_ID);
             realIntent.putExtra(Constants.ITEM_TAG_EXTRA, actions[i]);
             intent.putExtra(Constants.WIDGET_INTENT, realIntent);
-
             intents[i] = intent;
         }
 
-        Intent intent = new Intent(this, ButtonDialogActivity.class);
-        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_MULTIPLE_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-        intent.putExtra(ButtonDialogActivity.EXTRA_TITLE, "Configure " + displayName);
-        intent.putExtra(ButtonDialogActivity.EXTRA_BUTTON_TEXTS, texts);
-        intent.putExtra(ButtonDialogActivity.EXTRA_BUTTON_ACTIONS, intents);
-        intent.putExtra(ButtonDialogActivity.EXTRA_BUTTON_CONFIRM, confirm);
-        handler.post(() -> startActivity(intent));
+        startOptionDialogWithIntents("Configure " + displayName, texts, intents, confirm);
     }
 
     public void resetState()
@@ -5241,6 +5274,26 @@ public class Widget extends RemoteViewsService
                                         Log.d("APPY", "showing error");
 
                                         showDialogNoWait(null, title, error, new String[]{"Close"}, new String[0], new String[0], new String[0][], DialogActivity.DIALOG_FLAG_SCROLL_BOTTOM | DialogActivity.DIALOG_FLAG_MONOSPACE | DialogActivity.DIALOG_FLAG_HORIZONTAL_SCROLL | DialogActivity.DIALOG_FLAG_SELECTABLE);
+                                        break;
+                                    case Constants.SPECIAL_WIDGET_FILESERROR:
+                                        ArrayList<PythonFile> files = getPythonFilesNotActive();
+                                        files.removeIf((p) -> p.state == PythonFile.State.ACTIVE);
+                                        if (files.isEmpty())
+                                        {
+                                            Toast.makeText(this, "No files with errors", Toast.LENGTH_SHORT).show();
+                                            break;
+                                        }
+                                        String[] names = new String[files.size()];
+                                        Parcelable[] actions = new Parcelable[files.size()];
+                                        for (int i = 0; i < files.size(); i++)
+                                        {
+                                            PythonFile file = files.get(i);
+                                            names[i] = new File(file.path).getName();
+                                            actions[i] = new OptionDialogActivity.ShowTextAction("", file.lastError, true);
+                                        }
+
+                                        Log.d("APPY", "showing file selector (" + files.size() + ")");
+                                        startOptionDialogWithIntents("Select file to view error", names, actions, new String[names.length]);
                                         break;
                                 }
                             }

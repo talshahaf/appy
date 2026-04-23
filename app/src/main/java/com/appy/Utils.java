@@ -11,7 +11,6 @@ import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
-import android.os.Build;
 import android.os.Bundle;
 import android.provider.OpenableColumns;
 import android.util.DisplayMetrics;
@@ -19,9 +18,12 @@ import android.util.Log;
 import android.util.Pair;
 import android.util.Size;
 import android.util.TypedValue;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.widget.ScrollView;
+import android.widget.TextView;
 import android.widget.Toast;
 
-import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AlertDialog;
 import androidx.core.content.res.ResourcesCompat;
 
@@ -626,6 +628,37 @@ public class Utils
         {
             Toast.makeText(context, toastMesasge, Toast.LENGTH_SHORT).show();
         }
+    }
+
+    public static void showTextDialog(Context context, String title, String text, String closeText, String actionText, Runnable action, Runnable onDismiss, boolean scrollDown)
+    {
+        AlertDialog.Builder builder = new AlertDialog.Builder(context);
+
+        builder.setTitle(title);
+        if (actionText != null && action != null)
+        {
+            builder.setNegativeButton(actionText, (dialog, which) -> action.run());
+        }
+        builder.setNeutralButton(closeText, null);
+        if (onDismiss != null)
+        {
+            builder.setOnDismissListener(dialog -> onDismiss.run());
+        }
+
+        View layout = LayoutInflater.from(context).inflate(R.layout.alert_error_view, null);
+        TextView message = layout.findViewById(R.id.message);
+        message.setText(text);
+        builder.setView(layout);
+
+        AlertDialog alert = builder.create();
+        alert.setOnShowListener(dialog -> {
+            if (scrollDown)
+            {
+                ScrollView vertical = layout.findViewById(R.id.verticalscroll);
+                vertical.fullScroll(View.FOCUS_DOWN);
+            }
+        });
+        alert.show();
     }
 
     public static void showConfirmationDialog(Context context, String title, String message, int icon, String yes, String no, Runnable yesAction)
