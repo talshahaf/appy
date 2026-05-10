@@ -194,6 +194,7 @@ public class Runner implements Runnable
             StringBuffer out = new StringBuffer();
             StringBuffer err = new StringBuffer();
             char[] buf = new char[1024];
+            ArrayList<String> lineBuffer = new ArrayList<>();
 
             boolean exited = false;
             while (!shouldStop)
@@ -222,38 +223,48 @@ public class Runner implements Runnable
                     err.append(buf, 0, len);
                 }
 
-                String line = nextLine(out);
-                if (line != null && callback != null)
+                lineBuffer.clear();
+                while (true)
                 {
-                    nothingHappened = false;
-                    callback.onLine(line);
+                    String outLine = nextLine(out);
+                    String errLine = nextLine(err);
+
+                    if (outLine != null)
+                    {
+                        lineBuffer.add(outLine);
+                        nothingHappened = false;
+                    }
+                    if (errLine != null)
+                    {
+                        lineBuffer.add(errLine);
+                        nothingHappened = false;
+                    }
+
+                    if (outLine == null && errLine == null)
+                    {
+                        break;
+                    }
                 }
 
-                line = nextLine(err);
-                if (line != null && callback != null)
+                if (!lineBuffer.isEmpty() && callback != null)
                 {
-                    nothingHappened = false;
-                    callback.onLine(line);
+                    String[] arr = new String[lineBuffer.size()];
+                    callback.onLines(lineBuffer.toArray(arr));
                 }
 
-                if (nothingHappened)
+                if (nothingHappened && exited)
                 {
-                    if (exited)
-                    {
-                        shouldStop = true;
-                    }
-                    else
-                    {
-                        try
-                        {
-                            //avoid busyloop
-                            Thread.sleep(500);
-                        }
-                        catch (InterruptedException e)
-                        {
-                            Log.e("APPY", "Sleep interrupted", e);
-                        }
-                    }
+                    shouldStop = true;
+                }
+
+                try
+                {
+                    //avoid busyloop
+                    Thread.sleep(nothingHappened ? 500 : 10);
+                }
+                catch (InterruptedException e)
+                {
+                    Log.e("APPY", "Sleep interrupted", e);
                 }
             }
         }

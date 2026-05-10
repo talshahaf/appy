@@ -28,6 +28,7 @@ public class FileEditorActivity extends AppCompatActivity
     EditText content;
     TextView numbers;
     File file;
+    long lastModified;
     String originalContent = "";
     boolean unsaved = false;
 
@@ -87,6 +88,26 @@ public class FileEditorActivity extends AppCompatActivity
         });
     }
 
+    private void reload()
+    {
+        try
+        {
+            lastModified = file.lastModified();
+            Pair<String, String> result = Utils.readAndHashFileAsString(file, Constants.PYTHON_FILE_MAX_SIZE, false);
+            originalContent = result.first;
+            toolbar.setTitle(file.getName());
+            content.setText(originalContent);
+            unsaved = false;
+            updateTitle();
+        }
+        catch (IOException e)
+        {
+            Log.e("APPY", "Could not open file " + file.getName(), e);
+            Toast.makeText(this, "Could not open file", Toast.LENGTH_SHORT).show();
+            finish();
+        }
+    }
+
     @Override
     public void onResume()
     {
@@ -98,33 +119,26 @@ public class FileEditorActivity extends AppCompatActivity
             Log.e("APPY", "null file path");
             Toast.makeText(this, "Could not open file", Toast.LENGTH_SHORT).show();
             finish();
+            return;
         }
 
-        if (file != null && new File(path).getPath().equals(file.getPath()))
+        File newfile = new File(path);
+        if (file != null && newfile.getPath().equals(file.getPath()))
         {
+            if (lastModified != newfile.lastModified())
+            {
+                Utils.showConfirmationDialog(this, "File changed", "File changed on disk. Reload?", android.R.drawable.ic_dialog_alert, "Reload", "Keep", this::reload, () -> {
+                    unsaved = true;
+                    updateTitle();
+                });
+            }
             //actual resume
             return;
         }
 
         // load new file
-        file = new File(path);
-
-        try
-        {
-            Pair<String, String> result = Utils.readAndHashFileAsString(file, Constants.PYTHON_FILE_MAX_SIZE, false);
-            originalContent = result.first;
-
-            toolbar.setTitle(file.getName());
-            content.setText(originalContent);
-            unsaved = false;
-            updateTitle();
-        }
-        catch (IOException e)
-        {
-            Log.e("APPY", "Could not open file " + path, e);
-            Toast.makeText(this, "Could not open file", Toast.LENGTH_SHORT).show();
-            finish();
-        }
+        file = newfile;
+        reload();
     }
 
     @Override
@@ -158,6 +172,7 @@ public class FileEditorActivity extends AppCompatActivity
         {
             Utils.writeFile(file, newcontent);
             originalContent = newcontent;
+            lastModified = file.lastModified();
             unsaved = false;
             updateTitle();
         }

@@ -165,13 +165,15 @@ def adapter(widget, view, value, index):
     else:
         view[0].text = 'Error'
         
-    view[0].hcenter = widget.hcenter
-    view[0].vcenter = widget.vcenter
-    view[0].textSize = 17
-    view[0].textColor = color('white')
+    view[0].update(center=widget.center, textSize=17, textColor=color('white'), alignment='center')
     
     # add the symbol name to the left
-    view.append(TextView(text=value['symbol'], left=10, textSize=17, vcenter=view[0].vcenter, textColor=color('white')))
+    view.append(TextView(text=value['symbol'],
+                         left=10, top=view[0].top, bottom=view[0].bottom, lines=1,
+                         # invert manually so we can use AttributeValue.min with left and width
+                         right=widget.width - AttributeValue.min(view[0].left - 5, widget.width / 4),
+                         alignment='center',
+                         autoTextSize=True, textColor=color('white')))
     
     if has_error:
         return

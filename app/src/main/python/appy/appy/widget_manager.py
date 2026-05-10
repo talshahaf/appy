@@ -261,9 +261,12 @@ composite_attrs = dict(ileft=attribute_ileft, itop=attribute_itop, iright=attrib
                        hcenter=attribute_hcenter, vcenter=attribute_vcenter, center=attribute_center, ihcenter=attribute_ihcenter, ivcenter=attribute_ivcenter, icenter=attribute_icenter)
 write_attrs = dict(hcenter=attribute_write_hcenter, vcenter=attribute_write_vcenter, center=attribute_write_center)
 class ContainerAttributes:
+    def __init__(self, level):
+        self.__level = level
+
     def __getattr__(self, item):
         if item in attrs:
-            return AttributeValue(None, Reference(-1, attrs[item]))
+            return AttributeValue(None, Reference(self.__level, attrs[item]))
         if item in composite_attrs:
             return composite_attrs[item](self)
         raise AttributeError(item)
@@ -484,6 +487,10 @@ class Element:
 
     def set_handler(self, key, f):
         self.d.tag[key] = dump_general_function(f, {}) if f is not None else None
+
+    def update(self, **attrs):
+        for k,v in attrs.items():
+            setattr(self, k, v)
 
     def __delattr__(self, key):
         if key in attrs:

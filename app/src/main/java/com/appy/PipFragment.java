@@ -1,5 +1,6 @@
 package com.appy;
 
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.view.LayoutInflater;
@@ -143,11 +144,11 @@ public class PipFragment extends MyFragment implements RunnerListener
         super.onResume();
     }
 
-    @Override
-    public void onLine(final String line)
+    Runnable updateTask = new Runnable()
     {
-        handler.post(() -> {
-            fulloutput += "\n" + line;
+        @Override
+        public void run()
+        {
             output.setText(fulloutput);
             boolean commandFocused = command.hasFocus();
             scroller.fullScroll(View.FOCUS_DOWN);
@@ -155,15 +156,29 @@ public class PipFragment extends MyFragment implements RunnerListener
             {
                 command.requestFocus();
             }
-        });
+        }
+    };
+
+    @Override
+    public void onLines(final String[] lines)
+    {
+        fulloutput += "\n" + String.join("\n", lines);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && handler.hasCallbacks(updateTask))
+        {
+            handler.removeCallbacks(updateTask);
+            handler.postDelayed(updateTask, 500);
+        }
+        else
+        {
+            handler.removeCallbacks(updateTask);
+            handler.post(updateTask);
+        }
     }
 
     @Override
     public void onExited(final Integer code)
     {
-        handler.post(() -> {
-            fulloutput += code == null ? "\nTerminated" : ("\nExited: " + code);
-            output.setText(fulloutput);
-        });
+        fulloutput += code == null ? "\nTerminated" : ("\nExited: " + code);
+        handler.post(() -> output.setText(fulloutput));
     }
 }

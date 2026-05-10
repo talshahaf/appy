@@ -13,6 +13,7 @@ import android.widget.TextView;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -136,7 +137,7 @@ public class LogcatFragment extends MyFragment implements RunnerListener
     }
 
     @Override
-    public void onLine(final String line)
+    public void onLines(final String[] lines)
     {
         if (handler != null)
         {
@@ -144,7 +145,7 @@ public class LogcatFragment extends MyFragment implements RunnerListener
                 // freeze when selecting
                 if (logcatView.hasSelection() || !atEnd)
                 {
-                    selectionBuffer.add(line);
+                    selectionBuffer.addAll(Arrays.asList(lines));
                 }
                 else
                 {
@@ -158,10 +159,13 @@ public class LogcatFragment extends MyFragment implements RunnerListener
                     }
                     selectionBuffer.clear();
 
-                    allLines.add(line);
-                    if (!lineHidden(line))
+                    allLines.addAll(Arrays.asList(lines));
+                    for (String line : lines)
                     {
-                        logcatView.append("\n" + line);
+                        if (!lineHidden(line))
+                        {
+                            logcatView.append("\n" + line);
+                        }
                     }
                     handler.post(() -> scroller.fullScroll(View.FOCUS_DOWN));
                 }

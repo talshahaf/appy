@@ -69,15 +69,13 @@ interface WidgetUpdateListener
 
 interface RunnerListener
 {
-    void onLine(String line);
-
+    void onLines(String[] lines);
     void onExited(Integer code);
 }
 
 interface StatusListener
 {
     void onStartupStatusChange();
-
     void onPythonFileStatusChange();
 }
 

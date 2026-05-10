@@ -38,7 +38,7 @@ def update_list(widget, views):
             continue
         checked = widget.state.get(text, False)
         children.append(CheckBox(text=text, textColor=0xb3ffffff,
-                                left=0, right=0,
+                                left=20, right=20,
                                 buttonTintList=java.clazz.android.content.res.ColorStateList().valueOf(0xb3ffffff),
                                 textSize=20,
                                 paintFlags=strikethrough_flags if checked else normal_flags,

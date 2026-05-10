@@ -1541,7 +1541,7 @@ public class Widget extends RemoteViewsService
         third.functions.add(new Attributes.AttributeValue.Function("ADD", 2, third.arguments.size()));
     }
 
-    public int applyIteration(ArrayList<DynamicView> dynamicList, Attributes rootAttributes, int[] widgetSize)
+    public int applyIteration(ArrayList<DynamicView> dynamicList, Attributes[] specialAttributes, int[] widgetSize)
     {
         int resolved = 0;
         for (DynamicView dynamicView : dynamicList)
@@ -1557,7 +1557,7 @@ public class Widget extends RemoteViewsService
                     {
                         Attributes.AttributeValue.Reference reference = (Attributes.AttributeValue.Reference)arg;
                         Attributes referenceAttributes;
-                        if (reference.id != -1)
+                        if (reference.id > 0 || (-reference.id > specialAttributes.length))
                         {
                             DynamicView view = find(dynamicList, reference.id);
                             if (view == null)
@@ -1568,7 +1568,7 @@ public class Widget extends RemoteViewsService
                         }
                         else
                         {
-                            referenceAttributes = rootAttributes;
+                            referenceAttributes = specialAttributes[(int)(-reference.id - 1)];
                         }
 
                         Attributes.AttributeValue referencedValue = referenceAttributes.attributes.get(reference.type);
@@ -1661,6 +1661,12 @@ public class Widget extends RemoteViewsService
         rootAttributes.attributes.get(Attributes.Type.TOP).resolvedValue = 0.0;
         rootAttributes.attributes.get(Attributes.Type.RIGHT).resolvedValue = 0.0;
         rootAttributes.attributes.get(Attributes.Type.BOTTOM).resolvedValue = 0.0;
+
+        Attributes widgetAttributes = new Attributes();
+        widgetAttributes.attributes.get(Attributes.Type.LEFT).resolvedValue = 0.0;
+        widgetAttributes.attributes.get(Attributes.Type.TOP).resolvedValue = 0.0;
+        widgetAttributes.attributes.get(Attributes.Type.RIGHT).resolvedValue = 0.0;
+        widgetAttributes.attributes.get(Attributes.Type.BOTTOM).resolvedValue = 0.0;
         //don't resolve width height yet
 
         ViewGroup supergroup = (ViewGroup) inflated;
@@ -1740,11 +1746,14 @@ public class Widget extends RemoteViewsService
         // Log.d("APPY", "Attributes "+DynamicView.toJSONString(dynamicList));
 
         //resolve anything not depending on widget width/height
-        while (applyIteration(dynamicList, rootAttributes, widgetSize) != 0) ;
+        while (applyIteration(dynamicList, new Attributes[] { rootAttributes, widgetAttributes }, widgetSize) != 0) ;
 
         //resolve width and height
         rootAttributes.attributes.get(Attributes.Type.WIDTH).resolvedValue = (double) widthLimit;
         rootAttributes.attributes.get(Attributes.Type.HEIGHT).resolvedValue = (double) heightLimit;
+        widgetAttributes.attributes.get(Attributes.Type.WIDTH).resolvedValue = (double)widgetSize[0];
+        widgetAttributes.attributes.get(Attributes.Type.HEIGHT).resolvedValue = (double)widgetSize[1];
+
         //in collection items, there's no width and height limits, they are calculated from the items within
         if (collectionLayout == Constants.CollectionLayout.HORIZONTAL || collectionLayout == Constants.CollectionLayout.BOTH)
         {
@@ -1756,7 +1765,7 @@ public class Widget extends RemoteViewsService
         }
 
         //resolve everything else
-        while (applyIteration(dynamicList, rootAttributes, widgetSize) != 0) ;
+        while (applyIteration(dynamicList, new Attributes[] { rootAttributes, widgetAttributes }, widgetSize) != 0) ;
 
         for (DynamicView dynamicView : dynamicList)
         {
