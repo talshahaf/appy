@@ -61,6 +61,11 @@ public class StateFragment extends FragmentParent
 
         public void refresh()
         {
+            if (getWidgetService() == null)
+            {
+                return;
+            }
+
             DictObj.Dict widgetProps = getWidgetService().getAllWidgetAppProps(false, false);
 
             ArrayList<ListFragmentAdapter.Item> adapterList = new ArrayList<>();

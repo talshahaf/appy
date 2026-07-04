@@ -79,6 +79,11 @@ public class TimerFragment extends FragmentParent
 
         public void refresh()
         {
+            if (getWidgetService() == null)
+            {
+                return;
+            }
+
             DictObj.Dict allTimers = getWidgetService().getTimersSnapshot();
 
             ArrayList<ListFragmentAdapter.Item> adapterList = new ArrayList<>();

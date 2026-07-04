@@ -1301,7 +1301,7 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
 
     @java.override
     def onUpdate(self, widget_id, views_java_list, is_app):
-        print(f'python got onUpdate', is_app)
+        print(f'python got onUpdate for {'app' if is_app else 'widget'} {widget_id}')
         widget, manager_state = create_widget(widget_id)
 
         if widget.name is not None:
@@ -1320,7 +1320,7 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
 
     @java.override
     def onDelete(self, widget_id):
-        print(f'python got onDelete')
+        print(f'python got onDelete for {widget_id}')
         unchoose_widget(widget_id)
         state.save_modified()
 
@@ -1368,7 +1368,7 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
 
     @java.override
     def onTimer(self, timer_id, widget_id, views_java_list, data):
-        print('timer called', widget_id, timer_id)
+        print('timer called for widget {widget_id}, timer_id: {timer_id}')
         func = loads(data)
         widget, manager_state = create_widget(widget_id)
 
@@ -1385,7 +1385,7 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
 
     @java.override
     def onPost(self, widget_id, views_java_list, data):
-        print('post called')
+        print(f'post called for widget {widget_id}')
         widget, manager_state = create_widget(widget_id)
         func = loads(data)
 
@@ -1402,7 +1402,7 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
 
     @java.override
     def onConfig(self, widget_id, views_java_list, key):
-        print('onConfig called', key)
+        print(f'onConfig called for key {key}')
         input, views = self.import_(views_java_list)
         widget, manager_state = create_widget(widget_id)
         return self.export(input, widget_manager_callback(widget, manager_state, views, 'on_config', key=key), {})
@@ -1411,7 +1411,7 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
     def onShare(self, widget_id, views_java_list, mime, text, datas):
         datas = java.build_python_dict_from_java(datas)
         text = text if text != java.Null else None
-        print('onShare called', mime, text, len(datas))
+        print(f'onShare called for widget {widget_id}', mime, text, len(datas))
 
         input, views = self.import_(views_java_list)
         widget, manager_state = create_widget(widget_id)

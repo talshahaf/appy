@@ -344,6 +344,11 @@ public class ConfigsFragment extends FragmentParent
 
         public void refresh()
         {
+            if (getWidgetService() == null)
+            {
+                return;
+            }
+
             ArrayList<ListFragmentAdapter.Item> adapterList = new ArrayList<>();
             ListFragmentAdapter.Item selectedConfigItem = null;
             if (widget == null)

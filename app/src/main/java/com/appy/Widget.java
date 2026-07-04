@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
+import java.lang.reflect.Array;
 import java.lang.reflect.InvocationTargetException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -19,6 +20,7 @@ import java.time.Month;
 import java.time.format.DateTimeFormatter;
 import java.time.format.TextStyle;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
@@ -3185,12 +3187,30 @@ public class Widget extends RemoteViewsService
     public void loadPythonFiles()
     {
         StoreData store = StoreData.Factory.create(this, "pythonfiles");
+
+        //old
         DictObj.List pythonfilesList = store.getList("pythonfiles");
         ArrayList<PythonFile> pythonfilesArray = null;
         if (pythonfilesList != null)
         {
             pythonfilesArray = PythonFile.fromList(pythonfilesList);
+            //migrate
+            Log.d("APPY", "migrating from pythonfiles db key");
+            savePythonFiles(pythonfilesArray);
+            store.remove("pythonfiles");
+            store.apply();
         }
+
+        //new
+        if (pythonfilesArray == null)
+        {
+            pythonfilesArray = new ArrayList<>();
+        }
+        for (String key : store.getAllStartingWith("pythonfile_"))
+        {
+            pythonfilesArray.add(PythonFile.fromDict(store.getDict(key)));
+        }
+
         DictObj.Dict unknownPythonFileDict = store.getDict("unknownpythonfile");
         PythonFile unknownFile = null;
         if (unknownPythonFileDict != null)
@@ -3213,16 +3233,37 @@ public class Widget extends RemoteViewsService
         updateObserver();
     }
 
-    public void savePythonFiles()
+    public void saveAllPythonFiles()
+    {
+        savePythonFiles(getPythonFiles());
+    }
+
+    public void savePythonFiles(PythonFile pythonFile)
+    {
+        savePythonFiles(Arrays.asList(pythonFile));
+    }
+
+    public void savePythonFiles(List<PythonFile> pythonFiles)
     {
         StoreData store = StoreData.Factory.create(this, "pythonfiles");
-        store.put("pythonfiles", PythonFile.toList(getPythonFiles()));
-        DictObj.Dict dict;
-        synchronized (pythonFilesLock)
+        for (PythonFile pythonFile : pythonFiles)
         {
-            dict = unknownPythonFile.toDict();
+            if (pythonFile.equals(unknownPythonFile))
+            {
+                store.put("unknownpythonfile", pythonFile.toDict());
+            }
+            else
+            {
+                store.put("pythonfile_"+pythonFile.path, pythonFile.toDict());
+            }
         }
-        store.put("unknownpythonfile", dict);
+        store.apply();
+    }
+
+    public void removePythonFileFromStore(PythonFile pythonFile)
+    {
+        StoreData store = StoreData.Factory.create(this, "pythonfiles");
+        store.remove("pythonfile_"+pythonFile.path);
         store.apply();
     }
 
@@ -3235,7 +3276,6 @@ public class Widget extends RemoteViewsService
         ArrayList<PythonFile> lst = new ArrayList<>();
         lst.add(new PythonFile(path));
         addPythonFiles(lst);
-
         return true;
     }
 
@@ -3349,9 +3389,9 @@ public class Widget extends RemoteViewsService
 
     public void addPythonFiles(ArrayList<PythonFile> files)
     {
+        ArrayList<PythonFile> toadd = new ArrayList<>();
         synchronized (pythonFilesLock)
         {
-            ArrayList<PythonFile> toadd = new ArrayList<>();
             for (PythonFile file : files)
             {
                 if (findPythonFile(file.path) == null)
@@ -3363,8 +3403,8 @@ public class Widget extends RemoteViewsService
         }
 
         updateObserver();
-        savePythonFiles();
-        for (PythonFile file : files)
+        savePythonFiles(toadd);
+        for (PythonFile file : toadd)
         {
             refreshPythonFile(file, false);
         }
@@ -3386,7 +3426,7 @@ public class Widget extends RemoteViewsService
                 unknownPythonFile.lastErrorDate = null;
             }
         }
-        savePythonFiles();
+        savePythonFiles(file);
     }
 
     public void removePythonFile(PythonFile file)
@@ -3401,7 +3441,7 @@ public class Widget extends RemoteViewsService
             updateListener.deimportFile(file.path, false);
         }
         updateObserver();
-        savePythonFiles();
+        removePythonFileFromStore(file);
     }
 
     public ArrayList<PythonFile> getPythonFiles()
@@ -3597,7 +3637,7 @@ public class Widget extends RemoteViewsService
             saveTimers();
             saveAllWidgets();
             saveWidgetMapping();
-            savePythonFiles();
+            saveAllPythonFiles();
             new Task<>(new SaveStateTask()).run();
 
             setNextStartupFlags(flags);
@@ -4456,7 +4496,7 @@ public class Widget extends RemoteViewsService
         }
 
         pythonFile.lastErrorDate = new Date();
-        savePythonFiles();
+        savePythonFiles(pythonFile);
     }
 
     private class CallInitImportTask implements Runner<Void>
@@ -4506,11 +4546,19 @@ public class Widget extends RemoteViewsService
             }
             catch (IOException e)
             {
-                Log.e("APPY", "Could not hash file: "+file.path, e);
+                Log.e("APPY", "Could not hash file: " + file.path, e);
                 //let python try to import anyway
             }
 
-            if (!overrideHash && file.state == PythonFile.State.ACTIVE && newhash.equalsIgnoreCase(file.hash))
+            if (file.state == PythonFile.State.RUNNING)
+            {
+                Log.w("APPY", file.path + " is already being imported");
+                return;
+            }
+
+            boolean alreadyLoaded = file.state == PythonFile.State.ACTIVE;
+            boolean shouldReload = overrideHash || !newhash.equalsIgnoreCase(file.hash);
+            if (!shouldReload && alreadyLoaded)
             {
                 //file is exactly the same
                 Log.d("APPY", file.path + " hash is the same (" + newhash + "), not reloading");
@@ -4542,7 +4590,11 @@ public class Widget extends RemoteViewsService
                 file.state = PythonFile.State.FAILED;
             }
             callStatusChange(false);
-            savePythonFiles();
+            if (alreadyLoaded)
+            {
+                //file reloaded
+                savePythonFiles(file);
+            }
         }
     }
 

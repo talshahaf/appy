@@ -469,6 +469,7 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
             else if (item.getItemId() == R.id.action_copy)
             {
                 copying = true;
+                cutting = false;
                 selectingEnabled = false;
                 adapter.setSelectingEnabled(false);
                 updateMenu();
@@ -477,6 +478,7 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
             else if (item.getItemId() == R.id.action_cut)
             {
                 cutting = true;
+                copying = false;
                 selectingEnabled = false;
                 adapter.setSelectingEnabled(false);
                 updateMenu();
@@ -484,23 +486,29 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
             }
             else if (item.getItemId() == R.id.action_paste)
             {
+                if (!copying && !cutting)
+                {
+                    return true;
+                }
                 String newDir = currentDir();
+                int failures = 0;
                 for (File file : selected.values())
                 {
-                    if (copying)
+                    boolean success = copying ?
+                                copy(file, new File(newDir, file.getName())) :
+                                file.renameTo(new File(newDir, file.getName()));
+                    if (!success)
                     {
-                        if (!copy(file, new File(newDir, file.getName())))
-                        {
-                            //TODO notify
-                        }
+                        failures++;
                     }
-                    if (cutting)
-                    {
-                        if (!file.renameTo(new File(newDir, file.getName())))
-                        {
-                            //TODO notify
-                        }
-                    }
+                }
+                if (failures == 0)
+                {
+                    Toast.makeText(this, selected.size() + " files " + (copying ? "copied." : "cut."), Toast.LENGTH_SHORT).show();
+                }
+                else
+                {
+                    Toast.makeText(this, (copying ? "Copying of " : "Cutting of ") + failures + " files failed.", Toast.LENGTH_SHORT).show();
                 }
                 cancelFileOp();
                 selected.clear();

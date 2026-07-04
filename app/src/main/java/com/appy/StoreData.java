@@ -12,6 +12,7 @@ import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -146,10 +147,12 @@ public class StoreData
         try(SQLiteDatabase db = dbHelper.getWritableDatabase())
         {
             Set<String> changedCopy;
+            HashMap<String, byte[]> changedValues = new HashMap<>();
             synchronized (objlock)
             {
                 if (!changed.isEmpty())
                 {
+                    long tStart = System.nanoTime();
                     db.beginTransaction();
                     try
                     {
@@ -165,10 +168,13 @@ public class StoreData
                             }
                             else
                             {
+                                byte[] serializedValue = value.serialize();
+                                changedValues.put(key, serializedValue);
+
                                 ContentValues values = new ContentValues();
                                 values.put("domain", domain);
                                 values.put("identifier", key);
-                                values.put("value", value.serialize());
+                                values.put("value", serializedValue);
 
                                 db.insert("store", null, values);
                             }
@@ -179,6 +185,16 @@ public class StoreData
                     finally
                     {
                         db.endTransaction();
+                    }
+                    long tEnd = System.nanoTime();
+                    double transactionTimeMilli = ((tEnd - tStart) / 1E6);
+                    if (transactionTimeMilli > 1000)
+                    {
+                        Log.d("APPY", "long db transaction: " + transactionTimeMilli + "ms: " + changedCopy.size() + " changes");
+                        for (Map.Entry<String, byte[]> changed : changedValues.entrySet())
+                        {
+                            Log.d("APPY", "    " + domain + ": " + changed.getKey() + " " + changed.getValue().length);
+                        }
                     }
                 }
             }

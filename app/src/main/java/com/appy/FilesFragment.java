@@ -125,6 +125,11 @@ public class FilesFragment extends MyFragment implements FileGridAdapter.ItemAct
         if (!file.lastError.isEmpty())
         {
             error = file.lastError + "\n\n";
+            if (error.length() > Constants.CRASH_FILE_MAX_DISPLAY_SIZE)
+            {
+                int totrim = error.length() - Constants.CRASH_FILE_MAX_DISPLAY_SIZE;
+                error = totrim + " trimmed\n\n" + error.substring(totrim);
+            }
         }
         String text = file.path + "\n\n" + error;
 
