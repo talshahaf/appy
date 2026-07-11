@@ -2278,6 +2278,7 @@ public class Widget extends RemoteViewsService
 
     public void setWidgetLastError(int widgetId, String lastError)
     {
+        lastError = Utils.capWithEllipsis(lastError, Constants.CRASH_FILE_MAX_SIZE, false);
         setProps(widgetProps, new WeakReference<>(widgetPropsLock), widgetId, "last_error", lastError, (DictObj.Dict dict) -> dict.put("last_error", lastError));
         saveWidgetProps(widgetId, true);
     }

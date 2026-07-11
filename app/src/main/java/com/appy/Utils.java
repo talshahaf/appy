@@ -752,11 +752,11 @@ public class Utils
         return s.substring(0, 1).toUpperCase() + s.substring(1);
     }
 
-    public static String capWithEllipsis(String s, int maxlen)
+    public static String capWithEllipsis(String s, int maxlen, boolean keepStart)
     {
-        if (s.length() > maxlen)
+        if (s.length() > maxlen - 3)
         {
-            return s.substring(0, maxlen - 3) + "...";
+            return keepStart ? s.substring(0, maxlen - 3) + "..." : "..." + s.substring(s.length() - (maxlen - 3));
         }
         return s;
     }

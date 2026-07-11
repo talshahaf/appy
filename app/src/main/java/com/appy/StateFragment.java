@@ -100,7 +100,7 @@ public class StateFragment extends FragmentParent
                 {
                     if (areLeaves)
                     {
-                        adapterList.add(new ListFragmentAdapter.Item(key, Utils.capWithEllipsis(stateSnapshot.get(key).toString(), 100), item -> item.key, stateSnapshot.get(key).toString()));
+                        adapterList.add(new ListFragmentAdapter.Item(key, Utils.capWithEllipsis(stateSnapshot.get(key).toString(), 100, true), item -> item.key, stateSnapshot.get(key).toString()));
                     }
                     else if (inLocalScopeView)
                     {

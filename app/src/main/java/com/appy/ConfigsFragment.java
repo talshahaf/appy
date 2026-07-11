@@ -460,7 +460,7 @@ public class ConfigsFragment extends FragmentParent
                 HashMap<String, Triple<String, String, Boolean>> values = getWidgetService().getConfigurations().getValues(widget, widgetId);
                 for (Map.Entry<String, Triple<String, String, Boolean>> item : values.entrySet())
                 {
-                    String valueSummary = Utils.capWithEllipsis(Utils.collapseSpaces(item.getValue().component2().replaceAll("\r", "").replaceAll("\n", "\\\\n").replaceAll("\t", " ")), 100);
+                    String valueSummary = Utils.capWithEllipsis(Utils.collapseSpaces(item.getValue().component2().replaceAll("\r", "").replaceAll("\n", "\\\\n").replaceAll("\t", " ")), 100, true);
                     String subtitle = (item.getValue().component1() != null ? (item.getValue().component1() + "\n") : "") + valueSummary;
                     ListFragmentAdapter.Item listitem = new ListFragmentAdapter.Item(item.getKey(), subtitle, item1 -> item1.key + (widgetId == Configurations.NONLOCAL_ID || ((Triple<String, String, Boolean>)item1.arg).component3() ? "" : " (all widgets)"), item.getValue());
                     listitem.setEnabled(widgetId == Configurations.NONLOCAL_ID || item.getValue().component3());
