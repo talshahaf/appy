@@ -1,9 +1,7 @@
 package com.appy;
 
-import android.os.Build;
 import android.util.Log;
-
-import androidx.annotation.RequiresApi;
+import android.util.Pair;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
@@ -14,6 +12,7 @@ import java.lang.reflect.Proxy;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.stream.Stream;
 
@@ -344,6 +343,56 @@ public class Reflection
         }
     }
 
+    public static class CandidateScore implements Comparable<CandidateScore>
+    {
+        int exactMatches = 0;
+        int nullMatches = 0;
+        int inheritMatches = 0;
+        int conversionMatches = 0;
+        int fallbackMatches = 0;
+
+        public CandidateScore()
+        {
+
+        }
+
+        public void addExactMatch()
+        {
+            exactMatches++;
+        }
+        public void addNullMatch()
+        {
+            nullMatches++;
+        }
+        public void addInheritMatch()
+        {
+            inheritMatches++;
+        }
+        public void addConversionMatch()
+        {
+            conversionMatches++;
+        }
+        public void addFallbackMatch()
+        {
+            fallbackMatches++;
+        }
+
+        public static Comparator<CandidateScore> comparator()
+        {
+            return Comparator.comparingInt((CandidateScore s) -> s.exactMatches)
+                    .thenComparingInt((CandidateScore s) -> s.nullMatches)
+                    .thenComparingInt((CandidateScore s) -> s.inheritMatches)
+                    .thenComparingInt((CandidateScore s) -> s.conversionMatches)
+                    .thenComparingInt((CandidateScore s) -> s.fallbackMatches);
+        }
+
+        @Override
+        public int compareTo(CandidateScore o)
+        {
+            return comparator().compare(this, o);
+        }
+    }
+
     public static Object[] getCompatibleMethod(Class<?> clazz, String method, Class<?>[] parameterTypes)
     {
         Callable result = null;
@@ -369,6 +418,7 @@ public class Reflection
 
         if (result == null)
         {
+            int parameterCount = parameterTypes != null ? parameterTypes.length : 0;
             Callable[] methods;
             if (method == null)
             {
@@ -397,70 +447,79 @@ public class Reflection
                 methods = copy;
             }
 
-            Callable fallback = null;
+            ArrayList<Pair<Callable, CandidateScore>> candidates = new ArrayList<>();
             for (Callable m : methods)
             {
-                if (m.getParameterTypes().length == (parameterTypes != null ? parameterTypes.length : 0))
+                if (m.getParameterTypes().length != parameterCount)
                 {
-                    // If we have the same number of parameters there is a
-                    // shot that we have a compatible
-                    // constructor
-                    Class<?>[] methodTypes = m.getParameterTypes();
-                    boolean isCompatible = true;
-                    boolean isFallback = true;
-                    for (int j = 0; j < (parameterTypes != null ? parameterTypes.length : 0); j++)
+                    continue;
+                }
+                // If we have the same number of parameters there is a
+                // shot that we have a compatible
+                // constructor
+                Class<?>[] methodTypes = m.getParameterTypes();
+                CandidateScore score = new CandidateScore();
+                int failedMatches = 0;
+                for (int j = 0; j < parameterCount; j++)
+                {
+                    if (methodTypes[j].equals(parameterTypes[j]))
                     {
-                        if (methodTypes[j].isAssignableFrom(parameterTypes[j]))
-                        {
-                            // easy part
-                            continue;
-                        }
-                        if (python_types && !methodTypes[j].isPrimitive() && parameterTypes[j] == Object.class)
-                        {
-                            // because Nones
-                            continue;
-                        }
-                        Class<?> unboxedMethodType = unboxClass(methodTypes[j]);
-                        Class<?> unboxedParameterType = unboxClass(parameterTypes[j]);
-                        if (!unboxedMethodType.isAssignableFrom(unboxedParameterType))
-                        {
-                            Integer methodValue = groups.get(unboxedMethodType);
-                            Integer parameterValue = groups.get(unboxedParameterType);
-                            if (methodValue != null && parameterValue != null && methodValue / 10 == parameterValue / 10 && (python_types || methodValue > parameterValue))
-                            {
-                                // conversion allowed
-                                continue;
-                            }
-
-                            isCompatible = false;
-
-                            //maybe as fallback?
-                            if (methodValue != null && parameterValue != null && parameterValue < methodValue)
-                            {
-                                //can still be technically converted into
-                                continue;
-                            }
-
-                            isFallback = false;
-                            failedLogs.add("getCompatibleMethod(): candidate method " + m.getName() + " fails because " + methodTypes[j].getName() + " != " + parameterTypes[j].getName());
-                            break;
-                        }
+                        //same type
+                        score.addExactMatch();
+                        continue;
                     }
-                    if (isCompatible)
+                    if (methodTypes[j].isAssignableFrom(parameterTypes[j]))
                     {
-                        result = m;
+                        // method type is superclass of parameter type
+                        score.addInheritMatch();
+                        continue;
+                    }
+                    if (python_types && !methodTypes[j].isPrimitive() && parameterTypes[j] == Object.class)
+                    {
+                        // allow Nulls for any method object parameter type
+                        score.addNullMatch();
+                        continue;
+                    }
+                    Class<?> unboxedMethodType = unboxClass(methodTypes[j]);
+                    Class<?> unboxedParameterType = unboxClass(parameterTypes[j]);
+                    if (!unboxedMethodType.isAssignableFrom(unboxedParameterType))
+                    {
+                        Integer methodValue = groups.get(unboxedMethodType);
+                        Integer parameterValue = groups.get(unboxedParameterType);
+                        if (methodValue != null && parameterValue != null && methodValue / 10 == parameterValue / 10 && (python_types || methodValue > parameterValue))
+                        {
+                            // conversion allowed
+                            score.addConversionMatch();
+                            continue;
+                        }
+
+                        //maybe as fallback?
+                        if (methodValue != null && parameterValue != null && parameterValue < methodValue)
+                        {
+                            //can still be technically converted into
+                            score.addFallbackMatch();
+                            continue;
+                        }
+
+                        failedMatches++;
+                        failedLogs.add("getCompatibleMethod(): candidate method " + m.getName() + " fails because " + methodTypes[j].getName() + " != " + parameterTypes[j].getName());
                         break;
                     }
-                    else if (isFallback && fallback == null)
-                    {
-                        fallback = m;
-                        Log.d("APPY", "getCompatibleMethod(): Using implicit numerical conversion to avoid failing");
-                    }
+                }
+                if (failedMatches == 0)
+                {
+                    candidates.add(new Pair<>(m, score));
                 }
             }
-            if (fallback != null && result == null)
+            if (!candidates.isEmpty())
             {
-                result = fallback;
+                candidates.sort(Comparator.comparing((Pair<Callable, CandidateScore> p) -> p.second).reversed());
+                Pair<Callable, CandidateScore> best = candidates.get(0);
+                result = best.first;
+                if (best.second.fallbackMatches > 0)
+                {
+                    Log.d("APPY", "getCompatibleMethod(): Using implicit numerical conversion to avoid failing");
+                }
             }
         }
 

@@ -212,7 +212,7 @@ primitive_code_to_array = {
 
 primitive_code_to_np_dtype = {
     primitive_codes['boolean']: np.uint8,
-    primitive_codes['byte']:    np.int8,
+    primitive_codes['byte']:    np.uint8,
     primitive_codes['char']:    np.uint16,
     primitive_codes['short']:   np.int16,
     primitive_codes['int']:     np.int32,
@@ -419,7 +419,7 @@ def call_method(clazz, obj, name, *args):
 def get_field(clazz, obj, name):
     field_id, field_code, _, is_static, _ = get_fieldid(clazz, name)
     if field_id is None:
-        raise AttributeError(f'No such field: {name}')
+        raise AttributeError(f'No field `{name}` in ``{clazz.class_name}`')
         
     if is_static:
         ret = native_appy.call_jni_object_functions(clazz.ref.handle, field_id, None, field_code, OP_GET_STATIC_FIELD)
@@ -430,7 +430,7 @@ def get_field(clazz, obj, name):
 def set_field(clazz, obj, name, value):
     field_id, field_code, unboxed_field_code, is_static, _ = get_fieldid(clazz, name)
     if field_id is None:
-        raise AttributeError(f'No such field: {name}')
+        raise AttributeError(f'No field `{name}` in ``{clazz.class_name}`')
         
     value, _, _ = convert_arg(value)
     arg, ref = prepare_value(value, field_code, unboxed_field_code)

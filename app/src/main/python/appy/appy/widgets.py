@@ -271,6 +271,9 @@ def show_dialog(title, text, buttons=('Yes', 'No'), edittexts: tuple[DialogEditT
 
     return result.first, *result.second
 
+def show_confirmation(title, text, icon_res=None, timeout=None):
+    return show_dialog(title, text, buttons=('Yes', 'No'), icon_res=icon_res, timeout=timeout)[0] == 0
+
 def show_option_dialog(title, options, timeout=None):
     if not options:
         raise ValueError('no options given')
