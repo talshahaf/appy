@@ -247,10 +247,7 @@ public class ConfigsFragment extends FragmentParent
             else if (item.getItemId() == R.id.action_import)
             {
                 Log.d("APPY", "Import click");
-                Intent intent = new Intent(requireActivity(), FileBrowserActivity.class);
-                intent.putExtra(FileBrowserActivity.REQUEST_ALLOW_RETURN_MULTIPLE, false);
-                intent.putExtra(FileBrowserActivity.REQUEST_SPECIFIC_EXTENSION_CONFIRMATION, ".json");
-                requestActivityResult(intent);
+                launchFileBrowser(false, true, false, ".json");
                 return true;
             }
             else if (item.getItemId() == R.id.action_copy)

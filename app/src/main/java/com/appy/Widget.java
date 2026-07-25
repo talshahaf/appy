@@ -2272,14 +2272,22 @@ public class Widget extends RemoteViewsService
 
     public void setWidgetAppTitle(int widgetId, String title)
     {
-        setProps(widgetProps, new WeakReference<>(widgetPropsLock), widgetId, "app_title", title, (DictObj.Dict dict) -> dict.put("app_title", title));
+        String titleCapped = Utils.capWithEllipsis(title, Constants.APP_TITLE_MAX_LENGTH, true);
+        setProps(widgetProps, new WeakReference<>(widgetPropsLock), widgetId, "app_title", titleCapped, (DictObj.Dict dict) -> dict.put("app_title", titleCapped));
         saveWidgetProps(widgetId, true);
     }
 
     public void setWidgetLastError(int widgetId, String lastError)
     {
-        lastError = Utils.capWithEllipsis(lastError, Constants.CRASH_FILE_MAX_SIZE, false);
-        setProps(widgetProps, new WeakReference<>(widgetPropsLock), widgetId, "last_error", lastError, (DictObj.Dict dict) -> dict.put("last_error", lastError));
+        String lastErrorCapped = Utils.capWithEllipsis(lastError, Constants.CRASH_FILE_MAX_SIZE, false);
+        setProps(widgetProps, new WeakReference<>(widgetPropsLock), widgetId, "last_error", lastErrorCapped, (DictObj.Dict dict) -> dict.put("last_error", lastErrorCapped));
+        saveWidgetProps(widgetId, true);
+    }
+
+    public void setWidgetSettingsActionText(int widgetId, String text)
+    {
+        String textCapped = Utils.capWithEllipsis(text, Constants.APP_TITLE_MAX_LENGTH, true);
+        setProps(widgetProps, new WeakReference<>(widgetPropsLock), widgetId, "settings_action_text", textCapped, (DictObj.Dict dict) -> dict.put("settings_action_text", textCapped));
         saveWidgetProps(widgetId, true);
     }
 
@@ -2337,7 +2345,7 @@ public class Widget extends RemoteViewsService
         return result;
     }
 
-    public String getWidgetLastError(int widgetId)
+    public String getWidgetProp(int widgetId, String prop)
     {
         DictObj.Dict props = widgetProps.get(widgetId);
         if (props == null)
@@ -2347,12 +2355,22 @@ public class Widget extends RemoteViewsService
 
         synchronized (widgetPropsLock)
         {
-            if (!props.hasKey("last_error"))
+            if (!props.hasKey(prop))
             {
                 return null;
             }
-            return props.getString("last_error");
+            return props.getString(prop);
         }
+    }
+
+    public String getWidgetLastError(int widgetId)
+    {
+        return getWidgetProp(widgetId, "last_error");
+    }
+
+    public String getWidgetSettingsActionText(int widgetId)
+    {
+        return getWidgetProp(widgetId, "settings_action_text");
     }
 
     public DictObj.Dict getAllWidgetAppProps(boolean useAndroidWidgetId, boolean withIcons)
@@ -2817,6 +2835,11 @@ public class Widget extends RemoteViewsService
     public void shareWithWidget(int widgetId, String mimetype, String text, DictObj.Dict datas)
     {
         addTask(widgetId, new Task<>(new CallShareTask(), widgetId, mimetype, text, datas), false);
+    }
+
+    public void customSettingsForWidget(int widgetId)
+    {
+        addTask(widgetId, new Task<>(new CallCustomSettingsTask(), widgetId), false);
     }
 
     public DictObj.Dict getAllWidgetNames()
@@ -4495,6 +4518,8 @@ public class Widget extends RemoteViewsService
             pythonFile.lastError = lastError;
         }
 
+        pythonFile.lastError = Utils.capWithEllipsis(pythonFile.lastError, Constants.CRASH_FILE_MAX_SIZE, false);
+
         pythonFile.lastErrorDate = new Date();
         savePythonFiles(pythonFile);
     }
@@ -4668,6 +4693,20 @@ public class Widget extends RemoteViewsService
     public void callShareWidget(int widgetId, final String mimeType, final String text, DictObj.Dict datas)
     {
         callWidgetChangingCallback(widgetId, (widgetId1, current, unused) -> updateListener.onShare(widgetId1, current, mimeType, text, datas));
+    }
+
+    private class CallCustomSettingsTask implements Runner<Object>
+    {
+        @Override
+        public void run(Object... args)
+        {
+            callCustomSettingsWidget((int) args[0]);
+        }
+    }
+
+    public void callCustomSettingsWidget(int widgetId)
+    {
+        callWidgetChangingCallback(widgetId, (widgetId1, current, unused) -> updateListener.onCustomSettings(widgetId1, current));
     }
 
     public void callTimerWidget(final long timerId, int widgetId, final String data)
@@ -5005,20 +5044,28 @@ public class Widget extends RemoteViewsService
             lastError = "No errors.";
         }
 
-        String displayName = "widget #" + widgetId + " (" + widgetName + ")";
-        int fileErrors = getPythonFilesNotActive().size();
+        String settingsActionText = getWidgetSettingsActionText(widgetId);
+        String widgetActionText = "Widget Action";
+        if (settingsActionText != null)
+        {
+            widgetActionText += " (" + settingsActionText + ")";
+        }
 
-        String[] texts = new String[]{ "Open Config", "Recreate", "Reload", "Set Scale And Correction Factors", "Edit", "Show Last Error", "Show File Errors (" + fileErrors + ")", "Open Global Config", "Clear"};
-        String[] actions = new String[] {Constants.SPECIAL_WIDGET_OPEN_CONFIGURATION + "," + widgetId + "," + widgetName,
+        String displayName = "widget #" + widgetId + " (" + widgetName + ")";
+        int importErrors = getPythonFilesNotActive().size();
+
+        String[] texts = new String[]{ widgetActionText, "Open Config", "Recreate", "Reload", "Set Scale And Correction Factors", "Edit", "Show Last Error", "Show Import Errors (" + importErrors + ")", "Open Global Config", "Clear"};
+        String[] actions = new String[] {Constants.SPECIAL_WIDGET_CUSTOM_SETTINGS + "," + widgetId,
+                                         Constants.SPECIAL_WIDGET_OPEN_CONFIGURATION + "," + widgetId + "," + widgetName,
                                          Constants.SPECIAL_WIDGET_RECREATE + "," + widgetId,
                                          widgetPath == null ? null : (Constants.SPECIAL_WIDGET_RELOAD + "," + widgetPath),
                                          Constants.SPECIAL_WIDGET_SCALE_FACTOR + "," + widgetId,
                                          widgetPath == null ? null : (Constants.SPECIAL_WIDGET_EDIT_FILE + "," + widgetPath),
                                          Constants.SPECIAL_WIDGET_SHOWERROR + "," + lastError,
-                                         Constants.SPECIAL_WIDGET_FILESERROR + "",
+                                         Constants.SPECIAL_WIDGET_IMPORTERRORS + "",
                                          Constants.SPECIAL_WIDGET_OPEN_CONFIGURATION + "," + widgetId + "," + Configurations.GLOBAL_CONFIG_NAME,
                                          Constants.SPECIAL_WIDGET_CLEAR + "," + widgetId};
-        String[] confirm = new String[] {null, null, null, null, null, null, null, null, "Clear " + displayName + "?"};
+        String[] confirm = new String[] {null, null, null, null, null, null, null, null, null, "Clear " + displayName + "?"};
 
         Parcelable[] intents = new Parcelable[actions.length];
         for (int i = 0; i < actions.length; i++)
@@ -5240,6 +5287,7 @@ public class Widget extends RemoteViewsService
                             {
                                 switch (command)
                                 {
+                                    case Constants.SPECIAL_WIDGET_CUSTOM_SETTINGS:
                                     case Constants.SPECIAL_WIDGET_CLEAR:
                                     case Constants.SPECIAL_WIDGET_RECREATE:
                                     case Constants.SPECIAL_WIDGET_UPDATE:
@@ -5252,6 +5300,10 @@ public class Widget extends RemoteViewsService
                                             {
                                                 switch (command)
                                                 {
+                                                    case Constants.SPECIAL_WIDGET_CUSTOM_SETTINGS:
+                                                        Log.d("APPY", "custom action for " + widgetId);
+                                                        customSettingsForWidget(widgetId);
+                                                        break;
                                                     case Constants.SPECIAL_WIDGET_CLEAR:
                                                         Log.d("APPY", "clearing " + widgetId);
                                                         clearWidget(widgetId);
@@ -5336,7 +5388,7 @@ public class Widget extends RemoteViewsService
 
                                         showDialogNoWait(null, title, error, new String[]{"Close"}, new String[0], new String[0], new String[0][], DialogActivity.DIALOG_FLAG_SCROLL_BOTTOM | DialogActivity.DIALOG_FLAG_MONOSPACE | DialogActivity.DIALOG_FLAG_HORIZONTAL_SCROLL | DialogActivity.DIALOG_FLAG_SELECTABLE);
                                         break;
-                                    case Constants.SPECIAL_WIDGET_FILESERROR:
+                                    case Constants.SPECIAL_WIDGET_IMPORTERRORS:
                                         ArrayList<PythonFile> files = getPythonFilesNotActive();
                                         files.removeIf((p) -> p.state == PythonFile.State.ACTIVE);
                                         if (files.isEmpty())

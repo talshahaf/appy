@@ -1,5 +1,6 @@
 package com.appy;
 
+import android.content.Intent;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -21,6 +22,8 @@ import java.io.File;
 public class PipFragment extends MyFragment implements RunnerListener
 {
     EditText command;
+    EditText workdir;
+    Button browse;
     Switch useShell;
     Switch runpip;
     Button run;
@@ -33,7 +36,6 @@ public class PipFragment extends MyFragment implements RunnerListener
 
     Handler handler;
 
-    File cwd = null;
     File lib = null;
 
     public static final String PIP_COMMAND = "python -m pip install ";
@@ -81,12 +83,28 @@ public class PipFragment extends MyFragment implements RunnerListener
     }
 
     @Override
+    public void onActivityResult(Intent data)
+    {
+        String[] files = data.getStringArrayExtra(FileBrowserActivity.RESULT_FILES);
+        if (files == null || files.length != 1)
+        {
+            return;
+        }
+
+        workdir.setText(files[0]);
+    }
+
+    @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState)
     {
+        super.onCreateView(inflater, container, savedInstanceState);
+
         View layout = inflater.inflate(R.layout.fragment_pip, container, false);
 
         command = layout.findViewById(R.id.command);
+        workdir = layout.findViewById(R.id.workdir);
+        browse = layout.findViewById(R.id.browse);
         useShell = layout.findViewById(R.id.useshell);
         runpip = layout.findViewById(R.id.runpip);
         run = layout.findViewById(R.id.run);
@@ -98,8 +116,12 @@ public class PipFragment extends MyFragment implements RunnerListener
 
         handler = new Handler();
 
-        cwd = new File(System.getenv("PYTHONHOME"), "bin");
         lib = new File(System.getenv("PYTHONHOME"), "lib");
+
+        workdir.setText(new File(System.getenv("PYTHONHOME"), "bin").getAbsolutePath());
+        browse.setOnClickListener(v -> {
+            launchFileBrowser(false, false, true, null);
+        });
 
         run.setOnClickListener(v -> {
             if (runner != null)
@@ -111,7 +133,7 @@ public class PipFragment extends MyFragment implements RunnerListener
 
             String cmd = command.getText().toString();
             String[] args = useShell.isChecked() ? new String[] {"sh", "-c", cmd} : Runner.translateCommandline(cmd);
-            runner = new Runner(args, cwd, null, PipFragment.this);
+            runner = new Runner(args, new File(workdir.getText().toString()), null, PipFragment.this);
             runner.start();
 
             v.setEnabled(false);

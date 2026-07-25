@@ -45,10 +45,7 @@ public class FilesFragment extends MyFragment implements FileGridAdapter.ItemAct
 
         browse = layout.findViewById(R.id.browse);
         browse.setOnClickListener(v -> {
-            Intent intent = new Intent(getActivity(), FileBrowserActivity.class);
-            intent.putExtra(FileBrowserActivity.REQUEST_ALLOW_RETURN_MULTIPLE, true);
-            intent.putExtra(FileBrowserActivity.REQUEST_SPECIFIC_EXTENSION_CONFIRMATION, ".py");
-            requestActivityResult(intent);
+            launchFileBrowser(true, true, false, ".py");
         });
 
         unknownInfo = layout.findViewById(R.id.unknown_info);

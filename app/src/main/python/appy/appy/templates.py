@@ -189,15 +189,17 @@ def updating_template_create(is_list, widget, initial_values, on_refresh, backgr
     
     return views
     
-def on_config_change(widget, views):
+def on_config_change(widget, views, key, config_change_hook):
+    if config_change_hook is not None:
+        call_general_function(config_change_hook, widget=widget, views=views, key=key)
     if 'refresh_button' in views:
         widget.invoke_click(views['refresh_button'])
 
-def updating_list(name, initial_values=None, on_refresh=None, background=True, adapter=None, initial_refresh=None, timeout=None, interval=None, last_update=True, direction='right', config=None, config_description=None, create_hook=None, update_hook=None, debug=None):
-    register_widget(name, (updating_template_create, dict(is_list=True, initial_values=initial_values, on_refresh=on_refresh, background_params=background, adapter=adapter, initial_refresh=initial_refresh, timeout=timeout, interval=interval, last_update=last_update, direction=direction, create_hook=create_hook, update_hook=update_hook)), update=refresh_button_update_func, config=config, config_description=config_description, on_config=on_config_change, debug=debug)
+def updating_list(name, initial_values=None, on_refresh=None, background=True, adapter=None, initial_refresh=None, timeout=None, interval=None, last_update=True, direction='right', config=None, config_description=None, create_hook=None, update_hook=None, config_change_hook=None, on_share=None, on_app=None, on_settings_action=None, debug=None):
+    register_widget(name, (updating_template_create, dict(is_list=True, initial_values=initial_values, on_refresh=on_refresh, background_params=background, adapter=adapter, initial_refresh=initial_refresh, timeout=timeout, interval=interval, last_update=last_update, direction=direction, create_hook=create_hook, update_hook=update_hook)), update=refresh_button_update_func, config=config, config_description=config_description, on_config=(on_config_change, dict(config_change_hook=config_change_hook)), on_share=on_share, on_app=on_app, on_settings_action=on_settings_action, debug=debug)
 
-def updating_text(name, initial_value=None, on_refresh=None, background=True, adapter=None, initial_refresh=None, timeout=None, interval=None, last_update=True, direction='left', config=None, config_description=None, create_hook=None, update_hook=None, debug=None):
-    register_widget(name, (updating_template_create, dict(is_list=False, initial_values=initial_value, on_refresh=on_refresh, background_params=background, adapter=adapter, initial_refresh=initial_refresh, timeout=timeout, interval=interval, direction=direction, last_update=last_update, create_hook=create_hook, update_hook=update_hook)), refresh_button_update_func, config=config, config_description=config_description, on_config=on_config_change, debug=debug)
+def updating_text(name, initial_value=None, on_refresh=None, background=True, adapter=None, initial_refresh=None, timeout=None, interval=None, last_update=True, direction='left', config=None, config_description=None, create_hook=None, update_hook=None, config_change_hook=None, on_share=None, on_app=None, on_settings_action=None, debug=None):
+    register_widget(name, (updating_template_create, dict(is_list=False, initial_values=initial_value, on_refresh=on_refresh, background_params=background, adapter=adapter, initial_refresh=initial_refresh, timeout=timeout, interval=interval, direction=direction, last_update=last_update, create_hook=create_hook, update_hook=update_hook)), refresh_button_update_func, config=config, config_description=config_description, on_config=(on_config_change, dict(config_change_hook=config_change_hook)), on_share=on_share, on_app=on_app, on_settings_action=on_settings_action, debug=debug)
 
 def grid_of(elements, orientation='horizontal', alignment='center', padding_top=0, padding_left=0, padding_right=0, padding_bottom=0, min_element_width=None, max_element_width=None, min_element_height=None, max_element_height=None, **grid_attributes):
     allowed = set(['top', 'bottom', 'left', 'right', 'width', 'height', 'hcenter', 'vcenter', 'center'])

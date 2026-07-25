@@ -175,6 +175,7 @@ public abstract class MyFragment extends Fragment implements MyFragmentInterface
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState)
     {
+        super.onCreateView(inflater, container, savedInstanceState);
         activityResultLauncher = registerForActivityResult(
                 new ActivityResultContracts.StartActivityForResult(),
                 result -> {
@@ -193,6 +194,19 @@ public abstract class MyFragment extends Fragment implements MyFragmentInterface
             throw new IllegalStateException("super.onCreateView() must be called before requestActivityResult");
         }
         activityResultLauncher.launch(request);
+    }
+
+    public void launchFileBrowser(boolean canSelectMultiple, boolean canSelectFiles, boolean canSelectDirectories, String warnIfNotExtension)
+    {
+        Intent intent = new Intent(requireActivity(), FileBrowserActivity.class);
+        intent.putExtra(FileBrowserActivity.REQUEST_ALLOW_RETURN_MULTIPLE, canSelectMultiple);
+        intent.putExtra(FileBrowserActivity.REQUEST_ALLOW_SELECT_FILES, canSelectFiles);
+        intent.putExtra(FileBrowserActivity.REQUEST_ALLOW_SELECT_DIRECTORIES, canSelectDirectories);
+        if (warnIfNotExtension != null)
+        {
+            intent.putExtra(FileBrowserActivity.REQUEST_SPECIFIC_EXTENSION_CONFIRMATION, warnIfNotExtension);
+        }
+        requestActivityResult(intent);
     }
 
     public void onActivityResult(Intent data)

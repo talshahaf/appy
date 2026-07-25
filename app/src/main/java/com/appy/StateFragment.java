@@ -28,6 +28,7 @@ public class StateFragment extends FragmentParent
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState)
     {
+        super.onCreateView(inflater, container, savedInstanceState);
         return inflater.inflate(R.layout.fragment_parent, container, false);
     }
 
@@ -149,6 +150,8 @@ public class StateFragment extends FragmentParent
         public View onCreateView(LayoutInflater inflater, ViewGroup container,
                                  Bundle savedInstanceState)
         {
+            super.onCreateView(inflater, container, savedInstanceState);
+
             View layout = inflater.inflate(R.layout.fragment_list, container, false);
             list = layout.findViewById(R.id.list_view);
             list.setOnItemClickListener(this);

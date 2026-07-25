@@ -46,6 +46,7 @@ public class LogcatFragment extends MyFragment implements RunnerListener
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState)
     {
+        super.onCreateView(inflater, container, savedInstanceState);
         View layout = inflater.inflate(R.layout.fragment_logcat, container, false);
 
         handler = new Handler();

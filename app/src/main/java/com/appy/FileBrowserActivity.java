@@ -38,6 +38,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -50,6 +51,8 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
 {
     public static final String RESULT_FILES = "RESULT_FILES";
     public static final String REQUEST_ALLOW_RETURN_MULTIPLE = "REQUEST_ALLOW_RETURN_MULTIPLE";
+    public static final String REQUEST_ALLOW_SELECT_DIRECTORIES = "REQUEST_ALLOW_SELECT_DIRECTORIES";
+    public static final String REQUEST_ALLOW_SELECT_FILES = "REQUEST_ALLOW_SELECT_FILES";
     public static final String REQUEST_SPECIFIC_EXTENSION_CONFIRMATION = "REQUEST_SPECIFIC_EXTENSION_CONFIRMATION";
     public static final int REQUEST_PERMISSION_STORAGE = 101;
     public static final int REQUEST_ALL_STORAGE = 102;
@@ -65,11 +68,13 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
     Tutorial tutorial;
     boolean copying = false;
     boolean cutting = false;
-    HashMap<String, File> selected = new HashMap<>();
+    Selected selected = new Selected();
     boolean selectingEnabled = true;
 
     boolean cantViewSharedStorage;
     boolean allowReturnMultipleFiles;
+    boolean canSelectDirectories;
+    boolean canSelectFiles;
     String specificExtensionConfirmation;
 
     private String[] preset_names;
@@ -92,6 +97,8 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
         });
 
         allowReturnMultipleFiles = getIntent().getBooleanExtra(REQUEST_ALLOW_RETURN_MULTIPLE, true);
+        canSelectDirectories = getIntent().getBooleanExtra(REQUEST_ALLOW_SELECT_DIRECTORIES, false);
+        canSelectFiles = getIntent().getBooleanExtra(REQUEST_ALLOW_SELECT_FILES, true);
         specificExtensionConfirmation = getIntent().getStringExtra(REQUEST_SPECIFIC_EXTENSION_CONFIRMATION);
 
         list = findViewById(R.id.filelist);
@@ -288,7 +295,7 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
         {
             items[i] = new FileBrowserAdapter.FileItem();
             items[i].file = filesArray[i];
-            items[i].checked = selected.containsKey(canonicalPath(filesArray[i]));
+            items[i].checked = selected.containsKey(filesArray[i]);
         }
         adapter = new FileBrowserAdapter(this, items, current, isRoot);
         adapter.setCheckedListener(this);
@@ -306,7 +313,7 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
                 {
                     userNavigate(item.file.getAbsolutePath());
                 }
-                else
+                else if (canSelectFiles)
                 {
                     returnFiles(new String[]{item.file.getAbsolutePath()});
                 }
@@ -439,7 +446,15 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
         {
             if (item.getItemId() == R.id.action_select)
             {
-                returnFiles(getSelectedFiles());
+                String[] selected = getSelectedFiles();
+                if (selected.length == 0 && canSelectDirectories)
+                {
+                    returnFiles(new String[] {currentDir()});
+                }
+                else
+                {
+                    returnFiles(selected);
+                }
                 return true;
             }
             else if (item.getItemId() == R.id.action_delete)
@@ -637,8 +652,35 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
     {
         if (menu != null)
         {
+            boolean selectVisible = true;
+            if (copying || cutting)
+            {
+                // ongoing operations
+                selectVisible = false;
+            }
+            if (!canSelectDirectories && selected.isEmpty())
+            {
+                //nothing is selected and cannot select current dir
+                selectVisible = false;
+            }
+            if (!canSelectDirectories && selected.directoriesSelected())
+            {
+                // not allowed
+                selectVisible = false;
+            }
+            if (!canSelectFiles && selected.filesSelected())
+            {
+                // not allowed
+                selectVisible = false;
+            }
+            if (!allowReturnMultipleFiles && selected.size() > 1)
+            {
+                // not allowed
+                selectVisible = false;
+            }
+
             menu.findItem(R.id.action_clear).setVisible(!selected.isEmpty() && !copying && !cutting);
-            menu.findItem(R.id.action_select).setVisible(!selected.isEmpty() && !copying && !cutting);
+            menu.findItem(R.id.action_select).setVisible(selectVisible);
             menu.findItem(R.id.action_copy).setVisible(!selected.isEmpty() && !copying && !cutting);
             menu.findItem(R.id.action_cut).setVisible(!selected.isEmpty() && !copying && !cutting);
             menu.findItem(R.id.action_delete).setVisible(!selected.isEmpty() && !copying && !cutting);
@@ -667,13 +709,78 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
     {
         if (checked)
         {
-            selected.put(canonicalPath(file), file);
+            selected.put(file);
         }
         else
         {
-            selected.remove(canonicalPath(file));
+            selected.remove(file);
         }
         updateMenu();
+    }
+
+    class Selected
+    {
+        HashMap<String, File> selectedFiles = new HashMap<>();
+        HashMap<String, File> selectedDirectories = new HashMap<>();
+
+        public void clear()
+        {
+            selectedFiles.clear();
+            selectedDirectories.clear();
+        }
+
+        public void put(File file)
+        {
+            boolean isDirectory = file.isDirectory();
+            if (isDirectory)
+            {
+                selectedDirectories.put(canonicalPath(file), file);
+            }
+            else
+            {
+                selectedFiles.put(canonicalPath(file), file);
+            }
+        }
+
+        public void remove(File file)
+        {
+            String key = canonicalPath(file);
+            selectedFiles.remove(key);
+            selectedDirectories.remove(key);
+        }
+
+        public boolean containsKey(File file)
+        {
+            String key = canonicalPath(file);
+            return selectedFiles.containsKey(key) || selectedDirectories.containsKey(key);
+        }
+
+        public int size()
+        {
+            return selectedFiles.size() + selectedDirectories.size();
+        }
+
+        public boolean isEmpty()
+        {
+            return selectedFiles.isEmpty() && selectedDirectories.isEmpty();
+        }
+
+        public Collection<File> values()
+        {
+            ArrayList<File> files = new ArrayList<>(selectedFiles.values());
+            files.addAll(selectedDirectories.values());
+            return files;
+        }
+
+        public boolean filesSelected()
+        {
+            return !selectedFiles.isEmpty();
+        }
+
+        public boolean directoriesSelected()
+        {
+            return !selectedDirectories.isEmpty();
+        }
     }
 
     @Override

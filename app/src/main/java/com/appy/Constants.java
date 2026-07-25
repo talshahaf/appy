@@ -80,7 +80,8 @@ public class Constants
     public static final int SPECIAL_WIDGET_EDIT_FILE = 9;
     public static final int SPECIAL_WIDGET_RELOAD = 10;
     public static final int SPECIAL_WIDGET_CONFIGURE = 11;
-    public static final int SPECIAL_WIDGET_FILESERROR = 12;
+    public static final int SPECIAL_WIDGET_IMPORTERRORS = 12;
+    public static final int SPECIAL_WIDGET_CUSTOM_SETTINGS = 13;
     public static final int TIMER_RELATIVE = 1;
     public static final int TIMER_ABSOLUTE = 2;
     public static final int TIMER_REPEATING = 3;
@@ -95,6 +96,7 @@ public class Constants
     public static final int CRASH_FILE_MAX_DISPLAY_SIZE = 32 * 1024;
     public static final int PYTHON_FILE_MAX_SIZE = 100 * 1024 * 1024;
     public static final int STORE_CURSOR_SIZE = 100 * 1024 * 1024;
+    public static final int APP_TITLE_MAX_LENGTH = 50;
     public static final int REQUEST_SETUP_TIMEOUT_MILLI = 3000;
     public static final String[] CRASHES_FILENAMES = {
             "javacrash.txt",

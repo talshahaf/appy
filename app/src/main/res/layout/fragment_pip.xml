@@ -4,19 +4,27 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent" android:layout_height="match_parent">
-    <EditText
-        android:id="@+id/command"
+
+    <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/commandcontainer"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginEnd="32dp"
         android:layout_marginStart="32dp"
-        android:layout_marginTop="32dp"
-        android:inputType="textPersonName"
-        android:text=""
-        android:typeface="monospace"
+        android:layout_marginEnd="32dp"
+        android:hint="Command"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"/>
+        app:layout_constraintTop_toBottomOf="@+id/workdircontainer"
+        >
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/command"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:inputType="textPersonName"
+            android:text=""
+            android:typeface="monospace"
+            />
+    </com.google.android.material.textfield.TextInputLayout>
 
     <Switch
         android:id="@+id/useshell"
@@ -25,17 +33,17 @@
         android:checked="true"
         android:text="Use Shell"
         app:layout_constraintEnd_toStartOf="@+id/runpip"
-        app:layout_constraintStart_toStartOf="@+id/command"
-        app:layout_constraintTop_toBottomOf="@+id/command" />
+        app:layout_constraintStart_toStartOf="@+id/commandcontainer"
+        app:layout_constraintTop_toBottomOf="@+id/commandcontainer" />
     <Switch
         android:id="@+id/runpip"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:checked="true"
         android:text="Run pip"
-        app:layout_constraintEnd_toEndOf="@+id/command"
+        app:layout_constraintEnd_toEndOf="@+id/commandcontainer"
         app:layout_constraintStart_toEndOf="@+id/useshell"
-        app:layout_constraintTop_toBottomOf="@+id/command" />
+        app:layout_constraintTop_toBottomOf="@+id/commandcontainer" />
 
     <Button
         android:id="@+id/run"
@@ -84,5 +92,40 @@
                 android:textIsSelectable="true"/>
         </ScrollView>
     </HorizontalScrollView>
+
+    <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/workdircontainer"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="32dp"
+        android:gravity="start"
+        android:hint="Working directory"
+        app:layout_constraintBottom_toTopOf="@+id/commandcontainer"
+        app:layout_constraintEnd_toStartOf="@+id/browse"
+        app:layout_constraintStart_toStartOf="@+id/commandcontainer"
+        app:layout_constraintTop_toTopOf="parent">
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/workdir"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:inputType="textPersonName"
+            android:text=""
+            android:typeface="monospace"
+            android:textSize="15sp"/>
+    </com.google.android.material.textfield.TextInputLayout>
+    <Button
+        android:id="@+id/browse"
+        style="@style/secondary_btn_tiny"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_marginTop="10dp"
+        android:text="···"
+        android:textAlignment="center"
+        android:autoSizeTextType="uniform"
+        android:gravity="center"
+        app:layout_constraintBottom_toTopOf="@+id/commandcontainer"
+        app:layout_constraintEnd_toEndOf="@+id/commandcontainer"
+        app:layout_constraintTop_toTopOf="@+id/workdircontainer"
+        app:layout_constraintDimensionRatio="H,2:3"/>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

@@ -123,11 +123,19 @@ class Widget:
     def set_loading(self):
         widget_manager.java_context().setLoadingWidget(self.widget_id)
 
+    def set_settings_action_text(self, text):
+        widget_manager.java_context().setWidgetSettingsActionText(self.widget_id, text)
+
     def set_last_error(self, error):
         if isinstance(error, BaseException):
             error = '\n'.join(traceback.format_exception(error))
         widget_manager.java_context().setWidgetLastError(self.widget_id, error)
         widget_manager.set_error_to_widget_id(self.widget_id, error)
+
+    def set_file_error(self, error):
+        if isinstance(error, BaseException):
+            error = '\n'.join(traceback.format_exception(error))
+        widget_manager.set_widget_file_error(self.name, error)
 
     def cancel_all_timers(self):
         return widget_manager.java_context().cancelWidgetTimers(self.widget_id)

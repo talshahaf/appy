@@ -938,9 +938,21 @@ def set_module_error(module, error):
     java_widget_manager.setFileLastError(module.__file__, error)
     return module.__file__
 
+def set_widget_file_error(name, error):
+    pythonfile = python_file_by_name(name)
+    if not pythonfile:
+        return None
+    java_widget_manager.setFileLastError(pythonfile, error)
+    return pythonfile
+
 def set_unknown_error(error):
     java_widget_manager.setFileLastError(None, error)
     return None
+
+def python_file_by_name(name):
+    if name not in available_widgets:
+        return None
+    return available_widgets[name].get('pythonfile')
 
 def call_widget_chosen_listener(widget_id, name):
     java_widget_manager.callWidgetChosenListener(widget_id, name)
@@ -1007,9 +1019,9 @@ def create_widget(widget_id):
 
 def get_widget_name(widget_id):
     manager_state = obtain_manager_state()
-    if widget_id in manager_state.chosen and manager_state.chosen[widget_id] is not None:
-        return manager_state.chosen[widget_id].name
-    raise KeyError(f'no such widget {widget_id}')
+    if manager_state.chosen.get(widget_id) is None:
+        raise KeyError(f'no such widget {widget_id}')
+    return manager_state.chosen[widget_id].name
 
 def get_widgets_by_name(name):
     manager_state = obtain_manager_state()
@@ -1173,7 +1185,7 @@ def widget_manager_update(widget, manager_state, views, is_app):
             return views, dict(name=chosen.name)
     return widget_manager_create(widget, manager_state)
 
-def widget_manager_callback(widget, manager_state, views, callback_key, **kwargs):
+def widget_manager_callback(widget, manager_state, views, callback_key, default_cb=None, **kwargs):
     chosen = manager_state.chosen[widget.widget_id]
     if chosen is not None and chosen.name is not None and chosen.inited:
         with available_widgets_lock:
@@ -1181,6 +1193,8 @@ def widget_manager_callback(widget, manager_state, views, callback_key, **kwargs
             cb = available_widget[callback_key]
         if cb:
             call_general_function(cb, widget=widget, views=views, **kwargs)
+        elif default_cb:
+            call_general_function(default_cb, widget=widget, views=views, **kwargs)
     return views
 
 def set_error_to_widget_id(widget_id, error):
@@ -1400,27 +1414,32 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
         call_general_function(func, widget=widget, views=views)
         return self.export(input, views, {})
 
-    @java.override
-    def onConfig(self, widget_id, views_java_list, key):
-        print(f'onConfig called for key {key}')
+    def onEvent(self, widget_id, views_java_list, event, default_cb=None, **kwargs):
         input, views = self.import_(views_java_list)
         widget, manager_state = create_widget(widget_id)
-        return self.export(input, widget_manager_callback(widget, manager_state, views, 'on_config', key=key), {})
+
+        if widget.name is not None and register_for_register_widget(widget.name, None):
+            print(f'suppressing {event} because widget is not loaded')
+            return self.export(None, views, {})
+
+        return self.export(input, widget_manager_callback(widget, manager_state, views, event, default_cb=default_cb, **kwargs), {})
+
+    @java.override
+    def onConfig(self, widget_id, views_java_list, key):
+        print(f'onConfig called with key: {key}')
+        return self.onEvent(widget_id, views_java_list, 'on_config', key=key)
 
     @java.override
     def onShare(self, widget_id, views_java_list, mime, text, datas):
         datas = java.build_python_dict_from_java(datas)
         text = text if text != java.Null else None
         print(f'onShare called for widget {widget_id}', mime, text, len(datas))
+        return self.onEvent(widget_id, views_java_list, 'on_share', mimetype=mime, text=text, data=datas)
 
-        input, views = self.import_(views_java_list)
-        widget, manager_state = create_widget(widget_id)
-
-        if widget.name is not None and register_for_register_widget(widget.name, None):
-            print('suppressing share event because widget is not loaded')
-            return self.export(None, views, {})
-
-        return self.export(input, widget_manager_callback(widget, manager_state, views, 'on_share', mimetype=mime, text=text, data=datas), {})
+    @java.override
+    def onCustomSettings(self, widget_id, views_java_list):
+        print(f'onCustomSettings called')
+        return self.onEvent(widget_id, views_java_list, 'on_settings_action', default_cb=lambda: widgets.toast('No custom action configured for this widget'))
 
     @java.override
     def wipeStateRequest(self):
@@ -1550,9 +1569,7 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
 
     @java.override
     def getPythonFileByName(self, name):
-        if name not in available_widgets:
-            return None
-        return available_widgets[name].get('pythonfile')
+        return python_file_by_name(name)
 
     @java.override
     def syncConfig(self, config_java_dict):
@@ -1605,7 +1622,7 @@ def add_python_file(path):
     return java_context().addPythonFileByPathWithDialog(path)
 
 reserved_names = [configs.global_widget_config_name]
-def register_widget(name, create, update=None, config=None, config_description=None, on_config=None, on_share=None, on_app=None, debug=False):
+def register_widget(name, create, update=None, config=None, config_description=None, on_config=None, on_share=None, on_app=None, on_settings_action=None, debug=False):
     if not name or type(name) != str:
         raise ValueError('name must be str')
     if len(name) > 256:
@@ -1645,11 +1662,13 @@ def register_widget(name, create, update=None, config=None, config_description=N
         dump_general_function(on_share, {})
     if on_app is not None:
         dump_general_function(on_app, {})
+    if on_settings_action is not None:
+        dump_general_function(on_settings_action, {})
 
     with available_widgets_lock:
         if name in available_widgets and available_widgets[name]['pythonfile'] != path:
             raise ValueError(f'name {name} exists')
-        available_widgets[name] = dict(pythonfile=path, create=create, update=update, on_config=on_config, on_share=on_share, on_app=on_app, debug=bool(debug))
+        available_widgets[name] = dict(pythonfile=path, create=create, update=update, on_config=on_config, on_share=on_share, on_app=on_app, on_settings_action=on_settings_action, debug=bool(debug))
 
     if config is not None:
         configs.set_defaults(name, config, config_description)

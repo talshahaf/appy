@@ -35,6 +35,8 @@ interface WidgetUpdateListener
 
     DictObj.Dict onShare(int widgetId, DictObj.List views, String mimeType, String text, DictObj.Dict datas);
 
+    DictObj.Dict onCustomSettings(int widgetId, DictObj.List views);
+
     void wipeStateRequest();
 
     void importFile(String path, boolean skipRefresh);

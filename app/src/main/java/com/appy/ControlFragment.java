@@ -40,6 +40,8 @@ public class ControlFragment extends MyFragment
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState)
     {
+        super.onCreateView(inflater, container, savedInstanceState);
+
         View layout = inflater.inflate(R.layout.fragment_control, container, false);
 
         startupProgress = layout.findViewById(R.id.startup_progress);
@@ -118,7 +120,7 @@ public class ControlFragment extends MyFragment
         });
 
         reinstallPackage.setOnClickListener(v -> Utils.showConfirmationDialog(getActivity(),
-                "Reinstall package", "This would also restart the app", android.R.drawable.ic_dialog_alert,
+                "Reinstall Appy package", "This would also restart the app", android.R.drawable.ic_dialog_alert,
                 null, null, () -> {
                     getWidgetService().restart(Constants.PYTHON_INIT_FLAGS_REINSTALL_PACKAGE);
                     debounce(v);
