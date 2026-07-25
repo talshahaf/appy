@@ -4397,6 +4397,7 @@ public class Widget extends RemoteViewsService
             copyAsset(getAssets().open("logcat.py"), new File(cacheDir, "logcat.py"));
             copyAsset(getAssets().open("appy.targz"), new File(cacheDir, "appy.tar.gz"));
             System.loadLibrary("prehelpers");
+            new File(pythonLib).setWritable(false);
             System.load(pythonLib);
             System.loadLibrary("native");
             pythonInit(Utils.getCrashPath(Widget.this, Constants.CrashIndex.NATIVE_CRASH_INDEX), pythonHome, cacheDir, pythonLib, new File(cacheDir, "main.py").getAbsolutePath(), getApplicationInfo().nativeLibraryDir, disableGil, Widget.this, new String[] { "FLAGS=" + pythonFlags, "AMPM=" + ampm, "SHORTWEEK=" + weekshort, "LONGWEEK=" + weeklong, "SHORTMONTH=" + monthshort, "LONGMONTH=" + monthlong, "DATEFORMAT=" + dateformat, "TIMEFORMAT=" + timeformat, "DATETIMEFORMAT=" + datetimeformat });
