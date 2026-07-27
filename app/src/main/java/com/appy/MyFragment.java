@@ -196,9 +196,14 @@ public abstract class MyFragment extends Fragment implements MyFragmentInterface
         activityResultLauncher.launch(request);
     }
 
-    public void launchFileBrowser(boolean canSelectMultiple, boolean canSelectFiles, boolean canSelectDirectories, String warnIfNotExtension)
+    public void launchFileBrowser(int requestCode, String startDir, boolean canSelectMultiple, boolean canSelectFiles, boolean canSelectDirectories, String warnIfNotExtension)
     {
         Intent intent = new Intent(requireActivity(), FileBrowserActivity.class);
+        intent.putExtra(FileBrowserActivity.REQUEST_CODE, requestCode);
+        if (startDir != null)
+        {
+            intent.putExtra(FileBrowserActivity.REQUEST_START_DIRECTORY, startDir);
+        }
         intent.putExtra(FileBrowserActivity.REQUEST_ALLOW_RETURN_MULTIPLE, canSelectMultiple);
         intent.putExtra(FileBrowserActivity.REQUEST_ALLOW_SELECT_FILES, canSelectFiles);
         intent.putExtra(FileBrowserActivity.REQUEST_ALLOW_SELECT_DIRECTORIES, canSelectDirectories);

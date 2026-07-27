@@ -54,9 +54,12 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
     public static final String REQUEST_ALLOW_SELECT_DIRECTORIES = "REQUEST_ALLOW_SELECT_DIRECTORIES";
     public static final String REQUEST_ALLOW_SELECT_FILES = "REQUEST_ALLOW_SELECT_FILES";
     public static final String REQUEST_SPECIFIC_EXTENSION_CONFIRMATION = "REQUEST_SPECIFIC_EXTENSION_CONFIRMATION";
+    public static final String REQUEST_START_DIRECTORY = "REQUEST_START_DIRECTORY";
+    public static final String REQUEST_CODE = "REQUEST_CODE";
     public static final int REQUEST_PERMISSION_STORAGE = 101;
     public static final int REQUEST_ALL_STORAGE = 102;
     public static final int MEDIA_STORAGE_INDEX = 1;
+    public static final int APP_FILES_INDEX = 3;
     public static final int SHARED_STORAGE_INDEX = 5;
 
     FileBrowserAdapter adapter;
@@ -76,6 +79,8 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
     boolean canSelectDirectories;
     boolean canSelectFiles;
     String specificExtensionConfirmation;
+    String requestedStartDir;
+    int requestCode;
 
     private String[] preset_names;
     private String[] preset_paths;
@@ -100,6 +105,8 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
         canSelectDirectories = getIntent().getBooleanExtra(REQUEST_ALLOW_SELECT_DIRECTORIES, false);
         canSelectFiles = getIntent().getBooleanExtra(REQUEST_ALLOW_SELECT_FILES, true);
         specificExtensionConfirmation = getIntent().getStringExtra(REQUEST_SPECIFIC_EXTENSION_CONFIRMATION);
+        requestedStartDir = getIntent().getStringExtra(REQUEST_START_DIRECTORY);
+        requestCode = getIntent().getIntExtra(REQUEST_CODE, -1);
 
         list = findViewById(R.id.filelist);
         list.setEmptyView(findViewById(R.id.empty_view));
@@ -207,13 +214,24 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
 
     public boolean getStartDir()
     {
-        String startDir = preset_paths[cantViewSharedStorage ? MEDIA_STORAGE_INDEX : SHARED_STORAGE_INDEX];
-        if (!getDirFromRoot(startDir, false))
+        String[] startDirs;
+        if (cantViewSharedStorage)
         {
-            startDir = preset_paths[MEDIA_STORAGE_INDEX];
-            return getDirFromRoot(startDir, false);
+            startDirs = new String[] {requestedStartDir, preset_paths[MEDIA_STORAGE_INDEX], preset_paths[APP_FILES_INDEX]};
         }
-        return true;
+        else
+        {
+            startDirs = new String[] {requestedStartDir, preset_paths[SHARED_STORAGE_INDEX], preset_paths[MEDIA_STORAGE_INDEX], preset_paths[APP_FILES_INDEX]};
+        }
+
+        for (String startDir : startDirs)
+        {
+            if (startDir != null && getDirFromRoot(startDir, false))
+            {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override
@@ -375,6 +393,15 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
             }
         }
 
+        Runnable done = () -> {
+            Intent intent = new Intent();
+            intent.putExtra(RESULT_FILES, files);
+            intent.putExtra(REQUEST_CODE, requestCode);
+            setResult(RESULT_OK, intent);
+            tutorial.onFileBrowserImportDone();
+            finish();
+        };
+
         if (needConfirmation)
         {
             //just to confirm
@@ -382,21 +409,11 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
                     "Import " + files.length + " files?",
                     "At least one file does not end with " + specificExtensionConfirmation + ", continue?",
                     android.R.drawable.ic_dialog_alert,
-                    "Import", "Cancel", () -> {
-                        Intent intent = new Intent();
-                        intent.putExtra(RESULT_FILES, files);
-                        setResult(RESULT_OK, intent);
-                        tutorial.onFileBrowserImportDone();
-                        finish();
-                    });
+                    "Import", "Cancel", done);
         }
         else
         {
-            Intent intent = new Intent();
-            intent.putExtra(RESULT_FILES, files);
-            setResult(RESULT_OK, intent);
-            tutorial.onFileBrowserImportDone();
-            finish();
+            done.run();
         }
     }
 

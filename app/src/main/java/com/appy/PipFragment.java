@@ -120,7 +120,7 @@ public class PipFragment extends MyFragment implements RunnerListener
 
         workdir.setText(new File(System.getenv("PYTHONHOME"), "bin").getAbsolutePath());
         browse.setOnClickListener(v -> {
-            launchFileBrowser(false, false, true, null);
+            launchFileBrowser(0, workdir.getText().toString(), false, false, true, null);
         });
 
         run.setOnClickListener(v -> {

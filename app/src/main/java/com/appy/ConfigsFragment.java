@@ -44,6 +44,9 @@ import kotlin.Triple;
 
 public class ConfigsFragment extends FragmentParent
 {
+    public static final int IMPORT_CODE = 1;
+    public static final int EXPORT_CODE = 2;
+
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState)
@@ -71,14 +74,26 @@ public class ConfigsFragment extends FragmentParent
             return;
         }
 
-        try
+        int requestCode = data.getIntExtra(FileBrowserActivity.REQUEST_CODE, -1);
+        if (requestCode == IMPORT_CODE)
         {
-            String content = Utils.readAndHashFileAsString(new File(files[0]), Constants.CONFIG_IMPORT_MAX_SIZE, false).first;
+            File file = new File(files[0]);
+            String content;
+            try
+            {
+                content = Utils.readAndHashFileAsString(file, Constants.CONFIG_IMPORT_MAX_SIZE, false).first;
+            }
+            catch (IOException e)
+            {
+                Log.e("APPY", "import config failed", e);
+                Toast.makeText(requireActivity(), "Failed to read file", Toast.LENGTH_SHORT).show();
+                return;
+            }
 
             DictObj.Dict newConfig = null;
             try
             {
-                newConfig = (DictObj.Dict)DictObj.fromJson(content);
+                newConfig = (DictObj.Dict) DictObj.fromJson(content);
             }
             catch (Exception e)
             {
@@ -92,16 +107,39 @@ public class ConfigsFragment extends FragmentParent
                 Utils.showConfirmationDialog(requireActivity(),
                         "Import Configuration", "This will overwrite all existing configurations", android.R.drawable.ic_dialog_alert,
                         null, null, () -> {
-                            configurations.replaceConfiguration(finalConfig);
-                                Toast.makeText(requireActivity(), "Configurations imported from " + files[0], Toast.LENGTH_LONG).show();
-                                start();
-                            });
+                    configurations.replaceConfiguration(finalConfig);
+                    Toast.makeText(requireActivity(), "Configurations imported from " + files[0], Toast.LENGTH_LONG).show();
+                    start();
+                });
+            }
+        }
+        else if (requestCode == EXPORT_CODE)
+        {
+            File file = new File(files[0], "exported_configurations.json");
+            Runnable export = () -> {
+                try
+                {
+                    Utils.writeFile(file, DictObj.makeJson(configurations.getDict(), true));
+                    Toast.makeText(requireActivity(), "Configurations exported to " + file.getAbsolutePath(), Toast.LENGTH_LONG).show();
                 }
-            }
-            catch (IOException e)
+                catch (IOException e)
+                {
+                    Log.e("APPY", "export config failed", e);
+                    Toast.makeText(requireActivity(), "Failed to write file", Toast.LENGTH_SHORT).show();
+                }
+            };
+
+            if (file.exists())
             {
-                Log.e("APPY", "import config failed", e);
+                Utils.showConfirmationDialog(requireActivity(),
+                        "Export Configuration", "File already exists, overwrite?", android.R.drawable.ic_dialog_alert,
+                        null, null, export);
             }
+            else
+            {
+                export.run();
+            }
+        }
     }
 
     private boolean attachedAndBound = false;
@@ -212,42 +250,22 @@ public class ConfigsFragment extends FragmentParent
             }
         }
 
-        public File exportFilePath()
-        {
-            return new File(getWidgetService().getPreferredScriptDir(), "exported_configurations.json");
-        }
-
         @Override
         public boolean onMenuItemSelected(@NonNull MenuItem item)
         {
             if (item.getItemId() == R.id.action_export)
             {
                 Log.d("APPY", "Export click");
-
-                if (getWidgetService() != null)
+                if (getWidgetService() != null && getWidgetService().getConfigurations() != null)
                 {
-                    Configurations configurations = getWidgetService().getConfigurations();
-                    if (configurations != null)
-                    {
-                        File exportFile = exportFilePath();
-                        try
-                        {
-                            Utils.writeFile(exportFile, DictObj.makeJson(configurations.getDict(), true));
-                            Toast.makeText(requireActivity(), "Configurations exported to " + exportFile.getAbsolutePath(), Toast.LENGTH_LONG).show();
-                        }
-                        catch (IOException e)
-                        {
-                            Log.e("APPY", "export config failed", e);
-                        }
-
-                    }
+                    parent.launchFileBrowser(EXPORT_CODE, getWidgetService().getPreferredScriptDir(), false, false, true, null);
                 }
                 return true;
             }
             else if (item.getItemId() == R.id.action_import)
             {
                 Log.d("APPY", "Import click");
-                launchFileBrowser(false, true, false, ".json");
+                parent.launchFileBrowser(IMPORT_CODE, null, false, true, false, ".json");
                 return true;
             }
             else if (item.getItemId() == R.id.action_copy)
