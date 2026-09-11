@@ -204,7 +204,6 @@ class AppsFragment : MyFragment(), MenuProvider {
     }
 
     override fun onStop() {
-        selectWidget(-1)
         try {
             widgetHost?.stopListening()
         } catch (_: NullPointerException) {

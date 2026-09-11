@@ -72,7 +72,7 @@ public abstract class WidgetSelectActivity extends AppCompatActivity implements 
         updateWidgetList();
     }
 
-    protected String elementValueFormat(int widgetId, DictObj.Dict widgetProps)
+    public static String elementValueFormat(int widgetId, DictObj.Dict widgetProps)
     {
         int w = widgetProps.getInt("width_dp", -1);
         int h = widgetProps.getInt("height_dp", -1);

@@ -800,6 +800,30 @@ public class Widget extends RemoteViewsService
         return bundle.getBoolean(AppsFragmentKt.OPTION_APPWIDGET_APPY_APP);
     }
 
+    public String getWidgetAppTitle(int widgetId)
+    {
+        return getWidgetProp(widgetId, "app_title");
+    }
+
+    public DictObj.List getWidgetViewsSnapshot(int widgetId) {
+        DictObj.List widgetDictList = null;
+        ArrayList<DynamicView> widget;
+
+        synchronized (widgetLock)
+        {
+            widget = widgets.get(widgetId);
+            if (widget != null)
+            {
+                widgetDictList = DynamicView.toDictList(widget);
+            }
+        }
+        return widgetDictList;
+    }
+
+    public String widgetDescriptionLine(int widgetId) {
+        return WidgetSelectActivity.elementValueFormat(widgetId, getAllWidgetAppProps(widgetId, false, false).getDict(widgetId+""));
+    }
+
     public static Pair<Integer, HashMap<String, ArrayList<Integer>>> selectRootView(Widget service, int widgetId, ArrayList<String> collections)
     {
         if (collections.size() > 2)
@@ -2272,21 +2296,21 @@ public class Widget extends RemoteViewsService
 
     public void setWidgetAppTitle(int widgetId, String title)
     {
-        String titleCapped = Utils.capWithEllipsis(title, Constants.APP_TITLE_MAX_LENGTH, true);
+        String titleCapped = title == null ? null : Utils.capWithEllipsis(title, Constants.APP_TITLE_MAX_LENGTH, true);
         setProps(widgetProps, new WeakReference<>(widgetPropsLock), widgetId, "app_title", titleCapped, (DictObj.Dict dict) -> dict.put("app_title", titleCapped));
         saveWidgetProps(widgetId, true);
     }
 
     public void setWidgetLastError(int widgetId, String lastError)
     {
-        String lastErrorCapped = Utils.capWithEllipsis(lastError, Constants.CRASH_FILE_MAX_SIZE, false);
+        String lastErrorCapped = lastError == null ? null : Utils.capWithEllipsis(lastError, Constants.CRASH_FILE_MAX_SIZE, false);
         setProps(widgetProps, new WeakReference<>(widgetPropsLock), widgetId, "last_error", lastErrorCapped, (DictObj.Dict dict) -> dict.put("last_error", lastErrorCapped));
         saveWidgetProps(widgetId, true);
     }
 
     public void setWidgetSettingsActionText(int widgetId, String text)
     {
-        String textCapped = Utils.capWithEllipsis(text, Constants.APP_TITLE_MAX_LENGTH, true);
+        String textCapped = text == null ? null : Utils.capWithEllipsis(text, Constants.APP_TITLE_MAX_LENGTH, true);
         setProps(widgetProps, new WeakReference<>(widgetPropsLock), widgetId, "settings_action_text", textCapped, (DictObj.Dict dict) -> dict.put("settings_action_text", textCapped));
         saveWidgetProps(widgetId, true);
     }
@@ -2380,28 +2404,49 @@ public class Widget extends RemoteViewsService
 
     public DictObj.Dict getAllWidgetAppProps(String name, boolean useAndroidWidgetId, boolean withIcons)
     {
+        return getAllWidgetAppProps(null, name, useAndroidWidgetId, withIcons);
+    }
+
+    public DictObj.Dict getAllWidgetAppProps(int widgetId, boolean useAndroidWidgetId, boolean withIcons)
+    {
+        return getAllWidgetAppProps(widgetId, null, useAndroidWidgetId, withIcons);
+    }
+
+    public DictObj.Dict getAllWidgetAppProps(Integer onlyWidgetId, String onlyName, boolean useAndroidWidgetId, boolean withIcons)
+    {
         DictObj.Dict result = new DictObj.Dict();
-        if (name == null)
+        if (onlyWidgetId == null)
         {
-            DictObj.Dict names = getAllWidgetNames();
-            for (String key : names.keys())
+            if (onlyName == null)
             {
-                DictObj.Dict data = new DictObj.Dict();
-                data.put("name", names.getString(key));
-                data.put("display_name", data.getString("name"));
-                result.put(key, data);
+                DictObj.Dict names = getAllWidgetNames();
+                for (String key : names.keys())
+                {
+                    DictObj.Dict data = new DictObj.Dict();
+                    data.put("name", names.getString(key));
+                    data.put("display_name", data.getString("name"));
+                    result.put(key, data);
+                }
+            }
+            else
+            {
+                int[] widgetIds = getAllWidgetsByName(onlyName);
+                for (int widgetId : widgetIds)
+                {
+                    DictObj.Dict data = new DictObj.Dict();
+                    data.put("name", onlyName);
+                    data.put("display_name", onlyName);
+                    result.put(widgetId + "", data);
+                }
             }
         }
         else
         {
-            int[] widgetIds = getAllWidgetsByName(name);
-            for (int widgetId : widgetIds)
-            {
-                DictObj.Dict data = new DictObj.Dict();
-                data.put("name", name);
-                data.put("display_name", name);
-                result.put(widgetId+"", data);
-            }
+            DictObj.Dict data = new DictObj.Dict();
+            String name = getWidgetName(onlyWidgetId);
+            data.put("name", name);
+            data.put("display_name", name);
+            result.put(onlyWidgetId + "", data);
         }
 
         synchronized (widgetPropsLock)

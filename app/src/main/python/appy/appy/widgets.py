@@ -231,6 +231,22 @@ class Widget:
     def invoke_item_click(self, element, position):
         self.post(self.itemclick_invoker, element_id=element.id, position=position)
 
+    def views_snapshot(self):
+        return widget_manager.import_java_views(widget_manager.java_context().getWidgetViewsSnapshot(self.widget_id))
+
+    def description(self):
+        return widget_manager.java_context().widgetDescriptionLine(self.widget_id)
+
+    @property
+    def title(self):
+        return widget_manager.java_context().getWidgetAppTitle(self.widget_id)
+    @title.setter
+    def title(self, title):
+        widget_manager.java_context().setWidgetAppTitle(self.widget_id, title)
+    @title.deleter
+    def title(self):
+        self.set_title(None)
+
     @staticmethod
     def by_id(widget_id):
         return Widget(widget_id, widget_manager.get_widget_name(widget_id))

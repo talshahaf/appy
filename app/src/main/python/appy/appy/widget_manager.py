@@ -535,7 +535,7 @@ class Element:
                 raise AttributeError(item)
             return getattr(self.d.selectors, item)
         if item in element_attr_aliases:
-            value = getattr(self, element_attr_aliases[key])
+            value = getattr(self, element_attr_aliases[item])
             if item in element_attr_value_aliases:
                 #convert back
                 backs = [k for k,v in element_attr_value_aliases[item].items() if v == value]
@@ -1284,6 +1284,16 @@ def flatten_elements(elements):
         else:
             yield from flatten_elements(e)
 
+def import_java_views(java_list, with_raw_copy=False):
+    d1 = java.build_python_dict_from_java(java_list)
+    if with_raw_copy:
+        d2 = copy.deepcopy(d1)
+    d1 = elist(Element(e) for e in d1)
+    if with_raw_copy:
+        return d2, d1
+    else:
+        return d1
+
 class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
     def export(self, input, output, attrs):
         collection_methods_deleted = False
@@ -1308,10 +1318,8 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
         return java.build_java_dict(dict(views=out, collectionMethodsDeleted=collection_methods_deleted, **attrs))
 
     def import_(self, java_list):
-        #make two copies
-        d1 = java.build_python_dict_from_java(java_list)
-        d2 = copy.deepcopy(d1)
-        return d1, elist(Element(e) for e in d2)
+        #make two copies to check for changes on export
+        return import_java_views(java_list, with_raw_copy=True)
 
     @java.override
     def onUpdate(self, widget_id, views_java_list, is_app):
@@ -1382,7 +1390,7 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
 
     @java.override
     def onTimer(self, timer_id, widget_id, views_java_list, data):
-        print('timer called for widget {widget_id}, timer_id: {timer_id}')
+        print(f'timer called for widget {widget_id}, timer_id: {timer_id}')
         func = loads(data)
         widget, manager_state = create_widget(widget_id)
 
