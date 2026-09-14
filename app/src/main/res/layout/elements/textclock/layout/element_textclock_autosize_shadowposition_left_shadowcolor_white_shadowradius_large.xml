@@ -8,6 +8,8 @@
 
     <TextClock
         android:id="@+id/e0"
+        android:autoSizeStepGranularity="1px"
+        android:includeFontPadding="false"
         android:autoSizeTextType="uniform"
         android:autoSizeMinTextSize="1px"
         android:autoSizeMaxTextSize="10000px"

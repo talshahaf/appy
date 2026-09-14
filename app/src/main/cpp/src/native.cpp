@@ -2616,7 +2616,7 @@ static void init_dict_fields(JNIEnv * env)
     dict_fields_inited = true;
 }
 
-static jobject build_java_dict_object(PyObject * obj, JNIEnv * env)
+static jobject build_java_dict_object(PyObject * obj, JNIEnv * env, std::string & out_error)
 {
     PyObject *key_obj, *value_obj;
     Py_ssize_t pos = 0;
@@ -2627,10 +2627,12 @@ static jobject build_java_dict_object(PyObject * obj, JNIEnv * env)
         jobject javadict = env->NewObject(dict_class, dict_ctor);
         if (env->ExceptionCheck())
         {
+            out_error = "NewObject failed";
             return NULL;
         }
         if (javadict == NULL)
         {
+            out_error = "NewObject failed";
             return NULL;
         }
 
@@ -2643,6 +2645,7 @@ static jobject build_java_dict_object(PyObject * obj, JNIEnv * env)
                 if (key_str_obj == NULL)
                 {
                     env->DeleteLocalRef(javadict);
+                    out_error = "Couldn't cast dict key as str";
                     return NULL;
                 }
             }
@@ -2652,6 +2655,7 @@ static jobject build_java_dict_object(PyObject * obj, JNIEnv * env)
             {
                 Py_XDECREF(key_str_obj);
                 env->DeleteLocalRef(javadict);
+                out_error = "PyUnicode_AsUTF8AndSize for key failed";
                 return NULL;
             }
 
@@ -2660,6 +2664,7 @@ static jobject build_java_dict_object(PyObject * obj, JNIEnv * env)
             {
                 Py_XDECREF(key_str_obj);
                 env->DeleteLocalRef(javadict);
+                out_error = "NewByteArray for key failed";
                 return NULL;
             }
 
@@ -2669,6 +2674,7 @@ static jobject build_java_dict_object(PyObject * obj, JNIEnv * env)
                 Py_XDECREF(key_str_obj);
                 env->DeleteLocalRef(keyarr);
                 env->DeleteLocalRef(javadict);
+                out_error = "GetByteArrayElements for key failed";
                 return NULL;
             }
 
@@ -2680,12 +2686,13 @@ static jobject build_java_dict_object(PyObject * obj, JNIEnv * env)
             {
                 env->DeleteLocalRef(keyarr);
                 env->DeleteLocalRef(javadict);
+                out_error = "ReleaseByteArrayElements for key failed";
                 return NULL;
             }
 
             if (PyDict_Check(value_obj) || PyList_Check(value_obj) || PyTuple_Check(value_obj))
             {
-                jobject val = build_java_dict_object(value_obj, env);
+                jobject val = build_java_dict_object(value_obj, env, out_error);
                 if (val == NULL)
                 {
                     env->DeleteLocalRef(keyarr);
@@ -2709,6 +2716,7 @@ static jobject build_java_dict_object(PyObject * obj, JNIEnv * env)
                 {
                     env->DeleteLocalRef(keyarr);
                     env->DeleteLocalRef(javadict);
+                    out_error = "PyLong_AsLong for value failed";
                     return NULL;
                 }
                 env->CallVoidMethod(javadict, dict_put_long, keyarr, val);
@@ -2733,6 +2741,7 @@ static jobject build_java_dict_object(PyObject * obj, JNIEnv * env)
                 {
                     env->DeleteLocalRef(keyarr);
                     env->DeleteLocalRef(javadict);
+                    out_error = "PyUnicode_AsUTF8AndSize for value failed";
                     return NULL;
                 }
 
@@ -2741,6 +2750,7 @@ static jobject build_java_dict_object(PyObject * obj, JNIEnv * env)
                 {
                     env->DeleteLocalRef(keyarr);
                     env->DeleteLocalRef(javadict);
+                    out_error = "NewByteArray for value failed";
                     return NULL;
                 }
 
@@ -2750,6 +2760,7 @@ static jobject build_java_dict_object(PyObject * obj, JNIEnv * env)
                     env->DeleteLocalRef(valuearr);
                     env->DeleteLocalRef(keyarr);
                     env->DeleteLocalRef(javadict);
+                    out_error = "GetByteArrayElements for value failed";
                     return NULL;
                 }
 
@@ -2761,6 +2772,7 @@ static jobject build_java_dict_object(PyObject * obj, JNIEnv * env)
                     env->DeleteLocalRef(valuearr);
                     env->DeleteLocalRef(keyarr);
                     env->DeleteLocalRef(javadict);
+                    out_error = "ReleaseByteArrayElements for value failed";
                     return NULL;
                 }
 
@@ -2776,6 +2788,7 @@ static jobject build_java_dict_object(PyObject * obj, JNIEnv * env)
                 {
                     env->DeleteLocalRef(keyarr);
                     env->DeleteLocalRef(javadict);
+                    out_error = "PyFloat_AsDouble for value failed";
                     return NULL;
                 }
                 env->CallVoidMethod(javadict, dict_put_double, keyarr, val);
@@ -2794,6 +2807,7 @@ static jobject build_java_dict_object(PyObject * obj, JNIEnv * env)
             if (env->ExceptionCheck())
             {
                 env->DeleteLocalRef(javadict);
+                out_error = "Java exception in dict put";
                 return NULL;
             }
         }
@@ -2806,10 +2820,12 @@ static jobject build_java_dict_object(PyObject * obj, JNIEnv * env)
         jobject javalist = env->NewObject(dict_list_class, dict_list_ctor);
         if (env->ExceptionCheck())
         {
+            out_error = "NewObject failed";
             return NULL;
         }
         if (javalist == NULL)
         {
+            out_error = "NewObject failed";
             return NULL;
         }
 
@@ -2817,6 +2833,7 @@ static jobject build_java_dict_object(PyObject * obj, JNIEnv * env)
         if (PyErr_Occurred())
         {
             env->DeleteLocalRef(javalist);
+            out_error = "PyList_Size failed";
             return NULL;
         }
         for (unsigned int i = 0; i < size; i++)
@@ -2825,11 +2842,12 @@ static jobject build_java_dict_object(PyObject * obj, JNIEnv * env)
             if (item == NULL || PyErr_Occurred())
             {
                 env->DeleteLocalRef(javalist);
+                out_error = "PyList_GetItem failed";
                 return NULL;
             }
             if (PyDict_Check(item) || PyList_Check(item) || PyTuple_Check(item))
             {
-                jobject val = build_java_dict_object(item, env);
+                jobject val = build_java_dict_object(item, env, out_error);
                 if (val == NULL)
                 {
                     env->DeleteLocalRef(javalist);
@@ -2846,11 +2864,65 @@ static jobject build_java_dict_object(PyObject * obj, JNIEnv * env)
             {
                 // not supporting any other type in list for now
                 env->DeleteLocalRef(javalist);
+
+                out_error = "list contains types not in (dict, list, tuple) got ";
+
+                PyTypeObject * type = Py_TYPE(item);
+                if (type == NULL)
+                {
+                    out_error.append("unknown");
+                    return NULL;
+                }
+
+                PyObject * pytypename = PyType_GetName(type);
+                if (pytypename == NULL)
+                {
+                    out_error.append("unknown");
+                    return NULL;
+                }
+
+                Py_ssize_t typenamesize = 0;
+                char * typename_mem = (char *)PyUnicode_AsUTF8AndSize(pytypename, &typenamesize);
+                if (typename_mem == NULL)
+                {
+                    Py_XDECREF(pytypename);
+                    out_error.append("unknown");
+                    return NULL;
+                }
+                else
+                {
+                    out_error.append(typename_mem, typenamesize);
+                }
+                Py_XDECREF(pytypename);
+
+                PyObject * repr = PyObject_Repr(item);
+                if (repr == NULL)
+                {
+                    return NULL;
+                }
+                Py_ssize_t reprsize = 0;
+                char * repr_mem = (char *)PyUnicode_AsUTF8AndSize(repr, &reprsize);
+                if (repr_mem != NULL)
+                {
+                    out_error.append("(");
+                    if (reprsize <= 32)
+                    {
+                        out_error.append(repr_mem, reprsize);
+                        out_error.append(")");
+                    }
+                    else
+                    {
+                        out_error.append(repr_mem, 29);
+                        out_error.append("...)");
+                    }
+                }
+                Py_XDECREF(repr);
                 return NULL;
             }
             if (env->ExceptionCheck())
             {
                 env->DeleteLocalRef(javalist);
+                out_error = "Java exception in List add";
                 return NULL;
             }
         }
@@ -2887,10 +2959,11 @@ static PyObject * build_java_dict(PyObject * self, PyObject * args)
             return NULL;
         }
 
-        jobject local_jobj = build_java_dict_object(obj, env);
+        std::string error;
+        jobject local_jobj = build_java_dict_object(obj, env, error);
         if (local_jobj == NULL)
         {
-            PyErr_SetString(PyExc_RuntimeError, "failed to build java dict object");
+            PyErr_SetString(PyExc_RuntimeError, ("failed to build java dict object: " + error).c_str());
             return NULL;
         }
 
@@ -3594,12 +3667,13 @@ extern "C" JNIEXPORT jobject JNICALL Java_com_appy_DictObj_jsontoDictObj(JNIEnv 
             return NULL;
         }
 
-        jobject obj = build_java_dict_object(deser, env);
+        std::string error;
+        jobject obj = build_java_dict_object(deser, env, error);
         Py_DECREF(deser);
         if (obj == NULL || PyErr_Occurred())
         {
             PyErr_Clear();
-            env->ThrowNew(python_exception_class, "Exception in build_java_dict_object");
+            env->ThrowNew(python_exception_class, ("Exception in build_java_dict_object: " + error).c_str());
             return NULL;
         }
 

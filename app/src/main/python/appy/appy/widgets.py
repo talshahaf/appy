@@ -217,12 +217,12 @@ class Widget:
 
     @staticmethod
     def click_invoker(element_id, views, **kwargs):
-        view = views.find_id(element_id)
+        view = views.get(id=element_id)
         view.__event__('click', views=views, view=view, **kwargs)
 
     @staticmethod
     def itemclick_invoker(element_id, views, **kwargs):
-        view = views.find_id(element_id)
+        view = views.get(id=element_id)
         view.__event__('itemclick', views=views, view=view, **kwargs)
 
     def invoke_click(self, element):

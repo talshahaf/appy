@@ -33,6 +33,10 @@
         android:key="refresh_on_modify"
         android:title="Auto reload python files" />
     <CheckBoxPreference
+        android:defaultValue="false"
+        android:key="debug_bounding_boxes"
+        android:title="Add debug bounding boxes to all elements" />
+    <CheckBoxPreference
         android:defaultValue="true"
         android:key="disable_gil"
         android:title="Run python without GIL (requires restart)" />

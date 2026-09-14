@@ -19,6 +19,7 @@ public class SettingsFragment extends MySettingsFragment implements SharedPrefer
     Preference widthCorrectionPreference;
     Preference heightCorrectionPreference;
     Preference globalSizeFactorPreference;
+    Preference debugBoundingBoxesPreference;
     Preference disableGilPreference;
     Handler handler = new Handler();
 
@@ -30,6 +31,7 @@ public class SettingsFragment extends MySettingsFragment implements SharedPrefer
         widthCorrectionPreference = getPreferenceScreen().findPreference("global_width_correction_factor");
         heightCorrectionPreference = getPreferenceScreen().findPreference("global_height_correction_factor");
         globalSizeFactorPreference = getPreferenceScreen().findPreference("global_size_factor");
+        debugBoundingBoxesPreference = getPreferenceScreen().findPreference("debug_bounding_boxes");
         disableGilPreference = getPreferenceScreen().findPreference("disable_gil");
 
         Preference.OnPreferenceChangeListener validateFloat = (preference, newValue) -> Utils.parseFloatOrNull((String)newValue) != null;
@@ -37,6 +39,14 @@ public class SettingsFragment extends MySettingsFragment implements SharedPrefer
         widthCorrectionPreference.setOnPreferenceChangeListener(validateFloat);
         heightCorrectionPreference.setOnPreferenceChangeListener(validateFloat);
         globalSizeFactorPreference.setOnPreferenceChangeListener(validateFloat);
+        debugBoundingBoxesPreference.setOnPreferenceChangeListener((preference, newValue) -> {
+            Widget service = getWidgetService();
+            if (service != null)
+            {
+                service.updateAll(true);
+            }
+            return true;
+        });
         disableGilPreference.setOnPreferenceChangeListener((preference, newValue) -> {
             handler.post(() -> Utils.showConfirmationDialog(getContext(), "Restart required", "Restart is required for GIL setting to take place. Restart now?", android.R.drawable.ic_dialog_alert, "Restart", "No", () -> {
                 Widget service = getWidgetService();

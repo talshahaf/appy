@@ -6,11 +6,9 @@ from . import java
 def refresh_button_update_func(widget, views):
     widget.locals('__refresh_error_id')
     if '__refresh_error_id' in widget.state:
-        try:
-            btn = views.find_id(widget.state.__refresh_error_id)
+        btn = views.find(id=widget.state.__refresh_error_id)
+        if btn:
             btn.visibility = java.clazz.android.view.View().VISIBLE
-        except KeyError:
-            pass
         del widget.state.__refresh_error_id
 
 def refresh_button_action(widget, views, on_click, id, timer):
@@ -20,24 +18,22 @@ def refresh_button_action(widget, views, on_click, id, timer):
         widget.locals('__refresh_error_id')
         widget.state.__refresh_error_id = id
         raise
-        
-    try:
-        btn = views.find_id(id)
+
+    btn = views.find(id=id)
+    if btn:
         btn.visibility = java.clazz.android.view.View().VISIBLE
         widget.locals('__refresh_error_id')
-        del widget.state.__refresh_error_id
-    except KeyError:
-        pass
+        if '__refresh_error_id' in widget.state:
+            del widget.state.__refresh_error_id
+
 
 def refresh_button_click(widget, views, on_click, id, timer_id=None):
-    btn = None
-    try:
-        btn = views.find_id(id)
-    except KeyError:
+    btn = views.find(id=id)
+    if not btn:
         #disable timer
         if timer_id is not None:
             widget.cancel_timer(timer_id)
-    if btn is not None:
+    else:
         btn.visibility = java.clazz.android.view.View().INVISIBLE
     widget.post(refresh_button_action, on_click=on_click, id=id, timer=timer_id is not None)
     
@@ -310,7 +306,7 @@ def key_backspace_click(output):
     output.text = output.text[:-1]
 
 def key_click(widget, views, output_id, key=None, handler=None):
-    output = views.find_id(output_id)
+    output = views.get(id=output_id)
     if handler is not None:
         call_general_function(handler, widget=widget, output=output)
     else:

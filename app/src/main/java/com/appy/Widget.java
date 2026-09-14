@@ -643,7 +643,7 @@ public class Widget extends RemoteViewsService
             }
         }
 
-        public static RemoteViews inflateChild(Widget service, int widgetId, DynamicView collectionview, int position, int[] widgetDimensions, Reference<Object> collectionLock) throws InvocationTargetException, IllegalAccessException
+        public static RemoteViews inflateChild(Widget service, int widgetId, DynamicView collectionview, int position, int[] widgetDimensions, boolean debugBoundingBoxes, Reference<Object> collectionLock) throws InvocationTargetException, IllegalAccessException
         {
             ArrayList<DynamicView> child;
             String type;
@@ -665,7 +665,7 @@ public class Widget extends RemoteViewsService
                 actualHeight = collectionview.actualHeight;
             }
 
-            Triple<RemoteViews, HashSet<Integer>, ArrayList<DynamicView>> view = service.resolveDimensions(service, widgetId, child, Constants.collection_layout_type.get(type), new Object[]{id, position}, actualWidth, actualHeight, widgetDimensions);
+            Triple<RemoteViews, HashSet<Integer>, ArrayList<DynamicView>> view = service.resolveDimensions(service, widgetId, child, Constants.collection_layout_type.get(type), new Object[]{id, position}, actualWidth, actualHeight, widgetDimensions, debugBoundingBoxes);
             RemoteViews remoteView = view.component1();
             Intent fillIntent = new Intent(service, WidgetReceiver2x2.class);
             if (child.size() == 1)
@@ -705,10 +705,11 @@ public class Widget extends RemoteViewsService
             }
 
             int[] widgetDimensions = service.getWidgetDimensions(widgetId);
+            boolean debugBoundingBoxes = Widget.getDebugBoundingBoxes(service);
             RemoteViews ret = null;
             try
             {
-                ret = inflateChild(service, widgetId, collectionview, position, widgetDimensions, new WeakReference<>(lock));
+                ret = inflateChild(service, widgetId, collectionview, position, widgetDimensions, debugBoundingBoxes, new WeakReference<>(lock));
             }
             catch (Exception e)
             {
@@ -1080,11 +1081,12 @@ public class Widget extends RemoteViewsService
                     {
                         // This enables proper onclick handing to children as well
                         int[] widgetDimensions = service.getWidgetDimensions(widgetId);
+                        boolean debugBoundingBoxes = Widget.getDebugBoundingBoxes(service);
                         Object lock = new Object();
                         RemoteViews.RemoteCollectionItems.Builder collection = new RemoteViews.RemoteCollectionItems.Builder();
                         for (int i = 0; i < layout.children.size(); i++)
                         {
-                            RemoteViews child = CollectionFactory.inflateChild(service, widgetId, layout, i, widgetDimensions, new WeakReference<>(lock));
+                            RemoteViews child = CollectionFactory.inflateChild(service, widgetId, layout, i, widgetDimensions, debugBoundingBoxes, new WeakReference<>(lock));
                             if (child == null)
                             {
                                 throw new RuntimeException("inflate child returned null");
@@ -1661,7 +1663,7 @@ public class Widget extends RemoteViewsService
         return max;
     }
 
-    public Triple<RemoteViews, HashSet<Integer>, ArrayList<DynamicView>> resolveDimensions(Widget service, int widgetId, ArrayList<DynamicView> dynamicList, Constants.CollectionLayout collectionLayout, Object[] collectionExtras, int widthLimit, int heightLimit, int[] widgetSize) throws InvocationTargetException, IllegalAccessException
+    public Triple<RemoteViews, HashSet<Integer>, ArrayList<DynamicView>> resolveDimensions(Widget service, int widgetId, ArrayList<DynamicView> dynamicList, Constants.CollectionLayout collectionLayout, Object[] collectionExtras, int widthLimit, int heightLimit, int[] widgetSize, boolean debugBoundingBoxes) throws InvocationTargetException, IllegalAccessException
     {
         // we must copy as we're changing the views
         dynamicList = DynamicView.copyArray(dynamicList);
@@ -1851,6 +1853,12 @@ public class Widget extends RemoteViewsService
                         "setViewLayoutMargin", RemoteViews.MARGIN_LEFT, ((float) hor.first), TypedValue.COMPLEX_UNIT_PX));
                 dynamicView.methodCalls.add(new RemoteMethodCall("setViewLayoutMargin", true,
                         "setViewLayoutMargin", RemoteViews.MARGIN_TOP, ((float) ver.first), TypedValue.COMPLEX_UNIT_PX));
+
+                if (debugBoundingBoxes)
+                {
+                    dynamicView.methodCalls.add(new RemoteMethodCall("setBackgroundResource", false,
+                            "setInt", "setBackgroundResource", R.drawable.drawable_bounding_box));
+                }
             }
             else
             {
@@ -2650,7 +2658,7 @@ public class Widget extends RemoteViewsService
 
         if (!initing && shouldUpdate)
         {
-            updateAll();
+            updateAll(false);
         }
     }
 
@@ -3069,6 +3077,12 @@ public class Widget extends RemoteViewsService
     {
         SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(context);
         return sharedPref.getBoolean("refresh_on_modify", true);
+    }
+
+    public static boolean getDebugBoundingBoxes(Context context)
+    {
+        SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(context);
+        return sharedPref.getBoolean("debug_bounding_boxes", false);
     }
 
     public void onPythonFileModified(PythonFile pythonFile)
@@ -3670,9 +3684,21 @@ public class Widget extends RemoteViewsService
         addTask(widgetId, new Task<>(new CallUpdateTask(), widgetId), false);
     }
 
-    public void updateAll()
+    public void updateAll(boolean forceRedraw)
     {
-        for (int widgetId : getAllWidgets())
+        Set<Integer> widgets = getAllWidgets();
+        if (forceRedraw)
+        {
+            for (int widgetId : widgets)
+            {
+                triggerWidgetLayoutSwap(widgetId);
+            }
+        }
+        synchronized (needUpdateWidgets)
+        {
+            needUpdateWidgets.addAll(widgets);
+        }
+        for (int widgetId : widgets)
         {
             update(widgetId);
         }
@@ -4156,8 +4182,9 @@ public class Widget extends RemoteViewsService
             int[] widgetDimensions = getWidgetDimensions(appWidgetManager, widgetId, androidWidgetId);
             int widthLimit = widgetDimensions[0];
             int heightLimit = widgetDimensions[1];
+            boolean debugBoundingBoxes = getDebugBoundingBoxes(this);
 
-            Triple<RemoteViews, HashSet<Integer>, ArrayList<DynamicView>> view = resolveDimensions(Widget.this, widgetId, views, Constants.CollectionLayout.NOT_COLLECTION, null, widthLimit, heightLimit, widgetDimensions);
+            Triple<RemoteViews, HashSet<Integer>, ArrayList<DynamicView>> view = resolveDimensions(Widget.this, widgetId, views, Constants.CollectionLayout.NOT_COLLECTION, null, widthLimit, heightLimit, widgetDimensions, debugBoundingBoxes);
             appWidgetManager.updateAppWidget(androidWidgetId, view.component1());
 
             for (Integer collection_view : view.component2())

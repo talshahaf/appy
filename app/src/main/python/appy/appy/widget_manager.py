@@ -377,6 +377,8 @@ def serialize_arg(arg):
         return AttrDict(type='null')
 
     if not isinstance(arg, java.Object):
+        if not isinstance(arg, (bool, int, float, str, bytes)):
+            raise ValueError(f'Cannot serialize type {type(arg).__name__}')
         return AttrDict(type='primitive', value=arg)
 
     #gotta go to java
@@ -843,43 +845,81 @@ class elist(list):
     def all(self):
         yield from self._all_rec(self)
 
-    def _find_element(self, pred, hint=None):
-        found = list(set(e for e in self.all() if pred(e)))
-        if not found:
-            raise KeyError(f'element {f"{hint} " if hint is not None else ""}not found')
-        elif len(found) == 1:
-            return found.pop()
+    def _find_elements(self, fname, rec, raise_error, name=None, id=None):
+        if name is None and id is None:
+            raise ValueError(f'{fname} takes either name or id')
+        if name is not None:
+            found = list(dict.fromkeys(e for e in (self.all() if rec else self) if getattr(e, 'name', None) == name))
+            if not found and raise_error:
+                raise KeyError(f'element named {name} not found{' recursively' if rec else ' in top level'}')
+        else:
+            found = list(dict.fromkeys(e for e in (self.all() if rec else self) if getattr(e, 'id', None) == id))
+            if not found and raise_error:
+                raise KeyError(f'element with id {id} not found{' recursively' if rec else ' in top level'}')
         return found
 
-    def find_name(self, name):
-        return self._find_element((lambda name: (lambda e: getattr(e, 'name', None) == name))(name), f'named {name}') #capture name
+    # returns all occurrences or empty list
+    def find_all(self, name=None, id=None):
+        return self._find_elements('find_all', True, False, name=name, id=id)
 
-    def find_id(self, id):
-        return self._find_element((lambda id: (lambda e: getattr(e, 'id', None) == id))(id), f'with id {id}') #capture id
+    # returns first occurrence or None
+    def find(self, name=None, id=None):
+        found = self._find_elements('find', True, False, name=name, id=id)
+        return found[0] if found else None
+
+    # returns first occurrence or raises KeyError
+    def get(self, name=None, id=None):
+        found = self._find_elements('get', True, True, name=name, id=id)
+        return found[0] if found else None
 
     def names(self):
         return list(set(getsttr(e, 'name', None) for e in self.all()))
     def ids(self):
-            return list(set(getsttr(e, 'id', None) for e in self.all()))
+        return list(set(getsttr(e, 'id', None) for e in self.all()))
 
     def __getitem__(self, item):
-        try:
+        if isinstance(item, slice):
             return super().__getitem__(item)
-        except TypeError:
-            return self.find_name(item)
+        if isinstance(item, int):
+            # try id first
+            result = self.find(id=item)
+            if result:
+                return result
+            # then index
+            return super().__getitem__(item)
+        return self.find(name=item)
+
+    def __delitem__(self, item):
+        if isinstance(item, slice):
+            super().__delitem__(item)
+            return
+        # only delete non recursively
+        if isinstance(item, int):
+            # try id first
+            views = self._find_elements('del', False, False, id=item)
+            if not views:
+                # then index
+                super().__delitem__(item)
+                return
+        else:
+            views = self._find_elements('del', False, True, name=item)
+        for view in views:
+            self.remove(view)
 
     def __contains__(self, item):
-        try:
-            if super().__contains__(item):
-                return True
-        except TypeError:
-            pass
-        try:
-            self.find_name(item)
-            return True
-        except KeyError:
-            pass
-        return False
+        return super().__contains__(item) or self.find(name=item) or self.find(id=item)
+
+    def append(self, item):
+        if not isinstance(item, (Element, elist)):
+             raise TypeError(f'elist must contain only Elements or elists, not {type(item)}')
+        super().append(item)
+
+    def extend(self, iterable):
+        lst = list(iterable)
+        for e in lst:
+             if not isinstance(e, (Element, elist)):
+                 raise TypeError(f'elist must contain only Elements or elists, not {type(item)}')
+        super().extend(lst)
 
 #children is list of lists
 class ChildrenList(elist):
@@ -1350,14 +1390,15 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
     def onItemClick(self, widget_id, views_java_list, collection_id, position, view_id):
         print(f'python got onitemclick {widget_id} {collection_id} {position} {view_id}')
         input, views = self.import_(views_java_list)
-        try:
-            collection = views.find_id(collection_id)
-            view = collection.children.find_id(view_id) if view_id != 0 else None
-        except KeyError:
+
+        collection = views.find(id=collection_id)
+        if not collection:
             #element not found, must be stale pendingintent
             #just invalidate
             print('Clicked collection item does not exist, invalidating')
             return java.new.java.lang.Object[()]([True, self.export(None, views, {})])
+        view = collection.children.find(id=view_id) if view_id != 0 else None
+
         widget, manager_state = create_widget(widget_id)
 
         if widget.name is not None and register_for_register_widget(widget.name, None):
@@ -1372,9 +1413,8 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
     def onClick(self, widget_id, views_java_list, view_id, checked):
         print(f'python got on click {widget_id} {view_id} {checked}')
         input, views = self.import_(views_java_list)
-        try:
-            v = views.find_id(view_id)
-        except KeyError:
+        v = views.find(id=view_id)
+        if not v:
             #element not found, must be stale pendingintent
             #just invalidate
             print('Clicked element does not exist, invalidating')
