@@ -2,7 +2,11 @@
 def find_color(name, alpha=255):
     name = name.lower()
     if name.startswith('#'):
-        v = int(f'0x{name[1:].ljust(6, "0").rjust(8, "f")}', 16)
+        name = name[1:]
+        if len(name) == 3:
+            # expand short code
+            name = ''.join(b for a in zip(name, name) for b in a)
+        v = int(f'0x{name.ljust(6, "0").rjust(8, "f")}', 16)
     else:
         if name not in names:
             return None

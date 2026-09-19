@@ -114,87 +114,83 @@ public class StoreData
 
     public void load()
     {
-        try(SQLiteDatabase db = dbHelper.getReadableDatabase())
-        {
-            DictObj.Dict domainObj = new DictObj.Dict();
+        SQLiteDatabase db = dbHelper.getReadableDatabase();
+        DictObj.Dict domainObj = new DictObj.Dict();
 
-            try (Cursor cursor = db.query("store", new String[]{"domain", "identifier", "value"}, "domain = ?", new String[]{domain}, null, null, null))
+        try (Cursor cursor = db.query("store", new String[]{"domain", "identifier", "value"}, "domain = ?", new String[]{domain}, null, null, null))
+        {
+            while (cursor.moveToNext())
             {
-                while (cursor.moveToNext())
+                int identifierIndex = cursor.getColumnIndexOrThrow("identifier");
+                int valueIndex = cursor.getColumnIndexOrThrow("value");
+                byte[] value = cursor.getBlob(valueIndex);
+                if (value != null)
                 {
-                    int identifierIndex = cursor.getColumnIndexOrThrow("identifier");
-                    int valueIndex = cursor.getColumnIndexOrThrow("value");
-                    byte[] value = cursor.getBlob(valueIndex);
-                    if (value != null)
-                    {
-                        domainObj.put(cursor.getString(identifierIndex), DictObj.deserialize(value, false));
-                    }
+                    domainObj.put(cursor.getString(identifierIndex), DictObj.deserialize(value, false));
                 }
             }
-            finally
+        }
+        finally
+        {
+            synchronized (objlock)
             {
-                synchronized (objlock)
-                {
-                    store = domainObj;
-                    changed.clear();
-                }
+                store = domainObj;
+                changed.clear();
             }
         }
     }
 
     public void commit()
     {
-        try(SQLiteDatabase db = dbHelper.getWritableDatabase())
+        SQLiteDatabase db = dbHelper.getWritableDatabase();
+        Set<String> changedCopy;
+        HashMap<String, byte[]> changedValues = new HashMap<>();
+        synchronized (objlock)
         {
-            Set<String> changedCopy;
-            HashMap<String, byte[]> changedValues = new HashMap<>();
-            synchronized (objlock)
+            if (!changed.isEmpty())
             {
-                if (!changed.isEmpty())
+                long tStart = System.nanoTime();
+                db.beginTransaction();
+                try
                 {
-                    long tStart = System.nanoTime();
-                    db.beginTransaction();
-                    try
-                    {
-                        changedCopy = new HashSet<>(changed);
+                    changedCopy = new HashSet<>(changed);
 
-                        for (String key : changedCopy)
+                    for (String key : changedCopy)
+                    {
+                        DictObj value = (DictObj) store.get(key);
+                        if (value == null)
                         {
-                            DictObj value = (DictObj) store.get(key);
-                            if (value == null)
-                            {
-                                //key removed
-                                db.delete("store", "domain = ? AND identifier = ?", new String[]{domain, key});
-                            }
-                            else
-                            {
-                                byte[] serializedValue = value.serialize();
-                                changedValues.put(key, serializedValue);
-
-                                ContentValues values = new ContentValues();
-                                values.put("domain", domain);
-                                values.put("identifier", key);
-                                values.put("value", serializedValue);
-
-                                db.insert("store", null, values);
-                            }
+                            //key removed
+                            db.delete("store", "domain = ? AND identifier = ?", new String[]{domain, key});
                         }
-                        changed.clear();
-                        db.setTransactionSuccessful();
-                    }
-                    finally
-                    {
-                        db.endTransaction();
-                    }
-                    long tEnd = System.nanoTime();
-                    double transactionTimeMilli = ((tEnd - tStart) / 1E6);
-                    if (transactionTimeMilli > 1000)
-                    {
-                        Log.d("APPY", "long db transaction: " + transactionTimeMilli + "ms: " + changedCopy.size() + " changes");
-                        for (Map.Entry<String, byte[]> changed : changedValues.entrySet())
+                        else
                         {
-                            Log.d("APPY", "    " + domain + ": " + changed.getKey() + " " + changed.getValue().length);
+                            byte[] serializedValue = value.serialize();
+                            changedValues.put(key, serializedValue);
+
+                            ContentValues values = new ContentValues();
+                            values.put("domain", domain);
+                            values.put("identifier", key);
+                            values.put("value", serializedValue);
+
+                            db.insert("store", null, values);
                         }
+                    }
+                    changed.clear();
+                    db.setTransactionSuccessful();
+                }
+                finally
+                {
+                    db.endTransaction();
+                }
+                long tEnd = System.nanoTime();
+                double transactionTimeMilli = ((tEnd - tStart) / 1E6);
+                if (transactionTimeMilli > 1000)
+                {
+                    Log.d("APPY", "long db transaction: " + transactionTimeMilli + "ms: " + changedCopy.size() + " changes");
+                    for (Map.Entry<String, byte[]> changed : changedValues.entrySet())
+                    {
+                        Log.d("APPY", "    " + domain + ": " + changed.getKey() + " " + changed.getValue().length);
                     }
                 }
             }

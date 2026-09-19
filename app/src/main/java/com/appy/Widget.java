@@ -5534,6 +5534,10 @@ public class Widget extends RemoteViewsService
         File file = new File(dest, entry.getName());
 
         String canonicalDest = new File(dest).getCanonicalPath();
+        if (!canonicalDest.endsWith("/"))
+        {
+            canonicalDest += "/";
+        }
 
         if (!file.getCanonicalPath().startsWith(canonicalDest))
         {
@@ -5626,6 +5630,4 @@ public class Widget extends RemoteViewsService
     }
 
     protected static native void pythonInit(String nativeCrashPath, String pythonHome, String tmpPath, String pythonLibPath, String script, String nativepath, boolean enablegil, Object arg, String[] pythonArgs);
-
-    protected static native Object pythonCall(Object... args) throws Throwable;
 }

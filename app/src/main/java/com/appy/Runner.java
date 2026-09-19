@@ -214,13 +214,19 @@ public class Runner implements Runnable
                 {
                     nothingHappened = false;
                     int len = bufferedOut.read(buf);
-                    out.append(buf, 0, len);
+                    if (len > 0)
+                    {
+                        out.append(buf, 0, len);
+                    }
                 }
                 if (bufferedErr.ready())
                 {
                     nothingHappened = false;
                     int len = bufferedErr.read(buf);
-                    err.append(buf, 0, len);
+                    if (len > 0)
+                    {
+                        err.append(buf, 0, len);
+                    }
                 }
 
                 lineBuffer.clear();

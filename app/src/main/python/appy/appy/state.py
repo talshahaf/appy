@@ -196,7 +196,7 @@ class State:
 
     def scopes(self):
         result = {}
-        for k,v in self.__info__['scopes']:
+        for k,v in self.__info__['scopes'].items():
             result.setdefault(v, []).append(k)
         return result
 

@@ -38,10 +38,10 @@ def _init():
     bridge = java.new.appy.BroadcastInterfaceBridge(NotificationReceiver())
     context = java.get_java_arg()
     try:
-        exported_flag = context.RECEIVER_EXPORTED
+        not_exported_flag = context.RECEIVER_NOT_EXPORTED
     except AttributeError:
-        exported_flag = 2 #RECEIVER_EXPORTED
-    context.registerReceiver(bridge, java.new.android.content.IntentFilter(notification_intent_filter), exported_flag)
+        not_exported_flag = 4 #RECEIVER_NOT_EXPORTED
+    context.registerReceiver(bridge, java.new.android.content.IntentFilter(notification_intent_filter), not_exported_flag)
 
 def _deinit():
     if bridge is None:
@@ -84,6 +84,7 @@ def simple(title, content, channel_name, channel_description, icon=None, click=N
     notificationManager.createNotificationChannel(channel)
 
     notificationIntent = java.new.android.content.Intent(notification_intent_filter)
+    notificationIntent.setPackage(context.getPackageName())
     notificationIntent.putExtra(notification_intent_callable_extra, str(int(notification_id)))
 
     PendingIntent = java.clazz.android.app.PendingIntent()

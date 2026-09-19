@@ -92,6 +92,8 @@ def install_package_with_tar(pkg_path):
             path = Path(f.name)
             if len(path.parts) > 2 and 'egg-info' not in f.name:
                 dest = site_dir / Path(*path.parts[1:])
+                if not dest.resolve().is_relative_to(site_dir.resolve()):
+                    raise RuntimeError('traversal')
                 print(f'extracting {f.name} to {dest}')
                 Path.mkdir(dest.parent, exist_ok=True)
                 with open(dest, 'wb') as fh:

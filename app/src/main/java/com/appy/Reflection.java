@@ -3,6 +3,7 @@ package com.appy;
 import android.util.Log;
 import android.util.Pair;
 
+import java.lang.ref.Cleaner;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
@@ -22,7 +23,7 @@ import java.util.stream.Stream;
 
 public class Reflection
 {
-
+    static final Cleaner CLEANER = Cleaner.create();
     private static final HashMap<Class<?>, Integer> groups;
     private static final HashMap<Class<?>, Integer> enumTypes;
     private static final int OBJECT_TYPE = -1;
@@ -650,22 +651,40 @@ public class Reflection
 
     public static class ProxyListener implements java.lang.reflect.InvocationHandler
     {
-        private final long id;
+        private final long pythonObject;
 
-        public ProxyListener(long id)
+        public ProxyListener(long pythonObject)
         {
-            this.id = id;
+            CLEANER.register(this, new PythonObjectCleaner(pythonObject));
+            this.pythonObject = pythonObject;
         }
 
         public Object invoke(Object proxy, Method m, Object[] args) throws Throwable
         {
-            return Widget.pythonCall(id, m.getDeclaringClass(), m.getName(), args);
+            return pythonCall(pythonObject, m.getDeclaringClass(), m.getName(), args);
         }
     }
 
-    public static Object createInterface(long id, Class<?>[] classes)
+    public static class PythonObjectCleaner implements Runnable {
+        private final long pythonObject;
+
+        public PythonObjectCleaner(long pythonObject)
+        {
+            this.pythonObject = pythonObject;
+        }
+
+        @Override
+        public void run()
+        {
+            clean(pythonObject);
+        }
+
+        private static native void clean(long pythonObject);
+    }
+
+    public static Object createInterface(long param, Class<?>[] classes)
     {
-        return Proxy.newProxyInstance(classes[0].getClassLoader(), classes, new ProxyListener(id));
+        return Proxy.newProxyInstance(classes[0].getClassLoader(), classes, new ProxyListener(param));
     }
 
     public static String formatException(Throwable t)
@@ -673,5 +692,6 @@ public class Reflection
         return Stacktrace.stackTraceString(t);
     }
 
+    protected static native Object pythonCall(long pythonObject, Object... args) throws Throwable;
 }
 

@@ -2326,12 +2326,12 @@ static PyObject * jclass_to_array_of_jclass(PyObject * self, PyObject * args)
     return NULL;
 }
 
-static jobject create_java_interface_impl(jlong id, jobjectArray classes)
+static jobject create_java_interface_impl(jlong param, jobjectArray classes)
 {
     GET_JNI_ENV();
     populate_common_java_objects(env);
 
-    jobject iface = env->CallStaticObjectMethod(reflection_class, createInterface, id, classes);
+    jobject iface = env->CallStaticObjectMethod(reflection_class, createInterface, param, classes);
     CHECK_JAVA_EXC(env);
     if (iface == NULL)
     {
@@ -2344,16 +2344,17 @@ static PyObject * create_java_interface(PyObject * self, PyObject * args)
 {
     try
     {
-        long long id = 0;
+        PyObject * param = NULL;
         unsigned long classes = 0;
-        if (!PyArg_ParseTuple(args, "Lk", &id, &classes))
+        if (!PyArg_ParseTuple(args, "Ok", &param, &classes))
         {
             return NULL;
         }
 
+        Py_XINCREF(param);
         unsigned long ref = 0;
         WITHOUTGIL(
-            ref = (unsigned long) create_java_interface_impl((jlong) id,
+            ref = (unsigned long) create_java_interface_impl((jlong)param,
                                                             (jobjectArray) classes);
         );
 
@@ -2370,8 +2371,7 @@ static PyObject * create_java_interface(PyObject * self, PyObject * args)
     return NULL;
 }
 
-static PyObject * callback = NULL;
-
+static PyObject * g_callback = NULL;
 static PyObject * set_python_callback(PyObject * self, PyObject * args)
 {
     PyObject * temp = NULL;
@@ -2385,9 +2385,13 @@ static PyObject * set_python_callback(PyObject * self, PyObject * args)
         PyErr_SetString(PyExc_TypeError, "parameter must be callable");
         return NULL;
     }
-    Py_XINCREF(temp);         /* Add a reference to new callback */
-    Py_XDECREF(callback);  /* Dispose of previous callback */
-    callback = temp;       /* Remember new callback */
+
+    // Add a reference to new callback
+    Py_XINCREF(temp);
+    // Dispose of previous callback
+    Py_XDECREF(g_callback);
+    // Remember new callback
+    g_callback = temp;
     Py_RETURN_NONE;
 }
 
@@ -3700,7 +3704,7 @@ extern "C" JNIEXPORT jobject JNICALL Java_com_appy_DictObj_jsontoDictObj(JNIEnv 
 }
 
 extern "C" JNIEXPORT jobject JNICALL
-Java_com_appy_Widget_pythonCall(JNIEnv * env, jclass clazz, jobjectArray args)
+Java_com_appy_Reflection_pythonCall(JNIEnv * env, jclass clazz, jlong pythonObject, jobjectArray args)
 {
     try
     {
@@ -3712,7 +3716,7 @@ Java_com_appy_Widget_pythonCall(JNIEnv * env, jclass clazz, jobjectArray args)
 
         populate_common_java_objects(env);
 
-        if (callback == NULL)
+        if (g_callback == NULL)
         {
             env->ThrowNew(python_exception_class, "No callback defined");
             return NULL;
@@ -3733,8 +3737,14 @@ Java_com_appy_Widget_pythonCall(JNIEnv * env, jclass clazz, jobjectArray args)
                 throw jni_exception("failed to create global ref");
             }
         }
-        PyObject * arg = Py_BuildValue("(k)", (unsigned long) glob);
 
+        PyObject * python_object = (PyObject *)pythonObject;
+        if (python_object == NULL)
+        {
+            python_object = Py_None;
+        }
+
+        PyObject * arg = Py_BuildValue("(Ok)", python_object, (unsigned long) glob);
         if (arg == NULL)
         {
             PyErr_Clear();
@@ -3742,8 +3752,10 @@ Java_com_appy_Widget_pythonCall(JNIEnv * env, jclass clazz, jobjectArray args)
             return NULL;
         }
 
-        PyObject * result = PyObject_CallObject(callback, arg);
+        PyObject * result = PyObject_CallObject(g_callback, arg);
         Py_XDECREF(arg);
+        //glob is released in python
+
         if (result == NULL)
         {
             PyObject * type = NULL, * value = NULL, * traceback = NULL;
@@ -3817,6 +3829,18 @@ Java_com_appy_Widget_pythonCall(JNIEnv * env, jclass clazz, jobjectArray args)
         env->ThrowNew(python_exception_class, "exception was thrown from pythonCall");
     }
     return NULL;
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_appy_Reflection_00024PythonObjectCleaner_clean(JNIEnv *env, jclass clazz, jlong pythonObject)
+{
+    PyObject * obj = (PyObject *)pythonObject;
+
+    PyGILState_STATE gstate;
+    gstate = PyGILState_Ensure();
+    Py_XDECREF(obj);
+    PyGILState_Release(gstate);
 }
 
 static PyObject * logcat_write(PyObject * self, PyObject * args)

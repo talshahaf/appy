@@ -277,29 +277,21 @@ class jdouble(jprimitive):
 
 class jbyte(jprimitive):
     def __init__(self, v):
-        try:
-            if isinstance(v, int):
-                self.value = int(v)
-            else:
-                self.value = ord(v[0])
-        except ValueError:
-            pass
-        except TypeError:
-            pass
-        self.value = int(self.value)
+        if isinstance(v, str):
+            self.value = ord(v[0])
+        elif isinstance(v, bytes):
+            self.value = v[0]
+        else:
+            self.value = int(v)
 
 class jchar(jprimitive):
     def __init__(self, v):
-        try:
-            if isinstance(v, int):
-                self.value = int(v)
-            else:
-                self.value = ord(v[0])
-        except ValueError:
-            pass
-        except TypeError:
-            pass
-        self.value = int(self.value)
+        if isinstance(v, str):
+            self.value = ord(v[0])
+        elif isinstance(v, bytes):
+            self.value = v[0]
+        else:
+            self.value = int(v)
 
 def code_is_object(code):
     return code in (primitive_codes['object'], primitive_codes['const'])
@@ -571,33 +563,22 @@ def upcast(obj):
 
     return obj
 
-interfaces = {}
-
 def make_interface(self, classes):
-    key = id(self)
-    if key in interfaces:
-        raise ValueError('class already added')
-    interfaces[key] = self
     classes = list(classes)
     arr = make_array(len(classes), CLASS_CLASS)
     arr[:] = classes
-    return upcast(jobject(jref(native_appy.create_java_interface(key, arr.ref.handle)), 'interface'))
+    return upcast(jobject(jref(native_appy.create_java_interface(self, arr.ref.handle)), 'interface'))
 
 def get_java_arg():
     return upcast(jobject(jref(native_appy.get_java_init_arg()), 'java arg'))
 
-def callback(arg):
+def callback(iface, arg):
     try:
         args = upcast(jobject(jref(arg), 'callback arg'))
-        key, cls, method, args = args
+        cls, method, args = args
 
         if args is None:
             args = []
-
-        if key not in interfaces:
-            raise Exception(f'interface not registered: {key}')
-
-        iface = interfaces[key]
 
         if hasattr(iface, method):
             func = getattr(iface, method)

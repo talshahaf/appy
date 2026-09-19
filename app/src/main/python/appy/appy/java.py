@@ -1,5 +1,5 @@
 from . import bridge
-import time, inspect, dis, pathlib
+import time, inspect, dis, pathlib, collections, types
 from .bridge import ClassNotFoundException
 
 # this function is called from a __getattr__ method. it determines whether the attribute being searched will be called right after getting it.
@@ -93,8 +93,6 @@ def unwrap(obj):
 
     if isinstance(obj, (Object, Class, Array)):
         return obj.__bridge__
-    if isinstance(obj, InterfaceBase):
-        return obj.java_object.__bridge__
     if isinstance(obj, MethodCaller):
         raise RuntimeError('field does not exists')
 
@@ -394,18 +392,22 @@ def path_clazz_arr_func(arr_cls, _):
     return arr_cls
 clazz = Path(cls_func=path_clazz_cls_func,
              arr_func=path_clazz_arr_func)
-    
-interface_cache = {}
-class InterfaceBase:
-    def __init__(self, *ifaces):
-        self.ifaces += ifaces
-        self.java_object = wrap(bridge.make_interface(self, unwrap_args(self.ifaces)))[0]
+
+interface_cache_size = 100
+interface_cache = collections.OrderedDict()
+
+class InterfaceMeta(type):
+    def __call__(cls, *args, **kwargs):
+        instance = super().__call__(*args, **kwargs)
+        return wrap(bridge.make_interface(instance, unwrap_args(cls.ifaces)))[0]
 
 def implements(*ifaces):
     cache_key = tuple(iface.name for iface in ifaces)
     if cache_key in interface_cache:
         return interface_cache[cache_key]
-    interface = type(str(cache_key), (InterfaceBase,), {'ifaces': tuple(ifaces)})
+    interface = types.new_class(str(cache_key), (), {'metaclass': InterfaceMeta}, lambda ns: ns.update(dict(ifaces=ifaces)))
+    for i in range(len(interface_cache) - interface_cache_size):
+        interface_cache.popitem(last=False)
     interface_cache[cache_key] = interface
     return interface
         
