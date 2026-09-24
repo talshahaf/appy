@@ -651,7 +651,7 @@ public class Reflection
 
     public static class ProxyListener implements java.lang.reflect.InvocationHandler
     {
-        private final long pythonObject;
+        public final long pythonObject;
 
         public ProxyListener(long pythonObject)
         {

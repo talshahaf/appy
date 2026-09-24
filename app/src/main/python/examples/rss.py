@@ -7,12 +7,16 @@ from appy import widgets
 FEED = 'http://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml'
 
 # large responses might be trimmed using the simple requests api
-def large_get(url):
+def large_get(url, limit=1024*1024*10):
     buf = io.BytesIO()
+    l = 0
     r = requests.get(url, stream=True, timeout=60)
     for chunk in r.iter_content(chunk_size=1024):
         if chunk:
             buf.write(chunk)
+            l += len(chunk)
+            if l > limit:
+                break
     return buf.getvalue()
     
 def namespaces(xml):

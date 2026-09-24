@@ -893,7 +893,7 @@ class elist(list):
         if isinstance(item, slice):
             super().__delitem__(item)
             return
-        # only delete non recursively
+        # delete only non recursively
         if isinstance(item, int):
             # try id first
             views = self._find_elements('del', False, False, id=item)

@@ -75,6 +75,9 @@ def wrap(obj, *args, **kwargs):
     if isinstance(obj, bridge.jclass):
         return Class(obj, *args, **kwargs), False
 
+    if obj.clazz.class_name.startswith('com.appy.$Proxy'):
+        return InterfaceObject(obj, *args, **kwargs), False
+
     return Object(obj, *args, **kwargs), False
 
 type_conversions = {
@@ -167,10 +170,10 @@ class MethodCaller:
 
 class Object:
     def __init__(self, bridge_obj, use_static=False):
-        self.__dict__['__bridge__'] = bridge_obj
-        self.__dict__['__use_static__'] = use_static
-        self.__dict__['__parent__'] = None
-        self.__dict__['__attrname__'] = None
+        object.__setattr__(self, '__bridge__', bridge_obj)
+        object.__setattr__(self, '__use_static__', use_static)
+        object.__setattr__(self, '__parent__', None)
+        object.__setattr__(self, '__attrname__', None)
 
     def __eq__(self, other):
         return self.__bridge__ == getattr(other, '__bridge__', None)
@@ -253,7 +256,7 @@ Null = NullType()
 class Class(Object):
     def __init__(self, *args, array_element_class=None, **kwargs):
         super().__init__(*args, use_static=True, **kwargs)
-        self.__dict__['array_element_class'] = array_element_class
+        object.__setattr__(self, 'array_element_class', array_element_class)
 
     def __call__(self, *args):
         if self.array_element_class is not None:
@@ -291,7 +294,7 @@ def make_array(element_bridge_class, l):
 class Array(Object):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.__dict__['length'] = self.__bridge__.length
+        object.__setattr__(self, 'length', self.__bridge__.length)
         
     def __eq__(self, other):
         return [a == b for a,b in zip(self[:], other)]
@@ -395,6 +398,32 @@ clazz = Path(cls_func=path_clazz_cls_func,
 
 interface_cache_size = 100
 interface_cache = collections.OrderedDict()
+
+class InterfaceObject(Object):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        object.__setattr__(self, '__pythonobj__', bridge.ptr_to_python(super().__getattr__('getInvocationHandler')(self).pythonObject))
+
+    def __getattr__(self, attr):
+        if attr in ('__bridge__', '__use_static__', '__parent__', '__attrname__', '__invert__'):
+            return object.__getattr__(self, attr)
+        return object.__getattribute__(self, '__pythonobj__').__getattr__(attr)
+
+    def __getattribute__(self, attr):
+        if attr in ('__bridge__', '__use_static__', '__parent__', '__attrname__', '__invert__'):
+            return object.__getattribute__(self, attr)
+        return object.__getattribute__(self, '__pythonobj__').__getattribute__(attr)
+
+    def __setattr__(self, attr, value):
+        return object.__getattribute__(self, '__pythonobj__').__setattr__(attr, value)
+
+    def __hasattr__(self, attr):
+        if attr in ('__bridge__', '__use_static__', '__parent__', '__attrname__', '__invert__'):
+            return True
+        return object.__getattribute__(self, '__pythonobj__').__hasattr__(attr)
+
+    def __invert__(self):
+        return super().__invert__()
 
 class InterfaceMeta(type):
     def __call__(cls, *args, **kwargs):

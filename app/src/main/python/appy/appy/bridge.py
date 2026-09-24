@@ -379,7 +379,7 @@ def has_field_or_method(clazz, name):
     return (field_id is not None, has_same_name_method != 0)
     
 def call_method(clazz, obj, name, *args):
-    args, arg_classes, arg_codes = zip(*(convert_arg(arg) for arg in args)) if args else ([], [], 0)
+    args, arg_classes, arg_codes = zip(*(convert_arg(arg) for arg in args)) if args else ([], [], [])
 
     method_id, needed_codes, is_static, _ = get_methodid(clazz, name, tuple(arg.ref.handle for arg in arg_classes))
     if method_id is None:
@@ -411,7 +411,7 @@ def call_method(clazz, obj, name, *args):
 def get_field(clazz, obj, name):
     field_id, field_code, _, is_static, _ = get_fieldid(clazz, name)
     if field_id is None:
-        raise AttributeError(f'No field `{name}` in ``{clazz.class_name}`')
+        raise AttributeError(f'No field `{name}` in `{clazz.class_name}`')
         
     if is_static:
         ret = native_appy.call_jni_object_functions(clazz.ref.handle, field_id, None, field_code, OP_GET_STATIC_FIELD)
@@ -422,7 +422,7 @@ def get_field(clazz, obj, name):
 def set_field(clazz, obj, name, value):
     field_id, field_code, unboxed_field_code, is_static, _ = get_fieldid(clazz, name)
     if field_id is None:
-        raise AttributeError(f'No field `{name}` in ``{clazz.class_name}`')
+        raise AttributeError(f'No field `{name}` in `{clazz.class_name}`')
         
     value, _, _ = convert_arg(value)
     arg, ref = prepare_value(value, field_code, unboxed_field_code)
@@ -605,6 +605,9 @@ def build_java_dict(obj):
 
 def build_python_dict_from_java(java_obj):
     return native_appy.build_python_dict_from_java(java_obj.ref.handle)
+
+def ptr_to_python(ptr):
+    return native_appy.ptr_to_python(ptr)
 
 native_appy.set_python_callback(callback)
 

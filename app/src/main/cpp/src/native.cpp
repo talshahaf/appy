@@ -3872,6 +3872,24 @@ static PyObject * PyThreadState_SetAsyncExc_(PyObject * self, PyObject * args)
     return Py_BuildValue("i", ret);
 }
 
+static PyObject * ptr_to_python(PyObject * self, PyObject * args)
+{
+    long ptr = 0;
+    if (!PyArg_ParseTuple(args, "l", &ptr))
+    {
+        return NULL;
+    }
+
+    PyObject * obj = (PyObject *)ptr;
+    if (obj == NULL)
+    {
+        Py_RETURN_NONE;
+    }
+
+    Py_XINCREF(obj);
+    return obj;
+}
+
 static PyMethodDef native_appy_methods[] = {
         {"call_jni_object_functions",       call_jni_object_functions,        METH_VARARGS, "Interacts with java objects"},
         {"get_methodid",                    get_methodid,                     METH_VARARGS, "Finds a java method id"},
@@ -3904,6 +3922,7 @@ static PyMethodDef native_appy_methods[] = {
         {"build_java_dict",                 build_java_dict,                 METH_VARARGS, "builds json object from dict, list or tuple"},
         {"build_python_dict_from_java",     build_python_dict_from_java,     METH_VARARGS, "builds a python dict from json object or json array"},
         {"PyThreadState_SetAsyncExc",       PyThreadState_SetAsyncExc_,      METH_VARARGS, "wrapper method for stripped PyThreadState_SetAsyncExc"},
+        {"ptr_to_python",                   ptr_to_python,                   METH_VARARGS, "convert a long to PyObject* and incref (very unsafe)"},
         {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
