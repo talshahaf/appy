@@ -64,6 +64,8 @@ def on_config(widget, views):
 def create(widget):
     bg = background(widget=widget)
     refresh = RefreshButton(on_refresh, widget=widget, initial_refresh=True, interval=4*3600, right=0, bottom=0)
+    # setting widget config menu action text to Refresh
+    widget.set_settings_action_text('Refresh')
     #                               width and height are 60% of the widget's height but no more than 200 pixels 
     img = ImageView(name='img', width=AttributeValue.min(200, widget.height * 0.6), height=AttributeValue.min(200, widget.height * 0.5), adjustViewBounds=True, hcenter=widget.hcenter, top=10)
     temp_text = TextView(name='temp', alignment='center', maxLines=1, top=img.ibottom, height=widget.height*0.25, left=widget.width * 0.4, right=widget.width * 0.4, textColor=0xb3ffffff, autoTextSize=True)
@@ -72,4 +74,4 @@ def create(widget):
     return [bg, img, temp_text, location_text, refresh]
     
 # no custom update callback is needed, just recover refresh button on error,    location is configurable in configurations tab
-register_widget('weather', create, refresh_button_update_func, config=dict(lat=32.08, lon=34.78), on_config=on_config)
+register_widget('weather', create, refresh_button_update_func, config=dict(lat=32.08, lon=34.78), on_config=on_config, on_settings_action=on_refresh)

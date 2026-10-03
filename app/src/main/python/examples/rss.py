@@ -94,6 +94,8 @@ def update(widget, views):
 def create(widget):
     # using only RefreshButton
     refresh = RefreshButton(update, name='refresh', widget=widget, initial_refresh=True, interval=4*3600, right=0, top=0)
+    # setting widget config menu action text to Refresh
+    widget.set_settings_action_text('Refresh')
     #                 using button styles                                   using captures instead of defining two functions
     prev_btn = Button(style='secondary_sml', text='<', left=0, right=widget.hcenter, bottom=0, click=(flip, dict(amount=-1)))
     #                                                   using inverted right + pad
@@ -101,5 +103,5 @@ def create(widget):
     #              naming the flipper to access it later
     return [background(widget=widget), AdapterViewFlipper(name='flipper', left=0, top=0, right=0, bottom=prev_btn.itop + 10), prev_btn, next_btn, refresh]
         
-#                             recover refresh_button visibility on error
-register_widget('rss', create, refresh_button_update_func)
+#                              recover refresh_button visibility on error   allow refresh from widget config menu
+register_widget('rss', create, refresh_button_update_func,                  on_settings_action=update)

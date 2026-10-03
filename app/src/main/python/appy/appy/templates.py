@@ -152,12 +152,13 @@ def updating_template_create(is_list, widget, initial_values, on_refresh, backgr
         if initial_values is not None:
             call_text_adapter(widget, adapter, value=initial_values, view=content)
     btn = RefreshButton((updating_list_refresh_action if is_list else updating_text_refresh_action, dict(on_refresh=on_refresh, adapter=adapter, update_hook=update_hook)), initial_refresh=initial_refresh, widget=widget, timeout=timeout, interval=interval, size=widget.width/5, name='refresh_button')
-
     btn.bottom = 0
     if direction == 'left':
         btn.left = 0
     else:
         btn.right = 0
+
+    widget.set_settings_action_text('Refresh')
 
     views = elist()
     if background_params is True:
@@ -185,17 +186,25 @@ def updating_template_create(is_list, widget, initial_values, on_refresh, backgr
     
     return views
     
-def on_config_change(widget, views, key, config_change_hook):
+def updating_template_config_change(widget, views, key, config_change_hook):
+    handled = None
     if config_change_hook is not None:
-        call_general_function(config_change_hook, widget=widget, views=views, key=key)
-    if 'refresh_button' in views:
+        handled = call_general_function(config_change_hook, widget=widget, views=views, key=key)
+    if 'refresh_button' in views and handled is not True:
         widget.invoke_click(views['refresh_button'])
 
-def updating_list(name, initial_values=None, on_refresh=None, background=True, adapter=None, initial_refresh=None, timeout=None, interval=None, last_update=True, direction='right', config=None, config_description=None, create_hook=None, update_hook=None, config_change_hook=None, on_share=None, on_app=None, on_settings_action=None, debug=None):
-    register_widget(name, (updating_template_create, dict(is_list=True, initial_values=initial_values, on_refresh=on_refresh, background_params=background, adapter=adapter, initial_refresh=initial_refresh, timeout=timeout, interval=interval, last_update=last_update, direction=direction, create_hook=create_hook, update_hook=update_hook)), update=refresh_button_update_func, config=config, config_description=config_description, on_config=(on_config_change, dict(config_change_hook=config_change_hook)), on_share=on_share, on_app=on_app, on_settings_action=on_settings_action, debug=debug)
+def updating_template_settings_action(widget, views, settings_action_hook):
+    handled = None
+    if settings_action_hook is not None:
+        handled = call_general_function(settings_action_hook, widget=widget, views=views)
+    if 'refresh_button' in views and handled is not True:
+        widget.invoke_click(views['refresh_button'])
 
-def updating_text(name, initial_value=None, on_refresh=None, background=True, adapter=None, initial_refresh=None, timeout=None, interval=None, last_update=True, direction='left', config=None, config_description=None, create_hook=None, update_hook=None, config_change_hook=None, on_share=None, on_app=None, on_settings_action=None, debug=None):
-    register_widget(name, (updating_template_create, dict(is_list=False, initial_values=initial_value, on_refresh=on_refresh, background_params=background, adapter=adapter, initial_refresh=initial_refresh, timeout=timeout, interval=interval, direction=direction, last_update=last_update, create_hook=create_hook, update_hook=update_hook)), refresh_button_update_func, config=config, config_description=config_description, on_config=(on_config_change, dict(config_change_hook=config_change_hook)), on_share=on_share, on_app=on_app, on_settings_action=on_settings_action, debug=debug)
+def updating_list(name, initial_values=None, on_refresh=None, background=True, adapter=None, initial_refresh=None, timeout=None, interval=None, last_update=True, direction='right', config=None, config_description=None, create_hook=None, update_hook=None, config_change_hook=None, on_share=None, on_app=None, settings_action_hook=None, debug=None):
+    register_widget(name, (updating_template_create, dict(is_list=True, initial_values=initial_values, on_refresh=on_refresh, background_params=background, adapter=adapter, initial_refresh=initial_refresh, timeout=timeout, interval=interval, direction=direction, last_update=last_update, create_hook=create_hook, update_hook=update_hook)), update=refresh_button_update_func, config=config, config_description=config_description, on_config=(updating_template_config_change, dict(config_change_hook=config_change_hook)), on_share=on_share, on_app=on_app, on_settings_action=(updating_template_settings_action, dict(settings_action_hook=settings_action_hook)), debug=debug)
+
+def updating_text(name, initial_value=None, on_refresh=None, background=True, adapter=None, initial_refresh=None, timeout=None, interval=None, last_update=True, direction='left', config=None, config_description=None, create_hook=None, update_hook=None, config_change_hook=None, on_share=None, on_app=None, settings_action_hook=None, debug=None):
+    register_widget(name, (updating_template_create, dict(is_list=False, initial_values=initial_value, on_refresh=on_refresh, background_params=background, adapter=adapter, initial_refresh=initial_refresh, timeout=timeout, interval=interval, direction=direction, last_update=last_update, create_hook=create_hook, update_hook=update_hook)), update=refresh_button_update_func, config=config, config_description=config_description, on_config=(updating_template_config_change, dict(config_change_hook=config_change_hook)), on_share=on_share, on_app=on_app, on_settings_action=(updating_template_settings_action, dict(settings_action_hook=settings_action_hook)), debug=debug)
 
 def grid_of(elements, orientation='horizontal', alignment='center', padding_top=0, padding_left=0, padding_right=0, padding_bottom=0, min_element_width=None, max_element_width=None, min_element_height=None, max_element_height=None, **grid_attributes):
     allowed = set(['top', 'bottom', 'left', 'right', 'width', 'height', 'hcenter', 'vcenter', 'center'])
