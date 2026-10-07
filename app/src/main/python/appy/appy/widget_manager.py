@@ -846,7 +846,7 @@ class elist(list):
         yield from self._all_rec(self)
 
     def _find_elements(self, fname, rec, raise_error, name=None, id=None):
-        if name is None and id is None:
+        if (name is None and id is None) or (name is not None and id is not None):
             raise ValueError(f'{fname} takes either name or id')
         if name is not None:
             found = list(dict.fromkeys(e for e in (self.all() if rec else self) if getattr(e, 'name', None) == name))
@@ -914,12 +914,26 @@ class elist(list):
              raise TypeError(f'elist must contain only Elements or elists, not {type(item)}')
         super().append(item)
 
+    def insert(self, index, item):
+        if not isinstance(item, (Element, elist)):
+             raise TypeError(f'elist must contain only Elements or elists, not {type(item)}')
+        super().insert(index, item)
+
     def extend(self, iterable):
         lst = list(iterable)
         for e in lst:
              if not isinstance(e, (Element, elist)):
                  raise TypeError(f'elist must contain only Elements or elists, not {type(item)}')
         super().extend(lst)
+
+    def reverse(self):
+        raise NotImplementedError('reverse() is not supported by elists')
+
+    def sort(self):
+        raise NotImplementedError('sort() is not supported by elists')
+
+    def copy(self):
+        return elist(self)
 
 #children is list of lists
 class ChildrenList(elist):

@@ -405,12 +405,12 @@ class InterfaceObject(Object):
         object.__setattr__(self, '__pythonobj__', bridge.ptr_to_python(super().__getattr__('getInvocationHandler')(self).pythonObject))
 
     def __getattr__(self, attr):
-        if attr in ('__bridge__', '__use_static__', '__parent__', '__attrname__', '__invert__'):
+        if attr in ('__bridge__', '__use_static__', '__parent__', '__attrname__', '__invert__', '__pythonobj__'):
             return object.__getattr__(self, attr)
         return object.__getattribute__(self, '__pythonobj__').__getattr__(attr)
 
     def __getattribute__(self, attr):
-        if attr in ('__bridge__', '__use_static__', '__parent__', '__attrname__', '__invert__'):
+        if attr in ('__bridge__', '__use_static__', '__parent__', '__attrname__', '__invert__', '__pythonobj__'):
             return object.__getattribute__(self, attr)
         return object.__getattribute__(self, '__pythonobj__').__getattribute__(attr)
 
@@ -418,7 +418,7 @@ class InterfaceObject(Object):
         return object.__getattribute__(self, '__pythonobj__').__setattr__(attr, value)
 
     def __hasattr__(self, attr):
-        if attr in ('__bridge__', '__use_static__', '__parent__', '__attrname__', '__invert__'):
+        if attr in ('__bridge__', '__use_static__', '__parent__', '__attrname__', '__invert__', '__pythonobj__'):
             return True
         return object.__getattribute__(self, '__pythonobj__').__hasattr__(attr)
 
