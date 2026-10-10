@@ -1,4 +1,5 @@
 import datetime
+from dataclasses import dataclass
 from .widgets import ListView, TextView, Button, ImageButton, Switch, CheckBox, RelativeLayout, background, show_dialog, call_general_function, register_widget, elist, R, DialogEditText, AttributeValue, Var
 from . import java
 
@@ -81,7 +82,12 @@ def AutoSwitch(widget, state_name, checked_hook=None, initial_state=False, **kwa
 def AutoCheckBox(widget, state_name, checked_hook=None, initial_state=False, **kwargs):
     return auto_check(CheckBox, widget, state_name, checked_hook=checked_hook, initial_state=initial_state, **kwargs)
 
-def editable_click(widget, views, view, title, hint, options, dialog_format_hook, result_format_hook, emptytext=None):
+@dataclass
+class EditablePreset:
+    button_text: str = ''
+    preset_cb: Callable[[], str] = None
+
+def editable_click(widget, views, view, title, hint, options, dialog_format_hook, result_format_hook, emptytext=None, state_name=None, presets=None):
     dialog_text = view.text
     if dialog_text == emptytext:
         dialog_text = ''
@@ -89,18 +95,31 @@ def editable_click(widget, views, view, title, hint, options, dialog_format_hook
         dialog_text = call_general_function(dialog_format_hook, text=dialog_text, widget=widget)
         if dialog_text is None:
             return
-    
-    btn, result_text = show_dialog(title, '', ('Ok', 'Cancel'), edittexts=(DialogEditText(dialog_text, hint, options)))
-    if btn == 0:
+
+    if not presets:
+        presets = []
+    btn, result_text = show_dialog(title, '', ['Ok', 'Cancel'] + [preset.button_text for preset in presets], edittexts=(DialogEditText(dialog_text, hint, options)))
+    if btn != 1:
+        if btn != 0:
+            preset = presets[btn - 2]
+            result_text = preset.preset_cb() if preset.preset_cb else preset.button_text
+
         if result_format_hook:
             result_text = call_general_function(result_format_hook, text=result_text, widget=widget)
             
         if result_text is not None:
             view.text = result_text if result_text else emptytext
+            if state_name:
+                widget.state[state_name] = view.text
         
-def Editable(title='', hint='', emptytext='_', options=None, dialog_format_hook=None, result_format_hook=None, **kwargs):
+def Editable(title='', hint='', emptytext='_', options=None, dialog_format_hook=None, result_format_hook=None, state_name=None, widget=None, presets: list[EditablePreset] | None = None, **kwargs):
     text = TextView(**kwargs)
-    text.click = (editable_click, dict(title=title, hint=hint, emptytext=emptytext, options=options, dialog_format_hook=dialog_format_hook, result_format_hook=result_format_hook))
+    if state_name:
+        if not widget:
+            raise ValueError('widget arg must be supplied if state_name is used')
+        if state_name in widget.state:
+            text.text = str(widget.state[state_name])
+    text.click = (editable_click, dict(title=title, hint=hint, emptytext=emptytext, options=options, dialog_format_hook=dialog_format_hook, result_format_hook=result_format_hook, state_name=state_name, presets=presets))
     return text
 
 ##############list template###############################
