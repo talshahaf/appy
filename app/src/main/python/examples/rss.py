@@ -77,7 +77,7 @@ def update(widget, views):
             # using the element's tag
             img.tag.url = item['image']['url']
         title = TextView(text=item['title'], textColor=0xb3ffffff, textSize=15, lines=3, top=date.ibottom + 10, left=(img.iright + 20) if img is not None else 10, right=20)
-        desc  = TextView(text=item['description'], textColor=0xb3ffffff, autoTextSize=True, lines=30, top=title.ibottom + 10, left=title.left, right=20, bottom=0)
+        desc  = TextView(text=item['description'], textColor=0xb3ffffff, textSize='auto', lines=30, top=title.ibottom + 10, left=title.left, right=20, bottom=0)
 
         # bg is the first child
         children = [title, desc, date]

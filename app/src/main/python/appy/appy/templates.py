@@ -81,8 +81,10 @@ def AutoSwitch(widget, state_name, checked_hook=None, initial_state=False, **kwa
 def AutoCheckBox(widget, state_name, checked_hook=None, initial_state=False, **kwargs):
     return auto_check(CheckBox, widget, state_name, checked_hook=checked_hook, initial_state=initial_state, **kwargs)
 
-def editable_click(widget, views, view, title, hint, options, dialog_format_hook, result_format_hook):
+def editable_click(widget, views, view, title, hint, options, dialog_format_hook, result_format_hook, emptytext=None):
     dialog_text = view.text
+    if dialog_text == emptytext:
+        dialog_text = ''
     if dialog_format_hook:
         dialog_text = call_general_function(dialog_format_hook, text=dialog_text, widget=widget)
         if dialog_text is None:
@@ -94,11 +96,11 @@ def editable_click(widget, views, view, title, hint, options, dialog_format_hook
             result_text = call_general_function(result_format_hook, text=result_text, widget=widget)
             
         if result_text is not None:
-            view.text = result_text
+            view.text = result_text if result_text else emptytext
         
-def Editable(title='', hint='', options=None, dialog_format_hook=None, result_format_hook=None, **kwargs):
+def Editable(title='', hint='', emptytext='_', options=None, dialog_format_hook=None, result_format_hook=None, **kwargs):
     text = TextView(**kwargs)
-    text.click = (editable_click, dict(title=title, hint=hint, options=options, dialog_format_hook=dialog_format_hook, result_format_hook=result_format_hook))
+    text.click = (editable_click, dict(title=title, hint=hint, emptytext=emptytext, options=options, dialog_format_hook=dialog_format_hook, result_format_hook=result_format_hook))
     return text
 
 ##############list template###############################
@@ -148,7 +150,7 @@ def updating_template_create(is_list, widget, initial_values, on_refresh, backgr
     if is_list:
         content = ListView(name='list', top=0, bottom=0, left=0, right=0, children=None if not initial_values else [call_list_adapter(widget, adapter, value=v, index=i) for i, v in enumerate(initial_values)])
     else:
-        content = TextView(name='content', text='', alignment='center', autoTextSize=True, textColor=0xb3ffffff, top=widget.height/3, bottom=widget.height/3, left=widget.width/6, right=widget.width/6)
+        content = TextView(name='content', text='', alignment='center', textSize='auto', textColor=0xb3ffffff, top=widget.height/3, bottom=widget.height/3, left=widget.width/6, right=widget.width/6)
         if initial_values is not None:
             call_text_adapter(widget, adapter, value=initial_values, view=content)
     btn = RefreshButton((updating_list_refresh_action if is_list else updating_text_refresh_action, dict(on_refresh=on_refresh, adapter=adapter, update_hook=update_hook)), initial_refresh=initial_refresh, widget=widget, timeout=timeout, interval=interval, size=widget.width/5, name='refresh_button')
@@ -168,7 +170,7 @@ def updating_template_create(is_list, widget, initial_values, on_refresh, backgr
 
     views.append(content)
     if last_update:
-        last = TextView(name='last_update', autoTextSize=True, maxLines=1, textColor=0xb3ffffff, alignment='bottom_center', bottom=0, height=btn.height/2)
+        last = TextView(name='last_update', textSize='auto', maxLines=1, textColor=0xb3ffffff, alignment='bottom_center', bottom=0, height=btn.height/2)
         if direction == 'left':
             last.right = 20
             last.left = widget.width / 3

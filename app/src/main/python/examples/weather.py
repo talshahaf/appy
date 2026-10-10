@@ -68,8 +68,8 @@ def create(widget):
     widget.set_settings_action_text('Refresh')
     #                               width and height are 60% of the widget's height but no more than 200 pixels 
     img = ImageView(name='img', width=AttributeValue.min(200, widget.height * 0.6), height=AttributeValue.min(200, widget.height * 0.5), adjustViewBounds=True, hcenter=widget.hcenter, top=10)
-    temp_text = TextView(name='temp', alignment='center', maxLines=1, top=img.ibottom, height=widget.height*0.25, left=widget.width * 0.4, right=widget.width * 0.4, textColor=0xb3ffffff, autoTextSize=True)
-    location_text = TextView(name='location', alignment='center', maxLines=1, top=temp_text.ibottom, height=widget.height*0.2, left=widget.width * 0.3, right=widget.width * 0.3, textColor=0xb3ffffff, autoTextSize=True)
+    temp_text = TextView(name='temp', alignment='center', maxLines=1, top=img.ibottom, height=widget.height*0.25, left=widget.width * 0.4, right=widget.width * 0.4, textColor=0xb3ffffff, textSize='auto')
+    location_text = TextView(name='location', alignment='center', maxLines=1, top=temp_text.ibottom, height=widget.height*0.2, left=widget.width * 0.3, right=widget.width * 0.3, textColor=0xb3ffffff, textSize='auto')
     # bg is first
     return [bg, img, temp_text, location_text, refresh]
     

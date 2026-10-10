@@ -495,13 +495,14 @@ public class Utils
     {
         s = s.toLowerCase();
 
-        int unit;
+        int unit = TypedValue.COMPLEX_UNIT_PX;
         int unitlen = 2;
         boolean widgetScaled = false;
+        Double value = null;
 
         if (s.endsWith("px"))
         {
-            unit = TypedValue.COMPLEX_UNIT_PX;
+
         }
         else if (s.endsWith("sp"))
         {
@@ -530,9 +531,13 @@ public class Utils
         }
         else if (s.endsWith("w"))
         {
-            unit = TypedValue.COMPLEX_UNIT_PX;
             unitlen = 1;
             widgetScaled = true;
+        }
+        else if (s.equals("auto"))
+        {
+            unitlen = 4;
+            value = 1.0;
         }
         else
         {
@@ -540,7 +545,6 @@ public class Utils
             try
             {
                 Float.parseFloat(s);
-                unit = TypedValue.COMPLEX_UNIT_PX;
                 unitlen = 0;
             }
             catch (NumberFormatException e)
@@ -549,13 +553,13 @@ public class Utils
             }
         }
 
-        if (unitlen == s.length())
+        if (unitlen == s.length() && value == null)
         {
             throw new RuntimeException("missing numerical value in " + s);
         }
 
         // handle w prefix to units
-        if (unitlen != 0 && s.charAt(s.length() - unitlen - 1) == 'w')
+        if (value == null && unitlen != 0 && s.charAt(s.length() - unitlen - 1) == 'w')
         {
             widgetScaled = true;
             unitlen++;
@@ -571,7 +575,11 @@ public class Utils
             throw new RuntimeException("widget scaled units requested, but no widgetSize supplied");
         }
 
-        double value = convertUnit(metrics, Double.parseDouble(s.substring(0, s.length() - unitlen)), unit, TypedValue.COMPLEX_UNIT_PX);
+        if (value == null)
+        {
+            value = convertUnit(metrics, Double.parseDouble(s.substring(0, s.length() - unitlen)), unit, TypedValue.COMPLEX_UNIT_PX);
+        }
+        
         if (widgetScaled)
         {
             value *= widgetScaleValue(widgetSize);

@@ -931,6 +931,19 @@ public class Widget extends RemoteViewsService
         return mostGeneralResource;
     }
 
+    public static HashMap<String, String> getSelectors(DynamicView layout)
+    {
+        RemoteMethodCall methodCall = layout.findMethodCall("setTextSize");
+        if (methodCall == null || !methodCall.getOriginalArgument(1).equals("auto"))
+        {
+            return layout.selectors;
+        }
+
+        HashMap<String, String> selectors = new HashMap<>(layout.selectors);
+        selectors.put("autoTextSize", "true");
+        return selectors;
+    }
+
     public static Pair<RemoteViews, HashSet<Integer>> generate(Widget service, int widgetId, ArrayList<DynamicView> dynamicList, boolean forMeasurement, Constants.CollectionLayout collectionLayout, Object[] collectionExtraData, double sizeFactor, int[] widgetSize) throws InvocationTargetException, IllegalAccessException
     {
         Resources resources = service.getResources();
@@ -1052,7 +1065,8 @@ public class Widget extends RemoteViewsService
                 {
                     throw new IllegalArgumentException("only collections can have children, not " + layout.type);
                 }
-                layout.xml_id = typeToLayout(layout.type, layout.selectors);
+                HashMap<String, String> selectors = getSelectors(layout);
+                layout.xml_id = typeToLayout(layout.type, selectors);
                 layout.container_id = R.id.l0;
                 layout.view_id = R.id.e0;
                 remoteView = new RemoteViews(service.getPackageName(), layout.xml_id);

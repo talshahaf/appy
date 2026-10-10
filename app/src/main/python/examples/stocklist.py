@@ -173,7 +173,7 @@ def adapter(widget, view, value, index):
                          # invert manually so we can use AttributeValue.min with left and width
                          right=widget.width - AttributeValue.min(view[0].left - 5, widget.width / 4),
                          alignment='center',
-                         autoTextSize=True, textColor=color('white')))
+                         textSize='auto', textColor=color('white')))
     
     if has_error:
         return

@@ -55,8 +55,8 @@ def create(widget):
     # Start with a reasonable amount of rays
     widget.state.rays = 6
     
-    btn_less = Button(text='-', style='dark_sml', padding=(1, 1, 1, 1), autoTextSize=True, click=(change_rays, dict(amount=-1)), bottom=10, left=10)
-    btn_more = Button(text='+', style='dark_sml', padding=(1, 1, 1, 1), autoTextSize=True, click=(change_rays, dict(amount=1)), bottom=10, right=10)
+    btn_less = Button(text='-', style='dark_sml', padding=(1, 1, 1, 1), textSize='auto', click=(change_rays, dict(amount=-1)), bottom=10, left=10)
+    btn_more = Button(text='+', style='dark_sml', padding=(1, 1, 1, 1), textSize='auto', click=(change_rays, dict(amount=1)), bottom=10, right=10)
     
     # have the buttons grow until they are eighth of the total width, but only up to a maximum width of 80dp.
     btn_less.width = AttributeValue.min('80dp', widget.width / 4)

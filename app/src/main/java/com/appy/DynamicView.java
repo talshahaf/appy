@@ -255,8 +255,9 @@ public class DynamicView
 
     public RemoteMethodCall findMethodCall(String identifier)
     {
-        for (RemoteMethodCall method : methodCalls)
+        for (int i = methodCalls.size() - 1; i >= 0; i--)
         {
+            RemoteMethodCall method = methodCalls.get(i);
             if (method.getIdentifierIgnorePrefix().equals(identifier))
             {
                 return method;

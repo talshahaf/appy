@@ -236,6 +236,10 @@ public class RemoteMethodCall
     {
         return arguments[i];
     }
+    public Object getOriginalArgument(int i)
+    {
+        return originalArguments[i];
+    }
     public void setArgument(int i, Object o)
     {
         arguments[i] = o;
