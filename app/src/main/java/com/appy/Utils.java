@@ -579,7 +579,7 @@ public class Utils
         {
             value = convertUnit(metrics, Double.parseDouble(s.substring(0, s.length() - unitlen)), unit, TypedValue.COMPLEX_UNIT_PX);
         }
-        
+
         if (widgetScaled)
         {
             value *= widgetScaleValue(widgetSize);
