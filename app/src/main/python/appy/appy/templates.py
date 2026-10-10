@@ -112,7 +112,7 @@ def editable_click(widget, views, view, title, hint, options, dialog_format_hook
             if state_name:
                 widget.state[state_name] = view.text
         
-def Editable(title='', hint='', emptytext='_', options=list[str] | None = None, dialog_format_hook=None, result_format_hook=None, state_name=None, widget=None, presets: list[EditablePreset] | None = None, **kwargs):
+def Editable(title='', hint='', emptytext='_', options: list[str] | None = None, dialog_format_hook=None, result_format_hook=None, state_name=None, widget=None, presets: list[EditablePreset] | None = None, **kwargs):
     text = TextView(**kwargs)
     if state_name:
         if not widget:
