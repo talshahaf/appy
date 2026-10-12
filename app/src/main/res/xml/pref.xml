@@ -40,6 +40,11 @@
         android:defaultValue="true"
         android:key="disable_gil"
         android:title="Run python without GIL (requires restart)" />
+    <CheckBoxPreference
+        android:defaultValue="true"
+        android:key="same_widget_concurrent_events"
+        android:title="Same widget concurrent events (requires restart)"
+        android:summary="Allow for multiple events to be called on the same widget on different threads"/>
     <Preference
         android:key="external_dir"
         android:title="Preferred directory to put scripts into"

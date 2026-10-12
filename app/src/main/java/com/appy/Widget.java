@@ -144,6 +144,7 @@ public class Widget extends RemoteViewsService
     final Configurations configurations = new Configurations(this, this::configurationUpdate);
     MultipleFileObserverBase pythonFilesObserver = null;
 
+    boolean sameWidgetConcurrentEvents = true;
     final ExecutorService threadPool = Executors.newCachedThreadPool();
 
     public static class WidgetDestroyedException extends RuntimeException
@@ -310,11 +311,19 @@ public class Widget extends RemoteViewsService
         {
             for (Map.Entry<Integer, TaskQueue> queue : widgetsTasks.entrySet())
             {
-                if (!queue.getValue().executing && !queue.getValue().queue.isEmpty())
+                if (!sameWidgetConcurrentEvents)
                 {
-                    Task<?> task = queue.getValue().queue.pop();
-                    toExecute.add(task);
-                    queue.getValue().executing = true;
+                    if (!queue.getValue().executing && !queue.getValue().queue.isEmpty())
+                    {
+                        Task<?> task = queue.getValue().queue.pop();
+                        toExecute.add(task);
+                        queue.getValue().executing = true;
+                    }
+                }
+                else
+                {
+                    toExecute.addAll(queue.getValue().queue);
+                    queue.getValue().queue.clear();
                 }
             }
         }
@@ -327,12 +336,15 @@ public class Widget extends RemoteViewsService
 
     public void doneExecuting(Task<?> task, int widgetId)
     {
-        synchronized (widgetsTasks)
+        if (!sameWidgetConcurrentEvents)
         {
-            TaskQueue queue = widgetsTasks.get(widgetId);
-            if (queue != null)
+            synchronized (widgetsTasks)
             {
-                queue.executing = false;
+                TaskQueue queue = widgetsTasks.get(widgetId);
+                if (queue != null)
+                {
+                    queue.executing = false;
+                }
             }
         }
         synchronized (task.notifier)
@@ -2682,6 +2694,12 @@ public class Widget extends RemoteViewsService
         return sharedPref.getBoolean("disable_gil", true);
     }
 
+    public boolean loadSameWidgetConcurrentEvents()
+    {
+        SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
+        return sharedPref.getBoolean("same_widget_concurrent_events", true);
+    }
+
     public static void startService(Context context, Intent intent)
     {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
@@ -4516,6 +4534,8 @@ public class Widget extends RemoteViewsService
                     //Force android to create dirs for us
                     getExternalFilesDir(null);
                     getExternalMediaDirs();
+
+                    sameWidgetConcurrentEvents = loadSameWidgetConcurrentEvents();
 
                     loadPythonFiles();
                     loadSizeAndCorrectionFactors(true);

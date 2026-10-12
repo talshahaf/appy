@@ -9,7 +9,6 @@ import android.content.ServiceConnection;
 import android.graphics.Typeface;
 import android.os.Bundle;
 import android.os.IBinder;
-import android.text.InputType;
 import android.util.Pair;
 import android.util.TypedValue;
 import android.view.View;
@@ -60,7 +59,6 @@ public class DialogActivity extends Activity
                 doneRequestCode = widgetService.generateRequestCode();
                 widgetService.asyncReport(request, doneRequestCode);
             }
-
             Serializable optionsObject = getIntent().getSerializableExtra(EXTRA_EDITTEXT_OPTIONS);
             String[][] options = (optionsObject instanceof String[][]) ? (String[][])optionsObject : null;
             makeDialog(getIntent().getIntExtra(EXTRA_ICON, -1),

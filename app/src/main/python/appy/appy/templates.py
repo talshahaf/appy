@@ -100,7 +100,7 @@ def editable_click(widget, views, view, title, hint, options, dialog_format_hook
         presets = []
     btn, result_text = show_dialog(title, '', ['Ok', 'Cancel'] + [preset.button_text for preset in presets], edittexts=(DialogEditText(dialog_text, hint, options)))
     if btn != 1:
-        if btn != 0:
+        if btn >= 2:
             preset = presets[btn - 2]
             result_text = preset.preset_cb() if preset.preset_cb else preset.button_text
 
@@ -112,13 +112,15 @@ def editable_click(widget, views, view, title, hint, options, dialog_format_hook
             if state_name:
                 widget.state[state_name] = view.text
         
-def Editable(title='', hint='', emptytext='_', options: list[str] | None = None, dialog_format_hook=None, result_format_hook=None, state_name=None, widget=None, presets: list[EditablePreset] | None = None, **kwargs):
+def Editable(title='', hint='', emptytext='_', options: list[str] | None = None, dialog_format_hook=None, result_format_hook=None, state_name=None, widget=None, presets: EditablePreset | list[EditablePreset] | None = None, **kwargs):
     text = TextView(**kwargs)
     if state_name:
         if not widget:
             raise ValueError('widget arg must be supplied if state_name is used')
         if state_name in widget.state:
             text.text = str(widget.state[state_name])
+    if isinstance(presets, EditablePreset):
+        presets = [presets]
     text.click = (editable_click, dict(title=title, hint=hint, emptytext=emptytext, options=options, dialog_format_hook=dialog_format_hook, result_format_hook=result_format_hook, state_name=state_name, presets=presets))
     return text
 

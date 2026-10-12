@@ -21,6 +21,7 @@ public class SettingsFragment extends MySettingsFragment implements SharedPrefer
     Preference globalSizeFactorPreference;
     Preference debugBoundingBoxesPreference;
     Preference disableGilPreference;
+    Preference sameWidgetConcurrentEvents;
     Handler handler = new Handler();
 
     @Override
@@ -33,6 +34,7 @@ public class SettingsFragment extends MySettingsFragment implements SharedPrefer
         globalSizeFactorPreference = getPreferenceScreen().findPreference("global_size_factor");
         debugBoundingBoxesPreference = getPreferenceScreen().findPreference("debug_bounding_boxes");
         disableGilPreference = getPreferenceScreen().findPreference("disable_gil");
+        sameWidgetConcurrentEvents = getPreferenceScreen().findPreference("same_widget_concurrent_events");
 
         Preference.OnPreferenceChangeListener validateFloat = (preference, newValue) -> Utils.parseFloatOrNull((String)newValue) != null;
 
@@ -49,6 +51,17 @@ public class SettingsFragment extends MySettingsFragment implements SharedPrefer
         });
         disableGilPreference.setOnPreferenceChangeListener((preference, newValue) -> {
             handler.post(() -> Utils.showConfirmationDialog(getContext(), "Restart required", "Restart is required for GIL setting to take place. Restart now?", android.R.drawable.ic_dialog_alert, "Restart", "No", () -> {
+                Widget service = getWidgetService();
+                if (service != null)
+                {
+                    service.restart(0);
+                }
+            }));
+            return true;
+        });
+
+        sameWidgetConcurrentEvents.setOnPreferenceChangeListener((preference, newValue) -> {
+            handler.post(() -> Utils.showConfirmationDialog(getContext(), "Restart required", "Restart is required for widget concurrency setting to take place. Restart now?", android.R.drawable.ic_dialog_alert, "Restart", "No", () -> {
                 Widget service = getWidgetService();
                 if (service != null)
                 {
