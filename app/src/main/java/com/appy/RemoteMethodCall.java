@@ -245,6 +245,10 @@ public class RemoteMethodCall
         arguments[i] = o;
     }
 
+    public String getIdentifier()
+    {
+        return identifier;
+    }
     public String getIdentifierIgnorePrefix()
     {
         //after * or 0

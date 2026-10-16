@@ -1,21 +1,33 @@
 package com.appy;
 
+import androidx.annotation.NonNull;
+
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
 import java.util.Random;
+
 
 /**
  * Created by Tal on 14/01/2018.
  */
-public class DynamicView
+public class DynamicView implements DynamicViewListElement
 {
-    public static Random random = new Random();
+    public static final int SERIALIZATION_VERSION = 6;
 
-    private long id;
+    public static Random random = new Random();
+    public static final String METHOD_ADDED = "ma";
+    public static final String METHOD_DELETED = "md";
+    public static final String D_ADDED = "da";
+    public static final String D_DELETED = "dm";
+
+    private final long id;
     public String type;
     public ArrayList<RemoteMethodCall> methodCalls = new ArrayList<>();
-    public ArrayList<ArrayList<DynamicView>> children = new ArrayList<>();
-    public Object tag;
+    public DynamicViewList children = new DynamicViewList();
+    public String tag;
+    public HashMap<String, String> customAttributes = new HashMap<>();
     public int view_id;
     public int container_id;
     public int xml_id;
@@ -63,6 +75,76 @@ public class DynamicView
         return id;
     }
 
+    public void applyChanges(DictObj.Dict changes)
+    {
+        if (!changes.hasKey("id"))
+        {
+            throw new ChangeSyncException("change with no id");
+        }
+        if (id != changes.getLong("id", 0))
+        {
+            throw new ChangeSyncException("id mismatch: " + id + ", " + changes.getLong("id", 0));
+        }
+
+        if (!type.equals(changes.getString("type")))
+        {
+            throw new ChangeSyncException("type mismatch: " + type + ", " + changes.getString("type"));
+        }
+
+        if (changes.hasKey("tag"))
+        {
+            tag = changes.getString("tag");
+        }
+
+        if (changes.hasKey("newActions"))
+        {
+            DictObj.List actions = changes.getList("newActions");
+            for (int i = 0; i < actions.size(); i++)
+            {
+                DictObj.Dict action = actions.getDict(i);
+                switch(action.getString("action"))
+                {
+                    case METHOD_ADDED -> methodCalls.add(RemoteMethodCall.fromDict(action.getDict("value")));
+                    case METHOD_DELETED -> methodCalls.removeIf(method -> method.getIdentifier().equals(action.getString("key1")));
+                    case D_ADDED -> {
+                        String key1 = action.getString("key1");
+                        if (key1.equals("attributes"))
+                        {
+                            attributes.attributes.put(Attributes.Type.valueOf(action.getString("key2")), Attributes.AttributeValue.fromDict(action.getDict("value")));
+                        }
+                        else if (key1.equals("selectors"))
+                        {
+                            selectors.put(action.getString("key2"), action.get("value").toString());
+                        }
+                        else
+                        {
+                            customAttributes.put(key1, action.getString("value"));
+                        }
+                    }
+                    case D_DELETED -> {
+                        String key1 = action.getString("key1");
+                        if (key1.equals("attributes"))
+                        {
+                            attributes.attributes.remove(Attributes.Type.valueOf(action.getString("key2")));
+                        }
+                        else if (key1.equals("selectors"))
+                        {
+                            selectors.remove(action.getString("key2"));
+                        }
+                        else
+                        {
+                            customAttributes.remove(key1);
+                        }
+                    }
+                }
+            }
+        }
+        if (changes.hasKey("children"))
+        {
+            children.applyChanges(changes.getDict("children"), true);
+        }
+    }
+
     public static DynamicView fromDict(DictObj.Dict obj)
     {
         long id;
@@ -93,7 +175,15 @@ public class DynamicView
 
         //Log.d("APPY", "building "+view.id+" "+view.type);
 
-        view.tag = obj.get("tag");
+        view.tag = obj.getString("tag");
+        DictObj.Dict customAttributes = obj.getDict("customAttributes");
+        if (customAttributes != null)
+        {
+            for (DictObj.Entry entry : customAttributes.entries())
+            {
+                view.customAttributes.put(entry.key, (String)entry.value);
+            }
+        }
 
         view.actualWidth = (int)obj.getLong("actualWidth", 0);
         view.actualHeight = (int)obj.getLong("actualHeight", 0);
@@ -122,12 +212,7 @@ public class DynamicView
         }
         if (obj.hasKey("children"))
         {
-            DictObj.List childarr = obj.getList("children");
-            //Log.d("APPY", childarr.length() + " children");
-            for (int i = 0; i < childarr.size(); i++)
-            {
-                view.children.add(DynamicView.fromDictList(childarr.getList(i)));
-            }
+            view.children = DynamicViewList.fromDict(obj.getDict("children"));
         }
         return view;
     }
@@ -143,6 +228,13 @@ public class DynamicView
         obj.put("actualWidth", actualWidth);
         obj.put("actualHeight", actualHeight);
 
+        DictObj.Dict customAttributesObj = new DictObj.Dict();
+        for (Map.Entry<String, String> entry : customAttributes.entrySet())
+        {
+            customAttributesObj.put(entry.getKey(), entry.getValue());
+        }
+        obj.put("customAttributes", customAttributesObj);
+
         if (!selectors.isEmpty())
         {
             DictObj.Dict selectorsObj = new DictObj.Dict();
@@ -155,26 +247,7 @@ public class DynamicView
 
         if (tag != null)
         {
-            if (tag instanceof String)
-            {
-                obj.put("tag", (String)tag);
-            }
-            else if (tag instanceof Long)
-            {
-                obj.put("tag", (Long)tag);
-            }
-            else if (tag instanceof Integer)
-            {
-                obj.put("tag", (Integer)tag);
-            }
-            else if (tag instanceof DictObj)
-            {
-                obj.put("tag", (DictObj)tag);
-            }
-            else
-            {
-                throw new IllegalArgumentException("unsupported tag: " + tag.getClass().getName());
-            }
+            obj.put("tag", tag);
         }
 
         if (!attributes.attributes.isEmpty())
@@ -193,12 +266,7 @@ public class DynamicView
         }
         if (!children.isEmpty())
         {
-            DictObj.List childarr = new DictObj.List();
-            for (ArrayList<DynamicView> views : children)
-            {
-                childarr.add(DynamicView.toDictList(views));
-            }
-            obj.put("children", childarr);
+            obj.put("children", children.toDict());
         }
         return obj;
     }
@@ -206,51 +274,6 @@ public class DynamicView
     public DynamicView copy()
     {
         return fromDict(toDict());
-    }
-
-    public static ArrayList<DynamicView> fromDictList(DictObj.List list)
-    {
-        ArrayList<DynamicView> ret = new ArrayList<>();
-        for (int i = 0; i < list.size(); i++)
-        {
-            ret.add(DynamicView.fromDict(list.getDict(i)));
-        }
-        return ret;
-    }
-
-    public static DictObj.List toDictList(ArrayList<DynamicView> views)
-    {
-        DictObj.List viewarr = new DictObj.List();
-        for (DynamicView view : views)
-        {
-            viewarr.add(view.toDict());
-        }
-        return viewarr;
-    }
-
-    public static ArrayList<DynamicView> copyArray(ArrayList<DynamicView> arr)
-    {
-        return DynamicView.fromDictList(DynamicView.toDictList(arr));
-    }
-
-    public static DynamicView findById(ArrayList<DynamicView> arr, long id)
-    {
-        for (DynamicView e : arr)
-        {
-            if (e.id == id)
-            {
-                return e;
-            }
-            for (ArrayList<DynamicView> child : e.children)
-            {
-                DynamicView found = findById(child, id);
-                if (found != null)
-                {
-                    return found;
-                }
-            }
-        }
-        return null;
     }
 
     public RemoteMethodCall findMethodCall(String identifier)
@@ -264,5 +287,254 @@ public class DynamicView
             }
         }
         return null;
+    }
+
+    public static class ChangeSyncException extends RuntimeException
+    {
+
+        public ChangeSyncException(String s)
+        {
+            super(s);
+        }
+    }
+
+    public static class DynamicViewList implements DynamicViewListElement, Iterable<DynamicViewListElement>
+    {
+        private long id;
+        private final ArrayList<DynamicViewListElement> list;
+
+        public DynamicViewList()
+        {
+            this.id = genId();
+            list = new ArrayList<>();
+        }
+        public DynamicViewList(long id)
+        {
+            this.id = id;
+            list = new ArrayList<>();
+        }
+
+        @Override
+        public long getId()
+        {
+            return id;
+        }
+
+        public int size()
+        {
+            return list.size();
+        }
+
+        public boolean isEmpty()
+        {
+            return list.isEmpty();
+        }
+
+        public DynamicViewListElement get(int index)
+        {
+            return list.get(index);
+        }
+
+        public DynamicView getView(int index)
+        {
+            return (DynamicView)list.get(index);
+        }
+
+        public DynamicViewList getList(int index)
+        {
+            return (DynamicViewList)list.get(index);
+        }
+
+        public void add(DynamicViewListElement element)
+        {
+            if (element == null)
+            {
+                throw new RuntimeException("cannot add null");
+            }
+            list.add(element);
+        }
+
+        public DynamicView findView(long id, boolean recursive)
+        {
+            return (DynamicView) find(id, recursive);
+        }
+
+        public DynamicViewListElement find(long id, boolean recursive)
+        {
+            for (DynamicViewListElement e : list)
+            {
+                if (e.getId() == id)
+                {
+                    return e;
+                }
+
+                if (!recursive)
+                {
+                    continue;
+                }
+
+                DynamicViewList inner;
+                if (e instanceof DynamicView)
+                {
+                    inner = ((DynamicView) e).children;
+                }
+                else
+                {
+                    inner = (DynamicViewList) e;
+                }
+
+                DynamicViewListElement found = inner.find(id, true);
+                if (found != null)
+                {
+                    return found;
+                }
+            }
+            return null;
+        }
+
+        @Override
+        public void applyChanges(DictObj.Dict changes)
+        {
+            applyChanges(changes, false);
+        }
+
+        public void applyChanges(DictObj.Dict changes, boolean canReplaceId)
+        {
+            if (!changes.hasKey("id"))
+            {
+                throw new ChangeSyncException("change with no id");
+            }
+
+            if (canReplaceId && isEmpty())
+            {
+                id = changes.getLong("id", 0);
+            }
+            else
+            {
+                if (id != changes.getLong("id", 0))
+                {
+                    throw new ChangeSyncException("id mismatch: " + id + ", " + changes.getLong("id", 0));
+                }
+            }
+
+            //save
+            HashMap<Long, DynamicViewListElement> baseElements = new HashMap<>();
+            for (DynamicViewListElement e : list)
+            {
+                baseElements.put(e.getId(), e);
+            }
+
+            list.clear();
+
+            DictObj.Dict addedActions = changes.getDict("addedActions");
+            DictObj.Dict deletedActions = changes.getDict("deletedActions");
+            DictObj.Dict elementActions = changes.getDict("elementActions");
+
+            DictObj.List newlist = changes.getList("list");
+            for (int i = 0; i < newlist.size(); i++)
+            {
+                long id = newlist.getLong(i, 0);
+                String idstr = id+"";
+                DynamicViewListElement e;
+                if (addedActions.hasKey(idstr))
+                {
+                    DictObj.Dict added = addedActions.getDict(idstr);
+                    if (added.hasKey("type"))
+                    {
+                        e = new DynamicView(id, added.getString("type"));
+                    }
+                    else
+                    {
+                        e = new DynamicViewList(id);
+                    }
+                }
+                else if (baseElements.containsKey(id) && !deletedActions.hasKey(idstr))
+                {
+                    e = baseElements.get(id);
+                }
+                else
+                {
+                    throw new ChangeSyncException("changes out of sync on " + id + ": " + baseElements.containsKey(id) + " " + deletedActions.hasKey(idstr));
+                }
+                e.applyChanges(elementActions.getDict(idstr));
+                list.add(e);
+            }
+        }
+
+        public static DynamicViewList createEmpty(DictObj.Dict changes)
+        {
+            return new DynamicViewList(changes.getLong("id", 0));
+        }
+
+        @Override
+        public DictObj.Dict toDict()
+        {
+            DictObj.Dict ret = new DictObj.Dict();
+            DictObj.List lst = new DictObj.List();
+            for (DynamicViewListElement element : list)
+            {
+                lst.add(element.toDict());
+            }
+            ret.put("id", id);
+            ret.put("list", lst);
+            return ret;
+        }
+
+        public static DynamicViewList fromDict(DictObj.Dict dict)
+        {
+            DynamicViewList ret = new DynamicViewList(dict.getLong("id", 0));
+            DictObj.List list = dict.getList("list");
+            for (int i = 0; i < list.size(); i++)
+            {
+                DictObj.Dict element = list.getDict(i);
+                if (element.hasKey("list"))
+                {
+                    ret.add(DynamicViewList.fromDict(element));
+                }
+                else
+                {
+                    ret.add(DynamicView.fromDict(element));
+                }
+            }
+            return ret;
+        }
+
+        @NonNull
+        @Override
+        public Iterator<DynamicViewListElement> iterator()
+        {
+            return list.iterator();
+        }
+
+        public Iterable<DynamicView> viewIterator()
+        {
+            return new Iterable<>()
+            {
+                @NonNull
+                @Override
+                public Iterator<DynamicView> iterator()
+                {
+                    return new Utils.IteratorConverter<>(DynamicViewList.this.iterator());
+                }
+            };
+        }
+
+        public Iterable<DynamicViewList> listIterator()
+        {
+            return new Iterable<>()
+            {
+                @NonNull
+                @Override
+                public Iterator<DynamicViewList> iterator()
+                {
+                    return new Utils.IteratorConverter<>(DynamicViewList.this.iterator());
+                }
+            };
+        }
+    }
+
+    public static DynamicViewList copyArray(DynamicViewList arr)
+    {
+        return DynamicViewList.fromDict(arr.toDict());
     }
 }

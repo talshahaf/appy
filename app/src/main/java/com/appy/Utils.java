@@ -56,6 +56,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
@@ -77,6 +78,27 @@ public class Utils
             this.args = args;
         }
         public abstract void run();
+    }
+
+    public static class IteratorConverter<T, S> implements Iterator<S>
+    {
+        private final Iterator<T> source;
+        public IteratorConverter(Iterator<T> source)
+        {
+            this.source = source;
+        }
+
+        @Override
+        public boolean hasNext()
+        {
+            return source.hasNext();
+        }
+
+        @Override
+        public S next()
+        {
+            return (S)source.next();
+        }
     }
 
     public interface KeyMapper<T>

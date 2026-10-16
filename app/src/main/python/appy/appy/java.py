@@ -444,9 +444,13 @@ def get_java_arg():
     return wrap(bridge.get_java_arg())[0]
 
 def build_java_dict(obj):
+    if obj is None:
+        return Null
     return wrap(bridge.build_java_dict(obj))[0]
 
 def build_python_dict_from_java(java_obj):
+    if not java_obj:
+        return None
     return bridge.build_python_dict_from_java(java_obj.__bridge__)
 
 #TODO think about scope

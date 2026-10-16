@@ -246,27 +246,24 @@ public class StoreData
 
     public DictObj.Dict getDict(String key)
     {
-        synchronized (objlock)
-        {
-            DictObj.Dict obj = store.getDict(key);
-            if (obj == null)
-            {
-                return null;
-            }
-            return (DictObj.Dict) obj.copy(false);
-        }
+        return (DictObj.Dict) getAny(key);
     }
 
     public DictObj.List getList(String key)
     {
+        return (DictObj.List) getAny(key);
+    }
+
+    public DictObj getAny(String key)
+    {
         synchronized (objlock)
         {
-            DictObj.List obj = store.getList(key);
+            DictObj obj = (DictObj) store.get(key);
             if (obj == null)
             {
                 return null;
             }
-            return (DictObj.List) obj.copy(false);
+            return obj.copy(false);
         }
     }
 

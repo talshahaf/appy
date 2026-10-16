@@ -107,7 +107,7 @@ public class Widget extends RemoteViewsService
     final ConcurrentHashMap<Integer, TaskQueue> widgetsTasks = new ConcurrentHashMap<>();
 
     final Object widgetLock = new Object();
-    ConcurrentHashMap<Integer, ArrayList<DynamicView>> widgets = new ConcurrentHashMap<>();
+    ConcurrentHashMap<Integer, Pair<DynamicView.DynamicViewList, Object>> widgets = new ConcurrentHashMap<>();
 
     final ConcurrentHashMap<Integer, Integer> widgetSwapLayoutCounter = new ConcurrentHashMap<>();
 
@@ -588,7 +588,7 @@ public class Widget extends RemoteViewsService
             DynamicView defaultElement = new DynamicView("TextView");
             addMethodCall(defaultElement, "setText", "List error");
             addMethodCall(defaultElement, "setTextColor", Constants.TEXT_COLOR);
-            ArrayList<DynamicView> child = new ArrayList<>();
+            DynamicView.DynamicViewList child = new DynamicView.DynamicViewList();
             child.add(defaultElement);
             defaultList.children.add(child);
             return defaultList;
@@ -657,7 +657,7 @@ public class Widget extends RemoteViewsService
 
         public static RemoteViews inflateChild(Widget service, int widgetId, DynamicView collectionview, int position, int[] widgetDimensions, boolean debugBoundingBoxes, Reference<Object> collectionLock) throws InvocationTargetException, IllegalAccessException
         {
-            ArrayList<DynamicView> child;
+            DynamicView.DynamicViewList child;
             String type;
             long id;
             int actualWidth;
@@ -670,14 +670,14 @@ public class Widget extends RemoteViewsService
                     return null;
                 }
 
-                child = collectionview.children.get(position);
+                child = collectionview.children.getList(position);
                 type = collectionview.type;
                 id = collectionview.getId();
                 actualWidth = collectionview.actualWidth;
                 actualHeight = collectionview.actualHeight;
             }
 
-            Triple<RemoteViews, HashSet<Integer>, ArrayList<DynamicView>> view = service.resolveDimensions(service, widgetId, child, Constants.collection_layout_type.get(type), new Object[]{id, position}, actualWidth, actualHeight, widgetDimensions, debugBoundingBoxes);
+            Triple<RemoteViews, HashSet<Integer>, DynamicView.DynamicViewList> view = service.resolveDimensions(service, widgetId, child, Constants.collection_layout_type.get(type), new Object[]{id, position}, actualWidth, actualHeight, widgetDimensions, debugBoundingBoxes);
             RemoteViews remoteView = view.component1();
             Intent fillIntent = new Intent(service, WidgetReceiver2x2.class);
             if (child.size() == 1)
@@ -686,13 +686,13 @@ public class Widget extends RemoteViewsService
             }
             fillIntent.putExtra(Constants.COLLECTION_POSITION_EXTRA, position);
 
-            int elementId = clickShouldUseViewId(child.get(0).type) ? R.id.e0 : R.id.collection_root;
+            int elementId = clickShouldUseViewId(child.getView(0).type) ? R.id.e0 : R.id.collection_root;
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
             {
                 RemoteViews.RemoteResponse responseIntent = RemoteViews.RemoteResponse.fromFillInIntent(fillIntent);
 
-                if (isCheckableInsteadOfClickable(child.get(0).type))
+                if (isCheckableInsteadOfClickable(child.getView(0).type))
                 {
                     remoteView.setOnCheckedChangeResponse(elementId, responseIntent);
                 }
@@ -818,19 +818,21 @@ public class Widget extends RemoteViewsService
         return getWidgetProp(widgetId, "app_title");
     }
 
-    public DictObj.List getWidgetViewsSnapshot(int widgetId) {
-        DictObj.List widgetDictList = null;
-        ArrayList<DynamicView> widget;
+    public DictObj.Dict getWidgetViewsSnapshot(int widgetId) {
+        DictObj.Dict widgetDict = null;
 
-        synchronized (widgetLock)
+        Pair<DynamicView.DynamicViewList, Object> widget = widgets.get(widgetId);
+        if (widget != null)
         {
-            widget = widgets.get(widgetId);
-            if (widget != null)
+            synchronized (widget.second)
             {
-                widgetDictList = DynamicView.toDictList(widget);
+                if (widget.first != null)
+                {
+                    widgetDict = widget.first.toDict();
+                }
             }
         }
-        return widgetDictList;
+        return widgetDict;
     }
 
     public String widgetDescriptionLine(int widgetId) {
@@ -956,13 +958,13 @@ public class Widget extends RemoteViewsService
         return selectors;
     }
 
-    public static Pair<RemoteViews, HashSet<Integer>> generate(Widget service, int widgetId, ArrayList<DynamicView> dynamicList, boolean forMeasurement, Constants.CollectionLayout collectionLayout, Object[] collectionExtraData, double sizeFactor, int[] widgetSize) throws InvocationTargetException, IllegalAccessException
+    public static Pair<RemoteViews, HashSet<Integer>> generate(Widget service, int widgetId, DynamicView.DynamicViewList dynamicList, boolean forMeasurement, Constants.CollectionLayout collectionLayout, Object[] collectionExtraData, double sizeFactor, int[] widgetSize) throws InvocationTargetException, IllegalAccessException
     {
         Resources resources = service.getResources();
         boolean inCollection = collectionLayout != Constants.CollectionLayout.NOT_COLLECTION;
         HashSet<Integer> collection_views = new HashSet<>();
         ArrayList<String> collections = new ArrayList<>();
-        for (DynamicView layout : dynamicList)
+        for (DynamicView layout : dynamicList.viewIterator())
         {
             if (isCollection(layout.type))
             {
@@ -1033,7 +1035,7 @@ public class Widget extends RemoteViewsService
             rootView.removeAllViews(elements_id);
         }
 
-        for (DynamicView layout : dynamicList)
+        for (DynamicView layout : dynamicList.viewIterator())
         {
             if (layout.type.equals("Empty"))
             {
@@ -1142,18 +1144,7 @@ public class Widget extends RemoteViewsService
                     //if (!inCollection)
                     {
                         clickIntent.putExtra(Constants.ITEM_ID_EXTRA, layout.getId());
-                        if (layout.tag instanceof Integer)
-                        {
-                            clickIntent.putExtra(Constants.ITEM_TAG_EXTRA, (Integer) layout.tag);
-                        }
-                        else if (layout.tag instanceof Long)
-                        {
-                            clickIntent.putExtra(Constants.ITEM_TAG_EXTRA, (Long) layout.tag);
-                        }
-                        else if (layout.tag instanceof String)
-                        {
-                            clickIntent.putExtra(Constants.ITEM_TAG_EXTRA, (String) layout.tag);
-                        }
+                        clickIntent.putExtra(Constants.ITEM_TAG_EXTRA, layout.tag);
 
                         if (inCollection)
                         {
@@ -1217,19 +1208,6 @@ public class Widget extends RemoteViewsService
         }
 
         return new Pair<>(rootView, collection_views);
-    }
-
-    //only one level
-    public DynamicView find(ArrayList<DynamicView> dynamicList, long id)
-    {
-        for (DynamicView view : dynamicList)
-        {
-            if (view.getId() == id)
-            {
-                return view;
-            }
-        }
-        return null;
     }
 
     public double applyFunctions(ArrayList<Attributes.AttributeValue.Function> functions, ArrayList<Double> arguments, int[] widgetSize)
@@ -1594,10 +1572,10 @@ public class Widget extends RemoteViewsService
         third.functions.add(new Attributes.AttributeValue.Function("ADD", 2, third.arguments.size()));
     }
 
-    public int applyIteration(ArrayList<DynamicView> dynamicList, Attributes[] specialAttributes, int[] widgetSize)
+    public int applyIteration(DynamicView.DynamicViewList dynamicList, Attributes[] specialAttributes, int[] widgetSize)
     {
         int resolved = 0;
-        for (DynamicView dynamicView : dynamicList)
+        for (DynamicView dynamicView : dynamicList.viewIterator())
         {
             for (Map.Entry<Attributes.Type, Attributes.AttributeValue> attribute : dynamicView.attributes.unresolved().entrySet())
             {
@@ -1612,7 +1590,7 @@ public class Widget extends RemoteViewsService
                         Attributes referenceAttributes;
                         if (reference.id > 0 || (-reference.id > specialAttributes.length))
                         {
-                            DynamicView view = find(dynamicList, reference.id);
+                            DynamicView view = dynamicList.findView(reference.id, false);
                             if (view == null)
                             {
                                 throw new RuntimeException("View with id " + reference.id + " not found. Did you forget to include it?");
@@ -1652,12 +1630,7 @@ public class Widget extends RemoteViewsService
 
                     if (attributeValue.debugName != null)
                     {
-                        String name = null;
-                        if (dynamicView.tag instanceof DictObj.Dict)
-                        {
-                            name = ((DictObj.Dict)dynamicView.tag).getString("name");
-                        }
-                        Log.d("APPY", "Debug attribute (name: " + name + ", id: " + dynamicView.getId() + ", attr: " + attribute.getKey().name() + "): " + attributeValue.debugName + " = " + attributeValue.resolvedValue);
+                        Log.d("APPY", "Debug attribute (name: " + dynamicView.customAttributes.get("name") + ", id: " + dynamicView.getId() + ", attr: " + attribute.getKey().name() + "): " + attributeValue.debugName + " = " + attributeValue.resolvedValue);
                     }
                     resolved++;
                 }
@@ -1666,10 +1639,10 @@ public class Widget extends RemoteViewsService
         return resolved;
     }
 
-    public double getMaxDimension(ArrayList<DynamicView> dynamicList, Attributes.Type[] dimensionAttributes)
+    public double getMaxDimension(DynamicView.DynamicViewList dynamicList, Attributes.Type[] dimensionAttributes)
     {
         double max = 0;
-        for (DynamicView dynamicView : dynamicList)
+        for (DynamicView dynamicView : dynamicList.viewIterator())
         {
             double length = 0;
             for (Attributes.Type type : dimensionAttributes)
@@ -1689,7 +1662,7 @@ public class Widget extends RemoteViewsService
         return max;
     }
 
-    public Triple<RemoteViews, HashSet<Integer>, ArrayList<DynamicView>> resolveDimensions(Widget service, int widgetId, ArrayList<DynamicView> dynamicList, Constants.CollectionLayout collectionLayout, Object[] collectionExtras, int widthLimit, int heightLimit, int[] widgetSize, boolean debugBoundingBoxes) throws InvocationTargetException, IllegalAccessException
+    public Triple<RemoteViews, HashSet<Integer>, DynamicView.DynamicViewList> resolveDimensions(Widget service, int widgetId, DynamicView.DynamicViewList dynamicList, Constants.CollectionLayout collectionLayout, Object[] collectionExtras, int widthLimit, int heightLimit, int[] widgetSize, boolean debugBoundingBoxes) throws InvocationTargetException, IllegalAccessException
     {
         // we must copy as we're changing the views
         dynamicList = DynamicView.copyArray(dynamicList);
@@ -1770,7 +1743,7 @@ public class Widget extends RemoteViewsService
                     dynamicViewId = Long.parseLong(view.getContentDescription().toString());
                 }
 
-                DynamicView dynamicView = find(dynamicList, dynamicViewId);
+                DynamicView dynamicView = dynamicList.findView(dynamicViewId, false);
                 if (dynamicView == null)
                 {
                     throw new RuntimeException("View with id " + dynamicViewId + " not found. Did you forget to include it?");
@@ -1820,31 +1793,25 @@ public class Widget extends RemoteViewsService
         //resolve everything else
         while (applyIteration(dynamicList, new Attributes[] { rootAttributes, widgetAttributes }, widgetSize) != 0) ;
 
-        for (DynamicView dynamicView : dynamicList)
+        for (DynamicView dynamicView : dynamicList.viewIterator())
         {
             HashMap<Attributes.Type, Attributes.AttributeValue> unresolved = dynamicView.attributes.unresolved();
             if (!unresolved.isEmpty())
             {
-                String name = null;
-                if (dynamicView.tag instanceof DictObj.Dict)
-                {
-                    name = ((DictObj.Dict)dynamicView.tag).getString("name");
-                }
-
                 StringBuilder unresolvedStr = new StringBuilder();
                 for (Map.Entry<Attributes.Type, Attributes.AttributeValue> entry : unresolved.entrySet())
                 {
                     unresolvedStr.append("\n").append(entry.getKey()).append(": ").append(DictObj.makeJson(entry.getValue().toDict(), true));
                 }
 
-                throw new IllegalArgumentException("Unresolved attributes (" + unresolved.size() + ") for " + dynamicView.type + "(name: '" + name + "', id: " + dynamicView.getId() + "):" + unresolvedStr);
+                throw new IllegalArgumentException("Unresolved attributes (" + unresolved.size() + ") for " + dynamicView.type + "(name: '" + dynamicView.customAttributes.get("name") + "', id: " + dynamicView.getId() + "):" + unresolvedStr);
             }
         }
 
         double totalWidth = 0;
         double totalHeight = 0;
         //apply
-        for (DynamicView dynamicView : dynamicList)
+        for (DynamicView dynamicView : dynamicList.viewIterator())
         {
             Pair<Integer, Integer> hor = new Pair<>(dynamicView.attributes.attributes.get(Attributes.Type.LEFT).resolvedValue.intValue(),
                     dynamicView.attributes.attributes.get(Attributes.Type.RIGHT).resolvedValue.intValue());
@@ -2076,15 +2043,21 @@ public class Widget extends RemoteViewsService
         StoreData store = StoreData.Factory.create(this, "widgets");
         Set<String> keys = store.getAll();
 
-        ConcurrentHashMap<Integer, ArrayList<DynamicView>> newwidgets = new ConcurrentHashMap<>();
+        ConcurrentHashMap<Integer, Pair<DynamicView.DynamicViewList, Object>> newwidgets = new ConcurrentHashMap<>();
 
         for (String widget : keys)
         {
-            DictObj.List list = store.getList(widget);
-            if (list != null)
+            DictObj widgetDict = store.getAny(widget);
+            if (widgetDict instanceof DictObj.Dict)
             {
                 int widgetId = Integer.parseInt(widget);
-                newwidgets.put(widgetId, DynamicView.fromDictList(list));
+                int version = ((DictObj.Dict) widgetDict).getInt("version", 1);
+                if (version != DynamicView.SERIALIZATION_VERSION)
+                {
+                    Log.w("APPY", "Cannot load widget " + widgetId + ", version mismatch: " + version + " != " + DynamicView.SERIALIZATION_VERSION);
+                    continue;
+                }
+                newwidgets.put(widgetId, new Pair<>(DynamicView.DynamicViewList.fromDict((DictObj.Dict) widgetDict), new Object()));
             }
         }
 
@@ -2195,17 +2168,23 @@ public class Widget extends RemoteViewsService
     {
         StoreData store = StoreData.Factory.create(this, "widgets");
 
-        DictObj.List widgetCopy;
-        synchronized (widgetLock)
+        DictObj.Dict widgetCopy;
+        Pair<DynamicView.DynamicViewList, Object> widget = widgets.get(widgetId);
+        if (widget == null)
         {
-            ArrayList<DynamicView> widget = widgets.get(widgetId);
-            if (widget == null)
+            return;
+            //throw new RuntimeException("widget entry is null?");
+        }
+        synchronized (widget.second)
+        {
+            if (widget.first == null)
             {
                 return;
                 //throw new RuntimeException("widget entry is null?");
             }
-            widgetCopy = DynamicView.toDictList(widget);
+            widgetCopy = widget.first.toDict();
         }
+        widgetCopy.put("version", DynamicView.SERIALIZATION_VERSION);
         store.put(widgetId + "", widgetCopy);
 
         if (!noSave)
@@ -3703,7 +3682,10 @@ public class Widget extends RemoteViewsService
 
     public void delete(int widgetId)
     {
-        delete(widgetId, null);
+        if (widgets.containsKey(widgets))
+        {
+            delete(widgetId, null);
+        }
     }
 
     public void delete(int widgetId, Integer androidWidgetDeleted)
@@ -4201,7 +4183,7 @@ public class Widget extends RemoteViewsService
         }
     }
 
-    public void setWidget(final int androidWidgetId, final int widgetId, final ArrayList<DynamicView> views, final boolean errorOnFailure)
+    public void setWidget(final int androidWidgetId, final int widgetId, final DynamicView.DynamicViewList views, final boolean errorOnFailure)
     {
         synchronized (needUpdateWidgets)
         {
@@ -4216,7 +4198,7 @@ public class Widget extends RemoteViewsService
             int heightLimit = widgetDimensions[1];
             boolean debugBoundingBoxes = getDebugBoundingBoxes(this);
 
-            Triple<RemoteViews, HashSet<Integer>, ArrayList<DynamicView>> view = resolveDimensions(Widget.this, widgetId, views, Constants.CollectionLayout.NOT_COLLECTION, null, widthLimit, heightLimit, widgetDimensions, debugBoundingBoxes);
+            Triple<RemoteViews, HashSet<Integer>, DynamicView.DynamicViewList> view = resolveDimensions(Widget.this, widgetId, views, Constants.CollectionLayout.NOT_COLLECTION, null, widthLimit, heightLimit, widgetDimensions, debugBoundingBoxes);
             appWidgetManager.updateAppWidget(androidWidgetId, view.component1());
 
             for (Integer collection_view : view.component2())
@@ -4241,7 +4223,7 @@ public class Widget extends RemoteViewsService
 
     public void setSpecificLoadingWidget(int androidWidgetId, int widgetId)
     {
-        ArrayList<DynamicView> views = new ArrayList<>();
+        DynamicView.DynamicViewList views = new DynamicView.DynamicViewList();
 
         DynamicView loadingText = new DynamicView("TextView");
         loadingText.selectors.put("shadowPosition", "center");
@@ -4309,7 +4291,7 @@ public class Widget extends RemoteViewsService
             setWidgetLastError(widgetId, errorStr);
         }
 
-        ArrayList<DynamicView> views = new ArrayList<>();
+        DynamicView.DynamicViewList views = new DynamicView.DynamicViewList();
 
         DynamicView errorText = new DynamicView("TextView");
         errorText.selectors.put("autoTextSize", "true");
@@ -4836,7 +4818,7 @@ public class Widget extends RemoteViewsService
     public interface CallbackCaller
     {
         //currentView must be readonly
-        DictObj.Dict call(int widgetId, DictObj.List current, ArrayList<DynamicView> currentView);
+        DictObj.Dict call(int widgetId, DictObj.Dict current, DynamicView.DynamicViewList currentView);
     }
 
     public boolean callWidgetChangingCallback(int widgetId, CallbackCaller caller)
@@ -4850,15 +4832,16 @@ public class Widget extends RemoteViewsService
 
         int androidWidgetId = getAndroidWidget(widgetId);
 
-        DictObj.List widgetDictList = null;
-        ArrayList<DynamicView> widget;
-
-        synchronized (widgetLock)
+        DictObj.Dict widgetDict = null;
+        Pair<DynamicView.DynamicViewList, Object> widget = widgets.get(widgetId);
+        if (widget != null)
         {
-            widget = widgets.get(widgetId);
-            if (widget != null)
+            synchronized (widget.second)
             {
-                widgetDictList = DynamicView.toDictList(widget);
+                if (widget.first != null)
+                {
+                    widgetDict = widget.first.toDict();
+                }
             }
         }
 
@@ -4866,7 +4849,7 @@ public class Widget extends RemoteViewsService
         DictObj.Dict result;
         try
         {
-            result = caller.call(widgetId, widgetDictList, widget);
+            result = caller.call(widgetId, widgetDict, widget != null ? widget.first : null);
         }
         catch (Exception e)
         {
@@ -4879,11 +4862,26 @@ public class Widget extends RemoteViewsService
             deferredStateSave(widgetId);
         }
 
-        DictObj.List newWidget = result.getList("views");
-        if (newWidget != null)
+        DictObj.Dict changes = result.getDict("views");
+        if (changes != null)
         {
-            widget = DynamicView.fromDictList(newWidget);
-            widgets.put(widgetId, widget);
+            try
+            {
+                if (widget == null)
+                {
+                    widget = new Pair<>(DynamicView.DynamicViewList.createEmpty(changes), new Object());
+                    widgets.put(widgetId, widget);
+                }
+                synchronized (widget.second)
+                {
+                    widget.first.applyChanges(changes);
+                }
+            }
+            catch(DynamicView.ChangeSyncException e)
+            {
+                Log.d("APPY", "sync error: \n" + DictObj.makeJson(widget.first.toDict(), true) + "\n\n\n" + DictObj.makeJson(changes, true));
+                throw e;
+            }
 
             updated = true;
             deferredWidgetSave(widgetId);
@@ -4931,7 +4929,7 @@ public class Widget extends RemoteViewsService
         //if we were loading we refresh anyways
         if ((updated || needUpdate) && widget != null)
         {
-            setWidget(androidWidgetId, widgetId, widget, true);
+            setWidget(androidWidgetId, widgetId, widget.first, true);
             return true;
         }
 
@@ -4952,11 +4950,11 @@ public class Widget extends RemoteViewsService
 
             DictObj.Dict itemClickResult = null;
 
-            if (collectionId != 0)
+            if (collectionId != 0 && currentView != null)
             {
                 //optimization: don't call itemclick if it isn't set, useful if everything is inside a collection (such as AdapterViewFlipper)
-                DynamicView collectionView = DynamicView.findById(currentView, collectionId);
-                if (collectionView != null && collectionView.tag instanceof DictObj.Dict && ((DictObj.Dict)collectionView.tag).hasKey("itemclick"))
+                DynamicView collectionView = currentView.findView(collectionId, true);
+                if (collectionView != null && collectionView.customAttributes.containsKey("itemclick"))
                 {
                     Log.d("APPY", "calling listener onItemClick with " + collectionId + ", " + collectionPosition + ", " + itemId + ", " + checked);
 
@@ -4974,19 +4972,16 @@ public class Widget extends RemoteViewsService
                 }
             }
 
-            DictObj.List itemClickViews = itemClickResult == null ? null : itemClickResult.getList("views");
+            DictObj.Dict itemClickViews = itemClickResult == null ? null : itemClickResult.getDict("views");
 
             Log.d("APPY", "calling listener onClick");
             DictObj.Dict clickResult = updateListener.onClick(widgetId, itemClickViews != null ? itemClickViews : current, itemId, checked);
             Log.d("APPY", "called listener onClick");
-            if (clickResult.get("views") != null)
-            {
-                return clickResult;
-            }
-            else
+            if (clickResult.get("views") == null && itemClickResult != null)
             {
                 return itemClickResult; //use onItemClick
             }
+            return clickResult;
         });
     }
 
@@ -5250,13 +5245,19 @@ public class Widget extends RemoteViewsService
 
         if (firstStart)
         {
+            DictObj.Dict names = getAllWidgetNames();
             HashMap<Integer, Bundle> ids = requestAndroidWidgets();
             HashSet<Integer> activeWidgetIds = new HashSet<>();
             for (Map.Entry<Integer, Bundle> id : ids.entrySet())
             {
-                androidWidgetToOptions.put(id.getKey(), id.getValue());
-
                 int widgetId = fromAndroidWidget(id.getKey(), true);
+                if (names.getString(widgetId+"") == null)
+                {
+                    //widget not chosen, remove
+                    continue;
+                }
+
+                androidWidgetToOptions.put(id.getKey(), id.getValue());
                 activeWidgetIds.add(widgetId);
                 synchronized (needUpdateWidgets)
                 {

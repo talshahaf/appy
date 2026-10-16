@@ -198,12 +198,15 @@ class AppsFragment : MyFragment(), MenuProvider {
 
     private val setListenerMethod = Reflection.getMethods(AppWidgetHost::class.java).find { it.name == "setListener"}
 
+    private var startCounter = 0
     override fun onStart() {
+        Log.d("APPY", "onStart")
         widgetHost?.startListening()
         super.onStart()
     }
 
     override fun onStop() {
+        Log.d("APPY", "onStop")
         try {
             widgetHost?.stopListening()
         } catch (_: NullPointerException) {

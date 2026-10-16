@@ -2469,6 +2469,7 @@ static jmethodID dict_ctor = NULL;
 static jmethodID dict_list_ctor = NULL;
 static jmethodID dict_put_dictobj = NULL;
 static jmethodID dict_list_add_dictobj = NULL;
+static jmethodID dict_list_add_long = NULL;
 
 static jmethodID dict_put_boolean = NULL;
 static jmethodID dict_put_int = NULL;
@@ -2550,6 +2551,14 @@ static void init_dict_fields(JNIEnv * env)
         return;
     }
 
+    dict_list_add_long = env->GetMethodID(dict_list_class, "add", "(J)V");
+    CHECK_JAVA_EXC(env);
+    if (dict_list_add_long == NULL)
+    {
+        LOG("no dict_list_add_long");
+        return;
+    }
+
     dict_put_boolean = env->GetMethodID(dict_class, "put", "([BZ)V");
     CHECK_JAVA_EXC(env);
     if (dict_put_boolean == NULL)
@@ -2618,6 +2627,55 @@ static void init_dict_fields(JNIEnv * env)
     }
 
     dict_fields_inited = true;
+}
+
+static PyObject * python_type_message(PyObject * item, std::string & out_message)
+{
+    PyTypeObject * type = Py_TYPE(item);
+    if (type == NULL)
+    {
+        return NULL;
+    }
+
+    PyObject * pytypename = PyType_GetName(type);
+    if (pytypename == NULL)
+    {
+        return NULL;
+    }
+
+    Py_ssize_t typenamesize = 0;
+    char * typename_mem = (char *)PyUnicode_AsUTF8AndSize(pytypename, &typenamesize);
+    if (typename_mem == NULL)
+    {
+        Py_XDECREF(pytypename);
+        return NULL;
+    }
+    out_message.assign(typename_mem, typenamesize);
+    Py_XDECREF(pytypename);
+
+    PyObject * repr = PyObject_Repr(item);
+    if (repr == NULL)
+    {
+        return NULL;
+    }
+    Py_ssize_t reprsize = 0;
+    char * repr_mem = (char *)PyUnicode_AsUTF8AndSize(repr, &reprsize);
+    if (repr_mem != NULL)
+    {
+        out_message.append("(");
+        if (reprsize <= 32)
+        {
+            out_message.append(repr_mem, reprsize);
+            out_message.append(")");
+        }
+        else
+        {
+            out_message.append(repr_mem, 29);
+            out_message.append("...)");
+        }
+    }
+    Py_XDECREF(repr);
+    return Py_None;
 }
 
 static jobject build_java_dict_object(PyObject * obj, JNIEnv * env, std::string & out_error)
@@ -2806,6 +2864,10 @@ static jobject build_java_dict_object(PyObject * obj, JNIEnv * env, std::string 
             else
             {
                 env->DeleteLocalRef(keyarr);
+                env->DeleteLocalRef(javadict);
+                python_type_message(value_obj, out_error);
+                out_error.insert(0, "Unsupported value encountered: ");
+                return NULL;
             }
 
             if (env->ExceptionCheck())
@@ -2860,6 +2922,11 @@ static jobject build_java_dict_object(PyObject * obj, JNIEnv * env, std::string 
                 env->CallVoidMethod(javalist, dict_list_add_dictobj, val);
                 env->DeleteLocalRef(val);
             }
+            else if (PyLong_Check(item))
+            {
+                long val = PyLong_AsLong(item);
+                env->CallVoidMethod(javalist, dict_list_add_long, val);
+            }
             else if (item == Py_None)
             {
                 env->CallVoidMethod(javalist, dict_list_add_dictobj, (jobject)NULL);
@@ -2869,58 +2936,9 @@ static jobject build_java_dict_object(PyObject * obj, JNIEnv * env, std::string 
                 // not supporting any other type in list for now
                 env->DeleteLocalRef(javalist);
 
-                out_error = "list contains types not in (dict, list, tuple) got ";
-
-                PyTypeObject * type = Py_TYPE(item);
-                if (type == NULL)
-                {
-                    out_error.append("unknown");
-                    return NULL;
-                }
-
-                PyObject * pytypename = PyType_GetName(type);
-                if (pytypename == NULL)
-                {
-                    out_error.append("unknown");
-                    return NULL;
-                }
-
-                Py_ssize_t typenamesize = 0;
-                char * typename_mem = (char *)PyUnicode_AsUTF8AndSize(pytypename, &typenamesize);
-                if (typename_mem == NULL)
-                {
-                    Py_XDECREF(pytypename);
-                    out_error.append("unknown");
-                    return NULL;
-                }
-                else
-                {
-                    out_error.append(typename_mem, typenamesize);
-                }
-                Py_XDECREF(pytypename);
-
-                PyObject * repr = PyObject_Repr(item);
-                if (repr == NULL)
-                {
-                    return NULL;
-                }
-                Py_ssize_t reprsize = 0;
-                char * repr_mem = (char *)PyUnicode_AsUTF8AndSize(repr, &reprsize);
-                if (repr_mem != NULL)
-                {
-                    out_error.append("(");
-                    if (reprsize <= 32)
-                    {
-                        out_error.append(repr_mem, reprsize);
-                        out_error.append(")");
-                    }
-                    else
-                    {
-                        out_error.append(repr_mem, 29);
-                        out_error.append("...)");
-                    }
-                }
-                Py_XDECREF(repr);
+                out_error = "unknown";
+                python_type_message(item, out_error);
+                out_error.insert(0, "list contains types not in (dict, list, tuple, int) got ");
                 return NULL;
             }
             if (env->ExceptionCheck())
@@ -2933,7 +2951,7 @@ static jobject build_java_dict_object(PyObject * obj, JNIEnv * env, std::string 
 
         return javalist;
     }
-
+    out_error = "Can only build java dict object from dict, list or tuple";
     return NULL;
 }
 
@@ -2984,14 +3002,15 @@ static PyObject * build_java_dict(PyObject * self, PyObject * args)
     return NULL;
 }
 
-static PyObject * build_python_dict(jobject obj, JNIEnv * env)
+static PyObject * build_python_dict(jobject obj, JNIEnv * env, std::string & error)
 {
     if (env->IsInstanceOf(obj, dict_class))
     {
         jobjectArray entryarray = (jobjectArray)env->CallObjectMethod(obj, dict_entries);
         if (env->ExceptionCheck() || entryarray == NULL)
         {
-            PyErr_SetString(PyExc_RuntimeError, "exception in dict.entries()");
+            error = "exception in dict.entries()";
+            PyErr_SetString(PyExc_RuntimeError, error.c_str());
             return NULL;
         }
 
@@ -3000,7 +3019,8 @@ static PyObject * build_python_dict(jobject obj, JNIEnv * env)
         if (pyobj == NULL)
         {
             env->DeleteLocalRef(entryarray);
-            PyErr_SetString(PyExc_RuntimeError, "error in creating new dict");
+            error = "error in creating new dict";
+            PyErr_SetString(PyExc_RuntimeError, error.c_str());
             return NULL;
         }
         for (unsigned int i = 0; i < size; i++)
@@ -3010,7 +3030,8 @@ static PyObject * build_python_dict(jobject obj, JNIEnv * env)
             {
                 Py_DECREF(pyobj);
                 env->DeleteLocalRef(entryarray);
-                PyErr_SetString(PyExc_RuntimeError, "exception in GetObjectArrayElement");
+                error = "exception in GetObjectArrayElement";
+                PyErr_SetString(PyExc_RuntimeError, error.c_str());
                 return NULL;
             }
 
@@ -3020,7 +3041,8 @@ static PyObject * build_python_dict(jobject obj, JNIEnv * env)
                 env->DeleteLocalRef(entry);
                 Py_DECREF(pyobj);
                 env->DeleteLocalRef(entryarray);
-                PyErr_SetString(PyExc_RuntimeError, "exception in entry.key");
+                error = "exception in entry.key";
+                PyErr_SetString(PyExc_RuntimeError, error.c_str());
                 return NULL;
             }
             jobject value = (jstring)env->GetObjectField(entry, dict_entry_value);
@@ -3030,7 +3052,8 @@ static PyObject * build_python_dict(jobject obj, JNIEnv * env)
                 env->DeleteLocalRef(entry);
                 Py_DECREF(pyobj);
                 env->DeleteLocalRef(entryarray);
-                PyErr_SetString(PyExc_RuntimeError, "exception in entry.value");
+                error = "exception in entry.value";
+                PyErr_SetString(PyExc_RuntimeError, error.c_str());
                 return NULL;
             }
             env->DeleteLocalRef(entry);
@@ -3043,7 +3066,8 @@ static PyObject * build_python_dict(jobject obj, JNIEnv * env)
                 env->DeleteLocalRef(key);
                 Py_DECREF(pyobj);
                 env->DeleteLocalRef(entryarray);
-                PyErr_SetString(PyExc_RuntimeError, "exception in GetStringUTFChars for key");
+                error = "exception in GetStringUTFChars for key";
+                PyErr_SetString(PyExc_RuntimeError, error.c_str());
                 return NULL;
             }
 
@@ -3055,7 +3079,8 @@ static PyObject * build_python_dict(jobject obj, JNIEnv * env)
                 env->DeleteLocalRef(value);
                 Py_DECREF(pyobj);
                 env->DeleteLocalRef(entryarray);
-                PyErr_SetString(PyExc_RuntimeError, "error creating key str object");
+                error = "error creating key str object";
+                PyErr_SetString(PyExc_RuntimeError, error.c_str());
                 return NULL;
             }
 
@@ -3067,13 +3092,14 @@ static PyObject * build_python_dict(jobject obj, JNIEnv * env)
                 {
                     Py_DECREF(pyobj);
                     env->DeleteLocalRef(entryarray);
-                    PyErr_SetString(PyExc_RuntimeError, "error setting None dict value");
+                    error = "error setting None dict value";
+                    PyErr_SetString(PyExc_RuntimeError, error.c_str());
                     return NULL;
                 }
             }
             else if (env->IsInstanceOf(value, dict_class) || env->IsInstanceOf(value, dict_list_class))
             {
-                PyObject * pyvalue = build_python_dict(value, env);
+                PyObject * pyvalue = build_python_dict(value, env, error);
                 env->DeleteLocalRef(value);
                 if (pyvalue == NULL)
                 {
@@ -3091,7 +3117,8 @@ static PyObject * build_python_dict(jobject obj, JNIEnv * env)
                 {
                     Py_DECREF(pyobj);
                     env->DeleteLocalRef(entryarray);
-                    PyErr_SetString(PyExc_RuntimeError, "error setting dict item");
+                    error = "error setting dict item";
+                    PyErr_SetString(PyExc_RuntimeError, error.c_str());
                     return NULL;
                 }
             }
@@ -3104,7 +3131,8 @@ static PyObject * build_python_dict(jobject obj, JNIEnv * env)
                     Py_DECREF(pykey);
                     Py_DECREF(pyobj);
                     env->DeleteLocalRef(entryarray);
-                    PyErr_SetString(PyExc_RuntimeError, "exception calling Boolean.value");
+                    error = "exception calling Boolean.value";
+                    PyErr_SetString(PyExc_RuntimeError, error.c_str());
                     return NULL;
                 }
 
@@ -3114,7 +3142,8 @@ static PyObject * build_python_dict(jobject obj, JNIEnv * env)
                 {
                     Py_DECREF(pyobj);
                     env->DeleteLocalRef(entryarray);
-                    PyErr_SetString(PyExc_RuntimeError, "error setting boolean item");
+                    error = "error setting boolean item";
+                    PyErr_SetString(PyExc_RuntimeError, error.c_str());
                     return NULL;
                 }
             }
@@ -3128,7 +3157,8 @@ static PyObject * build_python_dict(jobject obj, JNIEnv * env)
                     Py_DECREF(pykey);
                     Py_DECREF(pyobj);
                     env->DeleteLocalRef(entryarray);
-                    PyErr_SetString(PyExc_RuntimeError, "exception calling value");
+                    error = "exception calling value";
+                    PyErr_SetString(PyExc_RuntimeError, error.c_str());
                     return NULL;
                 }
 
@@ -3138,7 +3168,8 @@ static PyObject * build_python_dict(jobject obj, JNIEnv * env)
                     Py_DECREF(pykey);
                     Py_DECREF(pyobj);
                     env->DeleteLocalRef(entryarray);
-                    PyErr_SetString(PyExc_RuntimeError, "error creating double");
+                    error = "error creating double";
+                    PyErr_SetString(PyExc_RuntimeError, error.c_str());
                     return NULL;
                 }
 
@@ -3149,7 +3180,8 @@ static PyObject * build_python_dict(jobject obj, JNIEnv * env)
                 {
                     Py_DECREF(pyobj);
                     env->DeleteLocalRef(entryarray);
-                    PyErr_SetString(PyExc_RuntimeError, "error setting double item");
+                    error = "error setting double item";
+                    PyErr_SetString(PyExc_RuntimeError, error.c_str());
                     return NULL;
                 }
             }
@@ -3164,7 +3196,8 @@ static PyObject * build_python_dict(jobject obj, JNIEnv * env)
                     Py_DECREF(pykey);
                     Py_DECREF(pyobj);
                     env->DeleteLocalRef(entryarray);
-                    PyErr_SetString(PyExc_RuntimeError, "exception calling value");
+                    error = "exception calling value";
+                    PyErr_SetString(PyExc_RuntimeError, error.c_str());
                     return NULL;
                 }
 
@@ -3174,7 +3207,8 @@ static PyObject * build_python_dict(jobject obj, JNIEnv * env)
                     Py_DECREF(pykey);
                     Py_DECREF(pyobj);
                     env->DeleteLocalRef(entryarray);
-                    PyErr_SetString(PyExc_RuntimeError, "error creating long object");
+                    error = "error creating long object";
+                    PyErr_SetString(PyExc_RuntimeError, error.c_str());
                     return NULL;
                 }
 
@@ -3185,7 +3219,8 @@ static PyObject * build_python_dict(jobject obj, JNIEnv * env)
                 {
                     Py_DECREF(pyobj);
                     env->DeleteLocalRef(entryarray);
-                    PyErr_SetString(PyExc_RuntimeError, "error setting long item");
+                    error = "error setting long item";
+                    PyErr_SetString(PyExc_RuntimeError, error.c_str());
                     return NULL;
                 }
             }
@@ -3199,7 +3234,8 @@ static PyObject * build_python_dict(jobject obj, JNIEnv * env)
                     Py_DECREF(pykey);
                     Py_DECREF(pyobj);
                     env->DeleteLocalRef(entryarray);
-                    PyErr_SetString(PyExc_RuntimeError, "exception in GetStringUTFChars for value");
+                    error = "exception in GetStringUTFChars for value";
+                    PyErr_SetString(PyExc_RuntimeError, error.c_str());
                     return NULL;
                 }
 
@@ -3211,7 +3247,8 @@ static PyObject * build_python_dict(jobject obj, JNIEnv * env)
                     Py_DECREF(pykey);
                     Py_DECREF(pyobj);
                     env->DeleteLocalRef(entryarray);
-                    PyErr_SetString(PyExc_RuntimeError, "error creating str for value");
+                    error = "error creating str for value";
+                    PyErr_SetString(PyExc_RuntimeError, error.c_str());
                     return NULL;
                 }
 
@@ -3222,7 +3259,8 @@ static PyObject * build_python_dict(jobject obj, JNIEnv * env)
                 {
                     Py_DECREF(pyobj);
                     env->DeleteLocalRef(entryarray);
-                    PyErr_SetString(PyExc_RuntimeError, "error setting str item");
+                    error = "error setting str item";
+                    PyErr_SetString(PyExc_RuntimeError, error.c_str());
                     return NULL;
                 }
             }
@@ -3236,7 +3274,8 @@ static PyObject * build_python_dict(jobject obj, JNIEnv * env)
                     Py_DECREF(pykey);
                     Py_DECREF(pyobj);
                     env->DeleteLocalRef(entryarray);
-                    PyErr_SetString(PyExc_RuntimeError, "exception in GetByteArrayElements");
+                    error = "exception in GetByteArrayElements";
+                    PyErr_SetString(PyExc_RuntimeError, error.c_str());
                     return NULL;
                 }
 
@@ -3248,7 +3287,8 @@ static PyObject * build_python_dict(jobject obj, JNIEnv * env)
                     Py_DECREF(pykey);
                     Py_DECREF(pyobj);
                     env->DeleteLocalRef(entryarray);
-                    PyErr_SetString(PyExc_RuntimeError, "error creating bytes for value");
+                    error = "error creating bytes for value";
+                    PyErr_SetString(PyExc_RuntimeError, error.c_str());
                     return NULL;
                 }
 
@@ -3259,7 +3299,8 @@ static PyObject * build_python_dict(jobject obj, JNIEnv * env)
                 {
                     Py_DECREF(pyobj);
                     env->DeleteLocalRef(entryarray);
-                    PyErr_SetString(PyExc_RuntimeError, "error setting bytes value");
+                    error = "error setting bytes value";
+                    PyErr_SetString(PyExc_RuntimeError, error.c_str());
                     return NULL;
                 }
             }
@@ -3273,7 +3314,8 @@ static PyObject * build_python_dict(jobject obj, JNIEnv * env)
                 {
                     Py_DECREF(pyobj);
                     env->DeleteLocalRef(entryarray);
-                    PyErr_SetString(PyExc_RuntimeError, "error setting unknown item to None");
+                    error = "error setting unknown item to None";
+                    PyErr_SetString(PyExc_RuntimeError, error.c_str());
                     return NULL;
                 }
             }
@@ -3286,7 +3328,8 @@ static PyObject * build_python_dict(jobject obj, JNIEnv * env)
         jobjectArray entryarray = (jobjectArray)env->CallObjectMethod(obj, dict_list_array);
         if (env->ExceptionCheck() || entryarray == NULL)
         {
-            PyErr_SetString(PyExc_RuntimeError, "exception calling list.array");
+            error = "exception calling list.array";
+            PyErr_SetString(PyExc_RuntimeError, error.c_str());
             return NULL;
         }
         int size = env->GetArrayLength(entryarray);
@@ -3295,7 +3338,8 @@ static PyObject * build_python_dict(jobject obj, JNIEnv * env)
         if (pyobj == NULL)
         {
             env->DeleteLocalRef(entryarray);
-            PyErr_SetString(PyExc_RuntimeError, "error creating new list");
+            error = "error creating new list";
+            PyErr_SetString(PyExc_RuntimeError, error.c_str());
             return NULL;
         }
 
@@ -3306,7 +3350,8 @@ static PyObject * build_python_dict(jobject obj, JNIEnv * env)
             {
                 Py_DECREF(pyobj);
                 env->DeleteLocalRef(entryarray);
-                PyErr_SetString(PyExc_RuntimeError, "exception calling GetObjectArrayElement");
+                error = "exception calling GetObjectArrayElement";
+                PyErr_SetString(PyExc_RuntimeError, error.c_str());
                 return NULL;
             }
 
@@ -3314,9 +3359,26 @@ static PyObject * build_python_dict(jobject obj, JNIEnv * env)
             {
                 PyList_SetItem(pyobj, i, Py_None);
             }
+            else if (env->IsInstanceOf(item, short_class) || env->IsInstanceOf(item, integer_class) || env->IsInstanceOf(item, long_class))
+            {
+                long v = env->IsInstanceOf(item, short_class) ? env->CallShortMethod(item, shortValueMethod) :
+                         (env->IsInstanceOf(item, integer_class) ? env->CallIntMethod(item, intValueMethod) :
+                          env->CallLongMethod(item, longValueMethod));
+                env->DeleteLocalRef(item);
+                PyObject * pyitem = PyLong_FromLong(v);
+                if (pyitem == NULL || env->ExceptionCheck())
+                {
+                    Py_DECREF(pyobj);
+                    env->DeleteLocalRef(entryarray);
+                    error = "exception calling value";
+                    PyErr_SetString(PyExc_RuntimeError, error.c_str());
+                    return NULL;
+                }
+                PyList_SetItem(pyobj, i, pyitem);
+            }
             else if (env->IsInstanceOf(item, dict_class) || env->IsInstanceOf(item, dict_list_class))
             {
-                PyObject  * pyitem = build_python_dict(item, env);
+                PyObject  * pyitem = build_python_dict(item, env, error);
                 env->DeleteLocalRef(item);
                 if (pyitem == NULL)
                 {
@@ -3335,7 +3397,8 @@ static PyObject * build_python_dict(jobject obj, JNIEnv * env)
                 Py_DECREF(pyobj);
                 env->DeleteLocalRef(entryarray);
 
-                PyErr_SetString(PyExc_RuntimeError, "only lists of dicts and lists can be converted");
+                error = "only lists of dicts and lists can be converted";
+                PyErr_SetString(PyExc_RuntimeError, error.c_str());
                 return NULL;
             }
         }
@@ -3343,7 +3406,8 @@ static PyObject * build_python_dict(jobject obj, JNIEnv * env)
     }
     else
     {
-        PyErr_SetString(PyExc_RuntimeError, "non convertible object class");
+        error = "non convertible object class";
+        PyErr_SetString(PyExc_RuntimeError, error.c_str());
         return NULL;
     }
 }
@@ -3374,7 +3438,8 @@ static PyObject * build_python_dict_from_java(PyObject * self, PyObject * args)
             return NULL;
         }
 
-        PyObject * pyobj = build_python_dict((jobject)ref_lng, env);
+        std::string error;
+        PyObject * pyobj = build_python_dict((jobject)ref_lng, env, error);
         if (pyobj == NULL)
         {
             return NULL;
@@ -3450,11 +3515,13 @@ extern "C" JNIEXPORT jbyteArray JNICALL Java_com_appy_DictObj_DictObjtojson(JNIE
             return NULL;
         }
 
-        PyObject * pyobj = build_python_dict(Dict, env);
+        std::string error;
+        PyObject * pyobj = build_python_dict(Dict, env, error);
         if (pyobj == NULL || PyErr_Occurred())
         {
             PyErr_Clear();
-            env->ThrowNew(python_exception_class, "Exception in build_python_dict");
+            error.insert(0, "Exception in build_python_dict: ");
+            env->ThrowNew(python_exception_class, error.c_str());
             return NULL;
         }
 

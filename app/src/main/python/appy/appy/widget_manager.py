@@ -256,7 +256,7 @@ def attribute_write_center(e, value):
     attribute_write_hcenter(e, h)
     attribute_write_vcenter(e, v)
 
-attrs = dict(left='LEFT', top='TOP', right='RIGHT', bottom='BOTTOM', width='WIDTH', height='HEIGHT', misc='MISC')
+layout_attrs = dict(left='LEFT', top='TOP', right='RIGHT', bottom='BOTTOM', width='WIDTH', height='HEIGHT', misc='MISC')
 composite_attrs = dict(ileft=attribute_ileft, itop=attribute_itop, iright=attribute_iright, ibottom=attribute_ibottom,
                        hcenter=attribute_hcenter, vcenter=attribute_vcenter, center=attribute_center, ihcenter=attribute_ihcenter, ivcenter=attribute_ivcenter, icenter=attribute_icenter)
 write_attrs = dict(hcenter=attribute_write_hcenter, vcenter=attribute_write_vcenter, center=attribute_write_center)
@@ -265,8 +265,8 @@ class ContainerAttributes:
         self.__level = level
 
     def __getattr__(self, item):
-        if item in attrs:
-            return AttributeValue(None, Reference(self.__level, attrs[item]))
+        if item in layout_attrs:
+            return AttributeValue(None, Reference(self.__level, layout_attrs[item]))
         if item in composite_attrs:
             return composite_attrs[item](self)
         raise AttributeError(item)
@@ -449,23 +449,46 @@ selector_attrs = dict(shadowPosition=['center', 'left', 'right'],
 element_event_hooks = {} # global for all
 class Element:
     __slots__ = ('d',)
-    def __init__(self, d):
-        self.from_dict(d)
+    METHOD_ADDED = 'ma'
+    METHOD_DELETED = 'md'
+    D_ADDED = 'da'
+    D_DELETED = 'dm'
+    SPECIAL_SETTABLES = ['style', 'name', 'click', 'itemclick', 'selectors', 'attributes']
 
-    def from_dict(self, d):
-        self.d = AttrDict.make(d)
-        if 'id' not in self.d:
-            self.d.id = gen_id()
-        if 'methodCalls' in self.d:
-            self.d.methodCalls = collections.OrderedDict((c.identifier, c) for c in self.d.methodCalls)
-        if 'tag' not in self.d:
-            self.d.tag = AttrDict()
+    @classmethod
+    def create(cls, type, **kwargs):
+        obj = cls(type)
+        obj.update(**kwargs)
+        return obj
 
-        if 'children' in self.d:
-            self.d.children = ChildrenList([c if isinstance(c, Element) else Element(c) for c in arr] for arr in self.d.children)
-        else:
-            self.d.children = ChildrenList()
-        self.d.methodCallsDeleted = set()
+    @classmethod
+    def from_dict(cls, d):
+        obj = cls(type=d['type'], id=d['id'])
+        obj.d.tag = AttrDict.make(loads(d['tag'])) if d.get('tag') else AttrDict()
+        if 'methodCalls' in d:
+            obj.d.baseMethodCalls = collections.OrderedDict((c['identifier'], AttrDict(c)) for c in d['methodCalls'])
+        if 'attributes' in d:
+            obj.d.settables.attributes = AttrDict(d['attributes'])
+        if 'selectors' in d:
+            obj.d.settables.selectors = AttrDict(d['selectors'])
+        for k,v in d.get('customAttributes', {}).items():
+            obj.d.settables[k] = v
+        if 'children' in d:
+            obj.d.children = ChildrenList.from_dict(d['children'])
+        return obj
+
+    def __init__(self, type, id=None):
+        object.__setattr__(self, 'd', AttrDict())
+
+        self.d.newly_created = id is None
+        self.d.id = gen_id() if id is None else id
+        self.d.type = type
+        self.d.tag = AttrDict()
+        self.d.tagAccessed = False
+        self.d.baseMethodCalls = collections.OrderedDict()
+        self.d.newActions = collections.OrderedDict()
+        self.d.settables = AttrDict()
+        self.d.children = ChildrenList()
 
     def __copy__(self):
         raise RuntimeError('Cannot copy Element object')
@@ -483,59 +506,67 @@ class Element:
         event_hook = element_event_hooks.get(self.d.type, {}).get(key)
         if event_hook:
             event_hook(kwargs)
-        if key in self.d.tag and self.d.tag[key] is not None:
-            func = loads(self.d.tag[key])
-            return call_general_function(func, **kwargs)
-
-    def set_handler(self, key, f):
-        self.d.tag[key] = dump_general_function(f, {}) if f is not None else None
+        cb = self.d_get(key, None)
+        if cb is not None:
+            return call_general_function(loads(cb), **kwargs)
 
     def update(self, **attrs):
         for k,v in attrs.items():
             setattr(self, k, v)
 
     def __delattr__(self, key):
-        if key in attrs:
-             delattr(self.d.attributes, attrs[key])
-        elif key in write_attrs:
-            write_attrs[key](self, None)
-        elif 'selectors' in self.d and key in self.d.selectors:
-            delattr(self.d.selectors, key)
+        #special
+        if key in layout_attrs:
+            self.d_delete('attributes', layout_attrs[key])
+        elif key in selector_attrs:
+            self.d_delete('selectors', key)
+        elif key == 'style':
+            self.d_delete('style', None)
+            self.delete_all_prefix_method_calls('style')
+        elif key in ('name', 'click', 'itemclick'):
+            self.d_delete(key, None)
+        #children
         elif key == 'children':
-            self.d[key].clear()
-        elif key in ('paddingLeft', 'paddingTop', 'paddingRight', 'paddingBottom'):
-            delattr(self.d, key)
-        elif key in element_attr_aliases:
-            delattr(self, element_attr_aliases[key])
+            #TODO change
+            self.d.children.clear()
+        #tag
         elif key == 'tag':
             self.tag.clear()
-        elif key == 'style':
-            delattr(self.d.tag, style)
-            style_attrs = [k for k in self.d.methodCalls.keys() if k.startswith('style*')]
-            for attr in style_attrs:
-                del self.d.methodCalls[attr]
-                self.d.methodCallsDeleted.add(attr)
-        elif key in ('name', 'click', 'itemclick'):
-            delattr(self.d.tag, key)
+            self.d.tagAccessed = True
+        #aliases
+        elif key in write_attrs:
+            write_attrs[key](self, None)
+        elif key in element_attr_aliases:
+            delattr(self, element_attr_aliases[key])
         else:
-            try:
-                # might throw
-                del self.d.methodCalls[key]
-                self.d.methodCallsDeleted.add(key)
-            except KeyError as e:
-                raise AttributeError(e)
+            self.delete_method_call(key)
 
     def __getattr__(self, item):
-        if item in attrs:
-            return AttributeValue(None, Reference(self.d.id, attrs[item]))
+        #special
+        if item in layout_attrs:
+            return AttributeValue(None, Reference(self.d.id, layout_attrs[item]))
         if item in composite_attrs:
             return composite_attrs[item](self)
-        if item in ('type', 'id', 'children'):
+        if item in ('type', 'id'):
             return getattr(self.d, item)
         if item in selector_attrs:
-            if 'selectors' not in self.d:
-                raise AttributeError(item)
-            return getattr(self.d.selectors, item)
+            return self.d_get('selectors', item)
+        if item in ('click', 'itemclick'):
+            attr = self.d_get(item, None)
+            if attr is not None:
+                attr = loads(attr)
+            return attr
+        if item in ('name', 'style'):
+            #TODO more D change
+            return self.d_get(item, None)
+        #children
+        if item == 'children':
+            return self.d.children
+        #tag
+        if item == 'tag':
+            self.d.tagAccessed = True
+            return self.d.tag
+        #aliases
         if item in element_attr_aliases:
             value = getattr(self, element_attr_aliases[item])
             if item in element_attr_value_aliases:
@@ -545,94 +576,65 @@ class Element:
                 if backs:
                     value = backs[0]
             return value
+
         if item in ('paddingLeft', 'paddingTop', 'paddingRight', 'paddingBottom'):
-            return getattr(self.d, item, 0)
+            try:
+                return self.viewPadding[('paddingLeft', 'paddingTop', 'paddingRight', 'paddingBottom').index(item)]
+            except AttributeError:
+                raise AttributeError(item)
+
         if self.d.type == 'Chronometer' and item in ('base', 'format', 'started'):
             try:
                 return self.chronometer[('base', 'format', 'started').index(item)]
             except AttributeError:
                 raise AttributeError(item)
-        if item == 'tag':
-            if 'tag' not in self.d.tag:
-                self.d.tag['tag'] = AttrDict()
-            if isinstance(self.d.tag['tag'], str):
-                tag = loads(self.d.tag['tag'])
-                self.d.tag['tag'] = AttrDict.make(tag) if isinstance(tag, dict) else tag
-            return self.d.tag['tag']
 
-        if item in self.d.tag:
-            attr = self.d.tag[item]
-            if item in ('click', 'itemclick'):
-                if attr is not None:
-                    attr = loads(attr)
-            return attr
-
-        identifier = method_from_attr(item)
-        if 'methodCalls' in self.d and identifier in self.d.methodCalls:
-            method_call = self.d.methodCalls[identifier]
-            args = method_call.arguments
-            if method_call.identifier != method_call.method:
-                args = args[1:]
-            return deserialize_arg(args[0]) if len(args) == 1 else [deserialize_arg(arg) for arg in args]
-
-        raise AttributeError(item)
+        method_call = self.get_method_call('', item)
+        args = method_call.arguments
+        if method_call.identifier != method_call.method:
+            args = args[1:]
+        return deserialize_arg(args[0]) if len(args) == 1 else [deserialize_arg(arg) for arg in args]
 
     def __setattr__(self, key, value):
-        #special handling of 'd' member allowing it to be set once and without using __dict__
-        if key == 'd':
-            already_set = False
-            try:
-                object.__getattribute__(self, key)
-                already_set = True
-            except AttributeError:
-                pass
-            if not already_set:
-                object.__setattr__(self, key, value)
-                return
-            else:
-                raise AttributeError(f'{key} can not be modified')
-
         if hasattr(value, 'export_to_views'):
             value = value.export_to_views()
 
-        if key in attrs:
+        #special
+        if key in layout_attrs:
             if value is None:
                 delattr(self, key)
             else:
                 if not isinstance(value, AttributeValue):
                     value = AttributeValue(None, value)
-                if 'attributes' not in self.d:
-                    self.d.attributes = AttrDict()
-                self.d.attributes[attrs[key]] = value.compile()
-        elif key in write_attrs:
-            write_attrs[key](self, value)
+                self.d_add('attributes', layout_attrs[key], value.compile())
         elif key in ('click', 'itemclick'):
-            self.set_handler(key, value)
+            self.d_add(key, None, dump_general_function(value, {}) if value is not None else None)
         elif key == 'name':
-            self.d.tag['name'] = value
-        elif key == 'tag':
-            # goes to self.d.tag['tag'] through getattr
-            self.tag.clear()
-            self.tag.update(value)
+            self.d_add('name', None, value)
         elif key in selector_attrs:
-            if 'selectors' not in self.d:
-                self.d.selectors = AttrDict()
             if selector_attrs[key] and value not in selector_attrs[key]:
                 raise AttributeError(f'{key} must be one of: {', '.join(selector_attrs[key])}')
-            self.d.selectors[key] = value
+            self.d_add('selectors', key, value)
         elif key == 'style':
             style_attrs = style_attr_parse(self.d.type, value)
             for k,v in style_attrs.items():
-                self.add_method_call('style', k, v, True) #order at start so it can be overwritten
-            self.d.tag['style'] = value #save for getattr
+                self.add_method_call('style', k, v)
+            self.d_add('style', None, value) #save for getattr
+        #children
         elif key == 'children':
             if value is None:
                 value = ChildrenList()
-            elif not isinstance(value, (list, tuple)):
+            elif isinstance(value, Element):
                 value = ChildrenList([value])
-            else:
-                value = ChildrenList(value)
-            self.d[key].set(value)
+            elif isinstance(value, (tuple, list, elist)):
+                value = ChildrenList([([e] if isinstance(e, Element) else e) for e in value])
+            self.d.children.replace(value)
+        #tag
+        elif key == 'tag':
+            # goes to self.d.tag through getattr
+            self.tag.clear()
+            self.tag.update(value)
+        #aliases
         elif key in ('tint', 'backgroundTint'):
             background = key == 'backgroundTint'
             attr = 'backgroundTintList' if background else 'foregroundTintList'
@@ -650,23 +652,33 @@ class Element:
             elif validate_remoteviews_method('setDrawableTint'):
                 # android 9+
                 self.drawableTint = (background, value, java.clazz.android.graphics.PorterDuff.Mode().SRC)
+        elif key in write_attrs:
+            write_attrs[key](self, value)
         elif key in element_attr_aliases:
             if key in element_attr_value_aliases:
                 value = element_attr_value_aliases[key].get(value, value)
             setattr(self, element_attr_aliases[key], value)
         elif key in ('paddingLeft', 'paddingTop', 'paddingRight', 'paddingBottom'):
-            self.d[key] = value
-            self.viewPadding = (self.d.get('paddingLeft', 0), self.d.get('paddingTop', 0), self.d.get('paddingRight', 0), self.d.get('paddingBottom', 0))
+            try:
+                old_left, old_top, old_right, old_bottom = self.viewPadding
+            except AttributeError:
+                old_left, old_top, old_right, old_bottom = 0, 0, 0, 0
+            self.viewPadding = (value if key == 'paddingLeft'   else old_left,
+                                value if key == 'paddingTop'    else old_top,
+                                value if key == 'paddingRight'  else old_right,
+                                value if key == 'paddingBottom' else old_bottom)
         elif self.d.type == 'Chronometer' and key in ('base', 'format', 'started'):
             try:
                 old_base, old_format, old_started = self.chronometer
             except AttributeError:
                 old_base, old_format, old_started = 0, None, False
-            self.chronometer = (value if key == 'base' else old_base, value if key == 'format' else old_format, value if key == 'started' else old_started)
+            self.chronometer = (value if key == 'base' else old_base,
+                                value if key == 'format' else old_format,
+                                value if key == 'started' else old_started)
         else:
-            self.add_method_call('', key, value, False)
+            self.add_method_call('', key, value)
 
-    def add_method_call(self, prefix, key, value, order_at_start):
+    def add_method_call(self, prefix, key, value):
         param_setter, method = get_param_setter(self.d.type, key)
         if param_setter is not None:
             identifier = method
@@ -680,45 +692,135 @@ class Element:
                 value = [value]
             arguments = value
 
-        if 'methodCalls' not in self.d:
-            self.d.methodCalls = collections.OrderedDict()
-
         if prefix:
             identifier = f'{prefix}*{identifier}'
 
-        arguments = [serialize_arg(arg) for arg in arguments]
-        self.d.methodCalls[identifier] = AttrDict(identifier=identifier, method=method, arguments=arguments)
-        if order_at_start:
-            self.d.methodCalls.move_to_end(identifier, False)
-        if key in self.d.methodCallsDeleted:
-            self.d.methodCallsDeleted.remove(key)
+        arguments = tuple(serialize_arg(arg) for arg in arguments)
+        self.d.newActions.pop((self.METHOD_DELETED, identifier, None), None)
+        self.d.newActions[(self.METHOD_ADDED, identifier, None)] = AttrDict(identifier=identifier, method=method, arguments=arguments)
 
-    @classmethod
-    def create(cls, type, **kwargs):
-        e = cls(dict(type=type))
-        e.d.methodCallsDeleted.add('NONEXISTENT')
-        [setattr(e, k, v) for k,v in kwargs.items()]
-        return e
+    def delete_method_call(self, key):
+        param_setter, identifier = get_param_setter(self.d.type, key)
+
+        if (self.METHOD_ADDED, identifier, None) in self.d.newActions:
+            del self.d.newActions[(self.METHOD_ADDED, identifier, None)]
+            self.d.newActions[(self.METHOD_DELETED, identifier, None)] = True
+        else:
+            self.d.newActions[(self.METHOD_DELETED, identifier, None)] = True
+            if identifier not in self.baseMethodCalls:
+                raise AttributeError(identifier)
+
+    def delete_all_prefix_method_calls(self, prefix):
+        identifiers = [identifier for action, identifier in self.d.newActions.keys() if identifier.startswith(f'{prefix}*')]
+        for identifier in identifiers:
+            self.d.newActions.pop((self.METHOD_ADDED, identifier, None), None)
+            self.d.newActions[(self.METHOD_DELETED, identifier, None)] = True
+
+    def get_method_call(self, prefix, key):
+        param_setter, identifier = get_param_setter(self.d.type, key)
+        if prefix:
+            identifier = f'{prefix}*{identifier}'
+
+        if (self.METHOD_DELETED, identifier, None) in self.d.newActions:
+            raise AttributeError(identifier)
+
+        if (self.METHOD_ADDED, identifier, None) in self.d.newActions:
+            return self.d.newActions[(self.METHOD_ADDED, identifier, None)]
+
+        try:
+            return self.d.baseMethodCalls[identifier]
+        except KeyError as e:
+            raise AttributeError(e)
+
+    def any_methods_deleted(self):
+        return [identifier for action, _, _ in self.d.newActions.keys() if action == self.METHOD_DELETED] or self.d.get('newly_created', False)
+
+    def d_add(self, key1, key2, value):
+        self.d.newActions.pop((self.D_DELETED, key1, key2), None)
+        self.d.newActions[(self.D_ADDED, key1, key2)] = value
+
+    def d_delete(self, key1, key2):
+        if (self.D_ADDED, key1, key2) in self.d.newActions:
+            del self.d.newActions[(self.D_ADDED, key1, key2)]
+            self.d.newActions[(self.D_DELETED, key1, key2)] = True
+        else:
+            self.d.newActions[(self.D_DELETED, key1, key2)] = True
+            if key1 not in self.d.settables or key2 not in self.d.settables[key1]:
+                raise AttributeError(identifier)
+
+    def d_get(self, key1, key2):
+        if (self.D_DELETED, key1, key2) in self.d.newActions:
+            raise AttributeError(key2)
+
+        if (self.D_ADDED, key1, key2) in self.d.newActions:
+            return self.d.newActions[(self.D_ADDED, key1, key2)]
+
+        try:
+            if key2:
+                return self.d.settables[key1][key2]
+            else:
+                return self.d.settables[key1]
+        except KeyError as e:
+            raise AttributeError(e)
 
     @classmethod
     def set_event_hooks(cls, type, event_hooks):
         element_event_hooks[type] = event_hooks
 
-    def dict(self, do_copy, without_id=None):
-        if 'tag' in self.d and 'tag' in self.d.tag and not isinstance(self.d.tag['tag'], str):
-            self.d.tag['tag'] = dumps(self.d.tag['tag'])
-        d = {k: (copy.deepcopy(v) if do_copy else v) for k,v in self.d.items() if k not in ['children', 'methodCalls', 'methodCallsDeleted'] and (not without_id or k != 'id')}
-        if 'methodCalls' in self.d:
-            d['methodCalls'] = list(copy.deepcopy(v) for v in self.d.methodCalls.values())
-        d['children'] = [[c.dict(do_copy=do_copy, without_id=without_id) if isinstance(c, Element) else c for c in arr] for arr in self.children]
+    def changes(self):
+        d = dict(type=self.d.type, id=self.d.id, newActions=[dict(action=action, key1=key1, key2=(key2 if key2 else ''), value=value) for (action, key1, key2), value in self.d.newActions.items()])
+        if self.d.tagAccessed or self.d.get('newly_created', False):
+            d['tag'] = dumps(self.d.tag)
+        d['children'] = self.d.children.changes()
         return d
 
-    def duplicate(self):
-        return Element(self.dict(do_copy=True, without_id=True))
+    def no_changes(self):
+        return not self.d.newActions and not self.d.tagAccessed and not self.d.get('newly_created', False) and self.d.children.no_changes()
+
+    def apply_specific_changes(self, changes):
+        d = dict(id=changes['id'], type=changes['type'], tag=changes.get('tag', ''))
+
+        settables = {k: (dict(settable) if isinstance(settable, dict) else settable) for k, settable in self.d.settables.items()}
+        methodCalls = dict(self.d.baseMethodCalls)
+        for action in changes['newActions']:
+            action, key1, key2, value = action['action'], action['key1'], action['key2'], action['value']
+            if action == self.METHOD_ADDED:
+                methodCalls[key1] = dict(value)
+            elif action == self.METHOD_DELETED:
+                del methodCalls[key1]
+            elif action == self.D_ADDED:
+                if key2:
+                    settables.setdefault(key1, {})[key2] = value
+                else:
+                    settables[key1] = value
+            elif action == self.D_DELETED:
+                if key2:
+                    if key1 in settables:
+                        del settables[key1][key2]
+                else:
+                    del settables[key1]
+
+        if methodCalls:
+            d['methodCalls'] = list(methodCalls.values())
+
+        if settables:
+            d['customAttributes'] = {}
+            for k,v in settables.items():
+                if isinstance(v, dict):
+                    d[k] = v
+                else:
+                    d['customAttributes'][k] = v
+
+        children = self.d.children.apply_specific_changes(changes['children'])
+        if children:
+            d['children'] = children
+        return d
+
+    def apply_changes(self):
+        self.apply_specific_changes(self.changes())
 
     def __repr__(self):
-        return repr(self.dict(do_copy=True))
-
+        return repr(self.apply_changes())
 
 def forward(attr):
     def h(f):
@@ -832,11 +934,55 @@ class EmptyElement(Element):
     def __rxor__(self, other):
         pass
 
-class elist(list):
+class elist:
+    ITEM_ADDED = 'ia'
+    ITEM_DELETED = 'id'
+
+    def check_type(self, args):
+        res = []
+        for e in args:
+            if not isinstance(e, (Element, elist, list, tuple)):
+                raise TypeError(f'elist must contain only Elements or elists, not {type(e)}')
+            if isinstance(e, (list, tuple)):
+                res.append(elist(e))
+            else:
+                res.append(e)
+        return res
+
     @classmethod
-    def _all_rec(cls, lst):
-        for e in lst:
-            if isinstance(e, list):
+    def from_dict(cls, d):
+        obj = cls(id=d['id'])
+        object.__setattr__(obj, 'baseDict', {e['id']: (cls.from_dict(e) if 'list' in e else Element.from_dict(e)) for e in d['list']})
+        object.__setattr__(obj, 'baseList', [e['id'] for e in d['list']])
+        object.__setattr__(obj, 'lst', list(obj.baseList))
+        return obj
+
+    def __init__(self, args=None, **kwargs):
+        if args is None:
+            args = []
+        if isinstance(args, elist):
+            args = list(args)
+        args = self.check_type(args)
+
+        id = kwargs.get('id', gen_id())
+        object.__setattr__(self, 'id', id)
+        object.__setattr__(self, 'baseDict', {})
+        object.__setattr__(self, 'baseList', [])
+        object.__setattr__(self, 'lst', [])
+        object.__setattr__(self, 'newActions', collections.OrderedDict())
+
+        for arg in args:
+            self.append(arg)
+
+    def __setattr__(self, key, value):
+        if key in ('id', 'baseDict', 'lst', 'newActions'):
+            raise ValueError(f'cannot change {key}')
+        return super().__setattr__(key, value)
+
+    @classmethod
+    def _all_rec(cls, elst):
+        for e in elst:
+            if isinstance(e, elist):
                 yield from cls._all_rec(e)
             else:
                 yield e
@@ -855,7 +1001,7 @@ class elist(list):
         else:
             found = list(dict.fromkeys(e for e in (self.all() if rec else self) if getattr(e, 'id', None) == id))
             if not found and raise_error:
-                raise KeyError(f'element with id {id} not found{' recursively' if rec else ' in top level'}')
+                raise KeyError(f'element with id {id} not found{' recursively' if rec else ' in top level'} {repr(self)}')
         return found
 
     # returns all occurrences or empty list
@@ -877,100 +1023,152 @@ class elist(list):
     def ids(self):
         return list(set(getsttr(e, 'id', None) for e in self.all()))
 
+    def resolve_item(self, id):
+        if (self.ITEM_ADDED, id) in self.newActions:
+            return self.newActions[(self.ITEM_ADDED, id)]
+        if id in self.baseDict and (self.ITEM_DELETED, id) not in self.newActions:
+            return self.baseDict[id]
+        raise KeyError(id)
+
     def __getitem__(self, item):
         if isinstance(item, slice):
-            return super().__getitem__(item)
+            return [self.resolve_item(id) for id in self.lst[item]]
         if isinstance(item, int):
             # try id first
             result = self.find(id=item)
             if result:
                 return result
             # then index
-            return super().__getitem__(item)
+            return self.resolve_item(self.lst[item])
         return self.find(name=item)
 
     def __delitem__(self, item):
+        # remove from list, record changed to dict
+
         if isinstance(item, slice):
-            super().__delitem__(item)
-            return
+            content = self.lst[item]
+            # index will not remove all duplicates -> might still contain
+            del self.lst[item]
+            deleted = [i for i in content if i not in self.lst]
+
         # delete only non recursively
+        # id, name will remove all duplicates -> cannot contain
         if isinstance(item, int):
             # try id first
-            views = self._find_elements('del', False, False, id=item)
-            if not views:
-                # then index
-                super().__delitem__(item)
-                return
+            deleted = self._find_elements('del', False, False, id=item)
+            if deleted:
+                for d in deleted:
+                    self.lst.remove(d)
+            else:
+                # try index
+                # index will not remove all duplicates -> might still contain
+                content = self.lst[item]
+                del self.lst[item]
+                deleted = [content] if content not in self.lst else []
         else:
-            views = self._find_elements('del', False, True, name=item)
-        for view in views:
-            self.remove(view)
+            deleted = self._find_elements('del', False, True, name=item)
+            for d in deleted:
+                self.lst.remove(d)
+
+        for d in deleted:
+            self.newActions.pop((self.ITEM_ADDED, d), None)
+            self.newActions[(self.ITEM_DELETED, d)] = True
+
+    def __setitem__(self, index, value):
+        del self[index]
+        self.insert(index, value)
 
     def __contains__(self, item):
-        return super().__contains__(item) or self.find(name=item) or self.find(id=item)
+        return item in self.dct.values() or self.find(name=item) or self.find(id=item)
 
     def append(self, item):
-        if not isinstance(item, (Element, elist)):
-             raise TypeError(f'elist must contain only Elements or elists, not {type(item)}')
-        super().append(item)
+        item, = self.check_type([item])
+        if item.id not in self.lst:
+            self.newActions.pop((self.ITEM_DELETED, item.id), None)
+            self.newActions[(self.ITEM_ADDED, item.id)] = item
+        self.lst.append(item.id)
 
     def insert(self, index, item):
-        if not isinstance(item, (Element, elist)):
-             raise TypeError(f'elist must contain only Elements or elists, not {type(item)}')
-        super().insert(index, item)
+        item, = self.check_type([item])
+        if item.id not in self.lst:
+            self.newActions.pop((self.ITEM_DELETED, item.id), None)
+            self.newActions[(self.ITEM_ADDED, item.id)] = item
+        self.lst.insert(index, item)
 
     def extend(self, iterable):
         lst = list(iterable)
+        lst = self.check_type(lst)
         for e in lst:
-             if not isinstance(e, (Element, elist)):
-                 raise TypeError(f'elist must contain only Elements or elists, not {type(item)}')
-        super().extend(lst)
+            self.append(e)
 
-    def reverse(self):
-        raise NotImplementedError('reverse() is not supported by elists')
+    def pop(self):
+        del self[len(self) - 1]
 
-    def sort(self):
-        raise NotImplementedError('sort() is not supported by elists')
+    def replace(self, items):
+        self.clear()
+        self.extend(items)
+
+    def clear(self):
+        while self.lst:
+            self.pop()
+
+    def __iter__(self):
+        for id in self.lst:
+            yield self.resolve_item(id)
+
+    def __len__(self):
+        return len(self.lst)
+
+    def count(self, item):
+        return list(self).count()
+
+    def index(self, item):
+        return self.lst.index(item.id)
 
     def copy(self):
-        return elist(self)
+        return type(self)(self)
+
+    def changes(self):
+        return dict(id=self.id,
+                    list=self.lst,
+                    addedActions={str(id): (dict(type=value.type) if isinstance(value, Element) else dict()) for (action, id), value in self.newActions.items() if action == self.ITEM_ADDED},
+                    deletedActions={str(id): True for (action, id), value in self.newActions.items() if action == self.ITEM_DELETED},
+                    elementActions={str(id): self.resolve_item(id).changes() for id in self.lst})
+
+    def no_changes(self):
+        return self.baseList == self.lst and not self.newActions and all(self.resolve_item(id).no_changes() for id in self.lst)
+
+    def any_collection_methods_deleted(self):
+        for e in self.all():
+            if is_collection(e.type) and e.any_methods_deleted():
+                return True
+        return False
+
+    def apply_specific_changes(self, changes):
+        list = []
+        for id in changes['list']:
+            if id in changes['addedActions']:
+                added = changes['addedActions'][id]
+                if 'list' in added:
+                    e = elist(id=id)
+                else:
+                    e = Element(dict(id=id, type=added['type']))
+                list.append(e.apply_specific_changes(changes['elementActions'][str(id)]))
+            elif id in self.baseDict and id not in changes['deletedActions']:
+                list.append(self.baseDict[id].apply_specific_changes(changes['elementActions'][str(id)]))
+            else:
+                raise KeyError('changes out of sync')
+        return list
+
+    def apply_changes(self):
+        return self.apply_specific_changes(self.changes())
+
+    def __repr__(self):
+        return f'elist({', '.join(repr(e) for e in self)})'
 
 #children is list of lists
 class ChildrenList(elist):
-    def adapt(self, item):
-        return elist(item if isinstance(item, (list, tuple)) else [item])
-
-    def set(self, other):
-        i = -1
-        for i,e in enumerate(other):
-            if len(self) <= i:
-                self.append(e)
-            else:
-                self[i] = self.adapt(e)
-        del self[i + 1:]
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.set(self)
-
-    def append(self, item):
-        super().append(self.adapt(item))
-
-    def extend(self, iterable):
-        super().extend(iterable)
-        self.set(self)
-
-    def remove(self, item):
-        super().remove(self.adapt(item))
-
-    def insert(self, i, item):
-        super().insert(i, self.adapt(item))
-
-    def index(self, item, *args, **kwargs):
-        return super().index(self.adapt(item), *args, **kwargs)
-
-    def count(self, item):
-        return super().count(self.adapt(item))
+    pass
 
 available_widgets_lock = threading.Lock()
 available_widgets = {}
@@ -1175,7 +1373,7 @@ def parse_appinfo(result):
     return parsed
 
 def widget_manager_create(widget, manager_state):
-    print('widget_manager_create')
+    print(f'widget_manager_create: {widget.widget_id}')
     widget.cancel_all_timers()
 
     #clear state
@@ -1194,17 +1392,23 @@ def widget_manager_create(widget, manager_state):
     else:
         lst = widgets.ListView(top=10, left=10, children=[widgets.TextView(text=name, textSize=30, textColor=0xb3ffffff,
                                                                             click=(choose_widget, dict(name=name))) for name in names])
-    return [bg, lst], dict(name=None)
+
+    return [bg, lst]
 
 def widget_manager_update(widget, manager_state, views, is_app):
     manager_state.chosen.setdefault(widget.widget_id, None)
     chosen = manager_state.chosen[widget.widget_id]
+
     if chosen is not None and chosen.name is not None:
         with available_widgets_lock:
             if chosen.name not in available_widgets:
                 raise RuntimeError(f"chosen widget '{chosen.name}' is not loaded")
             available_widget = available_widgets[chosen.name]
             on_create, on_update, on_app, debug = available_widget['create'], available_widget['update'], available_widget['on_app'], available_widget['debug']
+        if views is None:
+            print('views is None, recreating')
+            chosen.inited = False
+            widget.cancel_all_timers()
         if not chosen.inited:
             try:
                 elements = None
@@ -1224,7 +1428,12 @@ def widget_manager_update(widget, manager_state, views, is_app):
                         appinfo = parse_appinfo(onapp_result)
 
                 chosen.inited = True
-                return elements, dict(name=chosen.name, **appinfo)
+
+                if views is not None:
+                    views.replace(elements)
+                else:
+                    views = elist(elements)
+                return views, dict(name=chosen.name, **appinfo)
             except BaseException as e:
                 try:
                     #manually call widget chosen listener because of error
@@ -1237,7 +1446,12 @@ def widget_manager_update(widget, manager_state, views, is_app):
             if on_update:
                 call_general_function(on_update, widget=widget, views=views)
             return views, dict(name=chosen.name)
-    return widget_manager_create(widget, manager_state)
+    elements = widget_manager_create(widget, manager_state)
+    if views is not None:
+        views.replace(elements)
+    else:
+        views = elist(elements)
+    return views, dict(name=None)
 
 def widget_manager_callback(widget, manager_state, views, callback_key, default_cb=None, **kwargs):
     chosen = manager_state.chosen[widget.widget_id]
@@ -1333,50 +1547,31 @@ def disable_register_widget_waiters():
 #flatten inner lists
 def flatten_elements(elements):
     for e in elements:
-        if hasattr(e, 'dict'):
+        if isinstance(e, Element):
             yield e
         else:
             yield from flatten_elements(e)
 
-def import_java_views(java_list, with_raw_copy=False):
-    d1 = java.build_python_dict_from_java(java_list)
-    if with_raw_copy:
-        d2 = copy.deepcopy(d1)
-    d1 = elist(Element(e) for e in d1)
-    if with_raw_copy:
-        return d2, d1
-    else:
-        return d1
+def import_java_views(java_dict):
+    d = java.build_python_dict_from_java(java_dict)
+    return elist.from_dict(d) if d is not None else None
 
 class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
-    def export(self, input, output, attrs):
-        collection_methods_deleted = False
-        if not output:
+    def export(self, output, attrs):
+        if not output or output.no_changes():
             out = None
+            collectionMethodsDeleted = False
         else:
-            if not isinstance(output, (list, tuple)):
-                output = [output]
+            out = output.changes()
+            collectionMethodsDeleted = output.any_collection_methods_deleted()
+        ret = java.build_java_dict(dict(views=out, collectionMethodsDeleted=collectionMethodsDeleted, **attrs))
+        return ret
 
-            out = []
-            seen_ids = set()
-            for e in flatten_elements(output):
-                #filter duplicates
-                if e.d.id not in seen_ids:
-                    if e.d.methodCallsDeleted and is_collection(e.d.type):
-                        collection_methods_deleted = True
-                    out.append(e.dict(do_copy=True))
-                seen_ids.add(e.d.id)
-
-            if input is not None and input == out:
-                out = None
-        return java.build_java_dict(dict(views=out, collectionMethodsDeleted=collection_methods_deleted, **attrs))
-
-    def import_(self, java_list):
-        #make two copies to check for changes on export
-        return import_java_views(java_list, with_raw_copy=True)
+    def import_(self, java_dict):
+        return import_java_views(java_dict)
 
     @java.override
-    def onUpdate(self, widget_id, views_java_list, is_app):
+    def onUpdate(self, widget_id, views_java_dict, is_app):
         print(f'python got onUpdate for {'app' if is_app else 'widget'} {widget_id}')
         widget, manager_state = create_widget(widget_id)
 
@@ -1385,14 +1580,14 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
             if register_for_register_widget(widget.name, widget.invalidate):
                 # waiting
                 print('not handling update yet')
-                return self.export(None, None, {})
+                return self.export(None, {})
 
-        if views_java_list == None: # might by java.Null
-            input, views = None, None
+        if views_java_dict == None: # might by java.Null
+            views = None
         else:
-            input, views = self.import_(views_java_list)
+            views = self.import_(views_java_dict)
         output, attrs = widget_manager_update(widget, manager_state, views, is_app)
-        return self.export(input, output, attrs)
+        return self.export(output, attrs)
 
     @java.override
     def onDelete(self, widget_id):
@@ -1401,49 +1596,49 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
         state.save_modified()
 
     @java.override
-    def onItemClick(self, widget_id, views_java_list, collection_id, position, view_id):
+    def onItemClick(self, widget_id, views_java_dict, collection_id, position, view_id):
         print(f'python got onitemclick {widget_id} {collection_id} {position} {view_id}')
-        input, views = self.import_(views_java_list)
+        views = self.import_(views_java_dict)
 
         collection = views.find(id=collection_id)
         if not collection:
             #element not found, must be stale pendingintent
             #just invalidate
             print('Clicked collection item does not exist, invalidating')
-            return java.new.java.lang.Object[()]([True, self.export(None, views, {})])
+            return self.export(views, {})
         view = collection.children.find(id=view_id) if view_id != 0 else None
 
         widget, manager_state = create_widget(widget_id)
 
         if widget.name is not None and register_for_register_widget(widget.name, None):
             print('suppressing item click event because widget is not loaded')
-            return self.export(None, views, {})
+            return self.export(views, {})
 
         handled = collection.__event__('itemclick', widget=widget, views=views, collection=collection, position=position, view=view)
         handled = handled is True
-        return self.export(input, views, dict(handled=handled))
+        return self.export(views, dict(handled=handled))
 
     @java.override
-    def onClick(self, widget_id, views_java_list, view_id, checked):
+    def onClick(self, widget_id, views_java_dict, view_id, checked):
         print(f'python got on click {widget_id} {view_id} {checked}')
-        input, views = self.import_(views_java_list)
+        views = self.import_(views_java_dict)
         v = views.find(id=view_id)
         if not v:
             #element not found, must be stale pendingintent
             #just invalidate
             print('Clicked element does not exist, invalidating')
-            return self.export(None, views, {})
+            return self.export(views, {})
         widget, manager_state = create_widget(widget_id)
 
         if widget.name is not None and register_for_register_widget(widget.name, None):
             print('suppressing click event because widget is not loaded')
-            return self.export(None, views, {})
+            return self.export(views, {})
 
         v.__event__('click', widget=widget, views=views, view=v, checked=checked)
-        return self.export(input, views, {})
+        return self.export(views, {})
 
     @java.override
-    def onTimer(self, timer_id, widget_id, views_java_list, data):
+    def onTimer(self, timer_id, widget_id, views_java_dict, data):
         print(f'timer called for widget {widget_id}, timer_id: {timer_id}')
         func = loads(data)
         widget, manager_state = create_widget(widget_id)
@@ -1453,14 +1648,14 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
             if register_for_register_widget(widget.name, lambda: widget.post(func)):
                 # waiting
                 print('not handling timer yet')
-                return self.export(None, None, {})
+                return self.export(None, {})
 
-        input, views = self.import_(views_java_list)
+        views = self.import_(views_java_dict)
         call_general_function(func, timer_id=timer_id, widget=widget, views=views)
-        return self.export(input, views, {})
+        return self.export(views, {})
 
     @java.override
-    def onPost(self, widget_id, views_java_list, data):
+    def onPost(self, widget_id, views_java_dict, data):
         print(f'post called for widget {widget_id}')
         widget, manager_state = create_widget(widget_id)
         func = loads(data)
@@ -1470,38 +1665,38 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
             if register_for_register_widget(widget.name, lambda: widget.post(func)):
                 # waiting
                 print('not handling post yet')
-                return self.export(None, None, {})
+                return self.export(None, {})
 
-        input, views = self.import_(views_java_list)
+        views = self.import_(views_java_dict)
         call_general_function(func, widget=widget, views=views)
-        return self.export(input, views, {})
+        return self.export(views, {})
 
-    def onEvent(self, widget_id, views_java_list, event, default_cb=None, **kwargs):
-        input, views = self.import_(views_java_list)
+    def onEvent(self, widget_id, views_java_dict, event, default_cb=None, **kwargs):
+        views = self.import_(views_java_dict)
         widget, manager_state = create_widget(widget_id)
 
         if widget.name is not None and register_for_register_widget(widget.name, None):
             print(f'suppressing {event} because widget is not loaded')
-            return self.export(None, views, {})
+            return self.export(views, {})
 
-        return self.export(input, widget_manager_callback(widget, manager_state, views, event, default_cb=default_cb, **kwargs), {})
+        return self.export(widget_manager_callback(widget, manager_state, views, event, default_cb=default_cb, **kwargs), {})
 
     @java.override
-    def onConfig(self, widget_id, views_java_list, key):
+    def onConfig(self, widget_id, views_java_dict, key):
         print(f'onConfig called with key: {key}')
-        return self.onEvent(widget_id, views_java_list, 'on_config', key=key)
+        return self.onEvent(widget_id, views_java_dict, 'on_config', key=key)
 
     @java.override
-    def onShare(self, widget_id, views_java_list, mime, text, datas):
+    def onShare(self, widget_id, views_java_dict, mime, text, datas):
         datas = java.build_python_dict_from_java(datas)
         text = text if text != java.Null else None
         print(f'onShare called for widget {widget_id}', mime, text, len(datas))
-        return self.onEvent(widget_id, views_java_list, 'on_share', mimetype=mime, text=text, data=datas)
+        return self.onEvent(widget_id, views_java_dict, 'on_share', mimetype=mime, text=text, data=datas)
 
     @java.override
-    def onCustomSettings(self, widget_id, views_java_list):
+    def onCustomSettings(self, widget_id, views_java_dict):
         print(f'onCustomSettings called')
-        return self.onEvent(widget_id, views_java_list, 'on_settings_action', default_cb=lambda: widgets.toast('No custom action configured for this widget'))
+        return self.onEvent(widget_id, views_java_dict, 'on_settings_action', default_cb=lambda: widgets.toast('No custom action configured for this widget'))
 
     @java.override
     def wipeStateRequest(self):

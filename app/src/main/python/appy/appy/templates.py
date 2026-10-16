@@ -65,14 +65,13 @@ def RefreshButton(click, name=None, size=None, initial_refresh=None, widget=None
     return btn
 
 def auto_check_click(widget, views, view, checked, checked_hook, state_name):
+    widget.state[state_name] = checked
     if checked_hook:
         call_general_function(checked_hook, widget=widget, views=views, view=view, checked=checked)
-        
-    widget.state[state_name] = checked
     
 def auto_check(Element, widget, state_name, checked_hook=None, initial_state=False, **kwargs):
     element = Element(**kwargs)
-    element.checked = widget.state.get(state_name, initial_state)
+    element.checked = widget.state.setdefault(state_name, initial_state)
     element.click = (auto_check_click, dict(checked_hook=checked_hook, state_name=state_name))
     return element
     
@@ -119,6 +118,7 @@ def Editable(title='', hint='', emptytext='_', options: list[str] | None = None,
             raise ValueError('widget arg must be supplied if state_name is used')
         if state_name in widget.state:
             text.text = str(widget.state[state_name])
+
     if isinstance(presets, EditablePreset):
         presets = [presets]
     text.click = (editable_click, dict(title=title, hint=hint, emptytext=emptytext, options=options, dialog_format_hook=dialog_format_hook, result_format_hook=result_format_hook, state_name=state_name, presets=presets))
