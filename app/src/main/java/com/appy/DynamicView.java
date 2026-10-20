@@ -1,5 +1,7 @@
 package com.appy;
 
+import android.util.Log;
+
 import androidx.annotation.NonNull;
 
 import java.util.ArrayList;
@@ -14,9 +16,8 @@ import java.util.Random;
  */
 public class DynamicView implements DynamicViewListElement
 {
-    public static final int SERIALIZATION_VERSION = 6;
+    public static final int SERIALIZATION_VERSION = 2;
 
-    public static Random random = new Random();
     public static final String METHOD_ADDED = "ma";
     public static final String METHOD_DELETED = "md";
     public static final String D_ADDED = "da";
@@ -38,12 +39,7 @@ public class DynamicView implements DynamicViewListElement
 
     private static long genId()
     {
-        long id = 0;
-        while (id == 0)
-        {
-            id = Math.abs(random.nextLong());
-        }
-        return id;
+        return Utils.generateId();
     }
 
     public DynamicView(String type)
@@ -271,11 +267,6 @@ public class DynamicView implements DynamicViewListElement
         return obj;
     }
 
-    public DynamicView copy()
-    {
-        return fromDict(toDict());
-    }
-
     public RemoteMethodCall findMethodCall(String identifier)
     {
         for (int i = methodCalls.size() - 1; i >= 0; i--)
@@ -447,16 +438,20 @@ public class DynamicView implements DynamicViewListElement
                     {
                         e = new DynamicViewList(id);
                     }
+                    e.applyChanges(elementActions.getDict(idstr));
                 }
                 else if (baseElements.containsKey(id) && !deletedActions.hasKey(idstr))
                 {
                     e = baseElements.get(id);
+                    if (elementActions.hasKey(idstr))
+                    {
+                        e.applyChanges(elementActions.getDict(idstr));
+                    }
                 }
                 else
                 {
                     throw new ChangeSyncException("changes out of sync on " + id + ": " + baseElements.containsKey(id) + " " + deletedActions.hasKey(idstr));
                 }
-                e.applyChanges(elementActions.getDict(idstr));
                 list.add(e);
             }
         }
@@ -531,10 +526,5 @@ public class DynamicView implements DynamicViewListElement
                 }
             };
         }
-    }
-
-    public static DynamicViewList copyArray(DynamicViewList arr)
-    {
-        return DynamicViewList.fromDict(arr.toDict());
     }
 }

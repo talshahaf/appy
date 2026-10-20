@@ -232,7 +232,7 @@ class Widget:
         self.post(self.itemclick_invoker, element_id=element.id, position=position)
 
     def views_snapshot(self):
-        return widget_manager.import_java_views(widget_manager.java_context().getWidgetViewsSnapshot(self.widget_id))
+        return widget_manager.import_java_views(None, widget_manager.java_context().getWidgetViewsSnapshot(self.widget_id), 0)
 
     def description(self):
         return widget_manager.java_context().widgetDescriptionLine(self.widget_id)

@@ -1,11 +1,14 @@
 package com.appy;
 
 import android.content.Context;
+import android.content.Intent;
 import android.os.Bundle;
 import androidx.appcompat.app.AlertDialog;
 import androidx.core.view.MenuProvider;
 import androidx.lifecycle.Lifecycle;
 
+import android.os.Handler;
+import android.util.Log;
 import android.view.ContextMenu;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -16,20 +19,117 @@ import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ListView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import org.jspecify.annotations.NonNull;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
 public class StateFragment extends FragmentParent
 {
+    public static final int EXPORT_CODE = 1;
+    private Handler handler;
+
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState)
     {
         super.onCreateView(inflater, container, savedInstanceState);
+        handler = new Handler();
         return inflater.inflate(R.layout.fragment_parent, container, false);
+    }
+
+    public DictObj.Dict getAllState()
+    {
+        DictObj.Dict result = new DictObj.Dict();
+
+        for (String scope : StateSelectFragment.scopes)
+        {
+            int depth = StateSelectFragment.getScopeDepth(scope);
+            DictObj.Dict snapshot = getWidgetService().getStateLayoutSnapshot(scope, null);
+            if (snapshot == null)
+            {
+                return result;
+            }
+            if (depth == 1)
+            {
+                result.put(scope, snapshot);
+            }
+            else if (depth == 2)
+            {
+                DictObj.Dict scopeDict = new DictObj.Dict();
+                for (String key : snapshot.keyset())
+                {
+                    scopeDict.put(key, getWidgetService().getStateLayoutSnapshot(scope, key));
+                }
+            }
+            else if (depth == 3)
+            {
+                DictObj.Dict scopeDict = new DictObj.Dict();
+                for (String widgetName : snapshot.keyset())
+                {
+                    DictObj.Dict widgetDict = new DictObj.Dict();
+                    for (String widgetId : snapshot.getDict(widgetName).keyset())
+                    {
+                        widgetDict.put(widgetId, getWidgetService().getStateLayoutSnapshot(scope, widgetId));
+                    }
+                    scopeDict.put(widgetName, widgetDict);
+                }
+                result.put(scope, scopeDict);
+            }
+        }
+        return result;
+    }
+
+    @Override
+    public void onActivityResult(Intent data)
+    {
+        String[] files = data.getStringArrayExtra(FileBrowserActivity.RESULT_FILES);
+        if (files == null || files.length == 0)
+        {
+            return;
+        }
+
+        if (getWidgetService() == null)
+        {
+            return;
+        }
+
+        int requestCode = data.getIntExtra(FileBrowserActivity.REQUEST_CODE, -1);
+        if (requestCode == EXPORT_CODE)
+        {
+            File file = new File(files[0], "exported_state.json");
+            Runnable export = () -> {
+                Toast.makeText(requireActivity(), "Exporting state...", Toast.LENGTH_SHORT).show();
+                new Thread(() -> {
+                    try
+                    {
+                        DictObj.Dict stateSnapshot = getAllState();
+                        Utils.writeFile(file, DictObj.makeJson(stateSnapshot, true));
+                        handler.post(() -> Toast.makeText(requireActivity(), "State exported to " + file.getAbsolutePath(), Toast.LENGTH_LONG).show());
+                    }
+                    catch (IOException e)
+                    {
+                        Log.e("APPY", "export state failed", e);
+                        handler.post(() -> Toast.makeText(requireActivity(), "Failed to write file", Toast.LENGTH_SHORT).show());
+                    }
+                }).start();
+            };
+
+            if (file.exists())
+            {
+                Utils.showConfirmationDialog(requireActivity(),
+                        "Export State", "File already exists, overwrite?", android.R.drawable.ic_dialog_alert,
+                        null, null, export);
+            }
+            else
+            {
+                export.run();
+            }
+        }
     }
 
     @Override
@@ -73,6 +173,10 @@ public class StateFragment extends FragmentParent
             if (keyPath.isEmpty())
             {
                 DictObj.Dict stateSnapshot = getWidgetService().getStateLayoutSnapshot(null, null);
+                if (stateSnapshot == null)
+                {
+                    return;
+                }
                 if (getActivity() != null)
                 {
                     getActivity().setTitle("State");
@@ -97,6 +201,10 @@ public class StateFragment extends FragmentParent
                 boolean inLocalScopeView = containStates && depth == 3;
 
                 DictObj.Dict stateSnapshot = getWidgetService().getStateLayoutSnapshot(keyPath.get(0), areLeaves ? keyPath.get(keyPath.size() - 1) : null);
+                if (stateSnapshot == null)
+                {
+                    return;
+                }
                 for (String key : stateSnapshot.keys())
                 {
                     if (areLeaves)
@@ -311,13 +419,13 @@ public class StateFragment extends FragmentParent
         @Override
         public void onCreateMenu(@NonNull Menu menu, @NonNull MenuInflater inflater)
         {
-            inflater.inflate(R.menu.clearall_toolbar_action, menu);
+            inflater.inflate(R.menu.state_toolbar_action, menu);
         }
 
         @Override
         public boolean onMenuItemSelected(@NonNull MenuItem item)
         {
-            if (item.getItemId() == R.id.action_clearall)
+            if (item.getItemId() == R.id.action_clear)
             {
                 String title = keyPath.isEmpty() ? "Clear all state" : "Clear states";
                 String message = keyPath.isEmpty() ? "Clear state for all widgets?" : "Clear all states in " + String.join(".", keyPath) + "?";
@@ -346,6 +454,13 @@ public class StateFragment extends FragmentParent
                             refresh();
                         });
                 return true;
+            }
+            else if (item.getItemId() == R.id.action_export)
+            {
+                if (getWidgetService() != null)
+                {
+                    parent.launchFileBrowser(EXPORT_CODE, getWidgetService().getPreferredScriptDir(), false, false, true, null);
+                }
             }
             return false;
         }

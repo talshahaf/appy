@@ -9,10 +9,12 @@ import android.util.Base64;
 import android.util.Pair;
 import android.widget.RemoteViews;
 
+import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 
 /**
@@ -215,7 +217,7 @@ public class RemoteMethodCall
         this.originalArguments = args;
     }
 
-    public void recalculateArguments(Resources resources, int[] widgetSize)
+    public void calculateArguments(Resources resources, int[] widgetSize)
     {
         Class<?>[] types = this.method.getParameterTypes();
         this.arguments = new Object[originalArguments.length];
@@ -260,51 +262,39 @@ public class RemoteMethodCall
         return parentCall;
     }
 
-    public void call(RemoteViews view, int id) throws InvocationTargetException, IllegalAccessException
+    public static Object duckMul(Object source, double b)
     {
-        if (arguments == null)
+        return switch (source)
         {
-            throw new RuntimeException("arguments were not calculated");
+            case null -> null;
+            case Integer i -> (int) (i * b);
+            case Short i -> (short) (i * b);
+            case Long l -> (long) (l * b);
+            case Float v -> (float) (v * b);
+            case Double v -> v * b;
+            default -> throw new RuntimeException("cannot multiply " + source.getClass().getSimpleName());
+        };
+    }
+
+    public void call(RemoteViews view, int id, Pair<Integer, Double>[] argumentScaling, Resources resources, int[] widgetSize) throws InvocationTargetException, IllegalAccessException
+    {
+        calculateArguments(resources, widgetSize);
+
+        Object[] scaledArguments = new Object[arguments.length + 1];
+        scaledArguments[0] = id;
+        System.arraycopy(arguments, 0, scaledArguments, 1, arguments.length);
+        if (argumentScaling != null)
+        {
+            for (Pair<Integer, Double> scaling : argumentScaling)
+            {
+                scaledArguments[scaling.first + 1] = duckMul(arguments[scaling.first], scaling.second);
+            }
         }
 
         try
         {
             //Log.d("APPY", "calling " + id + " " + method.getName());
-            switch (arguments.length)
-            {
-                case 0:
-                    method.invoke(view, id);
-                    break;
-                case 1:
-                    method.invoke(view, id, arguments[0]);
-                    break;
-                case 2:
-                    method.invoke(view, id, arguments[0], arguments[1]);
-                    break;
-                case 3:
-                    method.invoke(view, id, arguments[0], arguments[1], arguments[2]);
-                    break;
-                case 4:
-                    method.invoke(view, id, arguments[0], arguments[1], arguments[2], arguments[3]);
-                    break;
-                case 5:
-                    method.invoke(view, id, arguments[0], arguments[1], arguments[2], arguments[3], arguments[4]);
-                    break;
-                case 6:
-                    method.invoke(view, id, arguments[0], arguments[1], arguments[2], arguments[3], arguments[4], arguments[5]);
-                    break;
-                case 7:
-                    method.invoke(view, id, arguments[0], arguments[1], arguments[2], arguments[3], arguments[4], arguments[5], arguments[6]);
-                    break;
-                case 8:
-                    method.invoke(view, id, arguments[0], arguments[1], arguments[2], arguments[3], arguments[4], arguments[5], arguments[6], arguments[7]);
-                    break;
-                case 9:
-                    method.invoke(view, id, arguments[0], arguments[1], arguments[2], arguments[3], arguments[4], arguments[5], arguments[6], arguments[7], arguments[8]);
-                    break;
-                default:
-                    throw new IllegalArgumentException("cannot call function with " + arguments.length + " arguments");
-            }
+            method.invoke(view, (Object[]) scaledArguments);
         }
         catch (IllegalArgumentException e)
         {

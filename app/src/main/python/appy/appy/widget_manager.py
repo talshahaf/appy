@@ -430,10 +430,12 @@ element_attr_aliases = dict(checked='compoundButtonChecked',
                             compoundDrawables='textViewCompoundDrawables',
                             compoundDrawablesRelative='textViewCompoundDrawablesRelative',
                             padding='viewPadding',
-                            alignment='gravity')
+                            alignment='gravity',
+                            display='visibility')
 
+View = java.clazz.android.view.View()
 Gravity = java.clazz.android.view.Gravity()
-element_attr_value_aliases = dict(alignment=dict(
+element_attr_value_aliases = dict(display=dict(visible=View.VISIBLE, invisible=View.INVISIBLE, gone=View.GONE), alignment=dict(
     center=Gravity.CENTER, center_horizontal=Gravity.CENTER_HORIZONTAL, center_vertical=Gravity.CENTER_VERTICAL, center_left=Gravity.CENTER_VERTICAL | Gravity.LEFT, center_start=Gravity.CENTER_VERTICAL | Gravity.START, center_right=Gravity.CENTER_VERTICAL | Gravity.RIGHT, center_end=Gravity.CENTER_VERTICAL | Gravity.END,
     bottom=Gravity.BOTTOM, bottom_left=Gravity.BOTTOM | Gravity.LEFT, bottom_center=Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL, bottom_right=Gravity.BOTTOM | Gravity.RIGHT, bottom_start=Gravity.BOTTOM | Gravity.START, bottom_end=Gravity.BOTTOM | Gravity.END,
     top=Gravity.TOP, top_left=Gravity.TOP | Gravity.LEFT, top_center=Gravity.TOP | Gravity.CENTER_HORIZONTAL, top_right=Gravity.TOP | Gravity.RIGHT, top_start=Gravity.TOP | Gravity.START, top_end=Gravity.TOP | Gravity.END,
@@ -483,6 +485,9 @@ class Element:
         self.d.newly_created = id is None
         self.d.id = gen_id() if id is None else id
         self.d.type = type
+        if not isinstance(self.d.id, int) or not isinstance(self.d.type, str):
+            raise ValueError(f'id and type are wrong: {self.d.id}, {self.d.type}')
+
         self.d.tag = AttrDict()
         self.d.tagAccessed = False
         self.d.baseMethodCalls = collections.OrderedDict()
@@ -506,7 +511,10 @@ class Element:
         event_hook = element_event_hooks.get(self.d.type, {}).get(key)
         if event_hook:
             event_hook(kwargs)
-        cb = self.d_get(key, None)
+        try:
+            cb = self.d_get(key, None)
+        except AttributeError:
+            cb = None
         if cb is not None:
             return call_general_function(loads(cb), **kwargs)
 
@@ -527,7 +535,6 @@ class Element:
             self.d_delete(key, None)
         #children
         elif key == 'children':
-            #TODO change
             self.d.children.clear()
         #tag
         elif key == 'tag':
@@ -557,7 +564,6 @@ class Element:
                 attr = loads(attr)
             return attr
         if item in ('name', 'style'):
-            #TODO more D change
             return self.d_get(item, None)
         #children
         if item == 'children':
@@ -623,12 +629,13 @@ class Element:
         #children
         elif key == 'children':
             if value is None:
-                value = ChildrenList()
-            elif isinstance(value, Element):
-                value = ChildrenList([value])
-            elif isinstance(value, (tuple, list, elist)):
-                value = ChildrenList([([e] if isinstance(e, Element) else e) for e in value])
-            self.d.children.replace(value)
+                self.d.children.clear()
+            else:
+                if isinstance(value, Element):
+                    value = ChildrenList([value])
+                elif isinstance(value, (tuple, list, elist)):
+                    value = ChildrenList(value)
+                self.d.children.replace(value)
         #tag
         elif key == 'tag':
             # goes to self.d.tag through getattr
@@ -817,7 +824,7 @@ class Element:
         return d
 
     def apply_changes(self):
-        self.apply_specific_changes(self.changes())
+        return self.apply_specific_changes(self.changes())
 
     def __repr__(self):
         return repr(self.apply_changes())
@@ -942,7 +949,7 @@ class elist:
         res = []
         for e in args:
             if not isinstance(e, (Element, elist, list, tuple)):
-                raise TypeError(f'elist must contain only Elements or elists, not {type(e)}')
+                raise TypeError(f'elist must contain only Elements or elists, not {type(e)} ({repr(e)})')
             if isinstance(e, (list, tuple)):
                 res.append(elist(e))
             else:
@@ -965,6 +972,9 @@ class elist:
         args = self.check_type(args)
 
         id = kwargs.get('id', gen_id())
+        if not isinstance(id, int):
+            raise ValueError(f'id is wrong: {id}')
+
         object.__setattr__(self, 'id', id)
         object.__setattr__(self, 'baseDict', {})
         object.__setattr__(self, 'baseList', [])
@@ -1028,7 +1038,7 @@ class elist:
             return self.newActions[(self.ITEM_ADDED, id)]
         if id in self.baseDict and (self.ITEM_DELETED, id) not in self.newActions:
             return self.baseDict[id]
-        raise KeyError(id)
+        raise KeyError(f'{id}')
 
     def __getitem__(self, item):
         if isinstance(item, slice):
@@ -1093,7 +1103,7 @@ class elist:
         if item.id not in self.lst:
             self.newActions.pop((self.ITEM_DELETED, item.id), None)
             self.newActions[(self.ITEM_ADDED, item.id)] = item
-        self.lst.insert(index, item)
+        self.lst.insert(index, item.id)
 
     def extend(self, iterable):
         lst = list(iterable)
@@ -1133,7 +1143,7 @@ class elist:
                     list=self.lst,
                     addedActions={str(id): (dict(type=value.type) if isinstance(value, Element) else dict()) for (action, id), value in self.newActions.items() if action == self.ITEM_ADDED},
                     deletedActions={str(id): True for (action, id), value in self.newActions.items() if action == self.ITEM_DELETED},
-                    elementActions={str(id): self.resolve_item(id).changes() for id in self.lst})
+                    elementActions={str(id): self.resolve_item(id).changes() for id in self.lst if not self.resolve_item(id).no_changes()})
 
     def no_changes(self):
         return self.baseList == self.lst and not self.newActions and all(self.resolve_item(id).no_changes() for id in self.lst)
@@ -1147,17 +1157,17 @@ class elist:
     def apply_specific_changes(self, changes):
         list = []
         for id in changes['list']:
-            if id in changes['addedActions']:
-                added = changes['addedActions'][id]
-                if 'list' in added:
-                    e = elist(id=id)
-                else:
+            if str(id) in changes['addedActions']:
+                added = changes['addedActions'][str(id)]
+                if 'type' in added:
                     e = Element(dict(id=id, type=added['type']))
+                else:
+                    e = elist(id=id)
                 list.append(e.apply_specific_changes(changes['elementActions'][str(id)]))
             elif id in self.baseDict and id not in changes['deletedActions']:
                 list.append(self.baseDict[id].apply_specific_changes(changes['elementActions'][str(id)]))
             else:
-                raise KeyError('changes out of sync')
+                raise KeyError(f'changes out of sync for id: {id} {id in self.baseDict} {id in changes['deletedActions']}')
         return list
 
     def apply_changes(self):
@@ -1168,7 +1178,19 @@ class elist:
 
 #children is list of lists
 class ChildrenList(elist):
-    pass
+    def __init__(self, args=None, **kwargs):
+        if args:
+            args = [elist([arg]) if isinstance(arg, Element) else arg for arg in args]
+        super().__init__(args, **kwargs)
+
+    def append(self, item):
+        if isinstance(item, Element):
+            item = elist([item])
+        return super().append(item)
+    def insert(self, index, item):
+        if isinstance(item, Element):
+            item = elist([item])
+        return super().insert(index, item)
 
 available_widgets_lock = threading.Lock()
 available_widgets = {}
@@ -1252,12 +1274,15 @@ def obtain_manager_state():
     manager_state = state.State('__widgetmanager__', -1) #special own scope
     manager_state.locals('__token__')
     manager_state.locals('chosen')
+    manager_state.locals('manager')
     token = 1
     if getattr(manager_state, '__token__', None) != token:
         manager_state.chosen = {}
+        manager_state.manager = {}
         manager_state.__token__ = token
 
     manager_state.setdefault('chosen', {})
+    manager_state.setdefault('manager', {})
     return manager_state
 
 def create_widget(widget_id):
@@ -1283,11 +1308,15 @@ def get_all_widget_names():
     manager_state = obtain_manager_state()
     return {widget_id: (chosen.get('name') if chosen else None) for widget_id, chosen in manager_state.chosen.items()}
 
-def choose_widget(widget, name):
+def choose_widget(widget, views, name):
     print(f'choosing widget: {widget.widget_id} -> {name}')
     manager_state = obtain_manager_state()
     manager_state.chosen[widget.widget_id] = AttrDict(name=name, inited=False)
-    widget.set_loading()
+
+    for view in views:
+        view.display = 'invisible'
+
+    views.append(widgets.TextView(top=10, left=10, right=10, bottom=10, text='Loading...', maxLines=1, textColor=0xb3ffffff, textSize='auto'))
     widget.invalidate()
 
 def unchoose_widget(widget_id):
@@ -1372,32 +1401,56 @@ def parse_appinfo(result):
 
     return parsed
 
-def widget_manager_create(widget, manager_state):
+def widget_manager_create(widget, manager_state, views):
     print(f'widget_manager_create: {widget.widget_id}')
     widget.cancel_all_timers()
-
     #clear state
     manager_state.chosen[widget.widget_id] = None
-
-    bg = widgets.RelativeLayout(top=0, left=0, bottom=0, right=0)
-    bg.backgroundResource = R.drawable.rect
-    bg.backgroundTint = widgets.color(r=0, g=0, b=0, a=100)
 
     with available_widgets_lock:
         names = [name for name in available_widgets]
     names.sort()
 
-    if not names:
-        lst = widgets.TextView(top=10, left=10, text='No widgets', textColor=0xb3ffffff, textSize=15)
-    else:
-        lst = widgets.ListView(top=10, left=10, children=[widgets.TextView(text=name, textSize=30, textColor=0xb3ffffff,
-                                                                            click=(choose_widget, dict(name=name))) for name in names])
+    list_item = lambda name: widgets.TextView(text=name, textSize=30, textColor=0xb3ffffff, click=(choose_widget, dict(name=name)))
+    empty_list = lambda: widgets.TextView(top=10, left=10, text='No widgets', textColor=0xb3ffffff, textSize=15)
+    full_list = lambda: widgets.ListView(top=10, left=10, children=[list_item(name) for name in names])
 
-    return [bg, lst]
+    if views is None:
+        bg = widgets.RelativeLayout(top=0, left=0, bottom=0, right=0)
+        bg.backgroundResource = R.drawable.rect
+        bg.backgroundTint = widgets.color(r=0, g=0, b=0, a=100)
+
+        if not names:
+            lst = empty_list()
+        else:
+            lst = full_list()
+        return elist([bg, lst])
+    else:
+        if views[1].type == 'ListView':
+            if not names:
+                views[1] = empty_list()
+            existing_names = [(i, child[0].text) for i, child in enumerate(views[1].children)]
+            existing_names.sort(key=lambda x: x[0], reverse=True)
+            #removed
+            for i, existing_name in existing_names:
+                if existing_name not in names:
+                    del views[1].children[i]
+
+            existing_names = {child[0].text for child in views[1].children}
+            for i, name in enumerate(names):
+                if name not in existing_names:
+                    views[1].children.insert(i, list_item(name))
+        elif names:
+            views[1] = full_list()
+
+        return views
 
 def widget_manager_update(widget, manager_state, views, is_app):
-    manager_state.chosen.setdefault(widget.widget_id, None)
-    chosen = manager_state.chosen[widget.widget_id]
+    chosen = manager_state.chosen.setdefault(widget.widget_id, None)
+    manager = manager_state.manager.setdefault(widget.widget_id, AttrDict())
+    if manager is None:
+        manager_state.manager[widget.widget_id] = AttrDict()
+        manager = manager_state.manager[widget.widget_id]
 
     if chosen is not None and chosen.name is not None:
         with available_widgets_lock:
@@ -1427,13 +1480,9 @@ def widget_manager_update(widget, manager_state, views, is_app):
                     if onapp_result:
                         appinfo = parse_appinfo(onapp_result)
 
+                manager.rendered = False
                 chosen.inited = True
-
-                if views is not None:
-                    views.replace(elements)
-                else:
-                    views = elist(elements)
-                return views, dict(name=chosen.name, **appinfo)
+                return elist(elements), dict(name=chosen.name, newviews=True, **appinfo)
             except BaseException as e:
                 try:
                     #manually call widget chosen listener because of error
@@ -1446,12 +1495,10 @@ def widget_manager_update(widget, manager_state, views, is_app):
             if on_update:
                 call_general_function(on_update, widget=widget, views=views)
             return views, dict(name=chosen.name)
-    elements = widget_manager_create(widget, manager_state)
-    if views is not None:
-        views.replace(elements)
-    else:
-        views = elist(elements)
-    return views, dict(name=None)
+    should_reuse = manager.rendered if 'rendered' in manager else False
+    elements = widget_manager_create(widget, manager_state, views if should_reuse else None)
+    manager.rendered = True
+    return elements, dict(name=None, newviews=not should_reuse)
 
 def widget_manager_callback(widget, manager_state, views, callback_key, default_cb=None, **kwargs):
     chosen = manager_state.chosen[widget.widget_id]
@@ -1503,9 +1550,11 @@ def refresh_widgets(path, removed=False):
     chosen_copy = manager_state.chosen.copy()
     for widget_id, chosen in chosen_copy.items():
         if chosen is not None and chosen.name is not None and chosen.name in widget_names:
+            widget = widgets.Widget(widget_id, None)
             if removed:
                 unchoose_widget(widget_id)
-            widgets.Widget(widget_id, None).invalidate()
+                widget.set_loading()
+            widget.invalidate()
     state.save_modified()
 
 
@@ -1552,9 +1601,18 @@ def flatten_elements(elements):
         else:
             yield from flatten_elements(e)
 
-def import_java_views(java_dict):
-    d = java.build_python_dict_from_java(java_dict)
-    return elist.from_dict(d) if d is not None else None
+imported_views = {}
+def import_java_views(widget_id, java_dict, views_token):
+    out = None
+    if views_token != 0 and widget_id is not None and widget_id in imported_views and imported_views[widget_id]['token'] == views_token:
+        out = imported_views[widget_id]['views']
+    else:
+        d = java.build_python_dict_from_java(java_dict)
+        if d is not None:
+            out = elist.from_dict(d)
+            if widget_id is not None:
+                imported_views[widget_id] = dict(token=views_token, views=out)
+    return out
 
 class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
     def export(self, output, attrs):
@@ -1567,11 +1625,11 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
         ret = java.build_java_dict(dict(views=out, collectionMethodsDeleted=collectionMethodsDeleted, **attrs))
         return ret
 
-    def import_(self, java_dict):
-        return import_java_views(java_dict)
+    def import_(self, widget_id, java_dict, views_token):
+        return import_java_views(widget_id, java_dict, views_token)
 
     @java.override
-    def onUpdate(self, widget_id, views_java_dict, is_app):
+    def onUpdate(self, widget_id, views_java_dict, views_token, is_app):
         print(f'python got onUpdate for {'app' if is_app else 'widget'} {widget_id}')
         widget, manager_state = create_widget(widget_id)
 
@@ -1585,7 +1643,7 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
         if views_java_dict == None: # might by java.Null
             views = None
         else:
-            views = self.import_(views_java_dict)
+            views = self.import_(widget_id, views_java_dict, views_token)
         output, attrs = widget_manager_update(widget, manager_state, views, is_app)
         return self.export(output, attrs)
 
@@ -1593,12 +1651,13 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
     def onDelete(self, widget_id):
         print(f'python got onDelete for {widget_id}')
         unchoose_widget(widget_id)
+        widgets.Widget(widget_id, None).set_loading()
         state.save_modified()
 
     @java.override
-    def onItemClick(self, widget_id, views_java_dict, collection_id, position, view_id):
+    def onItemClick(self, widget_id, views_java_dict, views_token, collection_id, position, view_id):
         print(f'python got onitemclick {widget_id} {collection_id} {position} {view_id}')
-        views = self.import_(views_java_dict)
+        views = self.import_(widget_id, views_java_dict, views_token)
 
         collection = views.find(id=collection_id)
         if not collection:
@@ -1619,9 +1678,9 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
         return self.export(views, dict(handled=handled))
 
     @java.override
-    def onClick(self, widget_id, views_java_dict, view_id, checked):
+    def onClick(self, widget_id, views_java_dict, views_token, view_id, checked):
         print(f'python got on click {widget_id} {view_id} {checked}')
-        views = self.import_(views_java_dict)
+        views = self.import_(widget_id, views_java_dict, views_token)
         v = views.find(id=view_id)
         if not v:
             #element not found, must be stale pendingintent
@@ -1638,7 +1697,7 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
         return self.export(views, {})
 
     @java.override
-    def onTimer(self, timer_id, widget_id, views_java_dict, data):
+    def onTimer(self, timer_id, widget_id, views_java_dict, views_token, data):
         print(f'timer called for widget {widget_id}, timer_id: {timer_id}')
         func = loads(data)
         widget, manager_state = create_widget(widget_id)
@@ -1650,12 +1709,12 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
                 print('not handling timer yet')
                 return self.export(None, {})
 
-        views = self.import_(views_java_dict)
+        views = self.import_(widget_id, views_java_dict, views_token)
         call_general_function(func, timer_id=timer_id, widget=widget, views=views)
         return self.export(views, {})
 
     @java.override
-    def onPost(self, widget_id, views_java_dict, data):
+    def onPost(self, widget_id, views_java_dict, views_token, data):
         print(f'post called for widget {widget_id}')
         widget, manager_state = create_widget(widget_id)
         func = loads(data)
@@ -1667,12 +1726,12 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
                 print('not handling post yet')
                 return self.export(None, {})
 
-        views = self.import_(views_java_dict)
+        views = self.import_(widget_id, views_java_dict, views_token)
         call_general_function(func, widget=widget, views=views)
         return self.export(views, {})
 
-    def onEvent(self, widget_id, views_java_dict, event, default_cb=None, **kwargs):
-        views = self.import_(views_java_dict)
+    def onEvent(self, widget_id, views_java_dict, views_token, event, default_cb=None, **kwargs):
+        views = self.import_(widget_id, views_java_dict, views_token)
         widget, manager_state = create_widget(widget_id)
 
         if widget.name is not None and register_for_register_widget(widget.name, None):
@@ -1682,21 +1741,21 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
         return self.export(widget_manager_callback(widget, manager_state, views, event, default_cb=default_cb, **kwargs), {})
 
     @java.override
-    def onConfig(self, widget_id, views_java_dict, key):
+    def onConfig(self, widget_id, views_java_dict, views_token, key):
         print(f'onConfig called with key: {key}')
-        return self.onEvent(widget_id, views_java_dict, 'on_config', key=key)
+        return self.onEvent(widget_id, views_java_dict, views_token, 'on_config', key=key)
 
     @java.override
-    def onShare(self, widget_id, views_java_dict, mime, text, datas):
+    def onShare(self, widget_id, views_java_dict, views_token, mime, text, datas):
         datas = java.build_python_dict_from_java(datas)
         text = text if text != java.Null else None
         print(f'onShare called for widget {widget_id}', mime, text, len(datas))
-        return self.onEvent(widget_id, views_java_dict, 'on_share', mimetype=mime, text=text, data=datas)
+        return self.onEvent(widget_id, views_java_dict, views_token, 'on_share', mimetype=mime, text=text, data=datas)
 
     @java.override
-    def onCustomSettings(self, widget_id, views_java_dict):
+    def onCustomSettings(self, widget_id, views_java_dict, views_token):
         print(f'onCustomSettings called')
-        return self.onEvent(widget_id, views_java_dict, 'on_settings_action', default_cb=lambda: widgets.toast('No custom action configured for this widget'))
+        return self.onEvent(widget_id, views_java_dict, views_token, 'on_settings_action', default_cb=lambda: widgets.toast('No custom action configured for this widget'))
 
     @java.override
     def wipeStateRequest(self):
@@ -1772,7 +1831,7 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
             for k, v in snapshot.items():
                 if k == 'locals':
                     widget_names = {}
-                    for widget_id in snapshot[k]:
+                    for widget_id in v:
                         if widget_id != -1 and widget_id not in widget_names:
                             try:
                                 widget_name = get_widget_name(widget_id)
@@ -1781,7 +1840,7 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
                             widget_names[widget_id] = widget_name
                     new_layout[k] = len(set(widget_names.values()))
                 else:
-                    new_layout[k] = len(snapshot[k])
+                    new_layout[k] = len(v)
             snapshot = new_layout
         return java.build_java_dict(snapshot)
 

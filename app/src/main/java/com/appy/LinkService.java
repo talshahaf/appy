@@ -23,7 +23,7 @@ public class LinkService extends Activity
             String customAction = intent.getStringExtra("action");
             String action = Constants.DEEP_LINK_BROADCAST + (customAction == null ? "" : "." + customAction);
 
-            Log.d("APPY", "sending " + action);
+            Log.d("APPY", "LinkService sending " + action);
 
             Intent broadcastIntent = new Intent(action);
             broadcastIntent.putExtras(intent);

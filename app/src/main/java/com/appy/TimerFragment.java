@@ -86,6 +86,10 @@ public class TimerFragment extends FragmentParent
             }
 
             DictObj.Dict allTimers = getWidgetService().getTimersSnapshot();
+            if (allTimers == null)
+            {
+                return;
+            }
 
             ArrayList<ListFragmentAdapter.Item> adapterList = new ArrayList<>();
 
@@ -243,13 +247,13 @@ public class TimerFragment extends FragmentParent
         @Override
         public void onCreateMenu(@NonNull Menu menu, @NonNull MenuInflater inflater)
         {
-            inflater.inflate(R.menu.clearall_toolbar_action, menu);
+            inflater.inflate(R.menu.timer_toolbar_action, menu);
         }
 
         @Override
         public boolean onMenuItemSelected(@NonNull MenuItem item)
         {
-            if (item.getItemId() == R.id.action_clearall)
+            if (item.getItemId() == R.id.action_clear)
             {
                 Utils.showConfirmationDialog(getActivity(),
                         widget == null ? "Clear all timers" : "Clear " + (isApp ? "app" : "widget") + " timers",

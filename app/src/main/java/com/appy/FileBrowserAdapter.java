@@ -124,7 +124,7 @@ public class FileBrowserAdapter extends BaseAdapter
             viewHolder = ((ViewHolder) view.getTag());
         }
 
-        final FileItem item = (FileItem) getItem(position);
+        FileItem item = (FileItem) getItem(position);
         if (item == current)
         {
             viewHolder.filename.setText("..");
@@ -136,6 +136,7 @@ public class FileBrowserAdapter extends BaseAdapter
         {
             viewHolder.filename.setText(item.file.getName());
             viewHolder.icon.setImageResource(setFileImageType(item));
+            viewHolder.checkbox.setVisibility(View.VISIBLE);
             viewHolder.date.setText(getLastDate(item));
             viewHolder.checkbox.setChecked(item.checked);
             viewHolder.checkbox.setEnabled(selectingEnabled);

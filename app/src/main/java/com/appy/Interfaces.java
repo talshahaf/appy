@@ -19,23 +19,23 @@ interface BroadcastInterface
 
 interface WidgetUpdateListener
 {
-    DictObj.Dict onUpdate(int widgetId, DictObj.Dict views, boolean isApp);
+    DictObj.Dict onUpdate(int widgetId, DictObj.Dict views, long viewsToken, boolean isApp);
 
     void onDelete(int widgetId);
 
-    DictObj.Dict onItemClick(int widgetId, DictObj.Dict views, long collectionId, int position, long id);
+    DictObj.Dict onItemClick(int widgetId, DictObj.Dict views, long viewsToken, long collectionId, int position, long id);
 
-    DictObj.Dict onClick(int widgetId, DictObj.Dict views, long id, boolean checked);
+    DictObj.Dict onClick(int widgetId, DictObj.Dict views, long viewsToken, long id, boolean checked);
 
-    DictObj.Dict onTimer(long timerId, int widgetId, DictObj.Dict views, String data);
+    DictObj.Dict onTimer(long timerId, int widgetId, DictObj.Dict views, long viewsToken, String data);
 
-    DictObj.Dict onPost(int widgetId, DictObj.Dict views, String data);
+    DictObj.Dict onPost(int widgetId, DictObj.Dict views, long viewsToken, String data);
 
-    DictObj.Dict onConfig(int widgetId, DictObj.Dict views, String key);
+    DictObj.Dict onConfig(int widgetId, DictObj.Dict views, long viewsToken, String key);
 
-    DictObj.Dict onShare(int widgetId, DictObj.Dict views, String mimeType, String text, DictObj.Dict datas);
+    DictObj.Dict onShare(int widgetId, DictObj.Dict views, long viewsToken, String mimeType, String text, DictObj.Dict datas);
 
-    DictObj.Dict onCustomSettings(int widgetId, DictObj.Dict views);
+    DictObj.Dict onCustomSettings(int widgetId, DictObj.Dict views, long viewsToken);
 
     void wipeStateRequest();
 

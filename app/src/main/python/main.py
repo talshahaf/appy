@@ -1,8 +1,6 @@
 import faulthandler
 faulthandler.enable()
 
-print('python main start2')
-
 import sys, os, locale
 selfdir = os.path.dirname(__file__)
 sys.path.append(selfdir)
@@ -10,8 +8,6 @@ sys.path.append(selfdir)
 import logcat
 
 sys.path.remove(selfdir)
-
-print('python main start')
 
 import subprocess, signal, traceback, time, email, tarfile, importlib.util, site, shutil
 from pathlib import Path

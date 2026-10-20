@@ -58,6 +58,8 @@ import java.util.Date;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.NoSuchElementException;
+import java.util.Random;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -70,6 +72,8 @@ import kotlin.Triple;
 
 public class Utils
 {
+    private static final Random random = new Random();
+
     public static abstract class ArgRunnable implements Runnable
     {
         Object[] args;
@@ -101,6 +105,68 @@ public class Utils
         }
     }
 
+    public static class EmptyIterator<T> implements Iterator<T>
+    {
+
+        @Override
+        public boolean hasNext()
+        {
+            return false;
+        }
+
+        @Override
+        public T next()
+        {
+            return null;
+        }
+    }
+
+    public static class IteratorChain<T> implements Iterator<T>
+    {
+        private Iterator<T>[] iterators;
+        private int index;
+        public IteratorChain(Iterator<T>... iterators)
+        {
+            this.iterators = iterators;
+            index = 0;
+        }
+
+        @Override
+        public boolean hasNext()
+        {
+            if (index == iterators.length - 1)
+            {
+                return iterators[index].hasNext();
+            }
+
+            if (iterators[index].hasNext())
+            {
+                return true;
+            }
+
+            index++;
+            return hasNext();
+        }
+
+        @Override
+        public T next()
+        {
+            try
+            {
+                return iterators[index].next();
+            }
+            catch (NoSuchElementException e)
+            {
+                if (index == iterators.length - 1)
+                {
+                    throw e;
+                }
+                index++;
+                return next();
+            }
+        }
+    }
+
     public interface KeyMapper<T>
     {
         float map(T t);
@@ -119,6 +185,16 @@ public class Utils
     public static <T> T orDefault(T val, T def)
     {
         return val != null ? val : def;
+    }
+
+    public static long generateId()
+    {
+        long id = 0;
+        while (id == 0)
+        {
+            id = Math.abs(random.nextLong());
+        }
+        return id;
     }
 
     public static ArrayList<String> bundleDiff(Bundle a, Bundle b)

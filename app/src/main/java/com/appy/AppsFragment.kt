@@ -30,6 +30,9 @@ import android.view.ViewGroup
 import android.widget.FrameLayout
 import androidx.activity.OnBackPressedCallback
 import androidx.annotation.RequiresApi
+import androidx.collection.IntList
+import androidx.collection.emptyIntList
+import androidx.collection.mutableIntListOf
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.ExperimentalSharedTransitionApi
@@ -197,22 +200,45 @@ class AppsFragment : MyFragment(), MenuProvider {
     }
 
     private val setListenerMethod = Reflection.getMethods(AppWidgetHost::class.java).find { it.name == "setListener"}
+    private var isListening = false
 
-    private var startCounter = 0
+    companion object {
+        private var startCounter = 0
+    }
+    fun tryStartListening() {
+        if (!isListening) {
+            if (widgetHost != null) {
+                widgetHost!!.startListening()
+                isListening = true
+            }
+        }
+    }
+
+    fun tryStopListening() {
+        if (isListening && widgetHost != null) {
+            try {
+                widgetHost!!.stopListening()
+                isListening = false
+            } catch (_: NullPointerException) {
+                //bug on android <= 12
+            }
+        }
+    }
+
     override fun onStart() {
-        Log.d("APPY", "onStart")
-        widgetHost?.startListening()
         super.onStart()
+        startCounter++
+        tryStartListening()
     }
 
     override fun onStop() {
-        Log.d("APPY", "onStop")
-        try {
-            widgetHost?.stopListening()
-        } catch (_: NullPointerException) {
-            //bug on android <= 12
-        }
         super.onStop()
+        startCounter--
+        if (startCounter <= 0)
+        {
+            tryStopListening()
+            startCounter = 0
+        }
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
@@ -232,12 +258,14 @@ class AppsFragment : MyFragment(), MenuProvider {
         appyInfo!!.initialLayout = R.layout.initial_widget
 
         widgetHost = WidgetHost(context.applicationContext)
+        tryStartListening()
 
         super.onAttach(context)
     }
 
     override fun onAttachedAndBound() {
         attachedAndBound = true
+        tryStartListening()
         loadWidgets()
 
         if (fragmentArg != null) {
@@ -246,6 +274,7 @@ class AppsFragment : MyFragment(), MenuProvider {
     }
 
     override fun onArgument() {
+        tryStartListening()
         if (attachedAndBound) {
             handleShortcutRequest()
         }
@@ -291,7 +320,7 @@ class AppsFragment : MyFragment(), MenuProvider {
     override fun onActivityResult(data: Intent) {
         val widgetId = data.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, -1)
         if (widgetId == -1) {
-            Log.e("APPY", "no widget id on bindapp permission request")
+            Log.e("APPY", "no widget id on bindApp permission request")
             return
         }
 
@@ -413,10 +442,23 @@ class AppsFragment : MyFragment(), MenuProvider {
         store.apply()
     }
 
+    fun cleanUnusedWidgets(usedWidgets: IntList) {
+        val allWidgets = widgetHost?.appWidgetIds
+        var cleaned = 0
+        allWidgets?.forEach {
+            if (!usedWidgets.contains(it)) {
+                widgetHost?.deleteAppWidgetId(it)
+                cleaned++
+            }
+        }
+        Log.d("APPY", "Cleaned $cleaned app widgets")
+    }
+
     private fun loadWidgets()
     {
         val store = StoreData.Factory.create(requireActivity(), "app_fragment_widgets")
         val widgetsStored = store.getList("widgets")
+        val usedWidgets = mutableIntListOf()
 
         lastSelectedState.intValue = -1
         selectedState.intValue = -1
@@ -424,10 +466,12 @@ class AppsFragment : MyFragment(), MenuProvider {
 
         if (widgetsStored == null) {
             _widgetGridList.clear()
+            cleanUnusedWidgets(usedWidgets)
             return
         }
 
         val widgets = mutableListOf<WidgetItem>()
+
         val props = widgetService.getAllWidgetAppProps(true, true)
 
         for (i in 0..< widgetsStored.size()) {
@@ -448,6 +492,7 @@ class AppsFragment : MyFragment(), MenuProvider {
                 item.icons = widgetProps.getDict("icons")
                 item.name = name
                 widgets.add(item)
+                usedWidgets.add(widgetId)
             }
         }
 
@@ -455,6 +500,7 @@ class AppsFragment : MyFragment(), MenuProvider {
             clear()
             addAll(widgets)
         }
+        cleanUnusedWidgets(usedWidgets)
     }
 
     private fun updateWidgetSizeIfNeeded(widgetItem : WidgetItem, widthPixels : Int, heightPixels : Int)
@@ -653,6 +699,12 @@ class AppsFragment : MyFragment(), MenuProvider {
             Box (modifier = Modifier.fillMaxSize()) {
                 LargeFloatingActionButton(onClick = {
                     addWidget()
+                    if (activity != null) {
+                        requireActivity().onBackPressedDispatcher.addCallback(
+                            owner = viewLifecycleOwner,
+                            onBackPressedCallback = minimizeBackAction)
+                        minimizeBackAction.isEnabled = true
+                    }
                 },
                     modifier = Modifier
                         .align(Alignment.BottomEnd)

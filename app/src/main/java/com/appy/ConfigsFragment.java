@@ -8,6 +8,7 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.core.view.MenuProvider;
 import androidx.lifecycle.Lifecycle;
 
+import android.os.Handler;
 import android.util.Log;
 import android.view.ContextMenu;
 import android.view.LayoutInflater;
@@ -46,12 +47,14 @@ public class ConfigsFragment extends FragmentParent
 {
     public static final int IMPORT_CODE = 1;
     public static final int EXPORT_CODE = 2;
+    private Handler handler;
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState)
     {
         super.onCreateView(inflater, container, savedInstanceState);
+        handler = new Handler();
         return inflater.inflate(R.layout.fragment_parent, container, false);
     }
 
@@ -117,16 +120,19 @@ public class ConfigsFragment extends FragmentParent
         {
             File file = new File(files[0], "exported_configurations.json");
             Runnable export = () -> {
-                try
-                {
-                    Utils.writeFile(file, DictObj.makeJson(configurations.getDict(), true));
-                    Toast.makeText(requireActivity(), "Configurations exported to " + file.getAbsolutePath(), Toast.LENGTH_LONG).show();
-                }
-                catch (IOException e)
-                {
-                    Log.e("APPY", "export config failed", e);
-                    Toast.makeText(requireActivity(), "Failed to write file", Toast.LENGTH_SHORT).show();
-                }
+                Toast.makeText(requireActivity(), "Exporting configuration...", Toast.LENGTH_SHORT).show();
+                new Thread(() -> {
+                    try
+                    {
+                        Utils.writeFile(file, DictObj.makeJson(configurations.getDict(), true));
+                        handler.post(() -> Toast.makeText(requireActivity(), "Configurations exported to " + file.getAbsolutePath(), Toast.LENGTH_LONG).show());
+                    }
+                    catch (IOException e)
+                    {
+                        Log.e("APPY", "export config failed", e);
+                        handler.post(() -> Toast.makeText(requireActivity(), "Failed to write file", Toast.LENGTH_SHORT).show());
+                    }
+                }).start();
             };
 
             if (file.exists())
@@ -255,7 +261,7 @@ public class ConfigsFragment extends FragmentParent
         {
             if (item.getItemId() == R.id.action_export)
             {
-                Log.d("APPY", "Export click");
+                Log.d("APPY", "Config export click");
                 if (getWidgetService() != null && getWidgetService().getConfigurations() != null)
                 {
                     parent.launchFileBrowser(EXPORT_CODE, getWidgetService().getPreferredScriptDir(), false, false, true, null);
@@ -264,7 +270,7 @@ public class ConfigsFragment extends FragmentParent
             }
             else if (item.getItemId() == R.id.action_import)
             {
-                Log.d("APPY", "Import click");
+                Log.d("APPY", "Config import click");
                 parent.launchFileBrowser(IMPORT_CODE, null, false, true, false, ".json");
                 return true;
             }

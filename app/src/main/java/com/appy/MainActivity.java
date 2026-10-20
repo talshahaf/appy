@@ -140,7 +140,7 @@ public class MainActivity extends AppCompatActivity implements StatusListener, A
         }
         catch (JSONException | IOException e)
         {
-            Log.e("APPY", "Update check failed", e);
+            Log.e("APPY", "Update check failed: " + e.getMessage());
         }
         return null;
     }

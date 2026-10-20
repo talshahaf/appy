@@ -115,13 +115,7 @@ public class Attributes
 
         // list elements such as (text.top * 2 + widget.height / 5 + 1)
         public ArrayList<Argument> arguments = new ArrayList<>();
-        public Double resolvedValue;
         public String debugName = null;
-
-        public boolean isResolved()
-        {
-            return resolvedValue != null;
-        }
 
         public boolean hasConstraints()
         {
@@ -212,10 +206,6 @@ public class Attributes
                 argArray.add(argObj);
             }
             obj.put("arguments", argArray);
-            if (resolvedValue != null)
-            {
-                obj.put("resolvedValue", resolvedValue);
-            }
             if (debugName != null)
             {
                 obj.put("debug_name", debugName);
@@ -236,6 +226,11 @@ public class Attributes
             }
             value.functions.add(new Attributes.AttributeValue.Function(func, args.length, value.arguments.size()));
             return value;
+        }
+
+        public AttributeValue copy()
+        {
+            return AttributeValue.fromDict(toDict());
         }
     }
 
@@ -268,18 +263,5 @@ public class Attributes
             attributes.attributes.put(Type.valueOf(entry.key), AttributeValue.fromDict((DictObj.Dict)entry.value));
         }
         return attributes;
-    }
-
-    public HashMap<Type, AttributeValue> unresolved()
-    {
-        HashMap<Type, AttributeValue> ret = new HashMap<>();
-        for (Map.Entry<Type, AttributeValue> e : attributes.entrySet())
-        {
-            if (e.getValue().resolvedValue == null)
-            {
-                ret.put(e.getKey(), e.getValue());
-            }
-        }
-        return ret;
     }
 }

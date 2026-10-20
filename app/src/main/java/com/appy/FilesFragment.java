@@ -94,7 +94,6 @@ public class FilesFragment extends MyFragment implements FileGridAdapter.ItemAct
         Utils.showConfirmationDialog(getActivity(),
                 "Confirm Delete", "Are you sure?", android.R.drawable.ic_dialog_alert,
                 null, null, () -> {
-                    Log.d("APPY", "on delete");
                     getWidgetService().removePythonFile(file);
                     adapter.setItems(getPythonFiles());
                     adapter.notifyDataSetChanged();
@@ -104,7 +103,6 @@ public class FilesFragment extends MyFragment implements FileGridAdapter.ItemAct
     @Override
     public void onRefresh(final PythonFile file)
     {
-        Log.d("APPY", "on refresh");
         getWidgetService().refreshPythonFile(file, true);
         adapter.setStateOverride(file, PythonFile.State.RUNNING);
         handler.postDelayed(() -> {
