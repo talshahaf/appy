@@ -26,7 +26,7 @@ public class DynamicView implements DynamicViewListElement
     private final long id;
     public String type;
     public ArrayList<RemoteMethodCall> methodCalls = new ArrayList<>();
-    public DynamicViewList children = new DynamicViewList();
+    public DynamicViewList children = null;
     public String tag;
     public HashMap<String, String> customAttributes = new HashMap<>();
     public int view_id;
@@ -37,17 +37,7 @@ public class DynamicView implements DynamicViewListElement
     public int actualHeight;
     public HashMap<String, String> selectors = new HashMap<>();
 
-    private static long genId()
-    {
-        return Utils.generateId();
-    }
-
-    public DynamicView(String type)
-    {
-        this(genId(), type);
-    }
-
-    private DynamicView(long id, String type)
+    public DynamicView(long id, String type)
     {
         this(id, type, 0, 0, 0);
     }
@@ -137,7 +127,12 @@ public class DynamicView implements DynamicViewListElement
         }
         if (changes.hasKey("children"))
         {
-            children.applyChanges(changes.getDict("children"), true);
+            DictObj.Dict childrenChanges = changes.getDict("children");
+            if (children == null)
+            {
+                children = new DynamicViewList(changes.getLong("id", 0));
+            }
+            children.applyChanges(childrenChanges, true);
         }
     }
 
@@ -150,7 +145,7 @@ public class DynamicView implements DynamicViewListElement
         }
         else
         {
-            id = genId();
+            throw new IllegalArgumentException("fromDict without id");
         }
 
         int xml_id = 0;
@@ -260,7 +255,7 @@ public class DynamicView implements DynamicViewListElement
             }
             obj.put("methodCalls", callarr);
         }
-        if (!children.isEmpty())
+        if (children != null && !children.isEmpty())
         {
             obj.put("children", children.toDict());
         }
@@ -294,11 +289,6 @@ public class DynamicView implements DynamicViewListElement
         private long id;
         private final ArrayList<DynamicViewListElement> list;
 
-        public DynamicViewList()
-        {
-            this.id = genId();
-            list = new ArrayList<>();
-        }
         public DynamicViewList(long id)
         {
             this.id = id;
@@ -374,10 +364,13 @@ public class DynamicView implements DynamicViewListElement
                     inner = (DynamicViewList) e;
                 }
 
-                DynamicViewListElement found = inner.find(id, true);
-                if (found != null)
+                if (inner != null)
                 {
-                    return found;
+                    DynamicViewListElement found = inner.find(id, true);
+                    if (found != null)
+                    {
+                        return found;
+                    }
                 }
             }
             return null;

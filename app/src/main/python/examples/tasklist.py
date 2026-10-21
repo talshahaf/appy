@@ -16,11 +16,11 @@ def on_check(widget, view, checked):
     # Strikethrough on checked
     view.paintFlags = strikethrough_flags if checked else normal_flags
     
-    # Invalidate other tasklists
+    # Update other tasklists
     for w in widget.by_name(widget.name):
         if w != widget:
-            w.invalidate()
- 
+            w.post(update_list)
+
 def update_list(widget, views):
     views['title'].text = widget.config.title_nojson
     if widget.config.title_nojson:
@@ -46,6 +46,15 @@ def update_list(widget, views):
                                 click=on_check))
     views['list'].children = children
 
+first_update = True
+def update(widget, views):
+    # We only need to synchronize config with UI once after boot
+    global first_update
+    if not first_update:
+        return
+    first_update = False
+    update_list(widget, views)
+
 def create(widget):
     title = TextView(name='title', top=20, hcenter=widget.hcenter, textColor=0xb3ffffff, textSize=20, alignment='center', text=widget.config.title_nojson)
     lst = ListView(name='list', top=title.ibottom + 10, paddingTop=20, paddingBottom=50)
@@ -59,12 +68,11 @@ def create(widget):
                            click=edit_btn_click,
                            imageResource=androidR.drawable.ic_menu_edit)
     
-    widget.invalidate()
+    widget.post(update_list)
     return [background(widget=widget, drawable=R.drawable.rect), title, lst, edit_btn]
     
 register_widget('tasklist', create,
-                    # Also refresh list every update so we can call invalidate from other tasklists
-                    update_list,
+                    update,
                     # no json so it would be easier to read and to change
                     config=dict(title_nojson='', list_nojson='Task 1\nTask 2\nTask 3', newline_delimiter=True, delimiter=', ', main_list=False),
                     config_description=dict(newline_delimiter='Use newlines to split the task list', delimiter='Use this delimiter, works only if newline_delimiter is False', main_list='request config update for all widgets'),

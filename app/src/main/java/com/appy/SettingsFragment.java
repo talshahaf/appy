@@ -43,7 +43,7 @@ public class SettingsFragment extends MySettingsFragment implements SharedPrefer
             Widget service = getWidgetService();
             if (service != null)
             {
-                service.updateAll(true);
+                service.updateAll(true, true);
             }
             return true;
         });

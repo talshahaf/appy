@@ -437,8 +437,10 @@ public class Utils
 
     public static Pair<byte[], String> readAndHashFile(File path, int sizeLimit, boolean returnTrimmed) throws IOException
     {
-        InputStream fis = new FileInputStream(path);
-        return readAndHashFile(fis, sizeLimit, returnTrimmed);
+        try (InputStream fis = new FileInputStream(path))
+        {
+            return readAndHashFile(fis, sizeLimit, returnTrimmed);
+        }
     }
 
     public static Pair<byte[], String> readAndHashFile(InputStream fis, int sizeLimit, boolean returnTrimmed) throws IOException
