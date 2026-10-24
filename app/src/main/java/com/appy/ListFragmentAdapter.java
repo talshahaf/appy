@@ -147,7 +147,7 @@ public class ListFragmentAdapter extends BaseAdapter
             value = "null";
         }
 
-        text2.setText(trimValuePerLine(value, 2));
+        text2.setText(trimValuePerLine(value, 10));
 
         text1.setEnabled(item.enabled);
         text2.setEnabled(item.enabled);

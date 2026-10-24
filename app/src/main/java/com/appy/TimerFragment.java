@@ -84,6 +84,10 @@ public class TimerFragment extends FragmentParent
             {
                 return;
             }
+            if (getWidgetService().getStartupState() != Constants.StartupState.COMPLETED)
+            {
+                return;
+            }
 
             DictObj.Dict allTimers = getWidgetService().getTimersSnapshot();
             if (allTimers == null)
@@ -272,6 +276,12 @@ public class TimerFragment extends FragmentParent
                 return true;
             }
             return false;
+        }
+
+        @Override
+        public void onStartupCompleted()
+        {
+            refresh();
         }
     }
 }

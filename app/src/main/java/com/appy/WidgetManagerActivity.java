@@ -12,7 +12,7 @@ public class WidgetManagerActivity extends WidgetSelectActivity
 {
     public static final int CONTEXT_MENU_CLEAR = 50;
     public static final int CONTEXT_MENU_RECREATE = 51;
-    public static final int CONTEXT_MENU_SIZE_FACTOR = 52;
+    public static final int CONTEXT_MENU_DRAWING_SETTINGS = 52;
 
     private float lastTouchX = Float.NaN;
     private float lastTouchY = Float.NaN;
@@ -63,7 +63,7 @@ public class WidgetManagerActivity extends WidgetSelectActivity
     {
         menu.add(0, CONTEXT_MENU_CLEAR, 0, "Clear");
         menu.add(0, CONTEXT_MENU_RECREATE, 0, "Recreate");
-        menu.add(0, CONTEXT_MENU_SIZE_FACTOR, 0, "Change Size and Correction Factors");
+        menu.add(0, CONTEXT_MENU_DRAWING_SETTINGS, 0, "Change Drawing Settings");
     }
 
     @Override
@@ -83,9 +83,9 @@ public class WidgetManagerActivity extends WidgetSelectActivity
             widgetService.recreateWidget(widgetId);
             updateWidgetList();
         }
-        else if (itemid == CONTEXT_MENU_SIZE_FACTOR)
+        else if (itemid == CONTEXT_MENU_DRAWING_SETTINGS)
         {
-            Widget.startSizeFactorActivity(this, null, widgetId);
+            Widget.startDrawingSettingsActivity(this, null, widgetId);
         }
         return false;
     }

@@ -75,7 +75,7 @@ public class Constants
     public static final int SPECIAL_WIDGET_SHOWERROR = 4;
     public static final int SPECIAL_WIDGET_OPENAPP = 5;
     public static final int SPECIAL_WIDGET_RECREATE = 6;
-    public static final int SPECIAL_WIDGET_SCALE_FACTOR = 7;
+    public static final int SPECIAL_WIDGET_DRAWING_SETTINGS = 7;
     public static final int SPECIAL_WIDGET_OPEN_CONFIGURATION = 8;
     public static final int SPECIAL_WIDGET_EDIT_FILE = 9;
     public static final int SPECIAL_WIDGET_RELOAD = 10;

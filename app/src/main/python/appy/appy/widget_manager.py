@@ -1077,12 +1077,11 @@ class elist:
             # index will not remove all duplicates -> might still contain
             del self.lst[item]
             deleted = [i for i in content if i not in self.lst]
-
         # delete only non recursively
         # id, name will remove all duplicates -> cannot contain
-        if isinstance(item, int):
+        elif isinstance(item, int):
             # try id first
-            deleted = self._find_elements('del', False, False, id=item)
+            deleted = [e.id for e in self._find_elements('del', False, False, id=item)]
             if deleted:
                 for d in deleted:
                     self.lst.remove(d)
@@ -1093,7 +1092,7 @@ class elist:
                 del self.lst[item]
                 deleted = [content] if content not in self.lst else []
         else:
-            deleted = self._find_elements('del', False, True, name=item)
+            deleted = [e.id for e in self._find_elements('del', False, True, name=item)]
             for d in deleted:
                 self.lst.remove(d)
 
@@ -1106,7 +1105,12 @@ class elist:
         self.insert(index, value)
 
     def __contains__(self, item):
-        return item in self.dct.values() or self.find(name=item) or self.find(id=item)
+        if isinstance(item, (Element, elist)):
+            for e in self:
+                if e == item:
+                    return True
+            return False
+        return self.find(name=item) or self.find(id=item)
 
     def append(self, item):
         item, = self.check_type([item])
@@ -1505,7 +1509,7 @@ def widget_manager_update(widget, manager_state, views, is_app):
 
                 manager.rendered = False
                 chosen.inited = True
-                return elist(elements), dict(name=chosen.name, newviews=True, **appinfo)
+                return elist(elements), dict(name=chosen.name, newviews=True, inited=True, **appinfo)
             except BaseException as e:
                 try:
                     #manually call widget chosen listener because of error
@@ -1626,6 +1630,9 @@ def flatten_elements(elements):
 
 cached_views = {}
 WidgetClass = java.clazz.com.appy.Widget()
+def java_views_dict_to_views(views_dict):
+    return elist.from_dict(java.build_python_dict_from_java(views_dict))
+
 def import_java_views(widget_id, widget_views, views_token):
     out = None
     if views_token != 0 and widget_id is not None and widget_id in cached_views and cached_views[widget_id]['token'] == views_token:
@@ -1909,6 +1916,10 @@ class Handler(java.implements(java.clazz.appy.WidgetUpdateListener())):
     @java.override
     def getAllWidgetNames(self):
         return java.build_java_dict({str(k): v for k,v in get_all_widget_names().items()})
+
+    @java.override
+    def getWidgetName(self, widget_id):
+        return get_widget_name(widget_id)
 
     @java.override
     def getPythonFileByName(self, name):

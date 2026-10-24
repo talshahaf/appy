@@ -60,6 +60,8 @@ interface WidgetUpdateListener
 
     DictObj.Dict getAllWidgetNames();
 
+    String getWidgetName(int widgetId);
+
     String getPythonFileByName(String name);
 
     void syncConfig(DictObj.Dict config);
@@ -75,9 +77,13 @@ interface RunnerListener
     void onExited(Integer code);
 }
 
-interface StatusListener
+interface StartupStatusListener
 {
-    void onStartupStatusChange();
+    void onStartupStatusChange(Constants.StartupState state);
+}
+
+interface FileStatusListener
+{
     void onPythonFileStatusChange();
 }
 
@@ -86,7 +92,7 @@ interface AppPropsListener
     void onAppPropsChange(int widgetId, int androidWidgetId, DictObj.Dict data);
 }
 
-interface WidgetChosenListener
+interface WidgetServiceListener
 {
     void onWidgetChosen(int widgetId, int androidWidgetId, String name);
     void onWidgetCleared(int widgetId, int androidWidgetId);

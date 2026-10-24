@@ -27,27 +27,38 @@
         <item name="android:textColor">@color/color_secondary_text</item>
     </style>
 
-    <style name="secondary_btn" parent="btn">
-        <item name="android:background">@drawable/drawable_secondary_btn</item>
-        <item name="android:textColor">@color/color_secondary_text</item>
-    </style>
-
-    <style name="info_btn_sml" parent="btn">
+    <style name="btn_sml" parent="btn">
         <item name="android:paddingTop">12sp</item>
         <item name="android:paddingBottom">12sp</item>
         <item name="android:paddingLeft">16sp</item>
         <item name="android:paddingRight">16sp</item>
         <item name="android:textSize">17sp</item>
-        <item name="android:background">@drawable/drawable_info_btn</item>
-        <item name="android:textColor">@color/color_info_text</item>
     </style>
 
-    <style name="secondary_btn_tiny" parent="btn">
+    <style name="btn_tiny" parent="btn">
         <item name="android:paddingTop">5sp</item>
         <item name="android:paddingBottom">5sp</item>
         <item name="android:paddingLeft">8sp</item>
         <item name="android:paddingRight">8sp</item>
         <item name="android:textSize">14sp</item>
+    </style>
+
+    <style name="info_btn_sml" parent="btn_sml">
+        <item name="android:background">@drawable/drawable_info_btn</item>
+        <item name="android:textColor">@color/color_info_text</item>
+    </style>
+
+    <style name="secondary_btn" parent="btn">
+        <item name="android:background">@drawable/drawable_secondary_btn</item>
+        <item name="android:textColor">@color/color_secondary_text</item>
+    </style>
+
+    <style name="secondary_btn_sml" parent="btn_sml">
+        <item name="android:background">@drawable/drawable_secondary_btn</item>
+        <item name="android:textColor">@color/color_secondary_text</item>
+    </style>
+
+    <style name="secondary_btn_tiny" parent="btn_tiny">
         <item name="android:background">@drawable/drawable_secondary_btn</item>
         <item name="android:textColor">@color/color_secondary_text</item>
     </style>

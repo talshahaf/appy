@@ -14,10 +14,11 @@ import android.widget.ListView;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
+import androidx.compose.foundation.interaction.DragInteraction;
 
 import java.util.ArrayList;
 
-public abstract class WidgetSelectActivity extends AppCompatActivity implements ListView.OnItemClickListener
+public abstract class WidgetSelectActivity extends AppCompatActivity implements ListView.OnItemClickListener, StartupStatusListener
 {
     protected Widget widgetService;
     ListView listview;
@@ -28,6 +29,7 @@ public abstract class WidgetSelectActivity extends AppCompatActivity implements 
         public void onServiceConnected(ComponentName className, IBinder service)
         {
             widgetService = ((Widget.LocalBinder) service).getService();
+            widgetService.addStartupStatusListener(WidgetSelectActivity.this);
             updateWidgetList();
         }
 
@@ -72,30 +74,40 @@ public abstract class WidgetSelectActivity extends AppCompatActivity implements 
         updateWidgetList();
     }
 
+    @Override
+    public void onStartupStatusChange(Constants.StartupState state)
+    {
+        updateWidgetList();
+    }
+
     public static String elementValueFormat(int widgetId, DictObj.Dict widgetProps)
     {
         int w = widgetProps.getInt("width_dp", -1);
         int h = widgetProps.getInt("height_dp", -1);
         String sizeStr = w != -1 && h != -1 ? (" (" + w + "x" + h + ")") : "";
-        String factorsStr = "";
+        String drawingSettingsStr = "";
         if (widgetProps.hasKey("size_factor"))
         {
-            factorsStr += ", size: " + widgetProps.getFloat("size_factor", 1.0f);
+            drawingSettingsStr += "\n    size: " + widgetProps.getFloat("size_factor", 1.0f);
         }
         if (widgetProps.hasKey("width_correction_factor"))
         {
-            factorsStr += ", width: " + widgetProps.getFloat("width_correction_factor", 1.0f);
+            drawingSettingsStr += "\n    width: " + widgetProps.getFloat("width_correction_factor", 1.0f);
         }
         if (widgetProps.hasKey("height_correction_factor"))
         {
-            factorsStr += ", height: " + widgetProps.getFloat("height_correction_factor", 1.0f);
+            drawingSettingsStr += "\n    height: " + widgetProps.getFloat("height_correction_factor", 1.0f);
+        }
+        if (widgetProps.hasKey("debug_bounding_boxes"))
+        {
+            drawingSettingsStr += "\n    bounding boxes: " + widgetProps.getBoolean("debug_bounding_boxes", false);
         }
 
-        if (!factorsStr.isEmpty())
+        if (!drawingSettingsStr.isEmpty())
         {
-            factorsStr = "\nFactors:" + factorsStr.substring(1);
+            drawingSettingsStr = "\nDrawing settings:" + drawingSettingsStr;
         }
-        return widgetProps.getString("display_name") + sizeStr + factorsStr;
+        return widgetProps.getString("display_name") + sizeStr + drawingSettingsStr;
     }
 
     public void updateWidgetList()
@@ -147,6 +159,7 @@ public abstract class WidgetSelectActivity extends AppCompatActivity implements 
     {
         if (widgetService != null)
         {
+            widgetService.removeStatusListener(this);
             unbindService(mConnection);
             widgetService = null;
         }

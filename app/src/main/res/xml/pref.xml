@@ -24,18 +24,18 @@
         android:key="global_height_correction_factor"
         android:selectAllOnFocus="true" android:singleLine="true"
         android:title="Global height correction factor"/>
+    <CheckBoxPreference
+        android:defaultValue="false"
+        android:key="global_debug_bounding_boxes"
+        android:title="Add debug bounding boxes to all elements" />
     <Preference
-        android:key="size_factors"
-        android:title="Setup size and correction factors per widget"
+        android:key="drawing_settings"
+        android:title="Setup drawing settings per widget"
         android:summary=""/>
     <CheckBoxPreference
         android:defaultValue="true"
         android:key="refresh_on_modify"
         android:title="Auto reload python files" />
-    <CheckBoxPreference
-        android:defaultValue="false"
-        android:key="debug_bounding_boxes"
-        android:title="Add debug bounding boxes to all elements" />
     <CheckBoxPreference
         android:defaultValue="true"
         android:key="disable_gil"

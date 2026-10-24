@@ -22,6 +22,8 @@ interface MyFragmentInterface
 {
     void onBound();
 
+    void onStartupStatusChange(Constants.StartupState state);
+
     Widget getWidgetService();
 
     void setMenuId(int id);
@@ -127,6 +129,19 @@ public abstract class MyFragment extends Fragment implements MyFragmentInterface
     }
 
     public void onResumedAndBound()
+    {
+
+    }
+
+    public void onStartupStatusChange(Constants.StartupState state)
+    {
+        if (state == Constants.StartupState.COMPLETED)
+        {
+            onStartupCompleted();
+        }
+    }
+
+    public void onStartupCompleted()
     {
 
     }
@@ -316,6 +331,19 @@ abstract class MySettingsFragment extends PreferenceFragmentCompat implements My
     }
 
     public void onResumedAndBound()
+    {
+
+    }
+
+    public void onStartupStatusChange(Constants.StartupState state)
+    {
+        if (state == Constants.StartupState.COMPLETED)
+        {
+            onStartupCompleted();
+        }
+    }
+
+    public void onStartupCompleted()
     {
 
     }

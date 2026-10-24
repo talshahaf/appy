@@ -31,7 +31,7 @@ public class SettingsFragment extends MySettingsFragment implements SharedPrefer
         widthCorrectionPreference = getPreferenceScreen().findPreference("global_width_correction_factor");
         heightCorrectionPreference = getPreferenceScreen().findPreference("global_height_correction_factor");
         globalSizeFactorPreference = getPreferenceScreen().findPreference("global_size_factor");
-        debugBoundingBoxesPreference = getPreferenceScreen().findPreference("debug_bounding_boxes");
+        debugBoundingBoxesPreference = getPreferenceScreen().findPreference("global_debug_bounding_boxes");
         disableGilPreference = getPreferenceScreen().findPreference("disable_gil");
 
         Preference.OnPreferenceChangeListener validateFloat = (preference, newValue) -> Utils.parseFloatOrNull((String)newValue) != null;
@@ -58,9 +58,9 @@ public class SettingsFragment extends MySettingsFragment implements SharedPrefer
             return true;
         });
 
-        sizeFactorsPreference = getPreferenceScreen().findPreference("size_factors");
+        sizeFactorsPreference = getPreferenceScreen().findPreference("drawing_settings");
         sizeFactorsPreference.setOnPreferenceClickListener(preference -> {
-            startActivity(new Intent(getActivity(), WidgetSizeFactorActivity.class));
+            startActivity(new Intent(getActivity(), WidgetDrawingSettingsActivity.class));
             return true;
         });
 
@@ -110,13 +110,13 @@ public class SettingsFragment extends MySettingsFragment implements SharedPrefer
             return;
         }
 
-        getWidgetService().loadSizeAndCorrectionFactors(false);
+        getWidgetService().loadGlobalDrawingSettings(false);
         getWidgetService().loadForeground();
 
-        float[] sizeAndCorrectionFactors = getWidgetService().getGlobalSizeAndCorrectionFactors();
-        globalSizeFactorPreference.setSummary(Utils.formatFloat(sizeAndCorrectionFactors[0]));
-        widthCorrectionPreference.setSummary(Utils.formatFloat(sizeAndCorrectionFactors[1]));
-        heightCorrectionPreference.setSummary(Utils.formatFloat(sizeAndCorrectionFactors[2]));
+        Widget.DrawingSettings drawingSettings = getWidgetService().getGlobalDrawingSettings();
+        globalSizeFactorPreference.setSummary(Utils.formatFloat(drawingSettings.sizeFactor));
+        widthCorrectionPreference.setSummary(Utils.formatFloat(drawingSettings.widthCorrectionFactor));
+        heightCorrectionPreference.setSummary(Utils.formatFloat(drawingSettings.heightCorrectionFactor));
         pythonVersionPreference.setSummary(getWidgetService().pythonVersion());
     }
 }

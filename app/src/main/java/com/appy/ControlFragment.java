@@ -147,22 +147,28 @@ public class ControlFragment extends MyFragment
     @Override
     public void onResumedAndBound()
     {
-        onStartupStatusChange();
+        if (getWidgetService() == null)
+        {
+            return;
+        }
+        onStartupStatusChange(getWidgetService().getStartupState());
     }
 
     @Override
     public void onStartedAndBound()
     {
-        onStartupStatusChange();
-    }
-
-    public void onStartupStatusChange()
-    {
         if (getWidgetService() == null)
         {
             return;
         }
-        switch (getWidgetService().getStartupState())
+        onStartupStatusChange(getWidgetService().getStartupState());
+    }
+
+    @Override
+    public void onStartupStatusChange(Constants.StartupState state)
+    {
+        super.onStartupStatusChange(state);
+        switch (state)
         {
             case IDLE:
                 startupStatus.setImageResource(R.drawable.idle_indicator);

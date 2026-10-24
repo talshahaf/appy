@@ -100,9 +100,10 @@ public class Widget extends RemoteViewsService
     public static final int NOTIFICATION_ID = 100;
 
     WidgetUpdateListener updateListener = null;
-    StatusListener statusListener = null;
+    private final ArrayList<StartupStatusListener> startupStatusListeners = new ArrayList<>();
+    FileStatusListener fileStatusListener = null;
     AppPropsListener appPropsListener = null;
-    WidgetChosenListener widgetChosenListener = null;
+    WidgetServiceListener widgetServiceListener = null;
     Handler handler = new Handler();
 
     final ConcurrentHashMap<Integer, TaskQueue> widgetsTasks = new ConcurrentHashMap<>();
@@ -145,9 +146,7 @@ public class Widget extends RemoteViewsService
 
     final HashSet<Integer> needUpdateWidgets = new HashSet<>();
 
-    float globalWidthCorrectionFactor = 1.0f;
-    float globalHeightCorrectionFactor = 1.0f;
-    float globalSizeFactor = 1.0f;
+    DrawingSettings globalDrawingSettings = new DrawingSettings(1.0f, 1.0f, 1.0f, false);
     final Configurations configurations = new Configurations(this, this::configurationUpdate);
     MultipleFileObserverBase pythonFilesObserver = null;
 
@@ -274,12 +273,15 @@ public class Widget extends RemoteViewsService
         boolean alreadyHas = false;
         if (onlyOnce)
         {
-            for (Task<?> qTask : queue.queue)
+            synchronized (queue.queue)
             {
-                if (qTask.torun.getClass() == task.torun.getClass())
+                for (Task<?> qTask : queue.queue)
                 {
-                    alreadyHas = true;
-                    break;
+                    if (qTask.torun.getClass() == task.torun.getClass())
+                    {
+                        alreadyHas = true;
+                        break;
+                    }
                 }
             }
         }
@@ -601,7 +603,7 @@ public class Widget extends RemoteViewsService
             }
         }
 
-        public static RemoteViews inflateChild(Widget service, int widgetId, DynamicView collectionview, int position, int[] widgetDimensions, boolean debugBoundingBoxes, Reference<Object> collectionLock) throws InvocationTargetException, IllegalAccessException
+        public static RemoteViews inflateChild(Widget service, int widgetId, DynamicView collectionview, int position, int[] widgetDimensions, Reference<Object> collectionLock) throws InvocationTargetException, IllegalAccessException
         {
             DynamicView.DynamicViewList child;
             String type;
@@ -623,7 +625,7 @@ public class Widget extends RemoteViewsService
                 actualHeight = collectionview.actualHeight;
             }
 
-            Triple<RemoteViews, HashSet<Integer>, DynamicView.DynamicViewList> view = service.resolveDimensions(service, widgetId, child, Constants.collection_layout_type.get(type), new Object[]{id, position}, actualWidth, actualHeight, widgetDimensions, debugBoundingBoxes);
+            Triple<RemoteViews, HashSet<Integer>, DynamicView.DynamicViewList> view = service.resolveDimensions(service, widgetId, child, Constants.collection_layout_type.get(type), new Object[]{id, position}, actualWidth, actualHeight, widgetDimensions);
             RemoteViews remoteView = view.component1();
             Intent fillIntent = new Intent(service, WidgetReceiver2x2.class);
             if (child.size() == 1)
@@ -663,11 +665,10 @@ public class Widget extends RemoteViewsService
             }
 
             int[] widgetDimensions = service.getWidgetDimensions(widgetId);
-            boolean debugBoundingBoxes = Widget.getDebugBoundingBoxes(service);
             RemoteViews ret = null;
             try
             {
-                ret = inflateChild(service, widgetId, collectionview, position, widgetDimensions, debugBoundingBoxes, new WeakReference<>(lock));
+                ret = inflateChild(service, widgetId, collectionview, position, widgetDimensions, new WeakReference<>(lock));
             }
             catch (Exception e)
             {
@@ -740,14 +741,12 @@ public class Widget extends RemoteViewsService
         double widthPx = convertUnit(widthDp, TypedValue.COMPLEX_UNIT_DIP, TypedValue.COMPLEX_UNIT_PX);
         double heightPx = convertUnit(heightDp, TypedValue.COMPLEX_UNIT_DIP, TypedValue.COMPLEX_UNIT_PX);
 
-        Float[] correctionFactors = getWidgetSizeAndCorrectionFactors(widgetId);
-        float widthCorrectionFactor = correctionFactors[1] != null ? correctionFactors[1] : getGlobalSizeAndCorrectionFactors()[1];
-        float heightCorrectionFactor = correctionFactors[2] != null ? correctionFactors[2] : getGlobalSizeAndCorrectionFactors()[2];
+        DrawingSettings drawingSettings = getWidgetComputedDrawingSettings(widgetId);
 
         //only works on portrait
         return new int[]{
-                (int) (widthCorrectionFactor * widthPx),
-                (int) (heightCorrectionFactor * heightPx),
+                (int) (drawingSettings.widthCorrectionFactor * widthPx),
+                (int) (drawingSettings.heightCorrectionFactor * heightPx),
                 (int) widthDp,
                 (int) heightDp,
         };
@@ -1046,14 +1045,13 @@ public class Widget extends RemoteViewsService
                     {
                         // This enables proper onclick handing to children as well
                         int[] widgetDimensions = service.getWidgetDimensions(widgetId);
-                        boolean debugBoundingBoxes = Widget.getDebugBoundingBoxes(service);
                         Object lock = new Object();
                         RemoteViews.RemoteCollectionItems.Builder collection = new RemoteViews.RemoteCollectionItems.Builder();
                         if (layout.children != null)
                         {
                             for (int i = 0; i < layout.children.size(); i++)
                             {
-                                RemoteViews child = CollectionFactory.inflateChild(service, widgetId, layout, i, widgetDimensions, debugBoundingBoxes, new WeakReference<>(lock));
+                                RemoteViews child = CollectionFactory.inflateChild(service, widgetId, layout, i, widgetDimensions, new WeakReference<>(lock));
                                 if (child == null)
                                 {
                                     throw new RuntimeException("inflate child returned null");
@@ -1623,7 +1621,7 @@ public class Widget extends RemoteViewsService
         return max;
     }
 
-    public Triple<RemoteViews, HashSet<Integer>, DynamicView.DynamicViewList> resolveDimensions(Widget service, int widgetId, DynamicView.DynamicViewList dynamicList, Constants.CollectionLayout collectionLayout, Object[] collectionExtras, int widthLimit, int heightLimit, int[] widgetSize, boolean debugBoundingBoxes) throws InvocationTargetException, IllegalAccessException
+    public Triple<RemoteViews, HashSet<Integer>, DynamicView.DynamicViewList> resolveDimensions(Widget service, int widgetId, DynamicView.DynamicViewList dynamicList, Constants.CollectionLayout collectionLayout, Object[] collectionExtras, int widthLimit, int heightLimit, int[] widgetSize) throws InvocationTargetException, IllegalAccessException
     {
         HashMap<Long, HashMap<Attributes.Type, Double>> resolvedAttributes = new HashMap<>();
         HashMap<Long, HashMap<Attributes.Type, Attributes.AttributeValue>> unresolvedAttributes = new HashMap<>();
@@ -1632,8 +1630,9 @@ public class Widget extends RemoteViewsService
         final Attributes.Type[] horizontalAttributeTypes = new Attributes.Type[]{Attributes.Type.LEFT, Attributes.Type.WIDTH, Attributes.Type.RIGHT};
         final Attributes.Type[] verticalAttributeTypes = new Attributes.Type[]{Attributes.Type.TOP, Attributes.Type.HEIGHT, Attributes.Type.BOTTOM};
 
-        Float[] widgetFactors = getWidgetSizeAndCorrectionFactors(widgetId);
-        float sizeFactor = widgetFactors[0] != null ? widgetFactors[0] : getGlobalSizeAndCorrectionFactors()[0];
+        DrawingSettings drawingSettings = getWidgetComputedDrawingSettings(widgetId);
+        float sizeFactor = drawingSettings.sizeFactor;
+        boolean debugBoundingBoxes = drawingSettings.debugBoundingBoxes;
 
         RemoteViews remote = generate(service, widgetId, dynamicList, null, true, collectionLayout, collectionExtras, sizeFactor, widgetSize).first;
         RelativeLayout layout = new RelativeLayout(this);
@@ -1647,7 +1646,7 @@ public class Widget extends RemoteViewsService
 
         ViewGroup supergroup = (ViewGroup) inflated;
 
-        //set all to WRAP_CONTENT to measure it's default size (all children are leaves of collections)
+        //set all to WRAP_CONTENT to measure its default size (all children are leaves of collections)
         for (int k = 0; k < supergroup.getChildCount(); k++)
         {
             ViewGroup group = (ViewGroup) supergroup.getChildAt(k);
@@ -1926,6 +1925,11 @@ public class Widget extends RemoteViewsService
         return new HashSet<>(widgetToAndroid.keySet());
     }
 
+    public Integer fromAndroidWidget(int androidWidget)
+    {
+        return fromAndroidWidget(androidWidget, false);
+    }
+
     public Integer fromAndroidWidget(int androidWidget, boolean create)
     {
         boolean created = false;
@@ -2111,7 +2115,7 @@ public class Widget extends RemoteViewsService
         store.apply();
     }
 
-    public HashMap<Integer, Bundle> filterBadAndroidWidgets(HashMap<Integer, Bundle> ids)
+    public static HashMap<Integer, Bundle> filterBadAndroidWidgets(HashMap<Integer, Bundle> ids)
     {
         HashMap<Integer, Bundle> filtered = new HashMap<>();
         for (Map.Entry<Integer, Bundle> entry : ids.entrySet())
@@ -2134,7 +2138,7 @@ public class Widget extends RemoteViewsService
         return filtered;
     }
 
-    public HashMap<Integer, Bundle> requestAndroidWidgets()
+    public static HashMap<Integer, Bundle> requestAndroidWidgets(Context context)
     {
         Class<?>[] widgetReceivers = new Class[]{WidgetReceiver1x1.class, WidgetReceiver2x1.class,
                 WidgetReceiver2x2.class, WidgetReceiver3x2.class,
@@ -2142,10 +2146,10 @@ public class Widget extends RemoteViewsService
                 WidgetReceiver4x3.class, WidgetReceiver4x4.class};
         ArrayList<int[]> allIds = new ArrayList<>();
 
-        AppWidgetManager manager = AppWidgetManager.getInstance(this);
+        AppWidgetManager manager = AppWidgetManager.getInstance(context);
         for (Class<?> clazz : widgetReceivers)
         {
-            ComponentName thisWidget = new ComponentName(this, clazz);
+            ComponentName thisWidget = new ComponentName(context, clazz);
             int[] receiverIds = manager.getAppWidgetIds(thisWidget);
             allIds.add(receiverIds);
         }
@@ -2160,6 +2164,20 @@ public class Widget extends RemoteViewsService
         }
 
         return filterBadAndroidWidgets(ids);
+    }
+
+    public static void notifyUpdateAllWidgets(Context context)
+    {
+        AppWidgetManager widgetManager = AppWidgetManager.getInstance(context);
+        HashMap<Integer, Bundle> allWidgets = Widget.requestAndroidWidgets(context);
+        int[] allWidgetIds = new int[allWidgets.size()];
+        int c = 0;
+        for (Integer widget : allWidgets.keySet())
+        {
+            allWidgetIds[c] = widget;
+            c++;
+        }
+        widgetManager.notifyAppWidgetViewDataChanged(allWidgetIds, 0);
     }
 
     public void removeWidgetFromStorage(int widgetId)
@@ -2294,19 +2312,23 @@ public class Widget extends RemoteViewsService
         saveProps(widgetProps, new WeakReference<>(widgetPropsLock), "widget_props", widgetId, flush);
     }
 
-    public void setWidgetSizeFactorAndCorrections(int widgetId, boolean setSizeFactor, boolean setWidthCorrectionFactor, boolean setHeightCorrectionFactor, Float sizeFactor, Float widthCorrectionFactor, Float heightCorrectionFactor)
+    public void setWidgetDrawingSettings(int widgetId, boolean setSizeFactor, boolean setWidthCorrectionFactor, boolean setHeightCorrectionFactor, boolean setDebugBoundingBoxes, DrawingSettings newSettings)
     {
         if (setSizeFactor)
         {
-            setProps(widgetProps, new WeakReference<>(widgetPropsLock), widgetId, "size_factor", sizeFactor, (DictObj.Dict dict) -> dict.put("size_factor", sizeFactor));
+            setProps(widgetProps, new WeakReference<>(widgetPropsLock), widgetId, "size_factor", newSettings.sizeFactor, (DictObj.Dict dict) -> dict.put("size_factor", newSettings.sizeFactor));
         }
         if (setWidthCorrectionFactor)
         {
-            setProps(widgetProps, new WeakReference<>(widgetPropsLock), widgetId, "width_correction_factor", widthCorrectionFactor, (DictObj.Dict dict) -> dict.put("width_correction_factor", widthCorrectionFactor));
+            setProps(widgetProps, new WeakReference<>(widgetPropsLock), widgetId, "width_correction_factor", newSettings.widthCorrectionFactor, (DictObj.Dict dict) -> dict.put("width_correction_factor", newSettings.widthCorrectionFactor));
         }
         if (setHeightCorrectionFactor)
         {
-            setProps(widgetProps, new WeakReference<>(widgetPropsLock), widgetId, "height_correction_factor", heightCorrectionFactor, (DictObj.Dict dict) -> dict.put("height_correction_factor", heightCorrectionFactor));
+            setProps(widgetProps, new WeakReference<>(widgetPropsLock), widgetId, "height_correction_factor", newSettings.heightCorrectionFactor, (DictObj.Dict dict) -> dict.put("height_correction_factor", newSettings.heightCorrectionFactor));
+        }
+        if (setDebugBoundingBoxes)
+        {
+            setProps(widgetProps, new WeakReference<>(widgetPropsLock), widgetId, "debug_bounding_boxes", newSettings.debugBoundingBoxes, (DictObj.Dict dict) -> dict.put("debug_bounding_boxes", newSettings.debugBoundingBoxes));
         }
         saveWidgetProps(widgetId, true);
         update(widgetId, true);
@@ -2362,9 +2384,64 @@ public class Widget extends RemoteViewsService
         }
     }
 
-    public Float[] getWidgetSizeAndCorrectionFactors(int widgetId)
+    public static class DrawingSettings
     {
-        Float[] result = new Float[] { null, null, null };
+        public DrawingSettings(float sizeFactor, float widthCorrectionFactor, float heightCorrectionFactor, boolean debugBoundingBoxes)
+        {
+            this.sizeFactor = sizeFactor;
+            this.widthCorrectionFactor = widthCorrectionFactor;
+            this.heightCorrectionFactor = heightCorrectionFactor;
+            this.debugBoundingBoxes = debugBoundingBoxes;
+        }
+
+        public DrawingSettings(DrawingSettings other)
+        {
+            this.sizeFactor = other.sizeFactor;
+            this.widthCorrectionFactor = other.widthCorrectionFactor;
+            this.heightCorrectionFactor = other.heightCorrectionFactor;
+            this.debugBoundingBoxes = other.debugBoundingBoxes;
+        }
+
+        public DrawingSettings()
+        {
+            sizeFactor = null;
+            widthCorrectionFactor = null;
+            heightCorrectionFactor = null;
+            debugBoundingBoxes = null;
+        }
+
+        public Float sizeFactor;
+        public Float widthCorrectionFactor;
+        public Float heightCorrectionFactor;
+        public Boolean debugBoundingBoxes;
+    }
+
+    public DrawingSettings getWidgetComputedDrawingSettings(int widgetId)
+    {
+        DrawingSettings settings = getWidgetDrawingSettings(widgetId);
+        DrawingSettings globalSettings = getGlobalDrawingSettings();
+        if (settings.sizeFactor == null)
+        {
+            settings.sizeFactor = globalSettings.sizeFactor;
+        }
+        if (settings.widthCorrectionFactor == null)
+        {
+            settings.widthCorrectionFactor = globalSettings.widthCorrectionFactor;
+        }
+        if (settings.heightCorrectionFactor == null)
+        {
+            settings.heightCorrectionFactor = globalSettings.heightCorrectionFactor;
+        }
+        if (settings.debugBoundingBoxes == null)
+        {
+            settings.debugBoundingBoxes = globalSettings.debugBoundingBoxes;
+        }
+        return settings;
+    }
+
+    public DrawingSettings getWidgetDrawingSettings(int widgetId)
+    {
+        DrawingSettings settings = new DrawingSettings();
         DictObj.Dict props = widgetProps.get(widgetId);
         if (props != null)
         {
@@ -2372,19 +2449,23 @@ public class Widget extends RemoteViewsService
             {
                 if (props.hasKey("size_factor"))
                 {
-                    result[0] = props.getFloat("size_factor", 1.0f);
+                    settings.sizeFactor = props.getFloat("size_factor", 1.0f);
                 }
                 if (props.hasKey("width_correction_factor"))
                 {
-                    result[1] = props.getFloat("width_correction_factor", 1.0f);
+                    settings.widthCorrectionFactor = props.getFloat("width_correction_factor", 1.0f);
                 }
                 if (props.hasKey("height_correction_factor"))
                 {
-                    result[2] = props.getFloat("height_correction_factor", 1.0f);
+                    settings.heightCorrectionFactor = props.getFloat("height_correction_factor", 1.0f);
+                }
+                if (props.hasKey("debug_bounding_boxes"))
+                {
+                    settings.debugBoundingBoxes = props.getBoolean("debug_bounding_boxes", false);
                 }
             }
         }
-        return result;
+        return settings;
     }
 
     public String getWidgetProp(int widgetId, String prop)
@@ -2490,6 +2571,10 @@ public class Widget extends RemoteViewsService
                 {
                     result.getDict(key).put("height_correction_factor", d.getFloat("height_correction_factor", 1.0f));
                 }
+                if (d.hasKey("debug_bounding_boxes"))
+                {
+                    result.getDict(key).put("debug_bounding_boxes", d.getBoolean("debug_bounding_boxes", false));
+                }
                 if (d.hasKey("app_title"))
                 {
                     result.getDict(key).put("title", d.getString("app_title"));
@@ -2561,7 +2646,7 @@ public class Widget extends RemoteViewsService
         return result;
     }
 
-    public void resetWidgetSizeAndCorrectionFactors()
+    public void resetAllWidgetDrawingSettings()
     {
         HashSet<Integer> widgetIds = new HashSet<>(widgets.keySet());
         for (int widgetId : widgetIds)
@@ -2574,6 +2659,7 @@ public class Widget extends RemoteViewsService
                     props.remove("size_factor");
                     props.remove("width_correction_factor");
                     props.remove("height_correction_factor");
+                    props.remove("debug_bounding_boxes");
                     saveWidgetProps(widgetId, false);
                 }
             }
@@ -2608,9 +2694,9 @@ public class Widget extends RemoteViewsService
         saveProps(widgetAppIcons, new WeakReference<>(widgetAppIconsLock), "widget_app_icons", widgetId, true);
     }
 
-    public float[] getGlobalSizeAndCorrectionFactors()
+    public DrawingSettings getGlobalDrawingSettings()
     {
-        return new float[]{globalSizeFactor, globalWidthCorrectionFactor, globalHeightCorrectionFactor};
+        return new DrawingSettings(globalDrawingSettings);
     }
 
     public void setGlobalSizeFactor(float sizeFactor)
@@ -2619,7 +2705,7 @@ public class Widget extends RemoteViewsService
         editor.putString("global_size_factor", sizeFactor + "");
         editor.apply();
 
-        loadSizeAndCorrectionFactors(false);
+        loadGlobalDrawingSettings(false);
     }
     public void setGlobalCorrectionFactors(float widthCorrection, float heightCorrection)
     {
@@ -2628,16 +2714,24 @@ public class Widget extends RemoteViewsService
         editor.putString("global_height_correction_factor", heightCorrection + "");
         editor.apply();
 
-        loadSizeAndCorrectionFactors(false);
+        loadGlobalDrawingSettings(false);
+    }
+    public void setGlobalDebugBoundingBoxes(boolean debugBoundingBoxes)
+    {
+        SharedPreferences.Editor editor = PreferenceManager.getDefaultSharedPreferences(getApplicationContext()).edit();
+        editor.putBoolean("global_debug_bounding_boxes", debugBoundingBoxes);
+        editor.apply();
+
+        loadGlobalDrawingSettings(false);
     }
 
-    public void loadSizeAndCorrectionFactors(boolean initing)
+    public void loadGlobalDrawingSettings(boolean initing)
     {
         SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
-
         float widthCorrectionFactor = Utils.orDefault(Utils.parseFloatOrNull(sharedPref.getString("global_width_correction_factor", "1")), 1.0f);
         float heightCorrectionFactor = Utils.orDefault(Utils.parseFloatOrNull(sharedPref.getString("global_height_correction_factor", "1")), 1.0f);
         float sizeFactor = Utils.orDefault(Utils.parseFloatOrNull(sharedPref.getString("global_size_factor", "1")), 1.0f);
+        boolean debugBoundingBoxes = sharedPref.getBoolean("global_debug_bounding_boxes", false);
 
         if (widthCorrectionFactor <= 0 || widthCorrectionFactor > 3)
         {
@@ -2654,16 +2748,18 @@ public class Widget extends RemoteViewsService
         }
 
         boolean shouldUpdate = false;
-        if (globalWidthCorrectionFactor != widthCorrectionFactor ||
-            globalHeightCorrectionFactor != heightCorrectionFactor ||
-            globalSizeFactor != sizeFactor)
+        if (globalDrawingSettings.widthCorrectionFactor != widthCorrectionFactor ||
+            globalDrawingSettings.heightCorrectionFactor != heightCorrectionFactor ||
+            globalDrawingSettings.sizeFactor != sizeFactor ||
+            globalDrawingSettings.debugBoundingBoxes != debugBoundingBoxes)
         {
-            globalWidthCorrectionFactor = widthCorrectionFactor;
-            globalHeightCorrectionFactor = heightCorrectionFactor;
-            globalSizeFactor = sizeFactor;
+            globalDrawingSettings.widthCorrectionFactor = widthCorrectionFactor;
+            globalDrawingSettings.heightCorrectionFactor = heightCorrectionFactor;
+            globalDrawingSettings.sizeFactor = sizeFactor;
+            globalDrawingSettings.debugBoundingBoxes = debugBoundingBoxes;
             shouldUpdate = true;
 
-            Log.d("APPY", "new correction factors: " + widthCorrectionFactor + ", " + heightCorrectionFactor + ", " + globalSizeFactor);
+            Log.d("APPY", "new correction factors: " + widthCorrectionFactor + ", " + heightCorrectionFactor + ", " + sizeFactor + ", " + debugBoundingBoxes);
         }
 
         if (!initing && shouldUpdate)
@@ -2920,12 +3016,12 @@ public class Widget extends RemoteViewsService
 
     public String getWidgetName(int widgetId)
     {
-        DictObj.Dict names = getAllWidgetNames();
-        if (names == null)
+        if (updateListener == null)
         {
             return null;
         }
-        return names.getString(widgetId+"");
+
+        return updateListener.getWidgetName(widgetId);
     }
 
     public int[] getAllWidgetsByName(String name)
@@ -3090,12 +3186,6 @@ public class Widget extends RemoteViewsService
     {
         SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(context);
         return sharedPref.getBoolean("refresh_on_modify", true);
-    }
-
-    public static boolean getDebugBoundingBoxes(Context context)
-    {
-        SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(context);
-        return sharedPref.getBoolean("debug_bounding_boxes", false);
     }
 
     public void onPythonFileModified(PythonFile pythonFile)
@@ -3581,7 +3671,7 @@ public class Widget extends RemoteViewsService
         {
             updateListener.onDelete(widgetId);
         }
-        setWidgetSizeFactorAndCorrections(widgetId, true, true, true, null, null, null);
+        setWidgetDrawingSettings(widgetId, true, true, true, true, new DrawingSettings());
         callWidgetClearedListener(widgetId);
         update(widgetId, false);
     }
@@ -3684,7 +3774,7 @@ public class Widget extends RemoteViewsService
 
     public void delete(int widgetId)
     {
-        if (widgets.containsKey(widgets))
+        if (widgets.containsKey(widgetId))
         {
             delete(widgetId, null);
         }
@@ -3767,6 +3857,7 @@ public class Widget extends RemoteViewsService
             Log.d("APPY", "restarting process");
             setAllWidgets(false);
 
+            Widget.notifyUpdateAllWidgets(this);
             handler.post(() -> System.exit(0));
         }).start();
     }
@@ -4160,13 +4251,13 @@ public class Widget extends RemoteViewsService
         return waitForAsyncReportTwice(requestCode, timeoutMilli) != null;
     }
 
-    public static void startSizeFactorActivity(Context context, Handler handler)
+    public static void startDrawingSettingsActivity(Context context, Handler handler)
     {
-        startSizeFactorActivity(context, handler, -1);
+        startDrawingSettingsActivity(context, handler, -1);
     }
-    public static void startSizeFactorActivity(Context context, Handler handler, int widgetId)
+    public static void startDrawingSettingsActivity(Context context, Handler handler, int widgetId)
     {
-        Intent intent = new Intent(context, WidgetSizeFactorActivity.class);
+        Intent intent = new Intent(context, WidgetDrawingSettingsActivity.class);
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_MULTIPLE_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
         if (widgetId != -1)
         {
@@ -4210,9 +4301,8 @@ public class Widget extends RemoteViewsService
             int[] widgetDimensions = getWidgetDimensions(appWidgetManager, widgetId, androidWidgetId);
             int widthLimit = widgetDimensions[0];
             int heightLimit = widgetDimensions[1];
-            boolean debugBoundingBoxes = getDebugBoundingBoxes(this);
 
-            Triple<RemoteViews, HashSet<Integer>, DynamicView.DynamicViewList> view = resolveDimensions(Widget.this, widgetId, views, Constants.CollectionLayout.NOT_COLLECTION, null, widthLimit, heightLimit, widgetDimensions, debugBoundingBoxes);
+            Triple<RemoteViews, HashSet<Integer>, DynamicView.DynamicViewList> view = resolveDimensions(Widget.this, widgetId, views, Constants.CollectionLayout.NOT_COLLECTION, null, widthLimit, heightLimit, widgetDimensions);
             appWidgetManager.updateAppWidget(androidWidgetId, view.component1());
 
             for (Integer collection_view : view.component2())
@@ -4371,7 +4461,7 @@ public class Widget extends RemoteViewsService
 
     public void setAllWidgets(boolean error)
     {
-        for (int id : requestAndroidWidgets().keySet())
+        for (int id : requestAndroidWidgets(this).keySet())
         {
             if (error)
             {
@@ -4519,7 +4609,7 @@ public class Widget extends RemoteViewsService
             }
             if (shouldRun)
             {
-                callStatusChange(true);
+                callStartupStatusChange(state);
 
                 int pythonFlags = getAndClearNextStartupFlags();
 
@@ -4530,7 +4620,7 @@ public class Widget extends RemoteViewsService
                     getExternalMediaDirs();
 
                     loadPythonFiles();
-                    loadSizeAndCorrectionFactors(true);
+                    loadGlobalDrawingSettings(true);
                     loadWidgets();
                     loadTimers();
                     loadWidgetProps();
@@ -4541,14 +4631,14 @@ public class Widget extends RemoteViewsService
 
                     pythonSetup(pythonFlags);
                     state = Constants.StartupState.COMPLETED;
-                    callStatusChange(true);
+                    callStartupStatusChange(state);
                 }
                 catch (Exception e)
                 {
                     Log.e("APPY", "Exception in setup:", e);
                     state = Constants.StartupState.ERROR;
                     handler.post(() -> setAllWidgets(true));
-                    callStatusChange(true);
+                    callStartupStatusChange(state);
                 }
                 finally
                 {
@@ -4693,7 +4783,7 @@ public class Widget extends RemoteViewsService
 
             Boolean skipRefresh = (Boolean) args[1];
             file.state = PythonFile.State.RUNNING;
-            callStatusChange(false);
+            callFileStatusChange();
 
             try
             {
@@ -4713,7 +4803,7 @@ public class Widget extends RemoteViewsService
             {
                 file.state = PythonFile.State.FAILED;
             }
-            callStatusChange(false);
+            callFileStatusChange();
             if (alreadyLoaded)
             {
                 //file reloaded
@@ -4884,7 +4974,7 @@ public class Widget extends RemoteViewsService
         {
             try
             {
-                if (widget.views == null || result.getBoolean("newviews", false))
+                if (widget == null || widget.views == null || result.getBoolean("newviews", false))
                 {
                     widget = new WidgetLayout();
                     widget.views = DynamicView.DynamicViewList.createEmpty(changes);
@@ -4953,7 +5043,7 @@ public class Widget extends RemoteViewsService
                 callAppPropsListener(widgetId, data);
             }
 
-            if (result.hasKey("name"))
+            if (result.getBoolean("inited", false))
             {
                 callWidgetChosenListener(widgetId, result.getString("name"));
             }
@@ -5082,9 +5172,28 @@ public class Widget extends RemoteViewsService
         }
     }
 
-    public void setStatusListener(StatusListener listener)
+    public void addStartupStatusListener(StartupStatusListener listener)
     {
-        statusListener = listener;
+        synchronized (startupStatusListeners)
+        {
+            if (!startupStatusListeners.contains(listener))
+            {
+                startupStatusListeners.add(listener);
+            }
+        }
+    }
+
+    public void removeStatusListener(StartupStatusListener listener)
+    {
+        synchronized (startupStatusListeners)
+        {
+            startupStatusListeners.remove(listener);
+        }
+    }
+
+    public void setFileStatusListener(FileStatusListener listener)
+    {
+        fileStatusListener = listener;
     }
 
     public void setAppPropsListener(AppPropsListener listener)
@@ -5092,9 +5201,9 @@ public class Widget extends RemoteViewsService
         appPropsListener = listener;
     }
 
-    public void setWidgetChosenListener(WidgetChosenListener listener)
+    public void setWidgetChosenListener(WidgetServiceListener listener)
     {
-        widgetChosenListener = listener;
+        widgetServiceListener = listener;
     }
 
     public Constants.StartupState getStartupState()
@@ -5102,19 +5211,28 @@ public class Widget extends RemoteViewsService
         return setupTask.getState();
     }
 
-    public void callStatusChange(final boolean startup)
+    public void callStartupStatusChange(Constants.StartupState state)
     {
         handler.post(() -> {
-            if (statusListener != null)
+            synchronized (startupStatusListeners)
             {
-                if (startup)
+                for (StartupStatusListener startupStatusListener : startupStatusListeners)
                 {
-                    statusListener.onStartupStatusChange();
+                    if (startupStatusListener != null)
+                    {
+                        startupStatusListener.onStartupStatusChange(state);
+                    }
                 }
-                else
-                {
-                    statusListener.onPythonFileStatusChange();
-                }
+            }
+        });
+    }
+
+    public void callFileStatusChange()
+    {
+        handler.post(() -> {
+            if (fileStatusListener != null)
+            {
+                fileStatusListener.onPythonFileStatusChange();
             }
         });
     }
@@ -5136,12 +5254,12 @@ public class Widget extends RemoteViewsService
     public void callWidgetChosenListener(int widgetId, String name)
     {
         handler.post(() -> {
-            if (widgetChosenListener != null)
+            if (widgetServiceListener != null)
             {
                 Integer androidWidgetId = widgetToAndroid.get(widgetId);
                 if (androidWidgetId != null)
                 {
-                    widgetChosenListener.onWidgetChosen(widgetId, androidWidgetId, name);
+                    widgetServiceListener.onWidgetChosen(widgetId, androidWidgetId, name);
                 }
             }
         });
@@ -5150,12 +5268,12 @@ public class Widget extends RemoteViewsService
     public void callWidgetClearedListener(int widgetId)
     {
         handler.post(() -> {
-            if (widgetChosenListener != null)
+            if (widgetServiceListener != null)
             {
                 Integer androidWidgetId = widgetToAndroid.get(widgetId);
                 if (androidWidgetId != null)
                 {
-                    widgetChosenListener.onWidgetCleared(widgetId, androidWidgetId);
+                    widgetServiceListener.onWidgetCleared(widgetId, androidWidgetId);
                 }
             }
         });
@@ -5188,12 +5306,12 @@ public class Widget extends RemoteViewsService
         String displayName = "widget #" + widgetId + " (" + widgetName + ")";
         int importErrors = getPythonFilesNotActive().size();
 
-        String[] texts = new String[]{ widgetActionText, "Open Config", "Recreate", "Reload", "Set Scale And Correction Factors", "Edit", "Show Last Error", "Show Import Errors (" + importErrors + ")", "Open Global Config", "Clear"};
+        String[] texts = new String[]{ widgetActionText, "Open Config", "Recreate", "Reload", "Set Drawing Settings", "Edit", "Show Last Error", "Show Import Errors (" + importErrors + ")", "Open Global Config", "Clear"};
         String[] actions = new String[] {Constants.SPECIAL_WIDGET_CUSTOM_SETTINGS + "," + widgetId,
                                          Constants.SPECIAL_WIDGET_OPEN_CONFIGURATION + "," + widgetId + "," + widgetName,
                                          Constants.SPECIAL_WIDGET_RECREATE + "," + widgetId,
                                          widgetPath == null ? null : (Constants.SPECIAL_WIDGET_RELOAD + "," + widgetPath),
-                                         Constants.SPECIAL_WIDGET_SCALE_FACTOR + "," + widgetId,
+                                         Constants.SPECIAL_WIDGET_DRAWING_SETTINGS + "," + widgetId,
                                          widgetPath == null ? null : (Constants.SPECIAL_WIDGET_EDIT_FILE + "," + widgetPath),
                                          Constants.SPECIAL_WIDGET_SHOWERROR + "," + lastError,
                                          Constants.SPECIAL_WIDGET_IMPORTERRORS + "",
@@ -5277,7 +5395,7 @@ public class Widget extends RemoteViewsService
 
         if (firstStart)
         {
-            HashMap<Integer, Bundle> ids = requestAndroidWidgets();
+            HashMap<Integer, Bundle> ids = requestAndroidWidgets(this);
             HashSet<Integer> activeWidgetIds = new HashSet<>();
             for (Map.Entry<Integer, Bundle> id : ids.entrySet())
             {
@@ -5374,7 +5492,7 @@ public class Widget extends RemoteViewsService
                             //request all android widget ids to make sure it's real before creating a new mapping
                             if (allAndroidWidgets == null)
                             {
-                                allAndroidWidgets = requestAndroidWidgets().keySet();
+                                allAndroidWidgets = requestAndroidWidgets(this).keySet();
                             }
                             if (allAndroidWidgets.contains(androidWidgetId))
                             {
@@ -5415,7 +5533,7 @@ public class Widget extends RemoteViewsService
                                     case Constants.SPECIAL_WIDGET_CLEAR:
                                     case Constants.SPECIAL_WIDGET_RECREATE:
                                     case Constants.SPECIAL_WIDGET_UPDATE:
-                                    case Constants.SPECIAL_WIDGET_SCALE_FACTOR:
+                                    case Constants.SPECIAL_WIDGET_DRAWING_SETTINGS:
                                     case Constants.SPECIAL_WIDGET_CONFIGURE:
                                         if (arg != null)
                                         {
@@ -5440,9 +5558,9 @@ public class Widget extends RemoteViewsService
                                                         Log.d("APPY", "updating " + widgetId);
                                                         update(widgetId, false);
                                                         break;
-                                                    case Constants.SPECIAL_WIDGET_SCALE_FACTOR:
-                                                        Log.d("APPY", "scale factor of " + widgetId);
-                                                        startSizeFactorActivity(this, handler, widgetId);
+                                                    case Constants.SPECIAL_WIDGET_DRAWING_SETTINGS:
+                                                        Log.d("APPY", "drawing settings of " + widgetId);
+                                                        startDrawingSettingsActivity(this, handler, widgetId);
                                                         break;
                                                     case Constants.SPECIAL_WIDGET_CONFIGURE:
                                                         Log.d("APPY", "widget configure of " + widgetId);

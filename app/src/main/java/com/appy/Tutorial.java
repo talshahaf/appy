@@ -317,7 +317,7 @@ public class Tutorial implements OverlayHoleView.OnHoleClick, TutorialStepListen
         }
     }
 
-    public void onStartupStatusChange(Widget service)
+    public void onStartupStatusChange(Widget service, Constants.StartupState state)
     {
         this.service = service;
         checkStartupStatus();

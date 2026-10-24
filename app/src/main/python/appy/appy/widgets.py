@@ -118,7 +118,7 @@ class Widget:
         return widget_manager.java_context().cancelTimer(timer_id)
 
     def invalidate(self):
-        widget_manager.java_context().update(self.widget_id)
+        widget_manager.java_context().update(self.widget_id, False)
 
     def set_loading(self):
         widget_manager.java_context().setLoadingWidget(self.widget_id)
@@ -232,7 +232,7 @@ class Widget:
         self.post(self.itemclick_invoker, element_id=element.id, position=position)
 
     def views_snapshot(self):
-        return widget_manager.import_java_views(None, widget_manager.java_context().getWidgetViewsSnapshot(self.widget_id), 0)
+        return widget_manager.java_views_dict_to_views(widget_manager.java_context().getWidgetViewsSnapshot(self.widget_id))
 
     def description(self):
         return widget_manager.java_context().widgetDescriptionLine(self.widget_id)

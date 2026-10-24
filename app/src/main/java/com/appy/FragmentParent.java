@@ -6,9 +6,12 @@ public abstract class FragmentParent extends MyFragment
 {
     public static final String FRAGMENT_TAG = "FRAGMENT";
 
+    ChildFragment lastChild = null;
+
     public void switchTo(ChildFragment fragment, boolean noBackStack)
     {
         fragment.setParent(this);
+        lastChild = fragment;
 
         FragmentTransaction transaction = getChildFragmentManager().beginTransaction();
         transaction.setCustomAnimations(
@@ -20,6 +23,16 @@ public abstract class FragmentParent extends MyFragment
             transaction.addToBackStack(null);
         }
         transaction.commitAllowingStateLoss();
+    }
+
+    @Override
+    public void onStartupStatusChange(Constants.StartupState state)
+    {
+        super.onStartupStatusChange(state);
+        if (lastChild != null)
+        {
+            lastChild.onStartupStatusChange(state);
+        }
     }
 
     public void finishActivity()

@@ -18,6 +18,7 @@ public class BootReceiver extends BroadcastReceiver
         if (Intent.ACTION_BOOT_COMPLETED.equals(intent.getAction()))
         {
             Log.d("APPY", "boot onReceive intent");
+            Widget.notifyUpdateAllWidgets(context);
             Widget.startService(context, new Intent(context, Widget.class));
         }
     }

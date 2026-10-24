@@ -296,6 +296,12 @@ public class ConfigsFragment extends FragmentParent
             return false;
         }
 
+        @Override
+        public void onStartupCompleted()
+        {
+            refresh();
+        }
+
         static class WidgetListElement implements Comparable<WidgetListElement>
         {
             int widgetId;

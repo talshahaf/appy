@@ -49,7 +49,7 @@ import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-public class MainActivity extends AppCompatActivity implements StatusListener, AppPropsListener, WidgetChosenListener
+public class MainActivity extends AppCompatActivity implements StartupStatusListener, FileStatusListener, AppPropsListener, WidgetServiceListener
 {
     private static final boolean checkUpdates = true;
     private static final String githubRepo = "talshahaf/appy";
@@ -554,7 +554,8 @@ public class MainActivity extends AppCompatActivity implements StatusListener, A
         public void onServiceConnected(ComponentName className, IBinder service)
         {
             widgetService = ((Widget.LocalBinder) service).getService();
-            widgetService.setStatusListener(MainActivity.this);
+            widgetService.addStartupStatusListener(MainActivity.this);
+            widgetService.setFileStatusListener(MainActivity.this);
             widgetService.setAppPropsListener(MainActivity.this);
             widgetService.setWidgetChosenListener(MainActivity.this);
             for (Pair<Class<?>, Fragment> frag : fragments.values())
@@ -587,7 +588,7 @@ public class MainActivity extends AppCompatActivity implements StatusListener, A
     {
         if (widgetService != null)
         {
-            widgetService.setStatusListener(null);
+            widgetService.removeStatusListener(this);
             widgetService.setAppPropsListener(null);
             widgetService.setWidgetChosenListener(null);
             unbindService(mConnection);
@@ -604,16 +605,18 @@ public class MainActivity extends AppCompatActivity implements StatusListener, A
     }
 
     @Override
-    public void onStartupStatusChange()
+    public void onStartupStatusChange(Constants.StartupState state)
     {
-        Fragment fragment = Objects.requireNonNull(fragments.get(R.id.navigation_control)).second;
-        if (fragment != null)
+        for (Pair<Class<?>, Fragment> frag : fragments.values())
         {
-            ((ControlFragment) fragment).onStartupStatusChange();
+            if (frag.second != null)
+            {
+                ((MyFragmentInterface) frag.second).onStartupStatusChange(state);
+            }
         }
         if (tutorial != null)
         {
-            tutorial.onStartupStatusChange(widgetService);
+            tutorial.onStartupStatusChange(widgetService, state);
         }
     }
 

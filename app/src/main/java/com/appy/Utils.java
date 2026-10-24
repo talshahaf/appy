@@ -517,6 +517,18 @@ public class Utils
         return sb.toString();
     }
 
+    public static <T> int indexOf(T[] arr, T needle)
+    {
+        for (int i = 0; i < arr.length; i++)
+        {
+            if ((needle == null && arr[i] == null) || (needle != null && needle.equals(arr[i])))
+            {
+                return i;
+            }
+        }
+        return -1;
+    }
+
     public static int resolveColor(int colorRes, Resources resources)
     {
         return resources.getColor(colorRes);

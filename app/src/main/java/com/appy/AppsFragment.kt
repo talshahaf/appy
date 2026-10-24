@@ -29,9 +29,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import androidx.activity.OnBackPressedCallback
-import androidx.annotation.RequiresApi
 import androidx.collection.IntList
-import androidx.collection.emptyIntList
 import androidx.collection.mutableIntListOf
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibilityScope
@@ -101,6 +99,7 @@ import sh.calvin.reorderable.rememberReorderableLazyGridState
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.random.Random
+import androidx.core.graphics.withScale
 
 const val APPWIDGET_HOST_ID = 1433
 const val OPTION_APPWIDGET_APPY_APP = "appWidgetAppyApp"
@@ -149,10 +148,12 @@ class AppsFragment : MyFragment(), MenuProvider {
         }
 
         override fun dispatchDraw(canvas : Canvas) {
-            canvas.save()
-            canvas.scale(if (innerWidth == 0) 1f else width.toFloat() / innerWidth.toFloat(), if (innerHeight == 0) 1f else height.toFloat() / innerHeight.toFloat())
-            super.dispatchDraw(canvas)
-            canvas.restore()
+            canvas.withScale(
+                if (innerWidth == 0) 1f else width.toFloat() / innerWidth.toFloat(),
+                if (innerHeight == 0) 1f else height.toFloat() / innerHeight.toFloat()
+            ) {
+                super.dispatchDraw(this)
+            }
         }
     }
 
@@ -184,8 +185,9 @@ class AppsFragment : MyFragment(), MenuProvider {
     private var widgetHost: WidgetHost? = null
     private var appyInfo: AppWidgetProviderInfo? = null
     private var attachedAndBound = false
-    private var showMenu = false
+    private var inAppMenu = false
 
+    private var startedAll = mutableStateOf(false)
     private val _widgetGridList = mutableStateListOf<WidgetItem>()
     private val selectedState = mutableIntStateOf (-1)
     private val lastSelectedState = mutableIntStateOf (-1)
@@ -241,7 +243,6 @@ class AppsFragment : MyFragment(), MenuProvider {
         }
     }
 
-    @RequiresApi(Build.VERSION_CODES.O)
     override fun onAttach(context : Context) {
         for (info in AppWidgetManager.getInstance(context)
             .getInstalledProvidersForPackage(context.packageName, null)) {
@@ -258,69 +259,85 @@ class AppsFragment : MyFragment(), MenuProvider {
         appyInfo!!.initialLayout = R.layout.initial_widget
 
         widgetHost = WidgetHost(context.applicationContext)
-        tryStartListening()
 
         super.onAttach(context)
     }
 
     override fun onAttachedAndBound() {
         attachedAndBound = true
-        tryStartListening()
-        loadWidgets()
-
-        if (fragmentArg != null) {
-            handleShortcutRequest()
-        }
+        tryStartAll()
     }
 
     override fun onArgument() {
-        tryStartListening()
         if (attachedAndBound) {
             handleShortcutRequest()
         }
     }
 
-    fun onAppPropsChange(widgetId: Int, androidWidgetId: Int, data: Dict) {
-        val index = _widgetGridList.indexOfFirst { it.widgetId == androidWidgetId }
-        if (index != -1) {
-            if (data.hasKey("title")) {
-                _widgetGridList[index].title = data.getString("title")
-            }
-            if (data.hasKey("icons")) {
-                _widgetGridList[index].icons = data.getDict("icons")
-            }
+    override fun onStartupCompleted() {
+        super.onStartupCompleted()
+        tryStartAll()
+    }
 
-            _widgetGridList[index] = _widgetGridList[index]
-            prevUpdateTitle.value = false
-            updateTitle.value = true
+    fun tryStartAll() {
+        if (!startedAll.value && attachedAndBound) {
+            if (widgetService != null && widgetService.startupState == Constants.StartupState.COMPLETED) {
+                loadWidgets()
+                startedAll.value = true
+                if (fragmentArg != null) {
+                    handleShortcutRequest()
+                }
+            }
+        }
+    }
+
+    fun onAppPropsChange(widgetId: Int, androidWidgetId: Int, data: Dict) {
+        if (startedAll.value) {
+            val index = _widgetGridList.indexOfFirst { it.widgetId == androidWidgetId }
+            if (index != -1) {
+                if (data.hasKey("title")) {
+                    _widgetGridList[index].title = data.getString("title")
+                }
+                if (data.hasKey("icons")) {
+                    _widgetGridList[index].icons = data.getDict("icons")
+                }
+
+                _widgetGridList[index] = _widgetGridList[index]
+                prevUpdateTitle.value = false
+                updateTitle.value = true
+            }
         }
     }
 
     fun onWidgetChosen(widgetId: Int, androidWidgetId: Int, name: String?) {
-        val index = _widgetGridList.indexOfFirst { it.widgetId == androidWidgetId }
-        if (index != -1) {
-            _widgetGridList[index].name = name
-            _widgetGridList[index] = _widgetGridList[index]
-            prevUpdateTitle.value = false
-            updateTitle.value = true
+        if (startedAll.value) {
+            val index = _widgetGridList.indexOfFirst { it.widgetId == androidWidgetId }
+            if (index != -1) {
+                _widgetGridList[index].name = name
+                _widgetGridList[index] = _widgetGridList[index]
+                prevUpdateTitle.value = false
+                updateTitle.value = true
+            }
         }
     }
 
     fun onWidgetCleared(widgetId: Int, androidWidgetId: Int) {
-        val index = _widgetGridList.indexOfFirst { it.widgetId == androidWidgetId }
-        if (index != -1) {
-            _widgetGridList[index].name = null
-            _widgetGridList[index] = _widgetGridList[index]
-            prevUpdateTitle.value = false
-            updateTitle.value = true
-            removeWidget(androidWidgetId)
+        if (startedAll.value) {
+            val index = _widgetGridList.indexOfFirst { it.widgetId == androidWidgetId }
+            if (index != -1) {
+                _widgetGridList[index].name = null
+                _widgetGridList[index] = _widgetGridList[index]
+                prevUpdateTitle.value = false
+                updateTitle.value = true
+                removeWidget(androidWidgetId)
+            }
         }
     }
 
     override fun onActivityResult(data: Intent) {
         val widgetId = data.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, -1)
         if (widgetId == -1) {
-            Log.e("APPY", "no widget id on bindApp permission request")
+            Log.e("APPY", "APP no widget id on bindApp permission request")
             return
         }
 
@@ -332,9 +349,6 @@ class AppsFragment : MyFragment(), MenuProvider {
         val frame = ScaleLayout(requireActivity())
         val widgetView = widgetHost!!.createView(requireActivity().applicationContext, widgetId, appyInfo)
 
-        //frame.setBackgroundResource(R.drawable.drawable_outline_success_btn)
-        //widgetView.setBackgroundResource(R.drawable.drawable_outline_danger_btn)
-
         val item = WidgetItem(widgetId, widgetUnique, frame, widgetView)
 
         item.frame.tag = item
@@ -345,17 +359,20 @@ class AppsFragment : MyFragment(), MenuProvider {
     }
 
     private fun removeWidget(widgetId : Int) {
-        val item = _widgetGridList.find {it.widgetId == widgetId}
-        if (item != null) {
-            _widgetGridList.remove(item)
-            saveWidgets()
+        if (startedAll.value) {
+            Log.d("APPY", "APP removing $widgetId")
+            val item = _widgetGridList.find { it.widgetId == widgetId }
+            if (item != null) {
+                _widgetGridList.remove(item)
+                saveWidgets()
+            }
+            if (selectedState.intValue == widgetId) {
+                lastSelectedState.intValue = selectedState.intValue
+                selectedState.intValue = -1
+                doStateAnimation.value = true
+            }
+            widgetHost!!.deleteAppWidgetId(widgetId)
         }
-        if (selectedState.intValue == widgetId) {
-            lastSelectedState.intValue = selectedState.intValue
-            selectedState.intValue = -1
-            doStateAnimation.value = true
-        }
-        widgetHost!!.deleteAppWidgetId(widgetId)
     }
 
     private fun requestPermission(widgetId: Int, name: ComponentName?, options: Bundle?) {
@@ -368,15 +385,17 @@ class AppsFragment : MyFragment(), MenuProvider {
 
     private fun clearWidgets()
     {
-        for (widgetId in widgetHost!!.appWidgetIds) {
-            widgetHost!!.deleteAppWidgetId(widgetId)
-        }
+        if (startedAll.value) {
+            for (widgetId in widgetHost!!.appWidgetIds) {
+                widgetHost!!.deleteAppWidgetId(widgetId)
+            }
 
-        _widgetGridList.clear()
-        lastSelectedState.intValue = -1
-        selectedState.intValue = -1
-        doStateAnimation.value = true
-        saveWidgets()
+            _widgetGridList.clear()
+            lastSelectedState.intValue = -1
+            selectedState.intValue = -1
+            doStateAnimation.value = true
+            saveWidgets()
+        }
     }
 
     private fun addWidget()
@@ -410,36 +429,48 @@ class AppsFragment : MyFragment(), MenuProvider {
         if (widgetId == -1) {
             minimizeBackAction.isEnabled = false
             val item = _widgetGridList.find {prevId == it.widgetId }
-            if (item != null && item.name == null) {
-                removeWidget(prevId)
+            if (item != null) {
+                if (item.name == null && widgetService != null)
+                {
+                    val widgetId = widgetService.fromAndroidWidget(item.widgetId)
+                    if (widgetId != null && widgetService.getWidgetName(widgetId) == null)
+                    {
+                        removeWidget(prevId)
+                    }
+                }
             }
         }
     }
 
     private fun handleShortcutRequest() {
-        val launchedWidgetId = fragmentArg?.getInt(Constants.FRAGMENT_ARG_WIDGET_ID, -1) ?: -1
-        val launchedWidgetUnique = fragmentArg?.getInt(Constants.FRAGMENT_ARG_WIDGET_UNIQUE, -1) ?: -1
+        if (startedAll.value) {
+            val launchedWidgetId = fragmentArg?.getInt(Constants.FRAGMENT_ARG_WIDGET_ID, -1) ?: -1
+            val launchedWidgetUnique =
+                fragmentArg?.getInt(Constants.FRAGMENT_ARG_WIDGET_UNIQUE, -1) ?: -1
 
-        if (launchedWidgetId != -1 && launchedWidgetUnique != -1) {
-            if (_widgetGridList.find {it.widgetId == launchedWidgetId && it.widgetUnique == launchedWidgetUnique} != null) {
-                selectWidget(launchedWidgetId, true)
+            if (launchedWidgetId != -1 && launchedWidgetUnique != -1) {
+                if (_widgetGridList.find { it.widgetId == launchedWidgetId && it.widgetUnique == launchedWidgetUnique } != null) {
+                    selectWidget(launchedWidgetId, true)
+                }
             }
         }
     }
 
     private fun saveWidgets()
     {
-        val widgets = DictObj.List()
-        for (item in _widgetGridList) {
-            widgets.add(Dict().apply {
-                put("id", item.widgetId)
-                put("unique", item.widgetUnique)
-            })
-        }
+        if (startedAll.value) {
+            val widgets = DictObj.List()
+            for (item in _widgetGridList) {
+                widgets.add(Dict().apply {
+                    put("id", item.widgetId)
+                    put("unique", item.widgetUnique)
+                })
+            }
 
-        val store = StoreData.Factory.create(requireActivity(), "app_fragment_widgets")
-        store.put("widgets", widgets)
-        store.apply()
+            val store = StoreData.Factory.create(requireActivity(), "app_fragment_widgets")
+            store.put("widgets", widgets)
+            store.apply()
+        }
     }
 
     fun cleanUnusedWidgets(usedWidgets: IntList) {
@@ -451,7 +482,7 @@ class AppsFragment : MyFragment(), MenuProvider {
                 cleaned++
             }
         }
-        Log.d("APPY", "Cleaned $cleaned app widgets")
+        Log.d("APPY", "APP Cleaned $cleaned app widgets")
     }
 
     private fun loadWidgets()
@@ -465,6 +496,7 @@ class AppsFragment : MyFragment(), MenuProvider {
         doStateAnimation.value = false
 
         if (widgetsStored == null) {
+            Log.d("APPY", "APP no widgets stored")
             _widgetGridList.clear()
             cleanUnusedWidgets(usedWidgets)
             return
@@ -564,9 +596,9 @@ class AppsFragment : MyFragment(), MenuProvider {
     }
 
     override fun onCreateMenu(menu: Menu, inflater: MenuInflater) {
-        if (showMenu) {
-            inflater.inflate(R.menu.apps_toolbar_actions, menu)
-        }
+        inflater.inflate(R.menu.apps_toolbar_actions, menu)
+        menu.setGroupVisible(R.id.all_apps_toolbar_actions, !inAppMenu)
+        menu.setGroupVisible(R.id.app_toolbar_actions, inAppMenu)
     }
 
     override fun onMenuItemSelected(item: MenuItem): Boolean {
@@ -603,14 +635,21 @@ class AppsFragment : MyFragment(), MenuProvider {
                 }
             }
         }
+        else if (item.itemId == R.id.action_clearall) {
+            Utils.showConfirmationDialog(requireActivity(), "Delete All Apps", "Delete All Apps?", android.R.drawable.ic_dialog_alert,
+                null, null
+            ) {
+                clearWidgets()
+            }
+        }
         return false
     }
 
     fun configureWidget(widgetId : Int) {
         val appWidgetInfo = AppWidgetManager.getInstance(context).getAppWidgetInfo(widgetId)
-        if (appWidgetInfo.configure != null) {
+        if (appWidgetInfo != null && appWidgetInfo.configure != null) {
             val intent = Intent(AppWidgetManager.ACTION_APPWIDGET_CONFIGURE)
-            intent.setComponent(appWidgetInfo.configure)
+            intent.component = appWidgetInfo.configure
             intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId)
             startActivityForResult(intent, 101)
         }
@@ -665,7 +704,6 @@ class AppsFragment : MyFragment(), MenuProvider {
         return widgetTitle(_widgetGridList.find {it.widgetId == selectedState.intValue})
     }
 
-    @OptIn(ExperimentalSharedTransitionApi::class)
     @Composable
     fun Grid(selectedState : Int,
              lastSelectedState : Int,
@@ -679,7 +717,7 @@ class AppsFragment : MyFragment(), MenuProvider {
     {
         if (selectedState == -1 && lastSelectedState != -1) {
             setTitle("Apps")
-            showMenu = false
+            inAppMenu = false
             activity?.invalidateMenu()
         }
 
@@ -694,6 +732,8 @@ class AppsFragment : MyFragment(), MenuProvider {
                 HapticFeedbackConstantsCompat.SEGMENT_FREQUENT_TICK
             )
         }
+
+        val startedAllBoolean by startedAll
 
         with (sharedTransitionScope) {
             Box (modifier = Modifier.fillMaxSize()) {
@@ -712,150 +752,171 @@ class AppsFragment : MyFragment(), MenuProvider {
                         .zIndex(10f)) {
                     Icon(Icons.Filled.Add, "New widget")
                 }
-                LazyVerticalGrid(
-                    columns = GridCells.Adaptive(150.dp),
-                    modifier = Modifier.fillMaxSize(),
-                    state = lazyGridState,
-                    contentPadding = PaddingValues(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    items(_widgetGridList, key = { it.widgetId }) { item ->
-                        ReorderableItem(
-                            reorderableLazyGridState,
-                            key = item.widgetId
-                        ) {
-                            val interactionSource = remember { MutableInteractionSource() }
-
-                            Card(
-                                onClick = {},
-                                colors = CardColors(
-                                    containerColor = Color.DarkGray,
-                                    contentColor = Color.DarkGray,
-                                    disabledContainerColor = Color.DarkGray,
-                                    disabledContentColor = Color.DarkGray
-                                ),
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(5.dp)
-                                    .aspectRatio(0.8f)
-                                    .draggableHandle(
-                                        onDragStarted = {
-                                            ViewCompat.performHapticFeedback(
-                                                containerView,
-                                                HapticFeedbackConstantsCompat.GESTURE_START
-                                            )
-                                        },
-                                        onDragStopped = {
-                                            ViewCompat.performHapticFeedback(
-                                                containerView,
-                                                HapticFeedbackConstantsCompat.GESTURE_END
-                                            )
-                                        },
-                                        interactionSource = interactionSource,
-                                    ),
+                if (!startedAllBoolean) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        BasicText(
+                            "Loading widgets...",
+                            color = { Color(0xb3ffffff) },
+                            style = TextStyle(
+                                textAlign = TextAlign.Center
+                            ),
+                            autoSize = TextAutoSize.StepBased(
+                                minFontSize = 12.sp,
+                                maxFontSize = 64.sp
+                            )
+                        )
+                    }
+                } else {
+                    LazyVerticalGrid(
+                        columns = GridCells.Adaptive(150.dp),
+                        modifier = Modifier.fillMaxSize(),
+                        state = lazyGridState,
+                        contentPadding = PaddingValues(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        items(_widgetGridList, key = { it.widgetId }) { item ->
+                            ReorderableItem(
+                                reorderableLazyGridState,
+                                key = item.widgetId
                             ) {
-                                Column(
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                    modifier = Modifier.padding(5.dp)
+                                val interactionSource = remember { MutableInteractionSource() }
+
+                                Card(
+                                    onClick = {},
+                                    colors = CardColors(
+                                        containerColor = Color.DarkGray,
+                                        contentColor = Color.DarkGray,
+                                        disabledContainerColor = Color.DarkGray,
+                                        disabledContentColor = Color.DarkGray
+                                    ),
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(5.dp)
+                                        .aspectRatio(0.8f)
+                                        .draggableHandle(
+                                            onDragStarted = {
+                                                ViewCompat.performHapticFeedback(
+                                                    containerView,
+                                                    HapticFeedbackConstantsCompat.GESTURE_START
+                                                )
+                                            },
+                                            onDragStopped = {
+                                                ViewCompat.performHapticFeedback(
+                                                    containerView,
+                                                    HapticFeedbackConstantsCompat.GESTURE_END
+                                                )
+                                            },
+                                            interactionSource = interactionSource,
+                                        ),
                                 ) {
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .weight(1f)
-                                            .padding(5.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.Center
+                                    Column(
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        modifier = Modifier.padding(5.dp)
                                     ) {
-
-                                        if (item.menuIcon != null) {
-                                            Image(
-                                                bitmap = item.menuIcon!!.asImageBitmap(),
-                                                contentDescription = "Icon",
-                                                modifier = Modifier.weight(1f)
-                                            )
-                                        } else {
-                                            Image(
-                                                painter = painterResource(id = R.mipmap.ic_launcher_foreground),
-                                                contentDescription = "Icon",
-                                                colorFilter = ColorFilter.tint(Color.White),
-                                                modifier = Modifier.weight(1f)
-                                            )
-                                        }
-
-                                        BasicText(
-                                            text = widgetTitle(item),
-                                            color = { Color.White },
-                                            style = TextStyle(textAlign = TextAlign.Center),
+                                        Row(
                                             modifier = Modifier
-                                                .padding(
-                                                    horizontal = 0.dp,
-                                                    vertical = 5.dp
+                                                .fillMaxWidth()
+                                                .weight(1f)
+                                                .padding(5.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.Center
+                                        ) {
+
+                                            if (item.menuIcon != null) {
+                                                Image(
+                                                    bitmap = item.menuIcon!!.asImageBitmap(),
+                                                    contentDescription = "Icon",
+                                                    modifier = Modifier.weight(1f)
                                                 )
-                                                .weight(2f),
-                                            autoSize = TextAutoSize.StepBased(
-                                                minFontSize = 10.sp,
-                                                maxFontSize = 60.sp,
-                                                stepSize = 10.sp
+                                            } else {
+                                                Image(
+                                                    painter = painterResource(id = R.mipmap.ic_launcher_foreground),
+                                                    contentDescription = "Icon",
+                                                    colorFilter = ColorFilter.tint(Color.White),
+                                                    modifier = Modifier.weight(1f)
+                                                )
+                                            }
+
+                                            BasicText(
+                                                text = widgetTitle(item),
+                                                color = { Color.White },
+                                                style = TextStyle(textAlign = TextAlign.Center),
+                                                modifier = Modifier
+                                                    .padding(
+                                                        horizontal = 0.dp,
+                                                        vertical = 5.dp
+                                                    )
+                                                    .weight(2f),
+                                                autoSize = TextAutoSize.StepBased(
+                                                    minFontSize = 10.sp,
+                                                    maxFontSize = 60.sp,
+                                                    stepSize = 10.sp
+                                                )
                                             )
-                                        )
 
-                                        Box(modifier = Modifier.weight(1f))
-                                    }
-
-                                    val aspect = fullSize.width.toFloat() / fullSize.height.toFloat()
-
-                                    Box(
-                                        modifier = Modifier
-                                            .wrapContentWidth()
-                                            .fillMaxHeight()
-                                            .aspectRatio(aspect)
-                                            .weight(3f)
-                                    ) {
-                                        var modifier = Modifier.fillMaxSize()
-
-                                        if (hasListenerMethod()) {
-                                            modifier = modifier.sharedElement(
-                                                rememberSharedContentState(key = "widget_${item.widgetId}"),
-                                                animatedVisibilityScope = animatedVisibilityScope!!
-                                            )
+                                            Box(modifier = Modifier.weight(1f))
                                         }
 
-                                        AndroidView(
-                                            factory = {
-                                                item.frame.apply {
-                                                    innerWidth = fullSize.width
-                                                    innerHeight = fullSize.height
-                                                }
-                                            },
-                                            update = {
-                                                item.frame.apply {
-                                                    innerWidth = fullSize.width
-                                                    innerHeight = fullSize.height
-                                                }
-                                                if (selectedState == -1 && lastSelectedState != -1) {
-                                                    if (hasListenerMethod()) {
-                                                        setListener(
-                                                            widgetHost!!,
-                                                            item.widgetId,
-                                                            item.widgetView
-                                                        )
-                                                    }
-                                                }
+                                        val aspect =
+                                            fullSize.width.toFloat() / fullSize.height.toFloat()
 
-                                                updateWidgetSizeIfNeeded(
-                                                    item,
-                                                    fullSize.width,
-                                                    fullSize.height
+                                        Box(
+                                            modifier = Modifier
+                                                .wrapContentWidth()
+                                                .fillMaxHeight()
+                                                .aspectRatio(aspect)
+                                                .weight(3f)
+                                        ) {
+                                            var modifier = Modifier.fillMaxSize()
+
+                                            if (hasListenerMethod()) {
+                                                modifier = modifier.sharedElement(
+                                                    rememberSharedContentState(key = "widget_${item.widgetId}"),
+                                                    animatedVisibilityScope = animatedVisibilityScope!!
                                                 )
-                                            },
-                                            modifier = modifier
-                                        )
+                                            }
 
-                                        Box(modifier = Modifier
-                                            .background(Color.Transparent)
-                                            .matchParentSize()
-                                            .clickable { onWidgetClick(item) })
+                                            AndroidView(
+                                                factory = {
+                                                    item.frame.apply {
+                                                        innerWidth = fullSize.width
+                                                        innerHeight = fullSize.height
+                                                    }
+                                                },
+                                                update = {
+                                                    item.frame.apply {
+                                                        innerWidth = fullSize.width
+                                                        innerHeight = fullSize.height
+                                                    }
+                                                    if (selectedState == -1 && lastSelectedState != -1) {
+                                                        if (hasListenerMethod()) {
+                                                            setListener(
+                                                                widgetHost!!,
+                                                                item.widgetId,
+                                                                item.widgetView
+                                                            )
+                                                        }
+                                                    }
+
+                                                    updateWidgetSizeIfNeeded(
+                                                        item,
+                                                        fullSize.width,
+                                                        fullSize.height
+                                                    )
+                                                },
+                                                modifier = modifier
+                                            )
+
+                                            Box(
+                                                modifier = Modifier
+                                                    .background(Color.Transparent)
+                                                    .matchParentSize()
+                                                    .clickable { onWidgetClick(item) })
+                                        }
                                     }
                                 }
                             }
@@ -910,7 +971,7 @@ class AppsFragment : MyFragment(), MenuProvider {
 
             if (selectedState != -1 && lastSelectedState == -1) {
                 setTitle(title)
-                showMenu = true
+                inAppMenu = true
                 activity?.invalidateMenu()
             }
 
