@@ -166,7 +166,7 @@ static int jinteger_to_int(JNIEnv * env, jobject integer)
 JNIEnv * env = _get_jni_env(); \
 env->PushLocalFrame(15); \
 CHECK_JAVA_EXC(env); \
-onexit += [env]{ env->PopLocalFrame(NULL); };
+onexit += [env]{ env->PopLocalFrame(NULL); }
 
 #define GET_JNI_ENV() \
 scope_guards onexit; \
@@ -1245,7 +1245,7 @@ static PyObject * get_object_class(PyObject * self, PyObject * args)
         }
 
         jclass local_clazz = NULL;
-        GET_JNI_ENV()
+        GET_JNI_ENV();
         WITHOUTGIL(
             local_clazz = env->GetObjectClass((jobject) object);
             CHECK_JAVA_EXC(env);
@@ -1357,6 +1357,10 @@ static bool python_to_unpacked_jvalue_impl(PyObject * object, int type, jvalue *
             }
             result->l = (jobject) PyLong_AsUnsignedLong(object);
             break;
+        }
+        default:
+        {
+            return false;
         }
     }
     return true;
@@ -1816,26 +1820,18 @@ static PyObject * jni_set_native_array_elements(PyObject * self, PyObject * args
         switch(type)
         {
             case BOOLEAN:
-                element_size = 1;
-                break;
             case BYTE:
                 element_size = 1;
                 break;
             case CHARACTER:
-                element_size = 2;
-                break;
             case SHORT:
                 element_size = 2;
                 break;
             case INTEGER:
-                element_size = 4;
-                break;
-            case LONG:
-                element_size = 8;
-                break;
             case FLOAT:
                 element_size = 4;
                 break;
+            case LONG:
             case DOUBLE:
                 element_size = 8;
                 break;
@@ -2144,7 +2140,7 @@ static PyObject * inspect_class_content(PyObject * self, PyObject * args)
         for (Py_ssize_t i = 0; i < content.size(); ++i)
         {
             PyObject * s = NULL;
-            if (content[i].data() == NULL || content[i].size() == 0)
+            if (content[i].data() == NULL || content[i].empty())
             {
                 s = Py_BuildValue("s#", 0x1, 0);
             }

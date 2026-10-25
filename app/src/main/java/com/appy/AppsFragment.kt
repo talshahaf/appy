@@ -670,7 +670,7 @@ class AppsFragment : MyFragment(), MenuProvider {
             val icon = if (widgetItem.shortcutIcon != null)
                             Icon.createWithAdaptiveBitmap(widgetItem.shortcutIcon!!)
                         else
-                            Icon.createWithResource(applicationContext, R.drawable.app_default_shortcut)
+                            Icon.createWithResource(applicationContext, R.mipmap.app_default_shortcut)
 
             val pinShortcutInfo = ShortcutInfo.Builder(applicationContext, "appy_app_${widgetItem.widgetId}_${widgetItem.widgetUnique}_${Random.nextInt(0, Int.MAX_VALUE)}")
                                     .setIntent(intent)

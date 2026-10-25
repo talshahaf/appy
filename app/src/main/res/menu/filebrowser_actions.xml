@@ -4,11 +4,11 @@
     <item
         android:id="@+id/action_goto"
         android:title="Go to"
-        app:showAsAction="always|withText"/>
+        app:showAsAction="ifRoom|withText"/>
     <item
         android:id="@+id/action_select"
         android:title="Select"
-        app:showAsAction="always|withText"/>
+        app:showAsAction="ifRoom|withText"/>
     <item
         android:id="@+id/action_copy"
         android:icon="@drawable/ic_action_copy"
@@ -27,15 +27,15 @@
     <item
         android:id="@+id/action_cancel"
         android:title="Cancel"
-        app:showAsAction="always|withText"/>
+        app:showAsAction="ifRoom|withText"/>
     <item
         android:id="@+id/action_clear"
         android:title="Clear"
-        app:showAsAction="always|withText"/>
+        app:showAsAction="ifRoom|withText"/>
     <item
         android:id="@+id/action_paste"
         android:title="Paste"
-        app:showAsAction="always|withText"/>
+        app:showAsAction="ifRoom|withText"/>
     <item
         android:id="@+id/action_rename"
         android:title="Rename"

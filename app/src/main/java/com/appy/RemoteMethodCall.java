@@ -9,12 +9,10 @@ import android.util.Base64;
 import android.util.Pair;
 import android.widget.RemoteViews;
 
-import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 
 /**
@@ -27,8 +25,8 @@ public class RemoteMethodCall
     private final Method method;
     private final Object[] originalArguments;
     private Object[] arguments = null;
-    public static HashMap<String, Method> remoteViewMethods = new HashMap<>();
-    public static ArrayList<Pair<String, String>> resolveResourcePrefix = new ArrayList<>();
+    public static final HashMap<String, Method> remoteViewMethods = new HashMap<>();
+    public static final ArrayList<Pair<String, String>> resolveResourcePrefix = new ArrayList<>();
 
     static
     {
@@ -475,7 +473,7 @@ public class RemoteMethodCall
         }
         else
         {
-            throw new IllegalArgumentException("cannot serialize remote call parameter " + param.getClass().getName() + " " + param.toString());
+            throw new IllegalArgumentException("cannot serialize remote call parameter " + param.getClass().getName() + " " + param);
         }
 
         return dict;

@@ -31,8 +31,8 @@ public class LogcatFragment extends MyFragment implements RunnerListener
     TextView scrollState;
     String filterTag = "";
     boolean atEnd = true;
-    ArrayList<String> selectionBuffer = new ArrayList<>();
-    ArrayList<String> allLines = new ArrayList<>();
+    final ArrayList<String> selectionBuffer = new ArrayList<>();
+    final ArrayList<String> allLines = new ArrayList<>();
     static final String EMPTY_TEXT = "Waiting for logcat...";
 
     public void updateAtEnd()
@@ -100,7 +100,7 @@ public class LogcatFragment extends MyFragment implements RunnerListener
 
     Runner logcat = null;
 
-    Pattern tagExtract = Pattern.compile("^[^VIDWEF]*[VIDWEF].([^\\s]+)\\s.*$");
+    final Pattern tagExtract = Pattern.compile("^[^VIDWEF]*[VIDWEF].([^\\s]+)\\s.*$");
     public boolean lineHidden(String line)
     {
         if (filterTag.isEmpty())

@@ -1,14 +1,11 @@
 package com.appy;
 
-import android.util.Log;
-
 import androidx.annotation.NonNull;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
-import java.util.Random;
 
 
 /**
@@ -24,18 +21,18 @@ public class DynamicView implements DynamicViewListElement
     public static final String D_DELETED = "dm";
 
     private final long id;
-    public String type;
-    public ArrayList<RemoteMethodCall> methodCalls = new ArrayList<>();
+    public final String type;
+    public final ArrayList<RemoteMethodCall> methodCalls = new ArrayList<>();
     public DynamicViewList children = null;
     public String tag;
-    public HashMap<String, String> customAttributes = new HashMap<>();
+    public final HashMap<String, String> customAttributes = new HashMap<>();
     public int view_id;
     public int container_id;
     public int xml_id;
     public Attributes attributes = new Attributes();
     public int actualWidth;
     public int actualHeight;
-    public HashMap<String, String> selectors = new HashMap<>();
+    public final HashMap<String, String> selectors = new HashMap<>();
 
     public DynamicView(long id, String type)
     {

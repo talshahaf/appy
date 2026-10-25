@@ -110,9 +110,8 @@ public class DialogActivity extends Activity
                 textView = (TextView)editTextViews[i];
 
             }
-            else if (editTextViews[i] instanceof TextInputLayout)
+            else if (editTextViews[i] instanceof TextInputLayout layout)
             {
-                TextInputLayout layout = (TextInputLayout) editTextViews[i];
                 textView = layout.getEditText();
             }
 
@@ -291,18 +290,13 @@ public class DialogActivity extends Activity
 
         DialogInterface.OnClickListener dialogClick = (dialog, whichButton) -> {
             int which = -1;
-            switch (whichButton)
+            which = switch (whichButton)
             {
-                case AlertDialog.BUTTON_NEUTRAL:
-                    which = 2;
-                    break;
-                case AlertDialog.BUTTON_NEGATIVE:
-                    which = 1;
-                    break;
-                case AlertDialog.BUTTON_POSITIVE:
-                    which = 0;
-                    break;
-            }
+                case AlertDialog.BUTTON_NEUTRAL -> 2;
+                case AlertDialog.BUTTON_NEGATIVE -> 1;
+                case AlertDialog.BUTTON_POSITIVE -> 0;
+                default -> which;
+            };
             dialogActivityResult(which, getEditTextTexts(editTextViews));
             finish();
         };
@@ -322,9 +316,7 @@ public class DialogActivity extends Activity
         AlertDialog dialog = builder.create();
         if (messageScrollRef[0] != null && (flags & DIALOG_FLAG_SCROLL_BOTTOM) != 0)
         {
-            dialog.setOnShowListener(d -> {
-                messageScrollRef[0].fullScroll(View.FOCUS_DOWN);
-            });
+            dialog.setOnShowListener(d -> messageScrollRef[0].fullScroll(View.FOCUS_DOWN));
         }
         dialog.show();
     }

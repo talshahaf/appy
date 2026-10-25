@@ -27,8 +27,8 @@ public class Attributes
         //such as text.top
         public static class Reference implements Argument
         {
-            public long id;
-            public Type type;
+            public final long id;
+            public final Type type;
 
             public Reference(long id, Type type)
             {
@@ -38,7 +38,7 @@ public class Attributes
         }
         public static class Value implements Argument
         {
-            public double value;
+            public final double value;
             public Value(double value)
             {
                 this.value = value;
@@ -74,9 +74,9 @@ public class Attributes
                 FROM_MM,
             }
 
-            FunctionType type;
-            int numberOfArguments;
-            int totalPosition;
+            final FunctionType type;
+            final int numberOfArguments;
+            final int totalPosition;
 
             public Function(FunctionType type, int numberOfArguments, int totalPosition)
             {
@@ -234,7 +234,7 @@ public class Attributes
         }
     }
 
-    public HashMap<Type, AttributeValue> attributes;
+    public final HashMap<Type, AttributeValue> attributes;
 
     public Attributes()
     {

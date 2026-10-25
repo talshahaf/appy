@@ -365,10 +365,11 @@ public class MainActivity extends AppCompatActivity implements StartupStatusList
     public static final int[] REQUEST_PERMISSION_STEPS = new int[]{102, 103};
 
     public static final String permission_ask_title = "Just one more thing";
-    public static final String permission_ask_message = "Appy needs all time location access to remain in background and avoid being killed by Android.\n"+
-                                                        "Appy itself will not use location data at all (though specific widgets might).\n"+
-                                                        "You will be presented a permission asking prompt. After that, you'll need to set location access to 'all time' in appy settings.\n"+
-                                                        "This permission is optional, but widgets will become unresponsive if the service is killed.";
+    public static final String permission_ask_message = """
+                                                        Appy needs all time location access to remain in background and avoid being killed by Android.
+                                                        "Appy itself will not use location data at all (though specific widgets might).
+                                                        "You will be presented a permission asking prompt. After that, you'll need to set location access to 'all time' in appy settings.
+                                                        "This permission is optional, but widgets will become unresponsive if the service is killed.""";
     private boolean permissionDialogShown = false; //we want to show it only once and not for every step.
 
     public int checkPermissions()

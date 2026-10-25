@@ -140,25 +140,19 @@ public class Runner implements Runnable
                     }
                     break;
                 default:
-                    if ("'".equals(nextTok))
+                    switch (nextTok)
                     {
-                        state = inQuote;
-                    }
-                    else if ("\"".equals(nextTok))
-                    {
-                        state = inDoubleQuote;
-                    }
-                    else if (" ".equals(nextTok))
-                    {
-                        if (lastTokenHasBeenQuoted || current.length() != 0)
+                        case "'" -> state = inQuote;
+                        case "\"" -> state = inDoubleQuote;
+                        case " " ->
                         {
-                            list.add(current.toString());
-                            current = new StringBuilder();
+                            if (lastTokenHasBeenQuoted || current.length() != 0)
+                            {
+                                list.add(current.toString());
+                                current = new StringBuilder();
+                            }
                         }
-                    }
-                    else
-                    {
-                        current.append(nextTok);
+                        case null, default -> current.append(nextTok);
                     }
                     lastTokenHasBeenQuoted = false;
                     break;

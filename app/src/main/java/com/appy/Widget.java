@@ -19,7 +19,6 @@ import java.time.Month;
 import java.time.format.DateTimeFormatter;
 import java.time.format.TextStyle;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
@@ -104,7 +103,7 @@ public class Widget extends RemoteViewsService
     FileStatusListener fileStatusListener = null;
     AppPropsListener appPropsListener = null;
     WidgetServiceListener widgetServiceListener = null;
-    Handler handler = new Handler();
+    final Handler handler = new Handler();
 
     final ConcurrentHashMap<Integer, TaskQueue> widgetsTasks = new ConcurrentHashMap<>();
 
@@ -120,8 +119,8 @@ public class Widget extends RemoteViewsService
     final ConcurrentHashMap<Integer, Integer> widgetSwapLayoutCounter = new ConcurrentHashMap<>();
 
     final Object activeTimersLock = new Object();
-    ConcurrentHashMap<Long, Timer> activeTimers = new ConcurrentHashMap<>();
-    ConcurrentHashMap<Long, PendingIntent[]> activeTimersIntents = new ConcurrentHashMap<>();
+    final ConcurrentHashMap<Long, Timer> activeTimers = new ConcurrentHashMap<>();
+    final ConcurrentHashMap<Long, PendingIntent[]> activeTimersIntents = new ConcurrentHashMap<>();
 
     final Object widgetPropsLock = new Object();
     ConcurrentHashMap<Integer, DictObj.Dict> widgetProps = new ConcurrentHashMap<>();
@@ -146,7 +145,7 @@ public class Widget extends RemoteViewsService
 
     final HashSet<Integer> needUpdateWidgets = new HashSet<>();
 
-    DrawingSettings globalDrawingSettings = new DrawingSettings(1.0f, 1.0f, 1.0f, false);
+    final DrawingSettings globalDrawingSettings = new DrawingSettings(1.0f, 1.0f, 1.0f, false);
     final Configurations configurations = new Configurations(this, this::configurationUpdate);
     MultipleFileObserverBase pythonFilesObserver = null;
 
@@ -159,8 +158,8 @@ public class Widget extends RemoteViewsService
 
     public static class FunctionCache<Arg, Ret>
     {
-        Object[] storage;
-        Integer[] storage_hash;
+        final Object[] storage;
+        final Integer[] storage_hash;
 
         FunctionCache(int capacity)
         {
@@ -222,8 +221,8 @@ public class Widget extends RemoteViewsService
         }
 
         int widgetId;
-        T[] params;
-        Runner<T> torun;
+        final T[] params;
+        final Runner<T> torun;
         long timeAdded;
         long timeScheduled;
         boolean finished;
@@ -523,8 +522,8 @@ public class Widget extends RemoteViewsService
     public static class CollectionFactory implements RemoteViewsFactory
     {
         final Object lock = new Object();
-        int widgetId;
-        Widget service;
+        final int widgetId;
+        final Widget service;
         DynamicView collectionview = null;
         boolean defaultCollectionView;
 
@@ -801,7 +800,7 @@ public class Widget extends RemoteViewsService
             return new Pair<>(roots[updateCounter % roots.length], new HashMap<>());
         }
 
-        Collections.sort(collections, String::compareToIgnoreCase);
+        collections.sort(String::compareToIgnoreCase);
 
         int[] reses = Constants.collection_map.get(collections);
         if (reses == null)
@@ -825,14 +824,13 @@ public class Widget extends RemoteViewsService
 
     public static Pair<Integer, Integer> getCollectionElementIds(int n)
     {
-        switch (n)
+        return switch (n)
         {
-            case 0:
-                return new Pair<>(R.id.ce0, R.id.cl0);
-            case 1:
-                return new Pair<>(R.id.ce1, R.id.cl1);
-        }
-        throw new IllegalArgumentException((n + 1) + " collections are not supported");
+            case 0 -> new Pair<>(R.id.ce0, R.id.cl0);
+            case 1 -> new Pair<>(R.id.ce1, R.id.cl1);
+            default ->
+                    throw new IllegalArgumentException((n + 1) + " collections are not supported");
+        };
     }
 
     public static Integer advanceElementsId(int elements_id)
@@ -855,7 +853,7 @@ public class Widget extends RemoteViewsService
         }
     }
 
-    public static FunctionCache<Pair<String, HashMap<String, String>>, Integer> typeToLayoutCache = new FunctionCache<>(50);
+    public static final FunctionCache<Pair<String, HashMap<String, String>>, Integer> typeToLayoutCache = new FunctionCache<>(50);
 
     public static int typeToLayout(String type, HashMap<String, String> selectors)
     {
@@ -1123,7 +1121,7 @@ public class Widget extends RemoteViewsService
             }
 
             Iterator<RemoteMethodCall> remoteMethodCallIterator = layout.methodCalls.iterator();
-            Iterator<RemoteMethodCall> additionalRemoteCallsIterator = new Utils.EmptyIterator<RemoteMethodCall>();
+            Iterator<RemoteMethodCall> additionalRemoteCallsIterator = new Utils.EmptyIterator<>();
             if (additionalRemoteCalls != null)
             {
                 ArrayList<RemoteMethodCall> remoteViewCalls = additionalRemoteCalls.get(layout.getId());
@@ -1177,9 +1175,8 @@ public class Widget extends RemoteViewsService
         while (pos < stack.size())
         {
             Object e = stack.get(pos);
-            if (e instanceof Attributes.AttributeValue.Function)
+            if (e instanceof Attributes.AttributeValue.Function f)
             {
-                Attributes.AttributeValue.Function f = ((Attributes.AttributeValue.Function) e);
                 if (pos < f.numberOfArguments)
                 {
                     throw new IllegalArgumentException("not enough arguments in attribute function stack");
@@ -2728,9 +2725,9 @@ public class Widget extends RemoteViewsService
     public void loadGlobalDrawingSettings(boolean initing)
     {
         SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
-        float widthCorrectionFactor = Utils.orDefault(Utils.parseFloatOrNull(sharedPref.getString("global_width_correction_factor", "1")), 1.0f);
-        float heightCorrectionFactor = Utils.orDefault(Utils.parseFloatOrNull(sharedPref.getString("global_height_correction_factor", "1")), 1.0f);
-        float sizeFactor = Utils.orDefault(Utils.parseFloatOrNull(sharedPref.getString("global_size_factor", "1")), 1.0f);
+        float widthCorrectionFactor = Objects.requireNonNullElse(Utils.parseFloatOrNull(sharedPref.getString("global_width_correction_factor", "1")), 1.0f);
+        float heightCorrectionFactor = Objects.requireNonNullElse(Utils.parseFloatOrNull(sharedPref.getString("global_height_correction_factor", "1")), 1.0f);
+        float sizeFactor = Objects.requireNonNullElse(Utils.parseFloatOrNull(sharedPref.getString("global_size_factor", "1")), 1.0f);
         boolean debugBoundingBoxes = sharedPref.getBoolean("global_debug_bounding_boxes", false);
 
         if (widthCorrectionFactor <= 0 || widthCorrectionFactor > 3)
@@ -2819,7 +2816,6 @@ public class Widget extends RemoteViewsService
         Notification notification = builder.setContentTitle("Appy")
                 .setContentText("Appy is running")
                 .setSmallIcon(R.mipmap.ic_launcher_foreground)
-                .setPriority(Notification.PRIORITY_MIN)
                 .setContentIntent(contentIntent)
                 .setOngoing(true)
                 .setAutoCancel(false)
@@ -2886,11 +2882,11 @@ public class Widget extends RemoteViewsService
             return widgetId + ", " + since + ", " + millis + ", " + type + ", " + data;
         }
 
-        int widgetId;
-        long since;
-        long millis;
-        int type;
-        String data;
+        final int widgetId;
+        final long since;
+        final long millis;
+        final int type;
+        final String data;
     }
 
     public void cancelTimer(long timerId)
@@ -3211,7 +3207,7 @@ public class Widget extends RemoteViewsService
 
     public abstract class MultipleFileObserver extends FileObserver implements MultipleFileObserverBase
     {
-        List<PythonFile> pythonFiles;
+        final List<PythonFile> pythonFiles;
 
         @RequiresApi(api = Build.VERSION_CODES.Q)
         public MultipleFileObserver(List<PythonFile> pythonFiles, int mask)
@@ -3254,10 +3250,10 @@ public class Widget extends RemoteViewsService
     {
         class SingleFileObserver extends FileObserver
         {
-            PythonFile file;
-            int mask;
-            OldMultipleFileObserver parent;
-            int index;
+            final PythonFile file;
+            final int mask;
+            final OldMultipleFileObserver parent;
+            final int index;
 
             public SingleFileObserver(@NonNull PythonFile file, int mask, OldMultipleFileObserver parent, int index)
             {
@@ -3276,7 +3272,7 @@ public class Widget extends RemoteViewsService
             }
         }
 
-        ArrayList<SingleFileObserver> observers = new ArrayList<>();
+        final ArrayList<SingleFileObserver> observers = new ArrayList<>();
 
         public OldMultipleFileObserver(List<PythonFile> files, int mask)
         {
@@ -3425,7 +3421,7 @@ public class Widget extends RemoteViewsService
 
     public void savePythonFiles(PythonFile pythonFile)
     {
-        savePythonFiles(Arrays.asList(pythonFile));
+        savePythonFiles(Collections.singletonList(pythonFile));
     }
 
     public void savePythonFiles(List<PythonFile> pythonFiles)
@@ -3485,20 +3481,17 @@ public class Widget extends RemoteViewsService
         ArrayList<PythonFile> files = getPythonFiles();
         for (PythonFile f : files)
         {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+            try
             {
-                try
+                if (Files.isSameFile(Paths.get(f.path), Paths.get(path)))
                 {
-                    if (Files.isSameFile(Paths.get(f.path), Paths.get(path)))
-                    {
-                        return f;
-                    }
-                    continue;
+                    return f;
                 }
-                catch (IOException e)
-                {
-                    Log.e("APPY", "problem comparing paths", e);
-                }
+                continue;
+            }
+            catch (IOException e)
+            {
+                Log.e("APPY", "problem comparing paths", e);
             }
 
             // fallback check
@@ -4391,7 +4384,7 @@ public class Widget extends RemoteViewsService
                     Log.e("APPY", "Exception on onError", e);
                 }
             }
-            errorStr = (path != null ? new File(path).getName() : "Unknown file") + " from " + new SimpleDateFormat(Constants.DATE_FORMAT).format(new Date()) + "\n\n" + errorStr;
+            errorStr = (path != null ? new File(path).getName() : "Unknown file") + " from " + new SimpleDateFormat(Constants.DATE_FORMAT, Locale.US).format(new Date()) + "\n\n" + errorStr;
             setWidgetLastError(widgetId, errorStr);
         }
 
@@ -4524,32 +4517,30 @@ public class Widget extends RemoteViewsService
             String monthshort = "";
             String monthlong = "";
             String ampm = "";
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+
+            String[] week_short = new String[7];
+            String[] week_long = new String[7];
+            String[] month_short = new String[12];
+            String[] month_long = new String[12];
+
+            for (int i = 1; i <= 7; i++)
             {
-                String[] week_short = new String[7];
-                String[] week_long = new String[7];
-                String[] month_short = new String[12];
-                String[] month_long = new String[12];
-
-                for (int i = 1; i <= 7; i++)
-                {
-                    week_short[i - 1] = DayOfWeek.of(i).getDisplayName(TextStyle.SHORT, locale);
-                    week_long[i - 1] = DayOfWeek.of(i).getDisplayName(TextStyle.FULL, locale);
-                }
-                for (int i = 1; i <= 12; i++)
-                {
-                    month_short[i - 1] = Month.of(i).getDisplayName(TextStyle.SHORT, locale);
-                    month_long[i - 1] = Month.of(i).getDisplayName(TextStyle.FULL, locale);
-                }
-
-                weekshort = String.join(",", week_short);
-                weeklong = String.join(",", week_long);
-                monthshort = String.join(",", month_short);
-                monthlong = String.join(",", month_long);
-
-                DateTimeFormatter ampmFormatter = DateTimeFormatter.ofPattern("a", locale);
-                ampm = ampmFormatter.format(LocalTime.of(9, 0)) + "," + ampmFormatter.format(LocalTime.of(17, 0));
+                week_short[i - 1] = DayOfWeek.of(i).getDisplayName(TextStyle.SHORT, locale);
+                week_long[i - 1] = DayOfWeek.of(i).getDisplayName(TextStyle.FULL, locale);
             }
+            for (int i = 1; i <= 12; i++)
+            {
+                month_short[i - 1] = Month.of(i).getDisplayName(TextStyle.SHORT, locale);
+                month_long[i - 1] = Month.of(i).getDisplayName(TextStyle.FULL, locale);
+            }
+
+            weekshort = String.join(",", week_short);
+            weeklong = String.join(",", week_long);
+            monthshort = String.join(",", month_short);
+            monthlong = String.join(",", month_long);
+
+            DateTimeFormatter ampmFormatter = DateTimeFormatter.ofPattern("a", locale);
+            ampm = ampmFormatter.format(LocalTime.of(9, 0)) + "," + ampmFormatter.format(LocalTime.of(17, 0));
 
             String datetimeformat = ((SimpleDateFormat)DateFormat.getDateTimeInstance(DateFormat.FULL, DateFormat.FULL, locale)).toPattern();
             String dateformat = ((SimpleDateFormat)DateFormat.getDateInstance(DateFormat.SHORT, locale)).toPattern();
@@ -5522,7 +5513,7 @@ public class Widget extends RemoteViewsService
                         if (tag != null)
                         {
                             int index = tag.indexOf(",");
-                            int command = Utils.orDefault(Utils.parseIntOrNull(index == -1 ? tag : tag.substring(0, index)), -1);
+                            int command = Objects.requireNonNullElse(Utils.parseIntOrNull(index == -1 ? tag : tag.substring(0, index)), -1);
                             String arg = index == -1 ? null : tag.substring(index + 1);
 
                             if (command != -1)
@@ -5656,8 +5647,9 @@ public class Widget extends RemoteViewsService
                     }
                     else
                     {
-                        Log.d("APPY", "calling event task: widget id: " + eventWidgetId + ", item id: " + widgetIntent.hasExtra(Constants.ITEM_ID_EXTRA) + ", collection id: " + widgetIntent.hasExtra(Constants.COLLECTION_ID_EXTRA) + " , collection item position: " + widgetIntent.hasExtra(Constants.COLLECTION_POSITION_EXTRA) + " checked: " + widgetIntent.getBooleanExtra(RemoteViews.EXTRA_CHECKED, false));
-                        pushEvent(eventWidgetId, widgetIntent.getLongExtra(Constants.ITEM_ID_EXTRA, 0), widgetIntent.getLongExtra(Constants.COLLECTION_ID_EXTRA, 0), widgetIntent.getIntExtra(Constants.COLLECTION_POSITION_EXTRA, -1), widgetIntent.getBooleanExtra(RemoteViews.EXTRA_CHECKED, false));
+                        String extra_checked = Build.VERSION.SDK_INT >= 31 ? RemoteViews.EXTRA_CHECKED : "checked";
+                        Log.d("APPY", "calling event task: widget id: " + eventWidgetId + ", item id: " + widgetIntent.hasExtra(Constants.ITEM_ID_EXTRA) + ", collection id: " + widgetIntent.hasExtra(Constants.COLLECTION_ID_EXTRA) + " , collection item position: " + widgetIntent.hasExtra(Constants.COLLECTION_POSITION_EXTRA) + " checked: " + widgetIntent.getBooleanExtra(extra_checked, false));
+                        pushEvent(eventWidgetId, widgetIntent.getLongExtra(Constants.ITEM_ID_EXTRA, 0), widgetIntent.getLongExtra(Constants.COLLECTION_ID_EXTRA, 0), widgetIntent.getIntExtra(Constants.COLLECTION_POSITION_EXTRA, -1), widgetIntent.getBooleanExtra(extra_checked, false));
                     }
                 }
             }
@@ -5691,9 +5683,9 @@ public class Widget extends RemoteViewsService
         out.close();
     }
 
-    public static int READ_PERM = 0444;
-    public static int WRITE_PERM = 0222;
-    public static int EXEC_PERM = 0111;
+    public static final int READ_PERM = 0444;
+    public static final int WRITE_PERM = 0222;
+    public static final int EXEC_PERM = 0111;
 
     public static void process(TarInputStream tis, TarEntry entry, String dest) throws IOException
     {

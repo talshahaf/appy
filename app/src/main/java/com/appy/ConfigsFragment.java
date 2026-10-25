@@ -304,11 +304,11 @@ public class ConfigsFragment extends FragmentParent
 
         static class WidgetListElement implements Comparable<WidgetListElement>
         {
-            int widgetId;
-            DictObj.Dict props;
-            boolean deleted;
-            boolean displayName;
-            boolean hasInstanceConfigs;
+            final int widgetId;
+            final DictObj.Dict props;
+            final boolean deleted;
+            final boolean displayName;
+            final boolean hasInstanceConfigs;
             public WidgetListElement(int widgetId, DictObj.Dict props, boolean deleted, boolean displayName, boolean hasInstanceConfigs)
             {
                 this.widgetId = widgetId;
@@ -655,7 +655,7 @@ public class ConfigsFragment extends FragmentParent
                     {
                         value = new JSONObject(arg.component2()).toString(2);
                     }
-                    catch (JSONException e)
+                    catch (JSONException ignored)
                     {
 
                     }
@@ -695,9 +695,7 @@ public class ConfigsFragment extends FragmentParent
                         input.setBackgroundColor(0x50FF0000);
                     }
                 });
-                alert.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener(v -> {
-                    Utils.copyToClipboard(context, title, finalValue, "Value copied to clipboard");
-                });
+                alert.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener(v -> Utils.copyToClipboard(context, title, finalValue, "Value copied to clipboard"));
             });
 
             alert.show();

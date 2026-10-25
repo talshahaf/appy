@@ -31,50 +31,45 @@ public class ShareActivity extends WidgetSelectActivity
             return;
         }
 
-        Thread reader = new Thread()
-        {
-            @Override
-            public void run()
+        Thread reader = new Thread(() -> {
+            try
             {
-                try
-                {
-                    final int bufLen = 4096;
-                    byte[] buf = new byte[bufLen];
-                    int readed;
+                final int bufLen = 4096;
+                byte[] buf = new byte[bufLen];
+                int readed;
 
-                    DictObj.Dict datas = new DictObj.Dict();
-                    for (Uri uri : shareUris)
+                DictObj.Dict datas = new DictObj.Dict();
+                for (Uri uri : shareUris)
+                {
+                    byte[] data = new byte[0];
+                    try (InputStream inputStream = getContentResolver().openInputStream(uri))
                     {
-                        byte[] data = new byte[0];
-                        try (InputStream inputStream = getContentResolver().openInputStream(uri))
+                        if (inputStream != null)
                         {
-                            if (inputStream != null)
+                            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+                            while ((readed = inputStream.read(buf, 0, bufLen)) != -1)
                             {
-                                ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-                                while ((readed = inputStream.read(buf, 0, bufLen)) != -1)
-                                {
-                                    outputStream.write(buf, 0, readed);
-                                }
-
-                                data = outputStream.toByteArray();
+                                outputStream.write(buf, 0, readed);
                             }
-                        }
-                        catch (Exception e)
-                        {
-                            Log.e("APPY", "Exception while reading shared data", e);
-                        }
-                        datas.put(uri.toString(), data, false);
-                    }
-                    widgetService.shareWithWidget(widgetId, shareMime, shareText, datas);
-                }
-                catch (Exception e)
-                {
-                    Log.e("APPY", "Exception while reading shared data", e);
-                }
 
-                handler.post(() -> finish());
+                            data = outputStream.toByteArray();
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        Log.e("APPY", "Exception while reading shared data", e);
+                    }
+                    datas.put(uri.toString(), data, false);
+                }
+                widgetService.shareWithWidget(widgetId, shareMime, shareText, datas);
             }
-        };
+            catch (Exception e)
+            {
+                Log.e("APPY", "Exception while reading shared data", e);
+            }
+
+            handler.post(this::finish);
+        });
 
         reader.start();
     }

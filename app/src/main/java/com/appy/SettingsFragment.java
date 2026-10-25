@@ -21,7 +21,7 @@ public class SettingsFragment extends MySettingsFragment implements SharedPrefer
     Preference globalSizeFactorPreference;
     Preference debugBoundingBoxesPreference;
     Preference disableGilPreference;
-    Handler handler = new Handler();
+    final Handler handler = new Handler();
 
     @Override
     public void onCreatePreferences(Bundle savedInstanceState, String rootKey)

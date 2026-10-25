@@ -18,10 +18,10 @@ public class ListFragmentAdapter extends BaseAdapter
     }
     public static class Item
     {
-        String key;
-        String value;
-        KeyFormat keyFormat;
-        Object arg;
+        final String key;
+        final String value;
+        final KeyFormat keyFormat;
+        final Object arg;
         boolean enabled;
         boolean important;
 
@@ -61,7 +61,7 @@ public class ListFragmentAdapter extends BaseAdapter
             this.important = important;
         }
     }
-    public static int MAX_VALUE_LENGTH = 100;
+    public static final int MAX_VALUE_LENGTH = 100;
     private final Context context;
     private final ArrayList<Item> items;
 
@@ -118,7 +118,7 @@ public class ListFragmentAdapter extends BaseAdapter
         {
             LayoutInflater inflater = (LayoutInflater) context
                     .getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-            twoLineListItem = inflater.inflate(R.layout.configs_list_item, null);
+            twoLineListItem = inflater.inflate(R.layout.configs_list_item, parent);
         }
         else
         {

@@ -19,6 +19,7 @@ import org.jspecify.annotations.NonNull;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.Locale;
 
 public class TimerFragment extends FragmentParent
 {
@@ -61,7 +62,7 @@ public class TimerFragment extends FragmentParent
 
         public static String floatFormat(float f)
         {
-            String s = String.format("%.1f", f);
+            String s = String.format(Locale.ENGLISH, "%.1f", f);
             if (s.endsWith(".0"))
             {
                 return s.substring(0, s.lastIndexOf("."));
@@ -139,7 +140,7 @@ public class TimerFragment extends FragmentParent
                         }
                         else
                         {
-                            subtext = "At " + new SimpleDateFormat(Constants.DATE_FORMAT).format(new Date(timer.getLong("time", 0)));
+                            subtext = "At " + new SimpleDateFormat(Constants.DATE_FORMAT, Locale.US).format(new Date(timer.getLong("time", 0)));
                         }
                         adapterList.add(new ListFragmentAdapter.Item(((Long) timer.getLong("id", 0)).toString(), subtext, item -> (prefix + idFormat(item.key)), true));
                     }

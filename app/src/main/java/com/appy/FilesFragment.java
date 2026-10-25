@@ -7,15 +7,11 @@ import android.os.Handler;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
-import androidx.appcompat.app.AlertDialog;
-
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.GridView;
-import android.widget.ScrollView;
-import android.widget.TextView;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -44,9 +40,7 @@ public class FilesFragment extends MyFragment implements FileGridAdapter.ItemAct
         handler = new Handler();
 
         browse = layout.findViewById(R.id.browse);
-        browse.setOnClickListener(v -> {
-            launchFileBrowser(0, null, true, true, false, ".py");
-        });
+        browse.setOnClickListener(v -> launchFileBrowser(0, null, true, true, false, ".py"));
 
         unknownInfo = layout.findViewById(R.id.unknown_info);
         unknownInfo.setOnClickListener(v -> onInfo(getWidgetService().unknownPythonFile));

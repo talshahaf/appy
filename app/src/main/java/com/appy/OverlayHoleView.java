@@ -182,17 +182,12 @@ public class OverlayHoleView extends View implements ValueAnimator.AnimatorUpdat
         float xDiff = event.getX() - holeX;
         float yDiff = event.getY() - holeY;
 
-        boolean inHole = false;
-
-        switch (holeShape)
+        boolean inHole = switch (holeShape)
         {
-            case Circle:
-                inHole = xDiff * xDiff + yDiff * yDiff <= holeClickW * holeClickW;
-                break;
-            case Rect:
-                inHole = Math.abs(xDiff) < holeClickW && Math.abs(yDiff) < holeClickH;
-                break;
-        }
+            case Circle -> xDiff * xDiff + yDiff * yDiff <= holeClickW * holeClickW;
+            case Rect -> Math.abs(xDiff) < holeClickW && Math.abs(yDiff) < holeClickH;
+            default -> false;
+        };
 
         if (!inHole)
         {

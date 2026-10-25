@@ -12,6 +12,7 @@ import android.widget.TextView;
 import java.io.File;
 import java.text.SimpleDateFormat;
 import java.util.Collection;
+import java.util.Locale;
 
 /**
  * Created by Tal on 23/03/2018.
@@ -32,8 +33,8 @@ public class FileBrowserAdapter extends BaseAdapter
 
     private final FileItem current;
     private final FileItem[] files;
-    Context context;
-    boolean isRoot;
+    final Context context;
+    final boolean isRoot;
     OnCheckedChanged checkedListener;
     boolean selectingEnabled = true;
 
@@ -110,7 +111,7 @@ public class FileBrowserAdapter extends BaseAdapter
         if (convertView == null)
         {
             LayoutInflater m_inflater = LayoutInflater.from(context);
-            view = m_inflater.inflate(R.layout.filebrowser_item, null);
+            view = m_inflater.inflate(R.layout.filebrowser_item, parent);
             viewHolder = new ViewHolder();
             viewHolder.filename = view.findViewById(R.id.filename);
             viewHolder.date = view.findViewById(R.id.filedate);
@@ -190,6 +191,6 @@ public class FileBrowserAdapter extends BaseAdapter
 
     String getLastDate(FileItem file)
     {
-        return new SimpleDateFormat(Constants.DATE_FORMAT).format(file.file.lastModified());
+        return new SimpleDateFormat(Constants.DATE_FORMAT, Locale.US).format(file.file.lastModified());
     }
 }

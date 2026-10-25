@@ -5,6 +5,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 
 /**
  * Created by Tal on 23/03/2018.
@@ -33,7 +34,7 @@ public class PythonFile
         this.state = State.IDLE;
     }
 
-    public String path;
+    public final String path;
     public String lastError;
     public Date lastErrorDate;
     public State state;
@@ -52,7 +53,7 @@ public class PythonFile
         }
         if (lastErrorDate != null)
         {
-            obj.put("lastErrorDate", new SimpleDateFormat(Constants.DATE_FORMAT).format(lastErrorDate));
+            obj.put("lastErrorDate", new SimpleDateFormat(Constants.DATE_FORMAT, Locale.US).format(lastErrorDate));
         }
         return obj;
     }
@@ -70,7 +71,7 @@ public class PythonFile
             String serializedDate = obj.getString("lastErrorDate");
             try
             {
-                lastErrorDate = new SimpleDateFormat(Constants.DATE_FORMAT).parse(serializedDate);
+                lastErrorDate = new SimpleDateFormat(Constants.DATE_FORMAT, Locale.US).parse(serializedDate);
             }
             catch (ParseException e)
             {

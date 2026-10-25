@@ -8,7 +8,7 @@
             android:id="@+id/action_shortcut"
             android:title="Shortcut"
             android:icon="@drawable/ic_action_shortcut"
-            app:showAsAction="always" />
+            app:showAsAction="ifRoom" />
         <item
             android:id="@+id/action_delete"
             android:title="Delete"
@@ -23,7 +23,7 @@
             android:id="@+id/action_minimize"
             android:title="Minimize"
             android:icon="@drawable/ic_action_grid_view"
-            app:showAsAction="always" />
+            app:showAsAction="ifRoom" />
     </group>
     <group
         android:id="@+id/all_apps_toolbar_actions"
@@ -31,7 +31,7 @@
     <item
         android:id="@+id/action_clearall"
         android:title="Clear all"
-        app:showAsAction="always|withText"
+        app:showAsAction="ifRoom|withText"
         />
     </group>
 </menu>

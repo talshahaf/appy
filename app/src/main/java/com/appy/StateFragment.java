@@ -398,22 +398,13 @@ public class StateFragment extends FragmentParent
 
         public static int getScopeDepth(String scope)
         {
-            if (scope.equals("globals"))
+            return switch (scope)
             {
-                return 1;
-            }
-
-            if (scope.equals("nonlocals"))
-            {
-                return 2;
-            }
-
-            if (scope.equals("locals"))
-            {
-                return 3;
-            }
-
-            throw new IllegalArgumentException("unknown scope");
+                case "globals" -> 1;
+                case "nonlocals" -> 2;
+                case "locals" -> 3;
+                default -> throw new IllegalArgumentException("unknown scope");
+            };
         }
 
         @Override

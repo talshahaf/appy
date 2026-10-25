@@ -65,11 +65,11 @@ public class Tutorial implements OverlayHoleView.OnHoleClick, TutorialStepListen
             BELOW_HOLE,
         }
 
-        public String text;
-        public float y;
-        public boolean yIsFactor;
-        public Anchor anchor;
-        public Integer videoRes;
+        public final String text;
+        public final float y;
+        public final boolean yIsFactor;
+        public final Anchor anchor;
+        public final Integer videoRes;
 
         public StepProps(String text, float y, boolean yIsFactor, Anchor anchor, Integer videoRes)
         {

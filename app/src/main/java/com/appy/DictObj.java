@@ -8,6 +8,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 public class DictObj
@@ -61,54 +62,57 @@ public class DictObj
 
     private static void serialize_inner(Parcel parcel, Object obj)
     {
-        if (obj == null)
+        switch (obj)
         {
-            parcel.writeByte((byte) 'N');
-        }
-        else if (obj instanceof DictObj.Dict)
-        {
-            parcel.writeByte((byte) '{');
-            parcel.writeInt(((DictObj.Dict) obj).size());
-            for (DictObj.Entry entry : ((DictObj.Dict) obj).entries())
+            case null -> parcel.writeByte((byte) 'N');
+            case Dict dict ->
             {
-                serialize_inner(parcel, entry.key);
-                serialize_inner(parcel, entry.value);
+                parcel.writeByte((byte) '{');
+                parcel.writeInt(dict.size());
+                for (Entry entry : dict.entries())
+                {
+                    serialize_inner(parcel, entry.key);
+                    serialize_inner(parcel, entry.value);
+                }
             }
-        }
-        else if (obj instanceof DictObj.List)
-        {
-            parcel.writeByte((byte) '[');
-            parcel.writeInt(((DictObj.List) obj).size());
-            for (Object item : ((DictObj.List) obj).list)
+            case List list ->
             {
-                serialize_inner(parcel, item);
+                parcel.writeByte((byte) '[');
+                parcel.writeInt(list.size());
+                for (Object item : list.list)
+                {
+                    serialize_inner(parcel, item);
+                }
             }
-        }
-        else if (obj instanceof String)
-        {
-            parcel.writeByte((byte) 'S');
-            parcel.writeString((String) obj);
-        }
-        else if (obj instanceof byte[])
-        {
-            parcel.writeByte((byte) 'A');
-            parcel.writeInt(((byte[]) obj).length);
-            parcel.writeByteArray((byte[]) obj);
-        }
-        else if (obj instanceof Boolean)
-        {
-            parcel.writeByte((byte) 'B');
-            parcel.writeByte((byte) (((Boolean) obj) ? 1 : 0));
-        }
-        else if (obj instanceof Long)
-        {
-            parcel.writeByte((byte) 'L');
-            parcel.writeLong((Long) obj);
-        }
-        else if (obj instanceof Double)
-        {
-            parcel.writeByte((byte) 'D');
-            parcel.writeDouble((Double) obj);
+            case String s ->
+            {
+                parcel.writeByte((byte) 'S');
+                parcel.writeString(s);
+            }
+            case byte[] bytes ->
+            {
+                parcel.writeByte((byte) 'A');
+                parcel.writeInt(bytes.length);
+                parcel.writeByteArray(bytes);
+            }
+            case Boolean b ->
+            {
+                parcel.writeByte((byte) 'B');
+                parcel.writeByte((byte) (b ? 1 : 0));
+            }
+            case Long l ->
+            {
+                parcel.writeByte((byte) 'L');
+                parcel.writeLong(l);
+            }
+            case Double v ->
+            {
+                parcel.writeByte((byte) 'D');
+                parcel.writeDouble(v);
+            }
+            default ->
+            {
+            }
         }
     }
 
@@ -245,21 +249,13 @@ public class DictObj
         public long getLong(int index, long def)
         {
             Long val = (Long) get(index);
-            if (val == null)
-            {
-                return def;
-            }
-            return val;
+            return Objects.requireNonNullElse(val, def);
         }
 
         public double getDouble(int index, double def)
         {
             Double val = (Double) get(index);
-            if (val == null)
-            {
-                return def;
-            }
-            return val;
+            return Objects.requireNonNullElse(val, def);
         }
 
         public float getFloat(int index, float def)
@@ -280,11 +276,7 @@ public class DictObj
         public boolean getBoolean(int index, boolean def)
         {
             Boolean val = (Boolean) get(index);
-            if (val == null)
-            {
-                return def;
-            }
-            return val;
+            return Objects.requireNonNullElse(val, def);
         }
 
         public void set(int index, DictObj val)
@@ -486,21 +478,13 @@ public class DictObj
         public long getLong(String key, long def)
         {
             Long val = (Long) get(key);
-            if (val == null)
-            {
-                return def;
-            }
-            return val;
+            return Objects.requireNonNullElse(val, def);
         }
 
         public double getDouble(String key, double def)
         {
             Double val = (Double) get(key);
-            if (val == null)
-            {
-                return def;
-            }
-            return val;
+            return Objects.requireNonNullElse(val, def);
         }
 
         public float getFloat(String key, float def)
@@ -521,11 +505,7 @@ public class DictObj
         public boolean getBoolean(String key, boolean def)
         {
             Boolean val = (Boolean) get(key);
-            if (val == null)
-            {
-                return def;
-            }
-            return val;
+            return Objects.requireNonNullElse(val, def);
         }
 
         public void put(String key, DictObj val)

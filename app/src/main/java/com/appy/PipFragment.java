@@ -119,9 +119,7 @@ public class PipFragment extends MyFragment implements RunnerListener
         lib = new File(System.getenv("PYTHONHOME"), "lib");
 
         workdir.setText(new File(System.getenv("PYTHONHOME"), "bin").getAbsolutePath());
-        browse.setOnClickListener(v -> {
-            launchFileBrowser(0, workdir.getText().toString(), false, false, true, null);
-        });
+        browse.setOnClickListener(v -> launchFileBrowser(0, workdir.getText().toString(), false, false, true, null));
 
         run.setOnClickListener(v -> {
             if (runner != null)
@@ -166,7 +164,7 @@ public class PipFragment extends MyFragment implements RunnerListener
         super.onResume();
     }
 
-    Runnable updateTask = new Runnable()
+    final Runnable updateTask = new Runnable()
     {
         @Override
         public void run()

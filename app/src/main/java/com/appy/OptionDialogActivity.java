@@ -31,9 +31,9 @@ public class OptionDialogActivity extends Activity
 
     public static class ShowTextAction implements Parcelable
     {
-        String title;
-        String text;
-        boolean scrollDown;
+        final String title;
+        final String text;
+        final boolean scrollDown;
 
         public ShowTextAction(String title, String text, boolean scrollDown)
         {
@@ -177,10 +177,7 @@ public class OptionDialogActivity extends Activity
                         Widget.startService(this, intent);
                         finish();
                     }
-                    case ShowTextAction showTextAction ->
-                    {
-                        Utils.showTextDialog(this, showTextAction.title, showTextAction.text, "Close", null, null, this::finish, showTextAction.scrollDown);
-                    }
+                    case ShowTextAction showTextAction -> Utils.showTextDialog(this, showTextAction.title, showTextAction.text, "Close", null, null, this::finish, showTextAction.scrollDown);
                     case null, default -> finish();
                 }
             }

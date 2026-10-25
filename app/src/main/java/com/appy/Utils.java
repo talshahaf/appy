@@ -57,6 +57,7 @@ import java.util.Collection;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.Locale;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Random;
@@ -76,7 +77,7 @@ public class Utils
 
     public static abstract class ArgRunnable implements Runnable
     {
-        Object[] args;
+        final Object[] args;
         ArgRunnable(Object... args)
         {
             this.args = args;
@@ -123,7 +124,7 @@ public class Utils
 
     public static class IteratorChain<T> implements Iterator<T>
     {
-        private Iterator<T>[] iterators;
+        private final Iterator<T>[] iterators;
         private int index;
         public IteratorChain(Iterator<T>... iterators)
         {
@@ -180,11 +181,6 @@ public class Utils
     public interface RunnableArgs<T, U>
     {
         void run(T t, U u);
-    }
-
-    public static <T> T orDefault(T val, T def)
-    {
-        return val != null ? val : def;
     }
 
     public static long generateId()
@@ -561,7 +557,7 @@ public class Utils
             bytes /= 1000;
             ci.next();
         }
-        return String.format("%.1f %cB", bytes / 1000.0, ci.current());
+        return String.format(Locale.ENGLISH, "%.1f %cB", bytes / 1000.0, ci.current());
     }
 
     public static Pair<Integer, Long> dirSummary(String path) throws IOException
@@ -935,7 +931,7 @@ public class Utils
 
     public static String crashHeader()
     {
-        return "======= from " + new SimpleDateFormat(Constants.DATE_FORMAT).format(new Date()) + "=======\n\n";
+        return "======= from " + new SimpleDateFormat(Constants.DATE_FORMAT, Locale.US).format(new Date()) + "=======\n\n";
     }
 
     public static void dumpStacktrace(String path)
@@ -1063,42 +1059,25 @@ public class Utils
             Log.e("APPY", "Exception on reading prev data on tryWriteFile", e);
         }
 
-        BufferedWriter bw = null;
-        try
+        try (BufferedWriter bw = new BufferedWriter(new FileWriter(path, false)))
         {
-            bw = new BufferedWriter(new FileWriter(path, false));
             bw.write(data);
             if (!prev.isEmpty())
             {
                 bw.write(prev);
             }
             bw.flush();
-            bw.close();
         }
         catch (IOException e)
         {
             Log.e("APPY", "Exception on tryWriteFile", e);
         }
-        finally
-        {
-            if (bw != null)
-            {
-                try
-                {
-                    bw.close();
-                }
-                catch (IOException ignored)
-                {
-
-                }
-            }
-        }
     }
 
     public static class CrashHandler implements Thread.UncaughtExceptionHandler
     {
-        String path;
-        Thread.UncaughtExceptionHandler prev;
+        final String path;
+        final Thread.UncaughtExceptionHandler prev;
 
         public CrashHandler(String path, Thread.UncaughtExceptionHandler prev)
         {

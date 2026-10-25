@@ -1,5 +1,6 @@
 package com.appy;
 
+import android.os.Build;
 import android.util.Log;
 import android.util.Pair;
 
@@ -23,7 +24,7 @@ import java.util.stream.Stream;
 
 public class Reflection
 {
-    static final Cleaner CLEANER = Cleaner.create();
+    static final Cleaner CLEANER = Build.VERSION.SDK_INT >= 33 ? Cleaner.create() : null;
     private static final HashMap<Class<?>, Integer> groups;
     private static final HashMap<Class<?>, Integer> enumTypes;
     private static final int OBJECT_TYPE = -1;
@@ -655,7 +656,10 @@ public class Reflection
 
         public ProxyListener(long pythonObject)
         {
-            CLEANER.register(this, new PythonObjectCleaner(pythonObject));
+            if (Build.VERSION.SDK_INT >= 33)
+            {
+                CLEANER.register(this, new PythonObjectCleaner(pythonObject));
+            }
             this.pythonObject = pythonObject;
         }
 

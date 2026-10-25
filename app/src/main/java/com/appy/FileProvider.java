@@ -422,10 +422,7 @@ public class FileProvider extends ContentProvider {
             if (strat == null) {
                 try {
                     strat = parsePathStrategy(context, authority, resourceId);
-                } catch (IOException e) {
-                    throw new IllegalArgumentException(
-                            "Failed to parse " + META_DATA_FILE_PROVIDER_PATHS + " meta-data", e);
-                } catch (XmlPullParserException e) {
+                } catch (IOException | XmlPullParserException e) {
                     throw new IllegalArgumentException(
                             "Failed to parse " + META_DATA_FILE_PROVIDER_PATHS + " meta-data", e);
                 }

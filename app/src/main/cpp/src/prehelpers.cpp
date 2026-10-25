@@ -23,13 +23,13 @@ extern "C" __attribute__((visibility("default"))) int close_range(unsigned int f
     {
         if (flags & CLOSE_RANGE_CLOEXEC)
         {
-            int flags = fcntl(fd, F_GETFD, 0);
-            if (flags == -1)
+            int fdflags = fcntl(fd, F_GETFD, 0);
+            if (fdflags == -1)
             {
                 return -1;
             }
 
-            if (fcntl(fd, F_SETFD, flags | FD_CLOEXEC) != 0)
+            if (fcntl(fd, F_SETFD, fdflags | FD_CLOEXEC) != 0)
             {
                 return -1;
             }

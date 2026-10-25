@@ -64,14 +64,14 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
 
     FileBrowserAdapter adapter;
     ListView list;
-    LinkedList<String> history = new LinkedList<>();
+    final LinkedList<String> history = new LinkedList<>();
     Toolbar toolbar;
     TextView bottomtext;
     TutorialOverlayView tutorialOverlay;
     Tutorial tutorial;
     boolean copying = false;
     boolean cutting = false;
-    Selected selected = new Selected();
+    final Selected selected = new Selected();
     boolean selectingEnabled = true;
 
     boolean cantViewSharedStorage;
@@ -368,7 +368,7 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
             finish();
             return;
         }
-        getDirFromRoot(history.get(0), true);
+        getDirFromRoot(history.getFirst(), true);
     }
 
     public void returnFiles(String[] files)
@@ -737,8 +737,8 @@ public class FileBrowserActivity extends AppCompatActivity implements FileBrowse
 
     class Selected
     {
-        HashMap<String, File> selectedFiles = new HashMap<>();
-        HashMap<String, File> selectedDirectories = new HashMap<>();
+        final HashMap<String, File> selectedFiles = new HashMap<>();
+        final HashMap<String, File> selectedDirectories = new HashMap<>();
 
         public void clear()
         {

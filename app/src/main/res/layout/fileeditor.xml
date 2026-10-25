@@ -41,6 +41,7 @@
                 android:typeface="monospace"/>
             <EditText
                 android:id="@+id/content"
+                android:autofillHints=""
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:background="#ff3f3f3f"

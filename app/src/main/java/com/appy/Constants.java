@@ -43,7 +43,7 @@ import java.util.List;
 
 public class Constants
 {
-    public static String DATE_FORMAT = "yyyy-MM-dd HH:mm:ssZ";
+    public static final String DATE_FORMAT = "yyyy-MM-dd HH:mm:ssZ";
     public static final String ITEM_ID_EXTRA = "ITEM_ID";
     public static final String ITEM_TAG_EXTRA = "ITEM_TAG";
     public static final String WIDGET_INTENT = "WIDGET_INTENT";
@@ -135,10 +135,10 @@ public class Constants
         BOTH,
     }
 
-    public static HashMap<String, Class<?>> typeToClass = new HashMap<>();
-    public static HashMap<String, HashMap<String, String>> typeToRemotableMethod = new HashMap<>();
-    public static HashMap<Class<?>, String> parameterToSetter = new HashMap<>();
-    public static HashMap<String, String> preferredSetter = new HashMap<>();
+    public static final HashMap<String, Class<?>> typeToClass = new HashMap<>();
+    public static final HashMap<String, HashMap<String, String>> typeToRemotableMethod = new HashMap<>();
+    public static final HashMap<Class<?>, String> parameterToSetter = new HashMap<>();
+    public static final HashMap<String, String> preferredSetter = new HashMap<>();
 
     static
     {
@@ -212,7 +212,7 @@ public class Constants
         }
     }
 
-    static HashMap<String, CollectionLayout> collection_layout_type = new HashMap<>();
+    static final HashMap<String, CollectionLayout> collection_layout_type = new HashMap<>();
 
     static
     {
@@ -222,7 +222,7 @@ public class Constants
         collection_layout_type.put("AdapterViewFlipper", CollectionLayout.UNCONSTRAINED);
     }
 
-    static HashMap<List<String>, int[]> collection_map = new HashMap<>();
+    static final HashMap<List<String>, int[]> collection_map = new HashMap<>();
 
     static
     {
@@ -244,8 +244,8 @@ public class Constants
 
     static class SelectorElement
     {
-        int res;
-        HashMap<String, String> selectors = new HashMap<>();
+        final int res;
+        final HashMap<String, String> selectors = new HashMap<>();
 
         SelectorElement(int res, String... selector_pairs)
         {
@@ -278,7 +278,7 @@ public class Constants
         }
     }
 
-    static HashMap<String, ArrayList<SelectorElement>> element_map = new HashMap<>();
+    static final HashMap<String, ArrayList<SelectorElement>> element_map = new HashMap<>();
 
     static
     {

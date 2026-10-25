@@ -13,7 +13,7 @@
         android:includeFontPadding="false"
         android:autoSizeTextType="uniform"
         android:autoSizeMinTextSize="1px"
-        android:autoSizeMaxTextSize="10000px"
+        android:autoSizeMaxTextSize="10000dp"
         android:shadowDx="@dimen/shadow_left_dx"
         android:shadowDy="@dimen/shadow_left_dy"
         android:shadowRadius="@dimen/shadow_medium"

@@ -1,6 +1,7 @@
 package com.appy;
 
 import android.content.Context;
+import android.content.res.ColorStateList;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -20,8 +21,8 @@ public class FileGridAdapter extends BaseAdapter
 {
     private ArrayList<PythonFile> files;
     private final HashMap<String, PythonFile.State> stateOverride = new HashMap<>();
-    Context context;
-    ItemActionListener listener;
+    final Context context;
+    final ItemActionListener listener;
 
     interface ItemActionListener
     {
@@ -80,7 +81,7 @@ public class FileGridAdapter extends BaseAdapter
         if (convertView == null)
         {
             LayoutInflater m_inflater = LayoutInflater.from(context);
-            view = m_inflater.inflate(R.layout.filegrid_item, null);
+            view = m_inflater.inflate(R.layout.filegrid_item, parent);
             viewHolder = new ViewHolder();
             viewHolder.layout = view.findViewById(R.id.filegrid_layout);
             viewHolder.name = view.findViewById(R.id.filegrid_name);
@@ -121,7 +122,7 @@ public class FileGridAdapter extends BaseAdapter
                 break;
             }
         }
-        viewHolder.layout.setBackgroundTintList(context.getResources().getColorStateList(color));
+        viewHolder.layout.setBackgroundTintList(ColorStateList.valueOf(context.getResources().getColor(color)));
 
         viewHolder.name.setText(new File(file.path).getName());
         viewHolder.info.setOnClickListener(v -> {

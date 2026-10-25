@@ -14,7 +14,6 @@ import android.widget.ListView;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
-import androidx.compose.foundation.interaction.DragInteraction;
 
 import java.util.ArrayList;
 
@@ -100,7 +99,7 @@ public abstract class WidgetSelectActivity extends AppCompatActivity implements 
         }
         if (widgetProps.hasKey("debug_bounding_boxes"))
         {
-            drawingSettingsStr += "\n    bounding boxes: " + widgetProps.getBoolean("debug_bounding_boxes", false);
+            drawingSettingsStr += "\n    bounding boxes: " + (widgetProps.getBoolean("debug_bounding_boxes", false) ? "yes" : "no");
         }
 
         if (!drawingSettingsStr.isEmpty())
