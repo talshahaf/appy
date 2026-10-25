@@ -111,7 +111,7 @@ public class FileBrowserAdapter extends BaseAdapter
         if (convertView == null)
         {
             LayoutInflater m_inflater = LayoutInflater.from(context);
-            view = m_inflater.inflate(R.layout.filebrowser_item, parent);
+            view = m_inflater.inflate(R.layout.filebrowser_item, parent, false);
             viewHolder = new ViewHolder();
             viewHolder.filename = view.findViewById(R.id.filename);
             viewHolder.date = view.findViewById(R.id.filedate);

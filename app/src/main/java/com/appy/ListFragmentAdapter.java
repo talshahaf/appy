@@ -118,7 +118,7 @@ public class ListFragmentAdapter extends BaseAdapter
         {
             LayoutInflater inflater = (LayoutInflater) context
                     .getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-            twoLineListItem = inflater.inflate(R.layout.configs_list_item, parent);
+            twoLineListItem = inflater.inflate(R.layout.configs_list_item, parent, false);
         }
         else
         {

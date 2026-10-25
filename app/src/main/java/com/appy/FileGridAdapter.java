@@ -81,7 +81,7 @@ public class FileGridAdapter extends BaseAdapter
         if (convertView == null)
         {
             LayoutInflater m_inflater = LayoutInflater.from(context);
-            view = m_inflater.inflate(R.layout.filegrid_item, parent);
+            view = m_inflater.inflate(R.layout.filegrid_item, parent, false);
             viewHolder = new ViewHolder();
             viewHolder.layout = view.findViewById(R.id.filegrid_layout);
             viewHolder.name = view.findViewById(R.id.filegrid_name);
